@@ -2,7 +2,7 @@
 
 export type Gender = 'male' | 'female';
 export type EventStatus = 'upcoming' | 'open' | 'closed' | 'completed';
-export type BookingStatus = 'pending' | 'confirmed' | 'cancelled';
+export type BookingStatus = 'pending_approval' | 'pending_payment' | 'confirmed' | 'cancelled';
 export type MatchStatus = 'pending' | 'matched' | 'unmatched';
 export type Region = 'busan' | 'changwon';
 
@@ -17,6 +17,7 @@ export interface UserProfile {
   kakaoId?: string;
   photoUrl?: string;
   isAdmin: boolean;
+  isVerified?: boolean; // 재직/신원 인증 완료 뱃지용
   createdAt: Date;
 }
 
@@ -33,12 +34,16 @@ export interface KeylinkEvent {
   currentMale: number;
   currentFemale: number;
   price: number;
+  originalPrice?: number;
+  currentPrice?: number;
   status: EventStatus;
   description: string;
   thumbnail?: string;
   rankingOpen: boolean;
   matchingOpen: boolean;
   episode: number; // 몇 기
+  targetMaleAge?: string; // e.g. "94~98"
+  targetFemaleAge?: string; // e.g. "94~98"
   createdAt: Date;
 }
 
@@ -50,6 +55,12 @@ export interface Booking {
   userGender: Gender;
   status: BookingStatus;
   price: number;
+  finalPrice?: number;
+  workplace?: string; // 동일 직장 방지용
+  avoidAcquaintances?: string; // 지인 방지 (이름/연락처 등)
+  photoUrl?: string; // 신원 확인용 업로드 사진
+  conversationVibe?: string; // 감성 질문 (대화의 온도 등)
+  options?: string[]; // 적용된 결제 옵션
   participantNumber?: number; // 행사 참여 번호 (매칭에서 사용)
   createdAt: Date;
 }

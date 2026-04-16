@@ -33,6 +33,24 @@ const mockBookings = [
     matchStatus: 'pending',
     createdAt: new Date('2026-04-12'),
   },
+  {
+    id: 'b3',
+    eventId: 'event-busan-101',
+    event: mockEvents[1],
+    status: 'pending_payment',
+    hasRanked: false,
+    matchStatus: 'pending',
+    createdAt: new Date('2026-04-16'),
+  },
+  {
+    id: 'b4',
+    eventId: 'event-busan-102',
+    event: mockEvents[0],
+    status: 'pending_approval',
+    hasRanked: false,
+    matchStatus: 'pending',
+    createdAt: new Date('2026-04-16'),
+  },
 ];
 
 export default function MyPage() {
@@ -117,14 +135,20 @@ export default function MyPage() {
               <div style={{ padding: '20px 24px' }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px', flexWrap: 'wrap' }}>
-                      <h3 style={{ fontWeight: '700', fontSize: '1rem', color: 'var(--color-text-primary)' }}>
-                        {booking.event.title} {booking.event.episode}기
-                      </h3>
-                      <span className={`kl-badge ${booking.matchStatus === 'matched' ? 'kl-badge-open' : booking.matchStatus === 'pending' ? 'kl-badge-upcoming' : 'kl-badge-closed'}`}>
-                        {booking.matchStatus === 'matched' ? '✅ 매칭 성공' : booking.matchStatus === 'pending' ? '⏳ 결과 대기' : '미매칭'}
-                      </span>
-                    </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <h3 style={{ fontWeight: '700', fontSize: '1rem', color: 'var(--color-text-primary)' }}>
+                          {booking.event.title} {booking.event.episode}기
+                        </h3>
+                        
+                        {/* 예약 상태 뱃지 */}
+                        {booking.status === 'pending_approval' && <span className="kl-badge" style={{ background: 'rgba(255,111,97,0.1)', color: '#FF6F61', border: '1px solid rgba(255,111,97,0.3)' }}>⏳ 승인 대기중</span>}
+                        {booking.status === 'pending_payment' && <span className="kl-badge" style={{ background: 'rgba(169,143,213,0.1)', color: '#A98FD5', border: '1px solid rgba(169,143,213,0.3)' }}>💳 결제 요망</span>}
+                        {booking.status === 'confirmed' && (
+                          <span className={`kl-badge ${booking.matchStatus === 'matched' ? 'kl-badge-open' : booking.matchStatus === 'pending' ? 'kl-badge-upcoming' : 'kl-badge-closed'}`}>
+                            {booking.matchStatus === 'matched' ? '✅ 매칭 성공' : booking.matchStatus === 'pending' ? '⏳ 매칭 결과 대기' : '미매칭'}
+                          </span>
+                        )}
+                      </div>
                     <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <Calendar size={13} color="var(--color-text-muted)" />
@@ -138,13 +162,21 @@ export default function MyPage() {
                       </div>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-                    {!booking.hasRanked && (
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', marginTop: '12px' }}>
+                    {booking.status === 'pending_approval' && (
+                      <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>운영진이 신청서와 사진을 검토 중입니다.</span>
+                    )}
+                    {booking.status === 'pending_payment' && (
+                      <button className="kl-btn-primary" style={{ padding: '10px 18px', fontSize: '0.85rem' }}>
+                        결제하기
+                      </button>
+                    )}
+                    {(booking.status === 'confirmed' && !booking.hasRanked) && (
                       <Link href="/matching" className="kl-btn-primary" style={{ padding: '10px 18px', fontSize: '0.85rem' }}>
                         순위 입력하기
                       </Link>
                     )}
-                    {booking.matchStatus === 'matched' && (
+                    {(booking.status === 'confirmed' && booking.matchStatus === 'matched') && (
                       <Link href="/matching/result" className="kl-btn-outline" style={{ padding: '9px 18px', fontSize: '0.85rem' }}>
                         결과 확인 <ArrowRight size={14} />
                       </Link>
@@ -178,8 +210,8 @@ export default function MyPage() {
               <Calendar size={20} color="var(--color-primary)" />
             </div>
             <div>
-              <p style={{ fontWeight: '600', color: 'var(--color-text-primary)', fontSize: '0.9rem' }}>다음 일정 신청</p>
-              <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginTop: '3px' }}>부산·창원 일정 보기</p>
+              <p style={{ fontWeight: '600', color: 'var(--color-text-primary)', fontSize: '0.9rem' }}>다음 참여 신청</p>
+              <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginTop: '3px' }}>부산 일정 보기</p>
             </div>
           </Link>
           <Link href="/matching/result" style={{

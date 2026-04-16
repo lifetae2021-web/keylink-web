@@ -1,43 +1,115 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, ArrowRight, CheckCircle, User, Briefcase, Phone, Calendar, Heart } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle, Heart, User, CheckSquare, Square } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
 
-const steps = ['카카오 인증', '기본 정보', '추가 정보', '완료'];
-
-export default function RegisterPage() {
+function RegisterForm() {
   const router = useRouter();
-  const [step, setStep] = useState(0);
+  const searchParams = useSearchParams();
+  const isSocial = searchParams?.get('social') === 'true';
+
+  const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [form, setForm] = useState({
-    gender: '',
-    birthYear: '',
-    name: '',
-    job: '',
-    phone: '',
-    kakaoId: '',
-    agreeTerms: false,
-    agreePrivacy: false,
-    agreePhoto: false,
+  
+  // Step 1: Rules
+  const [agreements, setAgreements] = useState({
+    terms: false,
+    privacy: false,
+    thirdParty: false,
+    location: false,
   });
 
-  const update = (key: string, value: string | boolean) => setForm(f => ({ ...f, [key]: value }));
+  const isAllAgreed = Object.values(agreements).every(Boolean);
 
-  const handleKakaoAuth = async () => {
-    setIsSubmitting(true);
-    await new Promise(r => setTimeout(r, 1500));
-    setIsSubmitting(false);
-    setStep(1);
+  const toggleAllAgreements = () => {
+    const nextVal = !isAllAgreed;
+    setAgreements({ terms: nextVal, privacy: nextVal, thirdParty: nextVal, location: nextVal });
+  };
+
+  // Step 2 & 3 Form
+  const [form, setForm] = useState({
+    username: '',
+    password: '',
+    passwordConfirm: '',
+    name: '',
+    gender: '',
+    phone: '',
+    birthDate: '',
+  });
+
+  const [idChecked, setIdChecked] = useState(false);
+
+  const update = (key: string, value: string) => setForm(f => ({ ...f, [key]: value }));
+
+  // Steps Configuration
+  const stepsConfig = [
+    { num: 1, label: '약관 동의' },
+    { num: 2, label: '계정 정보', hidden: isSocial },
+    { num: 3, label: '상세 정보' },
+    { num: 4, label: '완료' },
+  ].filter(s => !s.hidden);
+
+  const currentDisplayIndex = stepsConfig.findIndex(s => s.num === step);
+
+  const validateStep = (currentStep: number) => {
+    if (currentStep === 1) {
+      if (!isAllAgreed) {
+        toast.error('모든 필수 약관에 동의해 주세요.');
+        return false;
+      }
+      return true;
+    }
+    if (currentStep === 2) {
+      if (!form.username) { toast.error('아이디를 입력해 주세요.'); return false; }
+      if (!idChecked) { toast.error('아이디 중복확인을 진행해 주세요.'); return false; }
+      if (!form.password || form.password !== form.passwordConfirm) {
+        toast.error('비밀번호가 일치하지 않거나 비어 있습니다.');
+        return false;
+      }
+      if (!form.name) { toast.error('이름을 입력해 주세요.'); return false; }
+      return true;
+    }
+    if (currentStep === 3) {
+      if (!form.gender) { toast.error('성별을 선택해 주세요.'); return false; }
+      if (!form.phone || !form.birthDate) { toast.error('연락처와 생년월일을 입력해 주세요.'); return false; }
+      return true;
+    }
+    return true;
+  };
+
+  const handleNext = () => {
+    if (!validateStep(step)) return;
+    
+    if (step === 1 && isSocial) {
+      setStep(3); // 스킵 Step 2
+    } else {
+      setStep(step + 1);
+    }
+  };
+
+  const handleBack = () => {
+    if (step === 3 && isSocial) {
+      setStep(1);
+    } else {
+      setStep(step - 1);
+    }
+  };
+
+  const handleIdCheck = () => {
+    if (!form.username) return toast.error('아이디를 입력해주세요.');
+    setIdChecked(true);
+    toast.success('사용 가능한 아이디입니다.');
   };
 
   const handleSubmit = async () => {
-    if (!form.agreeTerms || !form.agreePrivacy) { toast.error('필수 약관에 동의해주세요.'); return; }
+    if (!validateStep(3)) return;
     setIsSubmitting(true);
-    await new Promise(r => setTimeout(r, 2000));
+    await new Promise(r => setTimeout(r, 1500));
     setIsSubmitting(false);
-    setStep(3);
+    setStep(4);
   };
 
   return (
@@ -47,99 +119,142 @@ export default function RegisterPage() {
       padding: '90px 20px 60px',
       display: 'flex', flexDirection: 'column', alignItems: 'center',
     }}>
-      <div style={{ maxWidth: '520px', width: '100%' }}>
+      <div style={{ maxWidth: '480px', width: '100%' }}>
         {/* Back */}
-        {step > 0 && step < 3 && (
-          <button onClick={() => setStep(s => s - 1)}
+        {step > 1 && step < 4 && (
+          <button onClick={handleBack}
             style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-text-muted)', fontSize: '0.875rem', marginBottom: '24px', padding: 0 }}>
             <ArrowLeft size={16} /> 이전 단계
           </button>
         )}
 
-        {/* Progress */}
-        <div style={{ marginBottom: '36px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-            {steps.map((s, i) => (
-              <div key={s} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+        {/* Progress Tracker */}
+        {step < 4 && (
+          <div style={{ marginBottom: '36px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px', position: 'relative' }}>
+              <div style={{ position: 'absolute', top: '16px', left: '20px', right: '20px', height: '2px', background: 'var(--color-surface-2)', zIndex: 0 }}>
                 <div style={{
-                  width: '32px', height: '32px', borderRadius: '50%',
-                  background: i <= step ? 'linear-gradient(135deg, #FF6F61, #E6E6FA)' : 'var(--color-surface-2)',
-                  border: i <= step ? 'none' : '1px solid var(--color-border)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '0.8rem', fontWeight: '700',
-                  color: i <= step ? '#333333' : 'var(--color-text-muted)',
-                  transition: 'all 0.3s',
-                }}>
-                  {i < step ? <CheckCircle size={16} /> : i + 1}
-                </div>
-                <span style={{ fontSize: '0.7rem', color: i === step ? '#FF6F61' : 'var(--color-text-muted)', fontWeight: i === step ? '800' : '500', whiteSpace: 'nowrap' }}>
-                  {s}
-                </span>
+                  height: '100%', background: 'linear-gradient(90deg, #FF6F61, #FF8A71)',
+                  width: `${(currentDisplayIndex / (stepsConfig.length - 2)) * 100}%`,
+                  transition: 'width 0.5s ease',
+                }} />
               </div>
-            ))}
+              
+              {stepsConfig.filter(s => s.num < 4).map((s, i) => {
+                const isActive = i <= currentDisplayIndex;
+                const isCurrent = i === currentDisplayIndex;
+                return (
+                  <div key={s.num} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', zIndex: 1, position: 'relative', background: 'transparent' }}>
+                    <div style={{
+                      width: '32px', height: '32px', borderRadius: '50%',
+                      background: isActive ? '#FF6F61' : 'var(--color-surface)',
+                      border: isActive ? '2px solid #FF6F61' : '2px solid var(--color-border)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: '0.85rem', fontWeight: '800',
+                      color: isActive ? '#FFF' : 'var(--color-text-muted)',
+                      transition: 'all 0.3s ease',
+                      boxShadow: isCurrent ? '0 0 0 4px rgba(255,111,97,0.15)' : 'none'
+                    }}>
+                      {i < currentDisplayIndex ? <CheckCircle size={16} /> : (i + 1)}
+                    </div>
+                    <span style={{ fontSize: '0.75rem', color: isCurrent ? '#FF6F61' : 'var(--color-text-muted)', fontWeight: isCurrent ? '800' : '600' }}>
+                      {s.label}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-          <div style={{ height: '3px', background: 'var(--color-surface-2)', borderRadius: '2px', overflow: 'hidden' }}>
-            <div style={{
-              height: '100%', background: 'linear-gradient(90deg, #FF6F61, #FF8A71)',
-              width: `${(step / (steps.length - 1)) * 100}%`,
-              transition: 'width 0.5s ease', borderRadius: '2px',
-            }} />
-          </div>
-        </div>
+        )}
 
         <div style={{
           background: 'var(--gradient-card)', border: '1px solid var(--color-border)',
-          borderRadius: 'var(--radius-xl)', padding: '36px 32px',
+          borderRadius: '24px', padding: '40px 32px', boxShadow: '0 8px 32px rgba(0,0,0,0.02)'
         }}>
-          {/* Step 0: Kakao Auth */}
-          {step === 0 && (
-            <div style={{ textAlign: 'center' }}>
-              <div style={{
-                width: '64px', height: '64px', borderRadius: '18px',
-                background: '#FEE500', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                margin: '0 auto 20px',
-              }}>
-                <svg width="30" height="30" viewBox="0 0 24 24" fill="#191919">
-                  <path d="M12 2C6.48 2 2 5.92 2 10.8c0 3.12 1.75 5.87 4.38 7.53L5.44 22l4.35-2.3c.72.2 1.45.3 2.21.3 5.52 0 10-3.93 10-8.8S17.52 2 12 2z" />
-                </svg>
+          {/* Step 1: 약관 동의 */}
+          {step === 1 && (
+            <div>
+              <h2 style={{ fontSize: '1.4rem', fontWeight: '800', marginBottom: '8px', color: '#111' }}>서비스 가입을 위해<br/>이용 약관에 동의해 주세요.</h2>
+              <p style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem', marginBottom: '32px' }}>원활한 서비스 제공을 위해 필수 약관 동의가 필요합니다.</p>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <button onClick={toggleAllAgreements} style={{
+                  display: 'flex', alignItems: 'center', gap: '12px', padding: '16px', background: isAllAgreed ? 'rgba(255,111,97,0.08)' : 'var(--color-surface-2)',
+                  border: isAllAgreed ? '1px solid rgba(255,111,97,0.3)' : '1px solid transparent', borderRadius: '16px', cursor: 'pointer', transition: 'all 0.2s', width: '100%'
+                }}>
+                  {isAllAgreed ? <CheckSquare color="#FF6F61" fill="rgba(255,111,97,0.2)" size={22}/> : <Square color="#999" size={22}/>}
+                  <span style={{ fontWeight: '800', fontSize: '1.05rem', color: isAllAgreed ? '#FF6F61' : '#333' }}>전체 동의</span>
+                </button>
+                <div style={{ padding: '8px 4px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {[
+                    { key: 'terms', label: '서비스 이용약관 동의 (필수)' },
+                    { key: 'privacy', label: '개인정보 수집/이용 동의 (필수)' },
+                    { key: 'thirdParty', label: '개인정보 제 3자 정보제공 동의 (필수)' },
+                    { key: 'location', label: '위치기반 서비스 이용약관 동의 (필수)' },
+                  ].map(({ key, label }) => (
+                    <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}
+                      onClick={() => setAgreements(a => ({ ...a, [key]: !a[key as keyof typeof agreements] }))}>
+                      {agreements[key as keyof typeof agreements] ? <CheckCircle color="#FF6F61" size={18} fill="rgba(255,111,97,0.1)" /> : <div style={{ width: 18, height: 18, borderRadius: '50%', border: '1.5px solid #ccc' }} />}
+                      <span style={{ fontSize: '0.9rem', color: '#555', fontWeight: '500' }}>{label}</span>
+                    </div>
+                  ))}
+                </div>
+                
+                <button className="kl-btn-primary" style={{ width: '100%', padding: '18px', marginTop: '20px', borderRadius: '100px', fontSize: '1.05rem', fontWeight: '800' }} onClick={handleNext}>
+                  다음 단계
+                </button>
               </div>
-              <h2 style={{ fontSize: '1.3rem', fontWeight: '700', marginBottom: '10px', color: 'var(--color-text-primary)' }}>카카오 본인 인증</h2>
-              <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem', lineHeight: 1.7, marginBottom: '28px' }}>
-                신뢰도 높은 소개팅 환경을 위해<br/>카카오 계정으로 본인 인증을 진행합니다.
-              </p>
-              <button
-                onClick={handleKakaoAuth} disabled={isSubmitting}
-                style={{
-                  width: '100%', padding: '16px', background: '#FEE500',
-                  border: 'none', borderRadius: 'var(--radius-md)',
-                  cursor: 'pointer', fontWeight: '700', fontSize: '1rem', color: '#191919',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
-                }}
-              >
-                {isSubmitting ? '인증 중...' : '카카오로 본인 인증'}
-              </button>
             </div>
           )}
 
-          {/* Step 1: 기본 정보 */}
-          {step === 1 && (
+          {/* Step 2: 계정 정보 (Not Social) */}
+          {step === 2 && !isSocial && (
             <div>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: '700', marginBottom: '6px' }}>기본 정보 입력</h2>
-              <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginBottom: '28px' }}>매칭에 활용되는 기본 프로필입니다.</p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                {/* 성별 */}
+              <h2 style={{ fontSize: '1.4rem', fontWeight: '800', marginBottom: '8px', color: '#111' }}>로그인에 사용할<br/>계정 정보를 입력해 주세요.</h2>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginTop: '32px' }}>
                 <div>
-                  <label className="kl-label">성별 *</label>
+                  <label className="kl-label" style={{ fontWeight: '700' }}>아이디 <CheckCircle size={14} color={idChecked ? "#03C75A" : "#ccc"}/></label>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input className="kl-input" style={{ flex: 1, borderRadius: '12px' }} placeholder="아이디" value={form.username} onChange={e => { update('username', e.target.value); setIdChecked(false); }} />
+                    <button type="button" onClick={handleIdCheck} style={{ 
+                      padding: '0 16px', background: idChecked ? '#F0F0F0' : '#333', color: idChecked ? '#999' : '#FFF', 
+                      borderRadius: '12px', border: 'none', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap' 
+                    }}>
+                      중복확인
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label className="kl-label" style={{ fontWeight: '700' }}>비밀번호 <CheckCircle size={14} color={form.password.length > 3 ? "#03C75A" : "#ccc"}/></label>
+                  <input className="kl-input" style={{ borderRadius: '12px', marginBottom: '8px' }} type="password" placeholder="비밀번호" value={form.password} onChange={e => update('password', e.target.value)} />
+                  <input className="kl-input" style={{ borderRadius: '12px' }} type="password" placeholder="비밀번호 확인" value={form.passwordConfirm} onChange={e => update('passwordConfirm', e.target.value)} />
+                </div>
+                <div>
+                  <label className="kl-label" style={{ fontWeight: '700' }}>이름 (실명) <CheckCircle size={14} color={form.name ? "#03C75A" : "#ccc"}/></label>
+                  <input className="kl-input" style={{ borderRadius: '12px' }} placeholder="이름을 입력해 주세요" value={form.name} onChange={e => update('name', e.target.value)} />
+                </div>
+                
+                <button className="kl-btn-primary" style={{ width: '100%', padding: '18px', marginTop: '16px', borderRadius: '100px', fontSize: '1.05rem', fontWeight: '800' }} onClick={handleNext}>
+                  다음 단계
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: 상세 정보 */}
+          {step === 3 && (
+            <div>
+              <h2 style={{ fontSize: '1.4rem', fontWeight: '800', marginBottom: '8px', color: '#111' }}>{isSocial ? '마지막으로' : '조금만 더!'} <br/>상세 정보를 입력해 주세요.</h2>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', marginTop: '32px' }}>
+                <div>
+                  <label className="kl-label" style={{ fontWeight: '700' }}>성별 <CheckCircle size={14} color={form.gender ? "#03C75A" : "#ccc"}/></label>
                   <div style={{ display: 'flex', gap: '12px' }}>
-                    {[{ v: 'male', label: '👨 남성' }, { v: 'female', label: '👩 여성' }].map(({ v, label }) => (
+                    {[{ v: 'male', label: '남성' }, { v: 'female', label: '여성' }].map(({ v, label }) => (
                       <button key={v} type="button" onClick={() => update('gender', v)}
                         style={{
-                          flex: 1, padding: '14px',
-                          borderRadius: 'var(--radius-md)', border: '1.5px solid',
-                          borderColor: form.gender === v ? '#FF6F61' : 'var(--color-border)',
-                          background: form.gender === v ? 'rgba(255,111,97,0.12)' : '#FFFFFF',
-                          color: form.gender === v ? '#FF6F61' : '#333333',
-                          cursor: 'pointer', fontWeight: '700', fontSize: '0.95rem', transition: 'all 0.2s',
+                          flex: 1, padding: '16px', borderRadius: '14px', border: form.gender === v ? '2px solid #FF6F61' : '1px solid #ddd',
+                          background: form.gender === v ? '#FFF5F4' : '#FFFFFF', color: form.gender === v ? '#FF6F61' : '#333333',
+                          cursor: 'pointer', fontWeight: '800', fontSize: '1rem', transition: 'all 0.2s', width: '100%'
                         }}>
                         {label}
                       </button>
@@ -147,77 +262,24 @@ export default function RegisterPage() {
                   </div>
                 </div>
                 <div>
-                  <label className="kl-label">이름 (실명) *</label>
-                  <input className="kl-input" placeholder="주민등록상 이름을 입력하세요" value={form.name} onChange={e => update('name', e.target.value)} required />
+                  <label className="kl-label" style={{ fontWeight: '700' }}>연락처 <CheckCircle size={14} color={form.phone ? "#03C75A" : "#ccc"}/></label>
+                  <input className="kl-input" style={{ borderRadius: '12px', width: '100%' }} type="tel" placeholder="ex. 010-1234-5678" value={form.phone} onChange={e => update('phone', e.target.value)} />
                 </div>
                 <div>
-                  <label className="kl-label">출생연도 *</label>
-                  <input className="kl-input" type="number" placeholder="예: 1997" min="1965" max="2006" value={form.birthYear} onChange={e => update('birthYear', e.target.value)} required />
-                  {form.birthYear && (
-                    <p style={{ fontSize: '0.8rem', color: '#FF6F61', marginTop: '6px' }}>
-                      만 {new Date().getFullYear() - parseInt(form.birthYear)}세
-                    </p>
-                  )}
-                </div>
-                <button className="kl-btn-primary" style={{ width: '100%', padding: '16px' }}
-                  onClick={() => {
-                    if (!form.gender || !form.name || !form.birthYear) { toast.error('모든 항목을 입력해주세요.'); return; }
-                    setStep(2);
-                  }}>
-                  다음 단계 <ArrowRight size={17} />
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Step 2: 추가 정보 */}
-          {step === 2 && (
-            <div>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: '700', marginBottom: '6px' }}>추가 정보 입력</h2>
-              <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginBottom: '28px' }}>매칭 품질 향상을 위한 정보입니다.</p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                <div>
-                  <label className="kl-label">직업 *</label>
-                  <input className="kl-input" placeholder="예: 간호사, 회사원, 대학원생, 자영업" value={form.job} onChange={e => update('job', e.target.value)} required />
-                </div>
-                <div>
-                  <label className="kl-label">연락처 *</label>
-                  <input className="kl-input" type="tel" placeholder="010-0000-0000" value={form.phone} onChange={e => update('phone', e.target.value)} required />
-                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '6px' }}>매칭 성공 시 상대방에게 공개될 연락처입니다.</p>
-                </div>
-                <div>
-                  <label className="kl-label">카카오 ID (선택)</label>
-                  <input className="kl-input" placeholder="카카오톡 ID" value={form.kakaoId} onChange={e => update('kakaoId', e.target.value)} />
-                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '6px' }}>입력 시 매칭 결과에서 카카오 친구추가가 가능합니다.</p>
+                  <label className="kl-label" style={{ fontWeight: '700' }}>생년월일 <CheckCircle size={14} color={form.birthDate ? "#03C75A" : "#ccc"}/></label>
+                  <input className="kl-input" style={{ borderRadius: '12px', width: '100%' }} type="text" placeholder="ex. 1995-05-18" value={form.birthDate} onChange={e => update('birthDate', e.target.value)} />
                 </div>
 
-                {/* 약관 동의 */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '20px', background: 'var(--color-surface-2)', borderRadius: 'var(--radius-md)' }}>
-                  {[
-                    { key: 'agreeTerms', label: '[필수] 이용약관에 동의합니다', required: true },
-                    { key: 'agreePrivacy', label: '[필수] 개인정보 수집·이용에 동의합니다', required: true },
-                    { key: 'agreePhoto', label: '[선택] 촬영물 마케팅 활용에 동의합니다', required: false },
-                  ].map(({ key, label, required }) => (
-                    <label key={key} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', cursor: 'pointer' }}>
-                      <input type="checkbox" checked={form[key as keyof typeof form] as boolean}
-                        onChange={e => update(key, e.target.checked)}
-                        style={{ marginTop: '2px', accentColor: '#FF6F61', flexShrink: 0 }} />
-                      <span style={{ fontSize: '0.85rem', color: required ? 'var(--color-text-secondary)' : 'var(--color-text-muted)', lineHeight: 1.5 }}>{label}</span>
-                    </label>
-                  ))}
-                </div>
-
-                <button className="kl-btn-primary" style={{ width: '100%', padding: '16px' }}
-                  onClick={handleSubmit} disabled={isSubmitting}>
+                <button className="kl-btn-primary" style={{ width: '100%', padding: '18px', marginTop: '16px', borderRadius: '100px', fontSize: '1.05rem', fontWeight: '800' }} onClick={handleSubmit} disabled={isSubmitting}>
                   {isSubmitting ? '가입 처리 중...' : '회원가입 완료'}
                 </button>
               </div>
             </div>
           )}
 
-          {/* Step 3: 완료 */}
-          {step === 3 && (
-            <div style={{ textAlign: 'center' }}>
+          {/* Step 4: 완료 */}
+          {step === 4 && (
+            <div style={{ textAlign: 'center', padding: '20px 0' }}>
               <div style={{
                 width: '80px', height: '80px', borderRadius: '50%',
                 background: 'radial-gradient(circle, rgba(255,111,97,0.25), transparent)',
@@ -227,33 +289,33 @@ export default function RegisterPage() {
               }}>
                 <Heart size={40} color="#FF6F61" fill="rgba(255,111,97,0.3)" />
               </div>
-              <h2 style={{ fontSize: '1.4rem', fontWeight: '800', marginBottom: '12px' }}>
-                키링크 <span style={{ background: 'linear-gradient(135deg, #FF6F61, #FF8A71)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>가입 완료!</span>
+              <h2 style={{ fontSize: '1.6rem', fontWeight: '800', marginBottom: '12px', color: '#111' }}>
+                가입을 환영합니다!
               </h2>
-              <p style={{ color: 'var(--color-text-secondary)', lineHeight: 1.8, marginBottom: '32px' }}>
-                어서오세요! 이제 부산·창원 소개팅 일정을<br/>신청하고 매칭 결과를 확인할 수 있습니다.
+              <p style={{ color: 'var(--color-text-secondary)', lineHeight: 1.6, marginBottom: '40px' }}>
+                이제 키링크의 모든 소개팅 일정을<br/>자유롭게 조회하고 신청하실 수 있습니다.
               </p>
               <div style={{ display: 'flex', gap: '12px', flexDirection: 'column' }}>
-                <Link href="/events" className="kl-btn-primary" style={{ width: '100%', padding: '16px' }}>
-                  일정 신청하러 가기 <ArrowRight size={17} />
+                <Link href="/events" className="kl-btn-primary" style={{ width: '100%', padding: '18px', borderRadius: '100px', fontWeight: '800', fontSize: '1.05rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}>
+                  소개팅 일정 확인하기 <ArrowRight size={18} />
                 </Link>
-                <Link href="/" className="kl-btn-outline" style={{ width: '100%', padding: '14px' }}>
+                <Link href="/" className="kl-btn-outline" style={{ width: '100%', padding: '18px', borderRadius: '100px', fontWeight: '700', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                   홈으로
                 </Link>
               </div>
             </div>
           )}
         </div>
-
-        {step === 0 && (
-          <p style={{ textAlign: 'center', marginTop: '20px', fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>
-            이미 계정이 있으신가요?{' '}
-            <Link href="/login" style={{ color: '#FF6F61', fontWeight: '700', textDecoration: 'none' }}>로그인</Link>
-          </p>
-        )}
       </div>
-
       <style>{`@keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }`}</style>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={<div style={{ paddingTop: '90px', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>로딩 중...</div>}>
+      <RegisterForm />
+    </Suspense>
   );
 }

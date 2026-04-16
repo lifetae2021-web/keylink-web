@@ -11,7 +11,7 @@ import { ko } from 'date-fns/locale';
 import toast from 'react-hot-toast';
 
 const mockStats = {
-  totalEvents: 102,
+  totalEvents: 120,
   totalParticipants: 1847,
   matchRate: 68,
   thisMonthRevenue: 3861000,
@@ -68,7 +68,7 @@ export default function AdminPage() {
       }} className="admin-sidebar">
         <div style={{ marginBottom: '24px', padding: '12px 16px', borderRadius: 'var(--radius-md)', background: 'rgba(255,111,97,0.08)', border: '1px solid rgba(255,111,97,0.15)' }}>
           <p style={{ fontSize: '0.7rem', color: 'var(--color-primary)', fontWeight: '700', letterSpacing: '0.1em', marginBottom: '4px' }}>ADMIN</p>
-          <p style={{ fontWeight: '700', color: 'var(--color-text-primary)', fontSize: '0.9rem' }}>Keylink 관리자</p>
+          <p style={{ fontWeight: '700', color: 'var(--color-text-primary)', fontSize: '0.9rem' }}>키링크 관리자</p>
         </div>
 
         {[

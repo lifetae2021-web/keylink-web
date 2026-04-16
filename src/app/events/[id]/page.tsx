@@ -1,15 +1,18 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   Calendar, MapPin, Users, ArrowLeft, AlertCircle,
-  CheckCircle, Clock, Shield, ChevronDown, X
+  CheckCircle, Clock, Shield, Camera, X, CreditCard, ChevronRight, Upload
 } from 'lucide-react';
 import { mockEvents } from '@/lib/mockData';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import toast from 'react-hot-toast';
+import { auth, db } from '@/lib/firebase';
+import { onAuthStateChanged, User } from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 export default function EventDetailPage() {
   const { id } = useParams();
@@ -18,11 +21,68 @@ export default function EventDetailPage() {
 
   const [showRuleModal, setShowRuleModal] = useState(false);
   const [ruleAccepted, setRuleAccepted] = useState(false);
-  const [showBookingForm, setShowBookingForm] = useState(false);
+  
+  // 0: 상세페이지, 1: 신청 폼, 2: 결제 대기(모의)
+  const [step, setStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // 얼리버드 카운트다운 타이머 (가상)
+  const [timeLeft, setTimeLeft] = useState(3600 * 5 + 1200); // 5h 20m
+
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+
   const [form, setForm] = useState({
-    name: '', gender: '', birthYear: '', job: '', phone: '', agreeTerms: false, agreeRule: false,
+    name: '', gender: '', phone: '', // From Firebase
+    instaId: '', birthDate: '', height: '', weight: '', residence: '',
+    jobRole: '', workplace: '', avoidAcquaintance: '',
+    idealType: '', nonIdealType: '',
+    smoking: '', drinking: '', religion: '',
+    drink: '', vibe: '', etc: '',
+    photoFaceUploaded: false, photoBodyUploaded: false,
+    agreeTerms: false, agreeRule: false,
+    maleOption: 'normal', // 'normal' | 'safe'
   });
+
+  // Firebase 사용자 인증 및 정보 불러오기
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        setCurrentUser(user);
+        // Firestore에서 유저 데이터 가져오기
+        const userRef = doc(db, 'users', user.uid);
+        const userSnap = await getDoc(userRef);
+        if (userSnap.exists()) {
+          const data = userSnap.data();
+          setForm(prev => {
+            // LocalStorage 내용이 있으면 덮어쓰지 않게끔 조치할 수 있으나,
+            // 기본적으로 Firestore 우선이거나 빈값에 대응하도록 병합
+            return { ...prev, ...data };
+          });
+          toast.success('기존 프로필 정보를 불러왔습니다. 수정이 필요한 부분만 고쳐주세요.', {
+            icon: 'ℹ️',
+            duration: 4000,
+          });
+        }
+      } else {
+        setCurrentUser(null);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // LocalStorage 연동
+  useEffect(() => {
+    const saved = localStorage.getItem(`keylink_form_${id}`);
+    if (saved) {
+      try {
+        setForm(prev => ({ ...prev, ...JSON.parse(saved) }));
+      } catch(e) {}
+    }
+  }, [id]);
+
+  useEffect(() => {
+    localStorage.setItem(`keylink_form_${id}`, JSON.stringify(form));
+  }, [form, id]);
 
   if (!event) {
     return (
@@ -39,25 +99,98 @@ export default function EventDetailPage() {
   const soldOutM = event.currentMale >= event.maxMale;
   const soldOutF = event.currentFemale >= event.maxFemale;
 
-  const handleBooking = async (e: React.FormEvent) => {
+  // 성별 및 옵션 기반 가격 로직
+  let displayBasePrice = form.gender === 'female' ? 40000 : (form.maleOption === 'safe' ? 60000 : 49000);
+  let finalPrice = form.gender === 'female' ? 29000 : displayBasePrice;
+  let isDiscounted = form.gender === 'female';
+
+  const handleStep1Entry = () => {
+    if (!currentUser) {
+      toast.error('로그인 후 신청이 가능합니다.');
+      router.push('/login');
+      return;
+    }
+    setStep(1);
+  };
+
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.agreeTerms || !form.agreeRule) {
       toast.error('약관 및 운영 규정에 동의해주세요.');
       return;
     }
+    
+    // 필수 항목 검사
+    const requiredFields = [
+      { key: 'birthDate', name: '생년월일' },
+      { key: 'workplace', name: '직장/소속명' },
+    ];
+    
+    for (const field of requiredFields) {
+      if (!form[field.key as keyof typeof form]) {
+        toast.error(`${field.name} 항목을 입력해주세요.`);
+        return;
+      }
+    }
+
+    if (!form.photoFaceUploaded || !form.photoBodyUploaded) {
+      toast.error('본인 얼굴과 전신 사진을 모두 업로드해주세요.');
+      return;
+    }
+
     setIsSubmitting(true);
+    
+    // Firestore 최신 정보로 업데이트
+    if (currentUser) {
+      const userRef = doc(db, 'users', currentUser.uid);
+      try {
+        await setDoc(userRef, {
+          name: form.name,
+          gender: form.gender,
+          phone: form.phone,
+          birthDate: form.birthDate,
+          height: form.height,
+          weight: form.weight,
+          residence: form.residence,
+          workplace: form.workplace,
+          jobRole: form.jobRole,
+          instaId: form.instaId,
+          idealType: form.idealType,
+          nonIdealType: form.nonIdealType,
+          smoking: form.smoking,
+          drinking: form.drinking,
+          religion: form.religion,
+        }, { merge: true });
+      } catch (err) {
+        console.error('Failed to update user profile', err);
+      }
+    }
+
+    // 모의 폼 제출
+    await new Promise((r) => setTimeout(r, 1500));
+    setIsSubmitting(false);
+    toast.success('신청서가 접수되었습니다. 결제를 진행해주세요.');
+    localStorage.removeItem(`keylink_form_${id}`); // 제출 성공 시 임시저장 삭제
+    setStep(2); // 결제 단계로 이동
+  };
+
+  const handlePayment = async () => {
+    setIsSubmitting(true);
+    // 모의 결제 연동
     await new Promise((r) => setTimeout(r, 2000));
     setIsSubmitting(false);
-    toast.success('🎉 예약이 완료되었습니다! 마이페이지에서 확인하세요.');
+    toast.success('🎉 예약 및 결제가 완료되었습니다! 마이페이지에서 확인하세요.');
     router.push('/mypage');
   };
 
+
+
   return (
-    <div style={{ paddingTop: '90px', minHeight: '100vh' }}>
+    <div style={{ paddingTop: '90px', minHeight: '100vh', paddingBottom: '100px' }}>
       {/* 영구제명 규정 팝업 */}
       {showRuleModal && (
         <div style={{
-          position: 'fixed', inset: 0, zIndex: 2000,
+          position: 'fixed', inset: 0, zIndex: 3000,
           background: 'rgba(0,0,0,0.85)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           padding: '20px', backdropFilter: 'blur(8px)',
@@ -88,24 +221,15 @@ export default function EventDetailPage() {
               borderRadius: 'var(--radius-md)', padding: '20px', marginBottom: '24px',
             }}>
               {[
-                '행사에서 얻은 타 참가자의 연락처, SNS 계정 등 개인정보를 무단으로 제3자에게 공유하는 행위',
-                '매칭 결과와 무관하게 상대방에게 불쾌감을 주는 연락이나 접근',
-                '허위 정보(나이, 직업, 결혼 여부)로 신청하는 행위',
-                '행사 진행을 방해하는 일체의 행위',
+                '행사에서 얻은 개인정보 무단 공유 불가',
+                '매칭 결과와 무관하게 상대방에게 불쾌감을 주는 접근 금지',
+                '허위 정보(나이, 직업, 결혼 여부) 신청 금지',
               ].map((rule, i) => (
                 <div key={i} style={{ display: 'flex', gap: '10px', marginBottom: i < 3 ? '12px' : 0 }}>
                   <span style={{ color: '#C86A6A', fontWeight: '700', flexShrink: 0 }}>{i + 1}.</span>
                   <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>{rule}</p>
                 </div>
               ))}
-            </div>
-            <div style={{
-              padding: '16px', borderRadius: 'var(--radius-md)',
-              background: 'rgba(200,106,106,0.12)', border: '1px solid rgba(200,106,106,0.3)',
-              textAlign: 'center', marginBottom: '24px',
-            }}>
-              <p style={{ fontWeight: '800', color: '#C86A6A', fontSize: '1rem' }}>위 행위 적발 시: 즉시 영구 제명</p>
-              <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: '6px' }}>향후 모든 키링크 행사 참여 불가</p>
             </div>
             <button
               className="kl-btn-primary"
@@ -118,209 +242,494 @@ export default function EventDetailPage() {
         </div>
       )}
 
-      <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '40px 20px' }}>
+      <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '20px' }}>
         <Link href="/events" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', color: 'var(--color-text-muted)', textDecoration: 'none', marginBottom: '32px', fontSize: '0.875rem' }}>
           <ArrowLeft size={16} /> 일정 목록으로
         </Link>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: '32px' }} className="event-detail-grid">
-          {/* Left */}
-          <div>
-            {/* Hero card */}
-            <div style={{
-              height: '260px',
-              background: event.region === 'busan'
-                ? 'linear-gradient(135deg, #FFF0F5, #FFE4E1)'
-                : 'linear-gradient(135deg, #F8F8FF, #F0F0FF)',
-              borderRadius: 'var(--radius-xl)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              marginBottom: '28px', position: 'relative', overflow: 'hidden',
+        {/* 4단계 프로세스 진행 바 (상세페이지 아닐 때 표출) */}
+        {step > 0 && (
+            <div style={{ 
+                marginBottom: '32px', background: 'var(--gradient-card)', border: '1px solid var(--color-border)', 
+                borderRadius: 'var(--radius-lg)', padding: '24px',
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative'
             }}>
-              <div style={{
-                position: 'absolute', inset: 0,
-                background: event.region === 'busan'
-                  ? 'radial-gradient(circle at 40% 50%, rgba(255,111,97,0.2), transparent 60%)'
-                  : 'radial-gradient(circle at 40% 50%, rgba(169,143,213,0.2), transparent 60%)',
-              }} />
-              <div style={{ textAlign: 'center', position: 'relative' }}>
-                <p style={{ fontSize: '0.8rem', fontWeight: '700', letterSpacing: '0.1em', color: event.region === 'busan' ? '#FF6F61' : '#A98FD5', textTransform: 'uppercase', marginBottom: '12px' }}>
-                  {event.region === 'busan' ? 'BUSAN' : 'CHANGWON'}
-                </p>
-                <p style={{ fontSize: '4rem', fontWeight: '900', color: '#333333', lineHeight: 1 }}>
-                  {event.episode}<span style={{ fontSize: '1.5rem' }}>기</span>
-                </p>
-                <p style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.5)', marginTop: '8px' }}>{event.title}</p>
-              </div>
-            </div>
-
-            {/* Description */}
-            <div className="kl-card" style={{ marginBottom: '24px' }}>
-              <h2 style={{ fontSize: '1.2rem', fontWeight: '700', marginBottom: '16px', color: 'var(--color-text-primary)' }}>행사 안내</h2>
-              <p style={{ color: 'var(--color-text-secondary)', lineHeight: 1.8 }}>{event.description}</p>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '24px' }}>
+                {/* 배경 라인 */}
+                <div style={{ position: 'absolute', top: '50%', left: '40px', right: '40px', height: '2px', background: 'var(--color-surface-2)', zIndex: 0 }} />
+                
                 {[
-                  { Icon: Calendar, label: '일시', value: format(event.date, 'M월 d일 (EEEE) HH:mm', { locale: ko }) },
-                  { Icon: MapPin, label: '장소', value: event.venue },
-                  { Icon: Users, label: '정원', value: `남 ${event.maxMale}명 · 여 ${event.maxFemale}명` },
-                  { Icon: Clock, label: '1회 대화', value: '9분 30초' },
-                ].map(({ Icon, label, value }) => (
-                  <div key={label} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-                    <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'var(--color-surface-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <Icon size={16} color="#FF6F61" />
+                    { state: 1, label: '신청서 작성' },
+                    { state: 2, label: '결제/승인' },
+                    { state: 3, label: '최종 확정' }
+                ].map((s, i) => (
+                    <div key={s.state} style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', background: 'var(--color-surface-1)', padding: '0 10px' }}>
+                        <div style={{ 
+                            width: '36px', height: '36px', borderRadius: '50%', 
+                            background: step >= s.state ? '#FF6F61' : 'var(--color-surface-2)',
+                            color: step >= s.state ? '#fff' : 'var(--color-text-muted)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '700',
+                            border: step >= s.state ? 'none' : '2px solid var(--color-border)',
+                            transition: 'all 0.3s'
+                        }}>
+                            {step > s.state ? <CheckCircle size={20} color="#fff" /> : s.state}
+                        </div>
+                        <span style={{ fontSize: '0.8rem', fontWeight: step >= s.state ? '700' : '500', color: step >= s.state ? '#111' : 'var(--color-text-muted)' }}>{s.label}</span>
                     </div>
-                    <div>
-                      <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '2px' }}>{label}</p>
-                      <p style={{ fontSize: '0.9rem', color: 'var(--color-text-primary)', fontWeight: '600' }}>{value}</p>
-                    </div>
-                  </div>
                 ))}
-              </div>
             </div>
+        )}
 
-            {/* Policies */}
-            <div className="kl-card">
-              <h2 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '20px', color: 'var(--color-text-primary)' }}>환불 & 보장 정책</h2>
-              {[
-                { icon: '💸', title: '중복 만남 100% 환불', desc: '이전 참가자와 재회 시 전액 환불', color: '#FF6F61' },
-                { icon: '🔄', title: '미매칭 30% 환불', desc: '최종 매칭 미성사 시 부분 환불', color: '#A98FD5' },
-                { icon: '💌', title: '매칭 성공 혜택', desc: '오픈채팅방으로 즉시 연결', color: '#6EAE7C' },
-                { icon: '⚠️', title: '취소 정책', desc: '결제 후 개인 사유 취소 불가 (불가피한 경우 별도 문의)', color: '#C86A6A' },
-              ].map((p) => (
-                <div key={p.title} style={{ display: 'flex', gap: '14px', alignItems: 'flex-start', marginBottom: '16px' }}>
-                  <span style={{ fontSize: '1.5rem', flexShrink: 0 }}>{p.icon}</span>
-                  <div>
-                    <p style={{ fontWeight: '700', color: p.color, marginBottom: '2px', fontSize: '0.9rem' }}>{p.title}</p>
-                    <p style={{ fontSize: '0.83rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>{p.desc}</p>
-                  </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 400px', gap: '32px' }} className="event-detail-grid">
+          {/* Left: Event Info or Form depending on step */}
+          <div>
+            {step === 0 && (
+                <>
+                {/* Hero card */}
+                <div style={{
+                height: '260px',
+                background: event.region === 'busan'
+                    ? 'linear-gradient(135deg, #FFF0F5, #FFE4E1)'
+                    : 'linear-gradient(135deg, #F8F8FF, #F0F0FF)',
+                borderRadius: 'var(--radius-xl)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                marginBottom: '28px', position: 'relative', overflow: 'hidden',
+                }}>
+                <div style={{ textAlign: 'center', position: 'relative' }}>
+                    <p style={{ fontSize: '0.8rem', fontWeight: '700', letterSpacing: '0.1em', color: event.region === 'busan' ? '#FF6F61' : '#A98FD5', textTransform: 'uppercase', marginBottom: '12px' }}>
+                    {event.region === 'busan' ? 'BUSAN' : 'CHANGWON'}
+                    </p>
+                    <p style={{ fontSize: '4rem', fontWeight: '900', color: '#1A1A1A', lineHeight: 1 }}>
+                    {event.episode}<span style={{ fontSize: '1.5rem' }}>기</span>
+                    </p>
+                    <p style={{ fontSize: '1rem', color: '#333333', marginTop: '8px' }}>{event.title}</p>
                 </div>
-              ))}
-            </div>
+                </div>
+
+                {/* Description */}
+                <div className="kl-card" style={{ marginBottom: '24px' }}>
+                <h2 style={{ fontSize: '1.2rem', fontWeight: '700', marginBottom: '16px', color: '#1A1A1A' }}>행사 안내</h2>
+                <p style={{ color: '#333333', lineHeight: 1.8 }}>{event.description}</p>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '24px' }}>
+                    {[
+                    { Icon: Calendar, label: '일시', value: format(event.date, 'M월 d일 (EEEE) HH:mm', { locale: ko }) },
+                    { Icon: MapPin, label: '장소', value: event.venue },
+                    { Icon: Users, label: '정원', value: `남 ${event.maxMale}명 · 여 ${event.maxFemale}명` },
+                    { Icon: Clock, label: '1회 대화', value: '약 15분' },
+                    ].map(({ Icon, label, value }) => (
+                    <div key={label} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                        <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'var(--color-surface-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <Icon size={16} color="#FF6F61" />
+                        </div>
+                        <div>
+                        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '2px' }}>{label}</p>
+                        <p style={{ fontSize: '0.9rem', color: '#1A1A1A', fontWeight: '700' }}>{value}</p>
+                        </div>
+                    </div>
+                    ))}
+                </div>
+                </div>
+                
+                {/* Policies */}
+                <div className="kl-card">
+                <h2 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '20px', color: '#1A1A1A' }}>환불 & 보장 정책 (키링크의 약속)</h2>
+                {[
+                    { icon: '💸', title: '중복 만남 100% 환불', desc: '과거 만났던 분과 재회 시 이유 불문 전액 환불', color: '#FF6F61' },
+                    { icon: '🛡️', title: '안심 매칭 보장', desc: '남성 안심 패키지 선택 시, 미매칭 30% 환불', color: '#A98FD5' },
+                    { icon: '💌', title: '매칭 성공 혜택', desc: '오픈채팅방 즉시 연결', color: '#6EAE7C' },
+                    { icon: '⚠️', title: '취소 정책', desc: '결제 후 개인 사유 취소 불가', color: '#C86A6A' },
+                ].map((p) => (
+                    <div key={p.title} style={{ display: 'flex', gap: '14px', alignItems: 'flex-start', marginBottom: '16px' }}>
+                    <div style={{ width: '32px', height: '32px', flexShrink: 0, background: 'var(--color-surface-2)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem' }}>{p.icon}</div>
+                    <div>
+                        <p style={{ fontWeight: '800', color: p.color, marginBottom: '4px', fontSize: '0.95rem' }}>{p.title}</p>
+                        <p style={{ fontSize: '0.85rem', color: '#555', lineHeight: 1.5 }}>{p.desc}</p>
+                    </div>
+                    </div>
+                ))}
+                </div>
+                </>
+            )}
+
+            {step === 1 && (
+                <div>
+                    <div style={{ marginBottom: '24px' }}>
+                        <h2 style={{ fontSize: '1.4rem', fontWeight: '800', marginBottom: '8px', color: '#111' }}>신뢰 기반 상세 신청서</h2>
+                        <p style={{ fontSize: '0.9rem', color: '#555' }}>건강한 호감과 신뢰를 위해 정확하게 기입해주세요.</p>
+                    </div>
+                    
+                    <form id="bookingForm" onSubmit={handleFormSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                        
+                        {/* 1. 마이페이지 기본 정보 & 연락처 */}
+                        <div className="kl-card" style={{ padding: '24px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px', borderBottom: '1px solid var(--color-border)', paddingBottom: '12px' }}>
+                                <CheckCircle size={18} color="#6EAE7C" />
+                                <span style={{ fontSize: '1rem', fontWeight: '800', color: '#111' }}>연락처 정보</span>
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', background: 'var(--color-surface-2)', padding: '20px', borderRadius: '12px' }}>
+                                    <div style={{ fontSize: '0.95rem' }}><span style={{ color: '#888', marginRight: '12px', fontWeight: '600' }}>이름</span><span style={{ fontWeight: '700' }}>{form.name}</span> <span style={{ fontSize: '0.8rem', color: '#aaa', marginLeft: '4px' }}>({form.gender === 'male' ? '남성' : '여성'})</span></div>
+                                    <div style={{ fontSize: '0.95rem' }}><span style={{ color: '#888', marginRight: '12px', fontWeight: '600' }}>연락처</span><span style={{ fontWeight: '700' }}>{form.phone}</span></div>
+                                </div>
+                                <div>
+                                    <input className="kl-input" placeholder="인스타 계정 입력 (ex. @keylink_official)" value={form.instaId} onChange={(e) => setForm(f => ({...f, instaId: e.target.value}))} />
+                                    <p style={{ fontSize: '0.8rem', color: '#FF6F61', marginTop: '8px' }}> 번호 오기입이나 카톡 친구 추가 안 될 시 인스타로 연락드림 (선택)</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 2. 신체 및 거주 정보 */}
+                        <div className="kl-card" style={{ padding: '24px' }}>
+                            <h3 style={{ fontSize: '1rem', fontWeight: '800', color: '#111', marginBottom: '16px', borderBottom: '1px solid var(--color-border)', paddingBottom: '12px' }}>신체 및 거주 정보</h3>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '20px' }}>
+                                <div>
+                                    <label className="kl-label">생년월일 *</label>
+                                    <input className="kl-input" placeholder="ex. 940530" value={form.birthDate} onChange={(e) => setForm(f => ({...f, birthDate: e.target.value}))} />
+                                </div>
+                                <div style={{ display: 'flex', gap: '16px' }}>
+                                    <div style={{ flex: 1 }}>
+                                        <label className="kl-label">키 (cm)</label>
+                                        <input className="kl-input" placeholder="ex. 182" value={form.height} onChange={(e) => setForm(f => ({...f, height: e.target.value}))} />
+                                    </div>
+                                    <div style={{ flex: 1 }}>
+                                        <label className="kl-label">체중 (kg)</label>
+                                        <input className="kl-input" placeholder="ex. 75" value={form.weight} onChange={(e) => setForm(f => ({...f, weight: e.target.value}))} />
+                                        <p style={{ fontSize: '0.75rem', color: '#FF6F61', marginTop: '6px', fontWeight: '600' }}> 체중은 상대에게 공개되지 않습니다</p>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="kl-label">거주 지역</label>
+                                    <input className="kl-input" placeholder="상세 기재 (ex. 부산 진구 전포동)" value={form.residence} onChange={(e) => setForm(f => ({...f, residence: e.target.value}))} />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 3. 직장 및 신원 */}
+                        <div className="kl-card" style={{ padding: '24px' }}>
+                            <h3 style={{ fontSize: '1rem', fontWeight: '800', color: '#111', marginBottom: '16px', borderBottom: '1px solid var(--color-border)', paddingBottom: '12px' }}>직장 및 신원</h3>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '20px' }}>
+                                <div>
+                                    <label className="kl-label">회사명 부분별표 없이 기업명 기재 *</label>
+                                    <input className="kl-input" placeholder="정확한 직장명 (ex. 삼성전자, 부산대학교 병원)" value={form.workplace} onChange={(e) => setForm(f => ({...f, workplace: e.target.value}))} />
+                                    <p style={{ fontSize: '0.8rem', color: '#888', marginTop: '6px' }}><i><u>* 같은 직장 동료 만남 방지 목적으로만 사용되며 비공개입니다</u></i></p>
+                                </div>
+                                <div>
+                                    <label className="kl-label">직무 (상대방 노출용)</label>
+                                    <input className="kl-input" placeholder="ex. 간호사, 은행원, IT 개발자" value={form.jobRole} onChange={(e) => setForm(f => ({...f, jobRole: e.target.value}))} />
+                                </div>
+                                <div>
+                                    <label className="kl-label">겹치고 싶지 않은 지인 (선택)</label>
+                                    <input className="kl-input" placeholder="이름 또는 연락처를 쉼표로 구분하여 입력" value={form.avoidAcquaintance} onChange={(e) => setForm(f => ({...f, avoidAcquaintance: e.target.value}))} />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 4. 성향 및 선호도 */}
+                        <div className="kl-card" style={{ padding: '24px' }}>
+                            <h3 style={{ fontSize: '1rem', fontWeight: '800', color: '#111', marginBottom: '16px', borderBottom: '1px solid var(--color-border)', paddingBottom: '12px' }}>나의 성향과 이상형</h3>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '24px' }}>
+                                <div>
+                                    <label className="kl-label">이상형 (중요도 순 최대 5가지)</label>
+                                    <textarea className="kl-input" rows={3} placeholder="1. 다정한 사람&#10;2. 운동을 즐기는 사람" value={form.idealType} onChange={(e) => setForm(f => ({...f, idealType: e.target.value}))} />
+                                </div>
+                                <div>
+                                    <label className="kl-label">비선호형 (중요도 순 최대 5가지)</label>
+                                    <textarea className="kl-input" rows={3} placeholder="1. 연락이 너무 안 되는 사람&#10;2. 예의가 없는 사람" value={form.nonIdealType} onChange={(e) => setForm(f => ({...f, nonIdealType: e.target.value}))} />
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                                    {[
+                                        { key: 'smoking', label: '흡연 유무', options: ['비흡연', '전자담배', '연초'] },
+                                        { key: 'drinking', label: '음주 빈도', options: ['안 마심', '가끔 (월 1~2회)', '즐겨 마시는 편'] },
+                                        { key: 'religion', label: '종교', options: ['무교', '기독교', '천주교', '불교', '기타'] }
+                                    ].map(radioGroup => (
+                                        <div key={radioGroup.key}>
+                                            <p className="kl-label" style={{ marginBottom: '10px' }}>{radioGroup.label}</p>
+                                            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                                                {radioGroup.options.map(opt => (
+                                                    <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', cursor: 'pointer' }}>
+                                                        <input type="radio" style={{ accentColor: '#FF6F61' }}
+                                                            checked={form[radioGroup.key as keyof typeof form] === opt} 
+                                                            onChange={() => setForm(f => ({ ...f, [radioGroup.key]: opt }))} /> 
+                                                        {opt}
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 5. 기타 선택 및 사진 업로드 */}
+                        <div className="kl-card" style={{ padding: '24px' }}>
+                            <h3 style={{ fontSize: '1rem', fontWeight: '800', color: '#111', marginBottom: '16px', borderBottom: '1px solid var(--color-border)', paddingBottom: '12px' }}>행사 간식 및 본인 인증</h3>
+                            
+                            <div style={{ marginBottom: '24px' }}>
+                                <label className="kl-label">행사 희망 음료 선택</label>
+                                <select className="kl-input" value={form.drink} onChange={(e) => setForm(f => ({...f, drink: e.target.value}))}>
+                                    <option value="">음료를 선택해주세요</option>
+                                    {['아이스 아메리카노', '복숭아 아이스티', '얼그레이', '페퍼민트', '카라멜 블랙티', '물', '따뜻한 음료'].map(d => (
+                                        <option key={d} value={d}>{d}</option>
+                                    ))}
+                                </select>
+                                <p style={{ fontSize: '0.8rem', color: '#777', marginTop: '6px' }}>* 케이크, 과일 등 다양한 다과 제공 (겨울엔 과일 미제공 가능)</p>
+                            </div>
+
+                            <div style={{ marginBottom: '24px' }}>
+                                <label className="kl-label">특이사항 (알러지 등) 및 키링크에게 바라는 점</label>
+                                <textarea className="kl-input" rows={2} placeholder="자유롭게 기재해주세요" value={form.etc} onChange={(e) => setForm(f => ({...f, etc: e.target.value}))} />
+                            </div>
+
+                            <div>
+                                <label className="kl-label" style={{ marginBottom: '12px' }}>본인 사진 업로드 (얼굴 1장, 전신 1장) *</label>
+                                <div style={{ background: 'var(--color-surface-2)', padding: '12px', borderRadius: '8px', marginBottom: '16px' }}>
+                                    <p style={{ fontSize: '0.8rem', color: '#555', lineHeight: '1.6' }}>
+                                        <strong>[가이드]</strong> 과도한 보정 X, 증명사진/마스크 X, 1년 이내 최근 사진 필수.<br/>
+                                        <span style={{ color: '#C86A6A', fontWeight: '600' }}>* 실물과 많이 다를 시 현장 스태프 권한으로 재참여가 불가할 수 있습니다.</span>
+                                    </p>
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                                    {/* Face Photo */}
+                                    <div style={{ padding: '20px', border: '1px dashed #ccc', borderRadius: '12px', textAlign: 'center', background: form.photoFaceUploaded ? 'rgba(110,174,124,0.05)' : 'transparent' }}>
+                                        {form.photoFaceUploaded ? (
+                                            <div>
+                                                <CheckCircle size={32} color="#6EAE7C" style={{ margin: '0 auto 10px' }} />
+                                                <p style={{ fontSize: '0.85rem', fontWeight: '700', color: '#111' }}>얼굴 사진 확인</p>
+                                                <button type="button" onClick={() => setForm(f => ({...f, photoFaceUploaded: false}))} style={{ background: 'none', border: 'none', color: '#FF6F61', fontSize: '0.8rem', textDecoration: 'underline', marginTop: '8px', cursor: 'pointer' }}>다시 올리기</button>
+                                            </div>
+                                        ) : (
+                                            <div>
+                                                <Camera size={32} color="#aaa" style={{ margin: '0 auto 10px' }} />
+                                                <p style={{ fontSize: '0.85rem', fontWeight: '700', color: '#333', marginBottom: '6px' }}>얼굴 사진</p>
+                                                <button type="button" onClick={() => setForm(f => ({...f, photoFaceUploaded: true}))} className="kl-btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '8px 16px', fontSize: '0.8rem' }}>
+                                                    <Upload size={14} /> 선택
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                    {/* Body Photo */}
+                                    <div style={{ padding: '20px', border: '1px dashed #ccc', borderRadius: '12px', textAlign: 'center', background: form.photoBodyUploaded ? 'rgba(110,174,124,0.05)' : 'transparent' }}>
+                                        {/* Same logic */}
+                                        {form.photoBodyUploaded ? (
+                                            <div>
+                                                <CheckCircle size={32} color="#6EAE7C" style={{ margin: '0 auto 10px' }} />
+                                                <p style={{ fontSize: '0.85rem', fontWeight: '700', color: '#111' }}>전신 사진 확인</p>
+                                                <button type="button" onClick={() => setForm(f => ({...f, photoBodyUploaded: false}))} style={{ background: 'none', border: 'none', color: '#FF6F61', fontSize: '0.8rem', textDecoration: 'underline', marginTop: '8px', cursor: 'pointer' }}>다시 올리기</button>
+                                            </div>
+                                        ) : (
+                                            <div>
+                                                <Camera size={32} color="#aaa" style={{ margin: '0 auto 10px' }} />
+                                                <p style={{ fontSize: '0.85rem', fontWeight: '700', color: '#333', marginBottom: '6px' }}>전신 사진</p>
+                                                <button type="button" onClick={() => setForm(f => ({...f, photoBodyUploaded: true}))} className="kl-btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '8px 16px', fontSize: '0.8rem' }}>
+                                                    <Upload size={14} /> 선택
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Rules Checkbox */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '10px' }}>
+                            <label style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', cursor: 'pointer' }}>
+                                <input type="checkbox" checked={form.agreeTerms} onChange={(e) => setForm(f => ({ ...f, agreeTerms: e.target.checked }))}
+                                style={{ marginTop: '3px', accentColor: '#FF6F61', flexShrink: 0, width: '18px', height: '18px' }} />
+                                <span style={{ fontSize: '0.85rem', color: '#333', lineHeight: 1.5, fontWeight: '500' }}>
+                                [필수] 이용약관 및 개인정보 수집/활용에 동의합니다.
+                                </span>
+                            </label>
+                            <label style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', cursor: 'pointer' }}>
+                                <input type="checkbox" checked={form.agreeRule} onChange={(e) => { setForm(f => ({ ...f, agreeRule: e.target.checked })); if (e.target.checked && !ruleAccepted) setShowRuleModal(true); }}
+                                style={{ marginTop: '3px', accentColor: '#C86A6A', flexShrink: 0, width: '18px', height: '18px' }} />
+                                <span style={{ fontSize: '0.85rem', color: '#333', lineHeight: 1.5, fontWeight: '500' }}>
+                                <span style={{ color: '#C86A6A', fontWeight: '800' }}>[필수] </span>
+                                영구제명 규정을 확인하고 준수할 것에 동의합니다.
+                                {!ruleAccepted && (
+                                    <button type="button" onClick={(e) => { e.preventDefault(); setShowRuleModal(true); }} style={{ background: 'none', border: 'none', color: '#FF6F61', cursor: 'pointer', fontSize: '0.8rem', paddingLeft: '4px', fontWeight: '700', textDecoration: 'underline' }}>
+                                    내용 보기
+                                    </button>
+                                )}
+                                </span>
+                            </label>
+                        </div>
+                    </form>
+                </div>
+            )}
+
+            {step === 2 && (
+                <div className="kl-card" style={{ textAlign: 'center', padding: '40px 20px' }}>
+                    <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(110,174,124,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+                        <CheckCircle size={32} color="#6EAE7C" />
+                    </div>
+                    <h2 style={{ fontSize: '1.5rem', fontWeight: '800', color: '#111', marginBottom: '10px' }}>운영진 승인 완료!</h2>
+                    <p style={{ fontSize: '0.95rem', color: '#555', marginBottom: '32px', lineHeight: 1.6 }}>신청서 및 인증 내역이 정상적으로 확인되었습니다.<br/>결제를 완료하시면 <strong>[참가 확정]</strong> 처리됩니다.</p>
+                    
+                    <div style={{ background: '#f8f9fa', borderRadius: '12px', padding: '24px', textAlign: 'left', marginBottom: '32px', border: '1px solid #eee' }}>
+                        <h3 style={{ fontSize: '1rem', fontWeight: '700', marginBottom: '16px', color: '#333' }}>결제 상세 정보</h3>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '0.9rem' }}>
+                            <span style={{ color: '#777' }}>{form.gender === 'female' ? '정가' : (form.maleOption === 'safe' ? '안심 매칭 코스' : '일반 매칭 코스')}</span>
+                            <span style={{ fontWeight: '600', color: '#333', textDecoration: isDiscounted ? 'line-through' : 'none' }}>{displayBasePrice.toLocaleString()}원</span>
+                        </div>
+                        {isDiscounted && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '0.9rem' }}>
+                                <span style={{ color: '#FF6F61', fontWeight: '600' }}>여성 특별 할인 혜택가</span>
+                                <span style={{ fontWeight: '700', color: '#FF6F61' }}>-{ (displayBasePrice - finalPrice).toLocaleString() }원</span>
+                            </div>
+                        )}
+                        <hr style={{ border: 'none', borderTop: '1px dashed #ccc', margin: '16px 0' }} />
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontWeight: '700', color: '#111', fontSize: '1.1rem' }}>최종 결제 금액</span>
+                            <span style={{ fontWeight: '800', color: '#FF6F61', fontSize: '1.4rem' }}>{finalPrice.toLocaleString()}원</span>
+                        </div>
+                    </div>
+
+                    <button onClick={handlePayment} disabled={isSubmitting} className="kl-btn-primary" style={{ width: '100%', padding: '18px', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+                        {isSubmitting ? '결제 진행 중...' : <><CreditCard size={20} /> 토스페이먼츠로 안전하게 결제하기</>}
+                    </button>
+                    <div style={{ marginTop: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                        <Shield size={14} color="#aaa" />
+                        <span style={{ fontSize: '0.8rem', color: '#aaa' }}>안전 결제가 지원됩니다</span>
+                    </div>
+                </div>
+            )}
           </div>
 
-          {/* Right: Booking Panel */}
+          {/* Right: Booking Panel (Sticky) */}
           <div style={{ position: 'sticky', top: '90px', alignSelf: 'start' }}>
-            <div className="kl-card">
+            <div className="kl-card" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+              
               <div style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: '20px', marginBottom: '20px' }}>
-                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: '6px' }}>참가비</p>
-                <p style={{ fontSize: '2rem', fontWeight: '800', color: '#FF6F61' }}>
-                  {event.price.toLocaleString()}원
-                </p>
-              </div>
-
-              {/* Gender slots */}
-              <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-                <div style={{
-                  flex: 1, padding: '12px', borderRadius: '12px',
-                  background: soldOutM ? 'rgba(200,106,106,0.1)' : 'rgba(100,150,200,0.08)',
-                  border: `1px solid ${soldOutM ? 'rgba(200,106,106,0.3)' : 'rgba(100,150,200,0.2)'}`,
-                  textAlign: 'center',
-                }}>
-                  <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginBottom: '6px' }}>남성 잔여</p>
-                  <p style={{ fontWeight: '800', fontSize: '1.1rem', color: soldOutM ? '#C86A6A' : '#6A98C8' }}>
-                    {soldOutM ? '마감' : `${event.maxMale - event.currentMale}석`}
+                <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginBottom: '8px', fontWeight: '600' }}>최종 결제 금액</p>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                  <p style={{ fontSize: '2.2rem', fontWeight: '900', color: '#1A1A1A' }}>
+                    {finalPrice.toLocaleString()}<span style={{ fontSize: '1.2rem', fontWeight: '600', color: '#666', marginLeft: '4px' }}>원</span>
                   </p>
-                </div>
-                <div style={{
-                  flex: 1, padding: '12px', borderRadius: '12px',
-                  background: soldOutF ? 'rgba(200,106,106,0.1)' : 'rgba(200,120,160,0.08)',
-                  border: `1px solid ${soldOutF ? 'rgba(200,106,106,0.3)' : 'rgba(200,120,160,0.2)'}`,
-                  textAlign: 'center',
-                }}>
-                  <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginBottom: '6px' }}>여성 잔여</p>
-                  <p style={{ fontWeight: '800', fontSize: '1.1rem', color: soldOutF ? '#C86A6A' : '#C878A0' }}>
-                    {soldOutF ? '마감' : `${event.maxFemale - event.currentFemale}석`}
-                  </p>
+                  {isDiscounted && (
+                      <p style={{ fontSize: '1rem', color: '#999', textDecoration: 'line-through' }}>{displayBasePrice.toLocaleString()}원</p>
+                  )}
                 </div>
               </div>
 
-              {!showBookingForm ? (
-                <button
-                  className="kl-btn-primary"
-                  style={{ width: '100%', padding: '16px', fontSize: '1rem' }}
-                  onClick={() => setShowBookingForm(true)}
-                  disabled={soldOutM && soldOutF}
-                >
-                  {soldOutM && soldOutF ? '마감되었습니다' : '지금 신청하기'}
-                </button>
-              ) : (
-                <form onSubmit={handleBooking}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    <div>
-                      <label className="kl-label">이름</label>
-                      <input className="kl-input" placeholder="실명 입력" required value={form.name} onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))} />
+              {/* 성별 및 매칭 옵션 선택 섹션 */}
+              {step === 0 && (
+                <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '20px', paddingTop: '20px', borderTop: '1px solid var(--color-border)' }}>
+                  <div>
+                    <p style={{ fontSize: '0.85rem', fontWeight: '700', color: '#333', marginBottom: '12px' }}>성별 선택</p>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      {['male', 'female'].map((g) => (
+                        <button
+                          key={g}
+                          onClick={() => setForm(f => ({ ...f, gender: g as 'male' | 'female' }))}
+                          style={{
+                            flex: 1, padding: '12px', borderRadius: '10px', border: form.gender === g ? '2px solid #FF6F61' : '1px solid #ddd',
+                            background: form.gender === g ? '#FFF5F4' : '#fff', color: form.gender === g ? '#FF6F61' : '#555',
+                            fontWeight: '700', fontSize: '0.9rem', cursor: 'pointer', transition: 'all 0.2s'
+                          }}
+                        >
+                          {g === 'male' ? '남성' : '여성'}
+                        </button>
+                      ))}
                     </div>
-                    <div>
-                      <label className="kl-label">성별</label>
-                      <select className="kl-input" required value={form.gender} onChange={(e) => setForm(f => ({ ...f, gender: e.target.value }))}
-                        style={{ background: 'var(--color-surface-2)', color: form.gender ? 'var(--color-text-primary)' : 'var(--color-text-muted)' }}>
-                        <option value="">선택하세요</option>
-                        <option value="male">남성</option>
-                        <option value="female">여성</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="kl-label">출생연도</label>
-                      <input className="kl-input" placeholder="예: 1997" type="number" min="1970" max="2005" required value={form.birthYear} onChange={(e) => setForm(f => ({ ...f, birthYear: e.target.value }))} />
-                    </div>
-                    <div>
-                      <label className="kl-label">직업</label>
-                      <input className="kl-input" placeholder="예: 간호사, 회사원, 대학원생" required value={form.job} onChange={(e) => setForm(f => ({ ...f, job: e.target.value }))} />
-                    </div>
-                    <div>
-                      <label className="kl-label">연락처</label>
-                      <input className="kl-input" placeholder="010-0000-0000" type="tel" required value={form.phone} onChange={(e) => setForm(f => ({ ...f, phone: e.target.value }))} />
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                      <label style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', cursor: 'pointer' }}>
-                        <input type="checkbox" checked={form.agreeTerms} onChange={(e) => setForm(f => ({ ...f, agreeTerms: e.target.checked }))}
-                          style={{ marginTop: '3px', accentColor: 'var(--color-primary)', flexShrink: 0 }} />
-                        <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
-                          이용약관 및 개인정보처리방침에 동의합니다
-                        </span>
-                      </label>
-                      <label style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', cursor: 'pointer' }}>
-                        <input type="checkbox" checked={form.agreeRule} onChange={(e) => { setForm(f => ({ ...f, agreeRule: e.target.checked })); if (e.target.checked && !ruleAccepted) setShowRuleModal(true); }}
-                          style={{ marginTop: '3px', accentColor: '#C86A6A', flexShrink: 0 }} />
-                        <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
-                          <span style={{ color: '#C86A6A', fontWeight: '700' }}>[필수] </span>
-                          영구제명 규정을 확인하고 준수에 동의합니다
-                          {!ruleAccepted && (
-                            <button type="button" onClick={() => setShowRuleModal(true)} style={{ background: 'none', border: 'none', color: '#FF6F61', cursor: 'pointer', fontSize: '0.8rem', paddingLeft: '4px', fontWeight: '600', textDecoration: 'underline' }}>
-                              내용 확인
-                            </button>
-                          )}
-                        </span>
-                      </label>
-                    </div>
-
-                    <button type="submit" className="kl-btn-primary" style={{ width: '100%', padding: '16px' }} disabled={isSubmitting}>
-                      {isSubmitting ? '처리 중...' : '결제 및 예약 완료'}
-                    </button>
-                    <button type="button" onClick={() => setShowBookingForm(false)}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', fontSize: '0.85rem', padding: '8px' }}>
-                      취소
-                    </button>
                   </div>
-                </form>
+
+                  {form.gender === 'male' ? (
+                    <div>
+                      <p style={{ fontSize: '0.85rem', fontWeight: '700', color: '#333', marginBottom: '12px' }}>매칭 옵션 선택</p>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        <div
+                          onClick={() => setForm(f => ({ ...f, maleOption: 'normal' }))}
+                          style={{
+                            padding: '16px', borderRadius: '12px', border: form.maleOption === 'normal' ? '2px solid #FF6F61' : '1px solid #ddd',
+                            background: form.maleOption === 'normal' ? '#FFF5F4' : '#fff', cursor: 'pointer', transition: 'all 0.2s'
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                            <span style={{ fontSize: '0.9rem', fontWeight: '700', color: form.maleOption === 'normal' ? '#FF6F61' : '#333' }}>일반 매칭</span>
+                            <span style={{ fontSize: '0.9rem', fontWeight: '800', color: '#111' }}>49,000원</span>
+                          </div>
+                          <p style={{ fontSize: '0.75rem', color: '#888' }}>매칭 실패 시 환불 없음</p>
+                        </div>
+                        <div
+                          onClick={() => setForm(f => ({ ...f, maleOption: 'safe' }))}
+                          style={{
+                            padding: '16px', borderRadius: '12px', border: form.maleOption === 'safe' ? '2px solid #FF6F61' : '1px solid #ddd',
+                            background: form.maleOption === 'safe' ? '#FFF5F4' : '#fff', cursor: 'pointer', transition: 'all 0.2s', position: 'relative'
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                            <span style={{ fontSize: '0.9rem', fontWeight: '700', color: form.maleOption === 'safe' ? '#FF6F61' : '#333' }}>안심 매칭 패키지</span>
+                            <span style={{ fontSize: '0.9rem', fontWeight: '800', color: '#111' }}>60,000원</span>
+                          </div>
+                          <p style={{ fontSize: '0.75rem', color: '#FF6F61', fontWeight: '600' }}>미매칭 시 30% 환불 보장</p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ padding: '16px', background: '#F0F7F1', borderRadius: '12px', border: '1px solid #D0E7D2' }}>
+                      <p style={{ fontSize: '0.85rem', fontWeight: '700', color: '#2E7D32', marginBottom: '4px' }}>여성 전용 혜택가 적용</p>
+                      <p style={{ fontSize: '0.75rem', color: '#558B2F' }}>별도 옵션 없이 최대 할인가가 적용됩니다.</p>
+                    </div>
+                  )}
+                </div>
               )}
 
-              <div style={{ marginTop: '16px', padding: '12px', borderRadius: '10px', background: 'rgba(255,111,97,0.06)', display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
-                <Shield size={14} color="var(--color-primary)" style={{ flexShrink: 0, marginTop: '2px' }} />
-                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
-                  개인정보는 행사 운영 목적으로만 사용되며 외부에 공유되지 않습니다.
-                </p>
+              <div style={{ marginTop: '24px' }}>
+                  {step === 0 && (
+                      <button
+                      className="kl-btn-primary"
+                      style={{ width: '100%', padding: '18px', fontSize: '1.1rem', fontWeight: '800', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}
+                      onClick={handleStep1Entry}
+                      disabled={soldOutM && soldOutF}
+                      >
+                      {soldOutM && soldOutF ? '마감되었습니다' : <>신청서 작성하기 <ChevronRight size={18} /></>}
+                      </button>
+                  )}
+                  {step === 1 && (
+                      <button
+                      form="bookingForm"
+                      type="submit"
+                      className="kl-btn-primary"
+                      style={{ width: '100%', padding: '18px', fontSize: '1.1rem', fontWeight: '800' }}
+                      disabled={isSubmitting}
+                      >
+                      {isSubmitting ? '제출 중...' : '신청서 제출 완료'}
+                      </button>
+                  )}
+                  {step > 0 && (
+                      <button type="button" onClick={() => setStep(step - 1)} style={{ width: '100%', background: 'none', border: 'none', marginTop: '12px', color: '#888', fontWeight: '600', fontSize: '0.9rem', cursor: 'pointer' }}>이전으로 돌아가기</button>
+                  )}
               </div>
             </div>
           </div>
         </div>
       </div>
 
+      {/* 모바일 Sticky Bottom CTA */}
+      <div className="mobile-sticky-cta" style={{ display: 'none', position: 'fixed', bottom: 0, left: 0, right: 0, padding: '16px', background: 'var(--color-surface)', borderTop: '1px solid var(--color-border)', zIndex: 1000, boxShadow: '0 -4px 16px rgba(0,0,0,0.05)' }}>
+          {step === 0 && (
+            <button className="kl-btn-primary" style={{ width: '100%', padding: '16px', fontSize: '1.1rem', fontWeight: '800' }} onClick={() => { handleStep1Entry(); window.scrollTo({top: 0}); }} disabled={soldOutM && soldOutF}>
+              {soldOutM && soldOutF ? '마감되었습니다' : '지금 신청하기'}
+            </button>
+          )}
+          {step === 1 && (
+            <button form="bookingForm" type="submit" className="kl-btn-primary" style={{ width: '100%', padding: '16px', fontSize: '1.1rem', fontWeight: '800' }} disabled={isSubmitting}>
+              {isSubmitting ? '제출 중...' : '신청서 제출하기'}
+            </button>
+          )}
+           {step === 2 && (
+            <button onClick={handlePayment} className="kl-btn-primary" style={{ width: '100%', padding: '16px', fontSize: '1.1rem', fontWeight: '800' }} disabled={isSubmitting}>
+              {isSubmitting ? '결제 중...' : '토스페이먼츠 안전 결제'}
+            </button>
+          )}
+      </div>
+
       <style>{`
         @media (max-width: 900px) {
           .event-detail-grid {
             grid-template-columns: 1fr !important;
+          }
+          .mobile-sticky-cta {
+            display: block !important;
           }
         }
       `}</style>

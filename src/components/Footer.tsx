@@ -33,10 +33,10 @@ export default function Footer() {
                 background: 'linear-gradient(135deg, #FF6F61, #FF9A9E)',
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
-              }}>Keylink</span>
+              }}>키링크</span>
             </div>
             <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', lineHeight: 1.7 }}>
-              부산·창원 지역 프리미엄<br/>로테이션 소개팅 서비스
+              부산 지역 프리미엄<br/>로테이션 소개팅 서비스
             </p>
             <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
               <a href="https://instagram.com/keylink_official" target="_blank" rel="noopener noreferrer"
@@ -72,9 +72,8 @@ export default function Footer() {
           <div>
             <h4 style={{ fontWeight: '600', marginBottom: '16px', fontSize: '0.875rem', color: 'var(--color-text-primary)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>서비스</h4>
             {[
-              { href: '/events', label: '일정 신청' },
+              { href: '/events', label: '참여 신청' },
               { href: '/events?region=busan', label: '부산점' },
-              { href: '/events?region=changwon', label: '창원점' },
               { href: '/matching', label: '매칭 순위 입력' },
               { href: '/matching/result', label: '매칭 결과 확인' },
             ].map((l) => (
@@ -143,7 +142,7 @@ export default function Footer() {
           alignItems: 'center',
         }}>
           <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
-            © 2026 Keylink. All rights reserved. | 사업자등록번호 준비중
+            © 2026 키링크. All rights reserved. | 사업자등록번호 준비중
           </p>
           <div style={{ display: 'flex', gap: '20px' }}>
             <Link href="/notices#terms" style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', textDecoration: 'none' }}>이용약관</Link>

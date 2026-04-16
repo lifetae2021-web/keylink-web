@@ -5,7 +5,7 @@ import { Menu, X, Heart } from 'lucide-react';
 
 const navLinks = [
   { href: '/', label: 'HOME' },
-  { href: '/events', label: '일정 신청' },
+  { href: '/events', label: '참여 신청' },
   { href: '/notices', label: '공지 & FAQ' },
   { href: '/matching/result', label: '매칭 결과' },
 ];
@@ -67,7 +67,7 @@ export default function Navbar() {
               WebkitTextFillColor: 'transparent',
               letterSpacing: '-0.01em',
             }}>
-              Keylink
+              키링크
             </span>
           </Link>
 
@@ -104,7 +104,7 @@ export default function Navbar() {
           {/* CTA + Mobile Menu */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <Link href="/login" className="kl-btn-primary" style={{ padding: '10px 20px', fontSize: '0.85rem' }}>
-              로그인
+              로그인/회원가입
             </Link>
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
