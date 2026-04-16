@@ -26,8 +26,8 @@ const mockBookings = [
   },
   {
     id: 'b2',
-    eventId: 'event-changwon-55',
-    event: mockEvents[2],
+    eventId: 'event-busan-121',
+    event: mockEvents[1],
     status: 'confirmed',
     hasRanked: false,
     matchStatus: 'pending',
@@ -137,7 +137,7 @@ export default function MyPage() {
                   <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                         <h3 style={{ fontWeight: '700', fontSize: '1rem', color: 'var(--color-text-primary)' }}>
-                          {booking.event.title} {booking.event.episode}기
+                          {booking.event?.title} {booking.event?.episode}기
                         </h3>
                         
                         {/* 예약 상태 뱃지 */}
@@ -153,12 +153,12 @@ export default function MyPage() {
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <Calendar size={13} color="var(--color-text-muted)" />
                         <span style={{ fontSize: '0.82rem', color: 'var(--color-text-secondary)' }}>
-                          {format(booking.event.date, 'M월 d일 (E) HH:mm', { locale: ko })}
+                          {booking.event ? format(booking.event.date, 'M월 d일 (E) HH:mm', { locale: ko }) : '일정 확인 중'}
                         </span>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <MapPin size={13} color="var(--color-text-muted)" />
-                        <span style={{ fontSize: '0.82rem', color: 'var(--color-text-secondary)' }}>{booking.event.venue}</span>
+                        <span style={{ fontSize: '0.82rem', color: 'var(--color-text-secondary)' }}>{booking.event?.venue || '장소 확인 중'}</span>
                       </div>
                     </div>
                   </div>
