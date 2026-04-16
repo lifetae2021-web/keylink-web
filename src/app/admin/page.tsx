@@ -382,7 +382,7 @@ export default function AdminPage() {
                     <Heart size={16} color="#FF6F61" fill="rgba(255,111,97,0.4)" />
                     <span style={{ fontWeight: '600', color: 'var(--color-text-primary)', fontSize: '0.9rem' }}>{m.user2}</span>
                   </div>
-                  <div style={{ display: 'flex', align: 'center', gap: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', alignSelf: 'center' }}>{m.type}</span>
                     <span className={`kl-badge ${m.status === 'confirmed' ? 'kl-badge-open' : 'kl-badge-upcoming'}`}>
                       {m.status === 'confirmed' ? '확정' : '검토중'}
