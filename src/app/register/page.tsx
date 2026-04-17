@@ -171,6 +171,16 @@ function RegisterForm() {
                       {showPasswordConfirm ? <EyeOff size={20} /> : <Eye size={20} />}
                     </button>
                   </div>
+                  {form.password && form.passwordConfirm && (
+                    <div style={{ 
+                      fontSize: '0.8rem', 
+                      marginTop: '8px', 
+                      fontWeight: '600',
+                      color: form.password === form.passwordConfirm ? '#22C55E' : '#EF4444'
+                    }}>
+                      {form.password === form.passwordConfirm ? '✓ 비밀번호가 일치합니다' : '✕ 비밀번호가 일치하지 않습니다'}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -200,13 +210,13 @@ function RegisterForm() {
               {/* Birthdate */}
               <div>
                 <label className="kl-label" style={{ fontWeight: '800', marginBottom: '10px' }}>생년월일</label>
-                <input className="kl-input" style={{ borderRadius: '12px', height: '54px' }} type="text" placeholder="1995-05-18" value={form.birthDate} onChange={e => update('birthDate', e.target.value)} />
+                <input className="kl-input" style={{ borderRadius: '12px', height: '54px' }} type="text" placeholder="ex. 1995-05-18" value={form.birthDate} onChange={e => update('birthDate', e.target.value)} />
               </div>
 
               {/* Phone */}
               <div>
                 <label className="kl-label" style={{ fontWeight: '800', marginBottom: '10px' }}>연락처</label>
-                <input className="kl-input" style={{ borderRadius: '12px', height: '54px' }} type="tel" placeholder="010-1234-5678" value={form.phone} onChange={e => update('phone', e.target.value)} />
+                <input className="kl-input" style={{ borderRadius: '12px', height: '54px' }} type="tel" placeholder="ex. 010-1234-5678" value={form.phone} onChange={e => update('phone', e.target.value)} />
               </div>
 
               {/* Terms Section (Relocated) */}
