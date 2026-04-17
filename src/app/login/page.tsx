@@ -85,7 +85,7 @@ export default function LoginPage() {
               <input
                 type="text"
                 className="kl-input"
-                placeholder="ex. 아이디를 입력해 주세요"
+                placeholder="아이디를 입력해 주세요"
                 value={userId}
                 onChange={(e) => setUserId(e.target.value)}
                 style={{ borderRadius: '12px', padding: '14px' }}
@@ -96,7 +96,7 @@ export default function LoginPage() {
               <input
                 type="password"
                 className="kl-input"
-                placeholder="ex. 비밀번호를 입력해 주세요"
+                placeholder="비밀번호를 입력해 주세요"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 style={{ borderRadius: '12px', padding: '14px' }}
