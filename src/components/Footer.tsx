@@ -1,8 +1,9 @@
-'use client';
-import Link from 'next/link';
-import { Heart, MessageCircle, Camera } from 'lucide-react';
+import { usePathname } from 'next/navigation';
 
 export default function Footer() {
+  const pathname = usePathname();
+  if (pathname === '/register') return null;
+
   return (
     <footer style={{
       background: 'var(--color-surface)',

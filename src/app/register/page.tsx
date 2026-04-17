@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, ArrowRight, CheckCircle, Heart, User, CheckSquare, Square } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle, Heart, User, CheckSquare, Square, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
@@ -41,6 +41,8 @@ function RegisterForm() {
   });
 
   const [idChecked, setIdChecked] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
   
   const formatPhone = (val: string) => {
     const digits = val.replace(/\D/g, '').slice(0, 11);
@@ -111,31 +113,6 @@ function RegisterForm() {
               회원가입
             </h1>
 
-            {/* Terms Section */}
-            <div style={{ marginBottom: '40px' }}>
-              <button onClick={toggleAllAgreements} style={{
-                display: 'flex', alignItems: 'center', gap: '12px', padding: '16px', background: isAllAgreed ? 'rgba(255,111,97,0.08)' : 'var(--color-surface-2)',
-                border: isAllAgreed ? '1px solid rgba(255,111,97,0.3)' : '1px solid transparent', borderRadius: '16px', cursor: 'pointer', transition: 'all 0.2s', width: '100%', marginBottom: '16px'
-              }}>
-                {isAllAgreed ? <CheckSquare color="#FF6F61" fill="rgba(255,111,97,0.2)" size={22}/> : <Square color="#999" size={22}/>}
-                <span style={{ fontWeight: '800', fontSize: '1.05rem', color: isAllAgreed ? '#FF6F61' : '#333' }}>전체 동의하기</span>
-              </button>
-              <div style={{ padding: '0 4px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                {[
-                  { key: 'terms', label: '서비스 이용약관 동의 (필수)' },
-                  { key: 'privacy', label: '개인정보 수집 및 이용 동의 (필수)' },
-                  { key: 'thirdParty', label: '개인정보 제3자 소유 제공 동의 (필수)' },
-                  { key: 'location', label: '위치 기반 서비스 이용약관 동의 (필수)' },
-                ].map(({ key, label }) => (
-                  <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}
-                    onClick={() => setAgreements(a => ({ ...a, [key]: !a[key as keyof typeof agreements] }))}>
-                    {agreements[key as keyof typeof agreements] ? <CheckCircle color="#FF6F61" size={18} fill="rgba(255,111,97,0.1)" /> : <div style={{ width: 18, height: 18, borderRadius: '50%', border: '1.5px solid #ddd' }} />}
-                    <span style={{ fontSize: '0.875rem', color: '#666', fontWeight: '500' }}>{label}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
             <div style={{ height: '1px', background: '#f0f0f0', margin: '0 0 40px 0' }} />
 
             {/* Form Fields Section */}
@@ -160,8 +137,40 @@ function RegisterForm() {
               {!isSocial && (
                 <div>
                   <label className="kl-label" style={{ fontWeight: '800', marginBottom: '10px' }}>비밀번호</label>
-                  <input className="kl-input" style={{ borderRadius: '12px', height: '54px', marginBottom: '10px' }} type="password" placeholder="비밀번호" value={form.password} onChange={e => update('password', e.target.value)} />
-                  <input className="kl-input" style={{ borderRadius: '12px', height: '54px' }} type="password" placeholder="비밀번호 확인" value={form.passwordConfirm} onChange={e => update('passwordConfirm', e.target.value)} />
+                  <div style={{ position: 'relative', marginBottom: '10px' }}>
+                    <input
+                      className="kl-input"
+                      style={{ borderRadius: '12px', height: '54px', paddingRight: '48px' }}
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="비밀번호"
+                      value={form.password}
+                      onChange={e => update('password', e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#999' }}
+                    >
+                      {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                    </button>
+                  </div>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      className="kl-input"
+                      style={{ borderRadius: '12px', height: '54px', paddingRight: '48px' }}
+                      type={showPasswordConfirm ? 'text' : 'password'}
+                      placeholder="비밀번호 확인"
+                      value={form.passwordConfirm}
+                      onChange={e => update('passwordConfirm', e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPasswordConfirm(!showPasswordConfirm)}
+                      style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#999' }}
+                    >
+                      {showPasswordConfirm ? <EyeOff size={20} /> : <Eye size={20} />}
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -200,8 +209,32 @@ function RegisterForm() {
                 <input className="kl-input" style={{ borderRadius: '12px', height: '54px' }} type="tel" placeholder="010-1234-5678" value={form.phone} onChange={e => update('phone', e.target.value)} />
               </div>
 
+              {/* Terms Section (Relocated) */}
+              <div style={{ marginTop: '12px', padding: '20px', background: 'var(--color-surface-2)', borderRadius: '16px' }}>
+                <button onClick={toggleAllAgreements} style={{
+                  display: 'flex', alignItems: 'center', gap: '10px', background: 'none', border: 'none', cursor: 'pointer', marginBottom: '16px', padding: 0
+                }}>
+                  {isAllAgreed ? <CheckSquare color="#FF6F61" fill="rgba(255,111,97,0.2)" size={20}/> : <Square color="#999" size={20}/>}
+                  <span style={{ fontWeight: '800', fontSize: '0.9rem', color: isAllAgreed ? '#FF6F61' : '#333' }}>전체 동의하기</span>
+                </button>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {[
+                    { key: 'terms', label: '서비스 이용약관 동의 (필수)' },
+                    { key: 'privacy', label: '개인정보 수집 및 이용 동의 (필수)' },
+                    { key: 'thirdParty', label: '개인정보 제3자 소유 제공 동의 (필수)' },
+                    { key: 'location', label: '위치 기반 서비스 이용약관 동의 (필수)' },
+                  ].map(({ key, label }) => (
+                    <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
+                      onClick={() => setAgreements(a => ({ ...a, [key]: !a[key as keyof typeof agreements] }))}>
+                      {agreements[key as keyof typeof agreements] ? <CheckCircle color="#FF6F61" size={16} fill="rgba(255,111,97,0.1)" /> : <div style={{ width: 16, height: 16, borderRadius: '50%', border: '1.2px solid #ccc' }} />}
+                      <span style={{ fontSize: '0.8rem', color: '#777', fontWeight: '500' }}>{label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               <button className="kl-btn-primary" 
-                style={{ width: '100%', padding: '20px', marginTop: '24px', borderRadius: '100px', fontSize: '1.1rem', fontWeight: '900', boxShadow: '0 10px 20px rgba(255,111,97,0.2)' }} 
+                style={{ width: '100%', padding: '20px', marginTop: '8px', borderRadius: '100px', fontSize: '1.1rem', fontWeight: '900', boxShadow: '0 10px 20px rgba(255,111,97,0.2)' }} 
                 onClick={handleSubmit} disabled={isSubmitting}>
                 {isSubmitting ? '가입 처리 중...' : '회원가입 완료'}
               </button>

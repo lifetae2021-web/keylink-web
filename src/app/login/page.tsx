@@ -1,13 +1,14 @@
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
-import { Heart, ArrowRight, MessageCircle } from 'lucide-react';
+import { Eye, EyeOff, MessageCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [userId, setUserId] = useState('');
   const [password, setPassword] = useState('');
   const router = useRouter();
@@ -49,35 +50,16 @@ export default function LoginPage() {
       background: 'radial-gradient(ellipse at 50% 30%, rgba(255,111,97,0.08) 0%, transparent 70%)',
     }}>
       <div style={{ maxWidth: '420px', width: '100%' }}>
-        {/* Logo */}
-        <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-          <div style={{
-            width: '72px', height: '72px', borderRadius: '20px',
-            background: 'linear-gradient(135deg, #FF6F61, #FF8A71)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            margin: '0 auto 16px',
-            boxShadow: '0 8px 32px rgba(255,111,97,0.3)',
-          }}>
-            <Heart size={36} fill="#FFFFFF" color="#FFFFFF" />
-          </div>
-          <h1 style={{
-            fontFamily: "'Playfair Display', serif",
-            fontSize: '1.8rem', fontWeight: '700',
-            background: 'linear-gradient(135deg, #FF6F61, #FF8A71)',
-            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-            marginBottom: '8px',
-          }}>키링크</h1>
-          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>로그인하여 참여 신청과 매칭 결과를 확인하세요</p>
-        </div>
-
         {/* Login Card */}
         <div style={{
           background: 'var(--gradient-card)',
           border: '1px solid var(--color-border)',
           borderRadius: '32px',
-          padding: '40px 32px',
+          padding: '44px 32px',
           boxShadow: '0 12px 40px rgba(0,0,0,0.03)',
         }}>
+          <h1 style={{ fontSize: '1.6rem', fontWeight: '900', marginBottom: '32px', color: '#111', textAlign: 'center' }}>로그인</h1>
+          
           {/* Normal Login Form */}
           <form onSubmit={handleNormalLogin} style={{ marginBottom: '24px' }}>
             <div style={{ marginBottom: '16px' }}>
@@ -91,16 +73,28 @@ export default function LoginPage() {
                 style={{ borderRadius: '12px', padding: '14px' }}
               />
             </div>
-            <div style={{ marginBottom: '20px' }}>
+            <div style={{ marginBottom: '24px' }}>
               <label style={{ fontSize: '0.85rem', fontWeight: '700', color: '#333', display: 'block', marginBottom: '8px' }}>비밀번호</label>
-              <input
-                type="password"
-                className="kl-input"
-                placeholder="비밀번호를 입력해 주세요"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                style={{ borderRadius: '12px', padding: '14px' }}
-              />
+              <div style={{ position: 'relative' }}>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  className="kl-input"
+                  placeholder="비밀번호를 입력해 주세요"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  style={{ borderRadius: '12px', padding: '14px', paddingRight: '46px' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)',
+                    background: 'none', border: 'none', cursor: 'pointer', color: '#999', display: 'flex', alignItems: 'center'
+                  }}
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
             </div>
             <button
               type="submit"
