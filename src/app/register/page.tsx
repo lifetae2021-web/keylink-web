@@ -35,6 +35,7 @@ function RegisterForm() {
   // Form State
   const [form, setForm] = useState({
     username: '',
+    email: '',
     password: '',
     passwordConfirm: '',
     name: '',
@@ -72,6 +73,7 @@ function RegisterForm() {
     if (!isAllAgreed) { toast.error('모든 필수 약관에 동의해 주세요.'); return false; }
     if (!form.username) { toast.error('아이디를 입력해 주세요.'); return false; }
     if (!idChecked) { toast.error('아이디 중복확인을 진행해 주세요.'); return false; }
+    if (!form.email || !form.email.includes('@')) { toast.error('올바른 이메일 주소를 입력해 주세요.'); return false; }
     if (!form.password || form.password !== form.passwordConfirm) {
       toast.error('비밀번호가 일치하지 않거나 비어 있습니다.');
       return false;
@@ -94,15 +96,15 @@ function RegisterForm() {
     setIsSubmitting(true);
     
     try {
-      // 1. Firebase Auth - Create account (Map username to dummy email)
-      const userEmail = `${form.username}@keylink.com`;
-      const userCredential = await createUserWithEmailAndPassword(auth, userEmail, form.password);
+      // 1. Firebase Auth - Create account with real email
+      const userCredential = await createUserWithEmailAndPassword(auth, form.email, form.password);
       const user = userCredential.user;
 
       // 2. Firestore - Save user details
       await setDoc(doc(db, 'users', user.uid), {
         uid: user.uid,
         username: form.username,
+        email: form.email,
         name: form.name,
         gender: form.gender,
         phone: form.phone,
@@ -163,6 +165,12 @@ function RegisterForm() {
                   </div>
                 </div>
               )}
+
+              {/* Email */}
+              <div>
+                <label className="kl-label" style={{ fontWeight: '800', marginBottom: '10px' }}>이메일</label>
+                <input className="kl-input" style={{ borderRadius: '12px', height: '54px' }} type="email" placeholder="example@email.com" value={form.email} onChange={e => update('email', e.target.value)} />
+              </div>
 
               {/* Password */}
               {!isSocial && (

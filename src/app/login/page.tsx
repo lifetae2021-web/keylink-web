@@ -11,28 +11,26 @@ import { signInWithEmailAndPassword } from 'firebase/auth';
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [userId, setUserId] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const router = useRouter();
 
   const handleNormalLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!userId || !password) {
-      toast.error('아이디와 비밀번호를 입력해 주세요.');
+    if (!email || !password) {
+      toast.error('이메일과 비밀번호를 입력해 주세요.');
       return;
     }
     setIsLoading(true);
     try {
-      // Prepend the same dummy domain used during registration
-      const userEmail = `${userId}@keylink.com`;
-      await signInWithEmailAndPassword(auth, userEmail, password);
+      await signInWithEmailAndPassword(auth, email, password);
       
       toast.success('로그인에 성공했습니다!');
       router.push('/');
     } catch (error: any) {
       console.error('Login error:', error);
       if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
-        toast.error('아이디 또는 비밀번호가 일치하지 않습니다.');
+        toast.error('이메일 또는 비밀번호가 일치하지 않습니다.');
       } else {
         toast.error('로그인 중 오류가 발생했습니다. 다시 시도해 주세요.');
       }
@@ -78,13 +76,13 @@ export default function LoginPage() {
           {/* Normal Login Form */}
           <form onSubmit={handleNormalLogin} style={{ marginBottom: '24px' }}>
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ fontSize: '0.85rem', fontWeight: '700', color: '#333', display: 'block', marginBottom: '8px' }}>아이디</label>
+              <label style={{ fontSize: '0.85rem', fontWeight: '700', color: '#333', display: 'block', marginBottom: '8px' }}>이메일</label>
               <input
-                type="text"
+                type="email"
                 className="kl-input"
-                placeholder="아이디를 입력해 주세요"
-                value={userId}
-                onChange={(e) => setUserId(e.target.value)}
+                placeholder="example@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 style={{ borderRadius: '12px', padding: '14px' }}
               />
             </div>
