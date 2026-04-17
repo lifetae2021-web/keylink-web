@@ -104,15 +104,15 @@ export default function Navbar() {
       }}
     >
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '70px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '85px' }}>
           {/* Logo */}
           <Link href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center' }}>
             <Image
               src="/logo.png"
               alt="키링크 로고"
-              width={140}
-              height={42}
-              style={{ height: '42px', width: 'auto', objectFit: 'contain' }}
+              width={200}
+              height={60}
+              style={{ height: '60px', width: 'auto', objectFit: 'contain' }}
               priority
             />
           </Link>

@@ -27,9 +27,9 @@ export default function Footer() {
               <Image
                 src="/logo.png"
                 alt="키링크 로고"
-                width={120}
-                height={36}
-                style={{ height: '36px', width: 'auto', objectFit: 'contain' }}
+                width={160}
+                height={48}
+                style={{ height: '48px', width: 'auto', objectFit: 'contain' }}
               />
             </div>
             <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', lineHeight: 1.7 }}>
