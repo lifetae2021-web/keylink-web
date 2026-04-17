@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -38,10 +38,18 @@ export default function EventDetailPage() {
     idealType: '', nonIdealType: '',
     smoking: '', drinking: '', religion: '',
     drink: '', vibe: '', etc: '',
-    photoFaceUploaded: false, photoBodyUploaded: false,
-    agreeTerms: false, agreeRule: false,
+    agreeTerms: true, agreeRule: true, // Auto-checked on load
     maleOption: 'normal', // 'normal' | 'safe'
   });
+
+  // Photo upload state: up to 5 photos each
+  const [facePhotos, setFacePhotos] = useState<File[]>([]);
+  const [bodyPhotos, setBodyPhotos] = useState<File[]>([]);
+  const faceInputRef = useRef<HTMLInputElement>(null);
+  const bodyInputRef = useRef<HTMLInputElement>(null);
+
+  const photoFaceUploaded = facePhotos.length > 0;
+  const photoBodyUploaded = bodyPhotos.length > 0;
 
   // Firebase 사용자 인증 및 정보 불러오기
   useEffect(() => {
@@ -123,7 +131,9 @@ export default function EventDetailPage() {
     // 필수 항목 검사
     const requiredFields = [
       { key: 'birthDate', name: '생년월일' },
-      { key: 'workplace', name: '직장/소속명' },
+      { key: 'height', name: '키' },
+      { key: 'weight', name: '체중' },
+      { key: 'workplace', name: '회사명 / 직무' },
     ];
     
     for (const field of requiredFields) {
@@ -133,7 +143,7 @@ export default function EventDetailPage() {
       }
     }
 
-    if (!form.photoFaceUploaded || !form.photoBodyUploaded) {
+    if (!photoFaceUploaded || !photoBodyUploaded) {
       toast.error('본인 얼굴과 전신 사진을 모두 업로드해주세요.');
       return;
     }
@@ -387,18 +397,18 @@ export default function EventDetailPage() {
                                 </div>
                                 <div style={{ display: 'flex', gap: '16px' }}>
                                     <div style={{ flex: 1 }}>
-                                        <label className="kl-label">키 (cm)</label>
-                                        <input className="kl-input" placeholder="ex. 182" value={form.height} onChange={(e) => setForm(f => ({...f, height: e.target.value}))} />
+                                        <label className="kl-label">키 (cm) *</label>
+                                        <input className="kl-input" required placeholder="ex. 182" value={form.height} onChange={(e) => setForm(f => ({...f, height: e.target.value}))} />
                                     </div>
                                     <div style={{ flex: 1 }}>
-                                        <label className="kl-label">체중 (kg)</label>
-                                        <input className="kl-input" placeholder="ex. 75" value={form.weight} onChange={(e) => setForm(f => ({...f, weight: e.target.value}))} />
+                                        <label className="kl-label">체중 (kg) *</label>
+                                        <input className="kl-input" required placeholder="ex. 75" value={form.weight} onChange={(e) => setForm(f => ({...f, weight: e.target.value}))} />
                                         <p style={{ fontSize: '0.75rem', color: '#FF6F61', marginTop: '6px', fontWeight: '600' }}> 체중은 상대에게 공개되지 않습니다</p>
                                     </div>
                                 </div>
                                 <div>
                                     <label className="kl-label">거주 지역</label>
-                                    <input className="kl-input" placeholder="상세 기재 (ex. 부산 진구 전포동)" value={form.residence} onChange={(e) => setForm(f => ({...f, residence: e.target.value}))} />
+                                    <input className="kl-input" placeholder="ex. 부산 수영구" value={form.residence} onChange={(e) => setForm(f => ({...f, residence: e.target.value}))} />
                                 </div>
                             </div>
                         </div>
@@ -408,13 +418,15 @@ export default function EventDetailPage() {
                             <h3 style={{ fontSize: '1rem', fontWeight: '800', color: '#111', marginBottom: '16px', borderBottom: '1px solid var(--color-border)', paddingBottom: '12px' }}>직장 및 신원</h3>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '20px' }}>
                                 <div>
-                                    <label className="kl-label">회사명 부분별표 없이 기업명 기재 *</label>
-                                    <input className="kl-input" placeholder="정확한 직장명 (ex. 삼성전자, 부산대학교 병원)" value={form.workplace} onChange={(e) => setForm(f => ({...f, workplace: e.target.value}))} />
+                                    <label className="kl-label">회사명 / 직무 *</label>
+                                    <textarea
+                                      className="kl-input"
+                                      rows={3}
+                                      placeholder={`ex. 수액병원, 간호사 / 링크은행, 은행원 / 프리랜서, 영상편집 / 개인사업, 네일아트 / 키링초등학교, 초등교사 / 네이버(대기업), 사무직`}
+                                      value={form.workplace}
+                                      onChange={(e) => setForm(f => ({...f, workplace: e.target.value}))}
+                                    />
                                     <p style={{ fontSize: '0.8rem', color: '#888', marginTop: '6px' }}><i><u>* 같은 직장 동료 만남 방지 목적으로만 사용되며 비공개입니다</u></i></p>
-                                </div>
-                                <div>
-                                    <label className="kl-label">직무 (상대방 노출용)</label>
-                                    <input className="kl-input" placeholder="ex. 간호사, 은행원, IT 개발자" value={form.jobRole} onChange={(e) => setForm(f => ({...f, jobRole: e.target.value}))} />
                                 </div>
                                 <div>
                                     <label className="kl-label">겹치고 싶지 않은 지인 (선택)</label>
@@ -480,49 +492,75 @@ export default function EventDetailPage() {
                             </div>
 
                             <div>
-                                <label className="kl-label" style={{ marginBottom: '12px' }}>본인 사진 업로드 (얼굴 1장, 전신 1장) *</label>
+                                <label className="kl-label" style={{ marginBottom: '12px' }}>본인 사진 업로드 (최대 5장씩) *</label>
                                 <div style={{ background: 'var(--color-surface-2)', padding: '12px', borderRadius: '8px', marginBottom: '16px' }}>
                                     <p style={{ fontSize: '0.8rem', color: '#555', lineHeight: '1.6' }}>
                                         <strong>[가이드]</strong> 과도한 보정 X, 증명사진/마스크 X, 1년 이내 최근 사진 필수.<br/>
                                         <span style={{ color: '#C86A6A', fontWeight: '600' }}>* 실물과 많이 다를 시 현장 스태프 권한으로 재참여가 불가할 수 있습니다.</span>
                                     </p>
                                 </div>
+
+                                {/* Hidden file inputs */}
+                                <input
+                                  ref={faceInputRef}
+                                  type="file"
+                                  accept="image/*"
+                                  multiple
+                                  style={{ display: 'none' }}
+                                  onChange={(e) => {
+                                    if (e.target.files) {
+                                      const newFiles = Array.from(e.target.files).slice(0, 5 - facePhotos.length);
+                                      setFacePhotos(prev => [...prev, ...newFiles].slice(0, 5));
+                                    }
+                                    e.target.value = '';
+                                  }}
+                                />
+                                <input
+                                  ref={bodyInputRef}
+                                  type="file"
+                                  accept="image/*"
+                                  multiple
+                                  style={{ display: 'none' }}
+                                  onChange={(e) => {
+                                    if (e.target.files) {
+                                      const newFiles = Array.from(e.target.files).slice(0, 5 - bodyPhotos.length);
+                                      setBodyPhotos(prev => [...prev, ...newFiles].slice(0, 5));
+                                    }
+                                    e.target.value = '';
+                                  }}
+                                />
+
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                                    {/* Face Photo */}
-                                    <div style={{ padding: '20px', border: '1px dashed #ccc', borderRadius: '12px', textAlign: 'center', background: form.photoFaceUploaded ? 'rgba(110,174,124,0.05)' : 'transparent' }}>
-                                        {form.photoFaceUploaded ? (
-                                            <div>
-                                                <CheckCircle size={32} color="#6EAE7C" style={{ margin: '0 auto 10px' }} />
-                                                <p style={{ fontSize: '0.85rem', fontWeight: '700', color: '#111' }}>얼굴 사진 확인</p>
-                                                <button type="button" onClick={() => setForm(f => ({...f, photoFaceUploaded: false}))} style={{ background: 'none', border: 'none', color: '#FF6F61', fontSize: '0.8rem', textDecoration: 'underline', marginTop: '8px', cursor: 'pointer' }}>다시 올리기</button>
-                                            </div>
-                                        ) : (
-                                            <div>
-                                                <Camera size={32} color="#aaa" style={{ margin: '0 auto 10px' }} />
-                                                <p style={{ fontSize: '0.85rem', fontWeight: '700', color: '#333', marginBottom: '6px' }}>얼굴 사진</p>
-                                                <button type="button" onClick={() => setForm(f => ({...f, photoFaceUploaded: true}))} className="kl-btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '8px 16px', fontSize: '0.8rem' }}>
-                                                    <Upload size={14} /> 선택
-                                                </button>
-                                            </div>
+                                    {/* Face Photos */}
+                                    <div style={{ padding: '20px', border: '1px dashed #ccc', borderRadius: '12px', textAlign: 'center', background: photoFaceUploaded ? 'rgba(110,174,124,0.05)' : 'transparent' }}>
+                                        <Camera size={28} color={photoFaceUploaded ? '#6EAE7C' : '#aaa'} style={{ margin: '0 auto 10px' }} />
+                                        <p style={{ fontSize: '0.85rem', fontWeight: '700', color: '#333', marginBottom: '6px' }}>얼굴 사진</p>
+                                        {facePhotos.length > 0 && (
+                                          <p style={{ fontSize: '0.75rem', color: '#6EAE7C', fontWeight: '700', marginBottom: '8px' }}>{facePhotos.length}장 선택됨</p>
+                                        )}
+                                        {facePhotos.length < 5 && (
+                                          <button type="button" onClick={() => faceInputRef.current?.click()} className="kl-btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '8px 16px', fontSize: '0.8rem' }}>
+                                            <Upload size={14} /> {facePhotos.length > 0 ? '추가' : '선택'}
+                                          </button>
+                                        )}
+                                        {facePhotos.length > 0 && (
+                                          <button type="button" onClick={() => setFacePhotos([])} style={{ background: 'none', border: 'none', color: '#FF6F61', fontSize: '0.75rem', textDecoration: 'underline', marginTop: '6px', cursor: 'pointer', display: 'block', margin: '6px auto 0' }}>전체 삭제</button>
                                         )}
                                     </div>
-                                    {/* Body Photo */}
-                                    <div style={{ padding: '20px', border: '1px dashed #ccc', borderRadius: '12px', textAlign: 'center', background: form.photoBodyUploaded ? 'rgba(110,174,124,0.05)' : 'transparent' }}>
-                                        {/* Same logic */}
-                                        {form.photoBodyUploaded ? (
-                                            <div>
-                                                <CheckCircle size={32} color="#6EAE7C" style={{ margin: '0 auto 10px' }} />
-                                                <p style={{ fontSize: '0.85rem', fontWeight: '700', color: '#111' }}>전신 사진 확인</p>
-                                                <button type="button" onClick={() => setForm(f => ({...f, photoBodyUploaded: false}))} style={{ background: 'none', border: 'none', color: '#FF6F61', fontSize: '0.8rem', textDecoration: 'underline', marginTop: '8px', cursor: 'pointer' }}>다시 올리기</button>
-                                            </div>
-                                        ) : (
-                                            <div>
-                                                <Camera size={32} color="#aaa" style={{ margin: '0 auto 10px' }} />
-                                                <p style={{ fontSize: '0.85rem', fontWeight: '700', color: '#333', marginBottom: '6px' }}>전신 사진</p>
-                                                <button type="button" onClick={() => setForm(f => ({...f, photoBodyUploaded: true}))} className="kl-btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '8px 16px', fontSize: '0.8rem' }}>
-                                                    <Upload size={14} /> 선택
-                                                </button>
-                                            </div>
+                                    {/* Body Photos */}
+                                    <div style={{ padding: '20px', border: '1px dashed #ccc', borderRadius: '12px', textAlign: 'center', background: photoBodyUploaded ? 'rgba(110,174,124,0.05)' : 'transparent' }}>
+                                        <Camera size={28} color={photoBodyUploaded ? '#6EAE7C' : '#aaa'} style={{ margin: '0 auto 10px' }} />
+                                        <p style={{ fontSize: '0.85rem', fontWeight: '700', color: '#333', marginBottom: '6px' }}>전신 사진</p>
+                                        {bodyPhotos.length > 0 && (
+                                          <p style={{ fontSize: '0.75rem', color: '#6EAE7C', fontWeight: '700', marginBottom: '8px' }}>{bodyPhotos.length}장 선택됨</p>
+                                        )}
+                                        {bodyPhotos.length < 5 && (
+                                          <button type="button" onClick={() => bodyInputRef.current?.click()} className="kl-btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '8px 16px', fontSize: '0.8rem' }}>
+                                            <Upload size={14} /> {bodyPhotos.length > 0 ? '추가' : '선택'}
+                                          </button>
+                                        )}
+                                        {bodyPhotos.length > 0 && (
+                                          <button type="button" onClick={() => setBodyPhotos([])} style={{ background: 'none', border: 'none', color: '#FF6F61', fontSize: '0.75rem', textDecoration: 'underline', marginTop: '6px', cursor: 'pointer', display: 'block', margin: '6px auto 0' }}>전체 삭제</button>
                                         )}
                                     </div>
                                 </div>
