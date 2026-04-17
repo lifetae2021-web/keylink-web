@@ -5,32 +5,47 @@ import { Eye, EyeOff, MessageCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import { useRouter } from 'next/navigation';
-import { auth } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [email, setEmail] = useState('');
+  const [userId, setUserId] = useState('');
   const [password, setPassword] = useState('');
   const router = useRouter();
 
   const handleNormalLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) {
-      toast.error('이메일과 비밀번호를 입력해 주세요.');
+    if (!userId || !password) {
+      toast.error('아이디와 비밀번호를 입력해 주세요.');
       return;
     }
     setIsLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      // 1. Query Firestore for the email associated with this ID
+      const q = query(collection(db, 'users'), where('username', '==', userId));
+      const querySnapshot = await getDocs(q);
+      
+      if (querySnapshot.empty) {
+        toast.error('아이디 또는 비밀번호가 일치하지 않습니다.');
+        setIsLoading(false);
+        return;
+      }
+      
+      const userData = querySnapshot.docs[0].data();
+      const userEmail = userData.email;
+
+      // 2. Perform Firebase Auth Login with retrieved email
+      await signInWithEmailAndPassword(auth, userEmail, password);
       
       toast.success('로그인에 성공했습니다!');
       router.push('/');
     } catch (error: any) {
       console.error('Firebase Auth Error (Login):', error.code, error.message, error);
       if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
-        toast.error('이메일 또는 비밀번호가 일치하지 않습니다.');
+        toast.error('아이디 또는 비밀번호가 일치하지 않습니다.');
       } else {
         toast.error('로그인 중 오류가 발생했습니다. 다시 시도해 주세요.');
       }
@@ -76,13 +91,13 @@ export default function LoginPage() {
           {/* Normal Login Form */}
           <form onSubmit={handleNormalLogin} style={{ marginBottom: '24px' }}>
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ fontSize: '0.85rem', fontWeight: '700', color: '#333', display: 'block', marginBottom: '8px' }}>이메일</label>
+              <label style={{ fontSize: '0.85rem', fontWeight: '700', color: '#333', display: 'block', marginBottom: '8px' }}>아이디</label>
               <input
-                type="email"
+                type="text"
                 className="kl-input"
-                placeholder="example@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                placeholder="아이디를 입력해 주세요"
+                value={userId}
+                onChange={(e) => setUserId(e.target.value)}
                 style={{ borderRadius: '12px', padding: '14px' }}
               />
             </div>
