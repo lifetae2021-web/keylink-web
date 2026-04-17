@@ -112,11 +112,11 @@ export default function Footer() {
             <h4 style={{ fontWeight: '600', marginBottom: '16px', fontSize: '0.875rem', color: 'var(--color-text-primary)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>문의</h4>
             <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', lineHeight: 1.7 }}>
               카카오톡 채널<br/>
-              <strong style={{ color: 'var(--color-primary-light)' }}>@키링크</strong>
+              <strong style={{ color: 'var(--color-text-primary)' }}>@키링크</strong>
             </p>
             <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', lineHeight: 1.7, marginTop: '12px' }}>
               인스타그램 DM<br/>
-              <strong style={{ color: 'var(--color-primary-light)' }}>@keylink_official</strong>
+              <strong style={{ color: 'var(--color-text-primary)' }}>@keylink_official</strong>
             </p>
             <div style={{
               marginTop: '20px',

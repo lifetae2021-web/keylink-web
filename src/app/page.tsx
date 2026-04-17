@@ -37,12 +37,14 @@ export default function HomePage() {
   ];
 
   const steps = [
-    { num: '01', title: '회원가입 & 예약', desc: '본인인증 완료 후 원하는 지역·날짜 선택, 결제로 예약 완료' },
-    { num: '02', title: '행사 당일 참석', desc: '신분증 지참 후 파티룸/카페 방문. 운영팀이 자리 안내' },
-    { num: '03', title: '1:1 로테이션 대화', desc: '모든 이성과 9분 30초 집중 대화. 남성 참가자가 순서대로 이동' },
-    { num: '04', title: '호감도 순위 입력', desc: '행사 종료 후 웹사이트에서 1~3순위 선택하여 제출' },
-    { num: '05', title: '매칭 결과 확인', desc: '상호 호감 매칭 시 상대방 연락처·오픈채팅방 링크 공개' },
-    { num: '06', title: '새로운 시작 ✨', desc: '매칭 성공 시 카카오 오픈채팅방을 통해 자연스러운 만남 시작' },
+    { num: '01', title: '신청하기', desc: '원하는 날짜 선택 후 신청' },
+    { num: '02', title: '참가자 선발 및 입금', desc: '선발된 분들께 안내 문자 발송, 입금 확인 후 최종 참여 확정' },
+    { num: '03', title: '행사 당일 참석', desc: '신분증 지참 후 안내 된 장소에 방문' },
+    { num: '04', title: '신원 확인', desc: '신분증 확인 후 자리 안내' },
+    { num: '05', title: '1:1 로테이션 대화', desc: '모든 이성과 약 15분 집중 대화' },
+    { num: '06', title: '호감도 순위 입력', desc: '행사 종료 후 웹사이트에서 1~3순위 선택하여 제출' },
+    { num: '07', title: '매칭 결과 확인', desc: '상호 호감 매칭 시 오픈채팅방 초대' },
+    { num: '08', title: '새로운 시작 ✨', desc: '매칭 성공 시 카카오 오픈채팅방을 통해 자연스러운 만남 시작' },
   ];
 
   const policies = [
@@ -118,9 +120,8 @@ export default function HomePage() {
             </span>
           </div>
 
-          <h1 className="kl-heading-xl" style={{ marginBottom: '24px', lineHeight: 1.3, fontSize: 'clamp(1.8rem, 4.5vw, 3rem)', wordBreak: 'keep-all' }}>
-            <span style={{ color: 'var(--color-text-primary)', display: 'block' }}>당신의 이상형에 맞는</span>
-            <span className="kl-gradient-text">키워드를 연결해드립니다</span>
+          <h1 className="kl-heading-xl" style={{ marginBottom: '24px', lineHeight: 1.3, fontSize: 'clamp(1.8rem, 4.5vw, 3rem)', wordBreak: 'keep-all', color: 'var(--color-text-primary)' }}>
+            당신의 이상형에 맞는 <span style={{ color: '#FF6F61' }}>키워드</span>를 <span style={{ color: '#FF6F61' }}>연결</span>해드립니다
           </h1>
 
           <p style={{
@@ -210,7 +211,7 @@ export default function HomePage() {
             </h2>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '24px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '24px', justifyContent: 'center' }}>
             {steps.map((step, idx) => (
               <div key={idx} style={{
                 background: 'var(--gradient-card)',

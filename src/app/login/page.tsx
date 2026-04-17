@@ -121,7 +121,7 @@ export default function LoginPage() {
               아이디/비밀번호 찾기
             </button>
             <div style={{ width: '1px', height: '12px', background: '#ddd', alignSelf: 'center' }} />
-            <Link href="/register" style={{ fontSize: '0.8rem', color: 'var(--color-primary)', fontWeight: '700', textDecoration: 'none' }}>
+            <Link href="/register" style={{ fontSize: '0.8rem', color: '#888', fontWeight: '700', textDecoration: 'none' }}>
               회원가입
             </Link>
           </div>
