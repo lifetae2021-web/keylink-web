@@ -202,7 +202,7 @@ export default function HomePage() {
       </Suspense>
 
       {/* ── HOW IT WORKS ── */}
-      <section style={{ padding: '80px 20px', background: 'var(--color-surface)' }}>
+      <section id="how-it-works" style={{ padding: '80px 20px', background: 'var(--color-surface)', scrollMarginTop: '80px' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: '56px' }}>
             <p style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--color-primary)', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '12px' }}>HOW IT WORKS</p>
