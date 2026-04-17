@@ -41,7 +41,7 @@ function InfoRow({ label, value }: { label: string; value?: string | null }) {
 }
 
 // Editable row shown in edit modal
-function EditRow({ label, children, required }: { label: string; children: React.Abnode; required?: boolean }) {
+function EditRow({ label, children, required }: { label: string; children: React.ReactNode; required?: boolean }) {
   return (
     <div style={{ marginBottom: '24px' }}>
       <label style={{ display: 'block', fontSize: '0.82rem', color: '#FF6F61', fontWeight: '800', marginBottom: '8px', letterSpacing: '0.02em' }}>
