@@ -1,12 +1,12 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Eye, EyeOff, MessageCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import { useRouter } from 'next/navigation';
 import { auth, db } from '@/lib/firebase';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, onAuthStateChanged } from 'firebase/auth';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 
 export default function LoginPage() {
@@ -15,6 +15,16 @@ export default function LoginPage() {
   const [userId, setUserId] = useState('');
   const [password, setPassword] = useState('');
   const router = useRouter();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        router.replace('/');
+      }
+    });
+    return () => unsubscribe();
+  }, [router]);
 
   const handleNormalLogin = async (e: React.FormEvent) => {
     e.preventDefault();

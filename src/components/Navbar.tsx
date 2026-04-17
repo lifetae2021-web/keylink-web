@@ -1,7 +1,10 @@
 'use client';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Menu, X, Heart } from 'lucide-react';
+import { Menu, X, Heart, LogOut } from 'lucide-react';
+import { auth } from '@/lib/firebase';
+import { onAuthStateChanged, signOut, User } from 'firebase/auth';
+import toast from 'react-hot-toast';
 
 const navLinks = [
   { href: '/', label: 'HOME' },
@@ -13,12 +16,32 @@ const navLinks = [
 export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 40);
     window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    
+    // Auth Listener
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+    });
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      unsubscribe();
+    };
   }, []);
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      toast.success('로그아웃되었습니다.');
+      setIsMenuOpen(false);
+    } catch (error) {
+      toast.error('로그아웃 중 오류가 발생했습니다.');
+    }
+  };
 
   return (
     <header
@@ -103,9 +126,19 @@ export default function Navbar() {
 
           {/* CTA + Mobile Menu */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <Link href="/login" className="kl-btn-primary" style={{ padding: '10px 20px', fontSize: '0.85rem' }}>
-              로그인/회원가입
-            </Link>
+            {user ? (
+              <button 
+                onClick={handleLogout} 
+                className="kl-btn-outline" 
+                style={{ padding: '10px 20px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                로그아웃 <LogOut size={16} />
+              </button>
+            ) : (
+              <Link href="/login" className="kl-btn-primary" style={{ padding: '10px 20px', fontSize: '0.85rem' }}>
+                로그인/회원가입
+              </Link>
+            )}
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
               style={{
@@ -161,13 +194,22 @@ export default function Navbar() {
             </Link>
           ))}
           <Link
-            href="/events"
+            href={user ? "/events" : "/login"}
             onClick={() => setIsMenuOpen(false)}
             className="kl-btn-primary"
-            style={{ marginTop: '12px', width: '100%' }}
+            style={{ marginTop: '12px', width: '100%', display: 'flex', justifyContent: 'center' }}
           >
-            지금 신청하기
+            {user ? "지금 신청하기" : "로그인하고 신청하기"}
           </Link>
+          {user && (
+            <button
+              onClick={handleLogout}
+              className="kl-btn-outline"
+              style={{ marginTop: '8px', width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}
+            >
+              로그아웃 <LogOut size={16} />
+            </button>
+          )}
         </div>
       )}
 

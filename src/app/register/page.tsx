@@ -128,8 +128,8 @@ function RegisterForm() {
       });
 
       toast.success('회원가입이 완료되었습니다!');
-      setFormStep(2);
-      window.scrollTo(0, 0);
+      // Auto-login happens in background. Redirect immediately to improve UX.
+      router.push('/');
     } catch (error: any) {
       console.error('Firebase Auth Error (Signup):', error.code, error.message, error);
       if (error.code === 'auth/email-already-in-use') {
