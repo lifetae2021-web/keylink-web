@@ -1,6 +1,7 @@
 'use client';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Heart, MessageCircle, Camera } from 'lucide-react';
 
 export default function Footer() {
@@ -22,22 +23,14 @@ export default function Footer() {
         }}>
           {/* Brand */}
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-              <div style={{
-                width: '32px', height: '32px', borderRadius: '9px',
-                background: 'linear-gradient(135deg, #FFDBE9, #E6E6FA)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                <Heart size={16} fill="#FF6F61" color="#FF6F61" />
-              </div>
-              <span style={{
-                fontFamily: "'Playfair Display', serif",
-                fontSize: '1.25rem',
-                fontWeight: '700',
-                background: 'linear-gradient(135deg, #FF6F61, #FF9A9E)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-              }}>키링크</span>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '16px' }}>
+              <Image
+                src="/logo.png"
+                alt="키링크 로고"
+                width={120}
+                height={36}
+                style={{ height: '36px', width: 'auto', objectFit: 'contain' }}
+              />
             </div>
             <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', lineHeight: 1.7 }}>
               부산 지역 프리미엄<br/>로테이션 소개팅 서비스

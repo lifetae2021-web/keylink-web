@@ -3,25 +3,32 @@
 
 :root {
   /* === Keylink Spring (설렘) Design Tokens === */
-  --color-primary: #FFDBE9; /* Soft Peach Pink */
+  --color-primary: #FFDBE9;
+  /* Soft Peach Pink */
   --color-primary-dark: #FFB6C1;
-  --color-primary-light: #E6E6FA; /* Lavender */
-  --color-bg: #FDFDFD; /* Creamy Pearl White */
-  --color-surface: #FFFAF0; /* Warm Ivory */
+  --color-primary-light: #E6E6FA;
+  /* Lavender */
+  --color-bg: #FDFDFD;
+  /* Creamy Pearl White */
+  --color-surface: #FFFAF0;
+  /* Warm Ivory */
   --color-surface-2: #FFF6F9;
   --color-surface-3: #F2E6E8;
   --color-border: #F0E5DE;
-  --color-text-primary: #1A1A1A; /* Soft Black for Headings */
-  --color-text-secondary: #333333; /* Warm Charcoal for Body */
+  --color-text-primary: #1A1A1A;
+  /* Soft Black for Headings */
+  --color-text-secondary: #333333;
+  /* Warm Charcoal for Body */
   --color-text-muted: #666666;
-  --color-accent: #FF6F61; /* Coral Pink */
+  --color-accent: #FF6F61;
+  /* Coral Pink */
   --color-success: #88D8B0;
   --color-error: #FF6B6B;
 
   /* Gradients */
   --gradient-hero: linear-gradient(135deg, #FDFDFD 0%, #FFF0F5 50%, #FDFDFD 100%);
   --gradient-primary: linear-gradient(135deg, #FFDBE9, #E6E6FA);
-  --gradient-card: linear-gradient(145deg, rgba(255,255,255,0.95), rgba(253,248,250,0.95));
+  --gradient-card: linear-gradient(145deg, rgba(255, 255, 255, 0.95), rgba(253, 248, 250, 0.95));
 
   /* Shadows (Softer for light theme) */
   --shadow-sm: 0 2px 8px rgba(255, 182, 193, 0.15);
@@ -84,7 +91,7 @@ body {
 
 .kl-btn-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(200,145,106,0.4);
+  box-shadow: 0 8px 24px rgba(200, 145, 106, 0.4);
   filter: brightness(1.08);
 }
 
@@ -111,7 +118,7 @@ body {
 }
 
 .kl-btn-outline:hover {
-  background: rgba(200,145,106,0.12);
+  background: rgba(200, 145, 106, 0.12);
   border-color: var(--color-primary-light);
   transform: translateY(-2px);
 }
@@ -142,21 +149,21 @@ body {
 }
 
 .kl-badge-open {
-  background: rgba(110,174,124,0.2);
+  background: rgba(110, 174, 124, 0.2);
   color: #6EAE7C;
-  border: 1px solid rgba(110,174,124,0.3);
+  border: 1px solid rgba(110, 174, 124, 0.3);
 }
 
 .kl-badge-closed {
-  background: rgba(200,106,106,0.2);
+  background: rgba(200, 106, 106, 0.2);
   color: #C86A6A;
-  border: 1px solid rgba(200,106,106,0.3);
+  border: 1px solid rgba(200, 106, 106, 0.3);
 }
 
 .kl-badge-upcoming {
-  background: rgba(200,145,106,0.15);
+  background: rgba(200, 145, 106, 0.15);
   color: var(--color-primary-light);
-  border: 1px solid rgba(200,145,106,0.3);
+  border: 1px solid rgba(200, 145, 106, 0.3);
 }
 
 .kl-input {
@@ -177,7 +184,7 @@ body {
 
 .kl-input:focus {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(200,145,106,0.15);
+  box-shadow: 0 0 0 3px rgba(200, 145, 106, 0.15);
 }
 
 .kl-label {
@@ -249,36 +256,65 @@ body {
 ::-webkit-scrollbar {
   width: 6px;
 }
+
 ::-webkit-scrollbar-track {
   background: var(--color-bg);
 }
+
 ::-webkit-scrollbar-thumb {
   background: var(--color-border);
   border-radius: 3px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-primary);
 }
 
 /* Animated gradient bg */
 @keyframes gradientShift {
-  0%, 100% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
+
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
 }
 
 @keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-12px); }
+
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-12px);
+  }
 }
 
 @keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(30px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
 }
 
 .animate-fadeInUp {
@@ -323,8 +359,8 @@ body {
 }
 
 .event-card:hover {
-  border-color: rgba(200,145,106,0.5);
-  box-shadow: 0 16px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(200,145,106,0.2);
+  border-color: rgba(200, 145, 106, 0.5);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(200, 145, 106, 0.2);
   transform: translateY(-6px);
 }
 
@@ -389,7 +425,7 @@ body {
   background: #fff;
   border-radius: 16px;
   padding: 24px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
   border: 1px solid var(--color-border);
   margin-bottom: 32px;
   width: 100%;
@@ -442,8 +478,8 @@ body {
   background: #fff;
   border-radius: 6px;
   padding: 4px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
-  border: 1px solid rgba(255,111,97,0.1);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(255, 111, 97, 0.1);
   width: 100%;
   overflow: hidden;
 }
@@ -467,39 +503,39 @@ body {
   .kl-calendar-wrapper {
     padding: 10px 5px;
   }
-  
+
   .kl-calendar-container {
     padding: 12px 8px;
     border-radius: 12px;
   }
-  
+
   .kl-calendar-grid {
     gap: 4px;
   }
-  
+
   .kl-calendar-cell {
     min-height: 60px;
     padding: 4px 2px;
     border-radius: 8px;
   }
-  
+
   .kl-calendar-date-badge {
     font-size: 0.75rem;
     width: 22px;
     height: 22px;
     margin-bottom: 4px;
   }
-  
+
   .kl-event-tag {
     padding: 2px 1px;
     border-radius: 4px;
   }
-  
+
   .kl-event-tag-age {
     font-size: 0.5rem;
     letter-spacing: -0.02em;
   }
-  
+
   .kl-event-tag-time {
     font-size: 0.5rem;
   }
@@ -535,7 +571,7 @@ body {
   width: 44px;
   height: 44px;
   border-radius: 12px;
-  background: rgba(255,111,97,0.08);
+  background: rgba(255, 111, 97, 0.08);
   display: flex;
   align-items: center;
   justify-content: center;

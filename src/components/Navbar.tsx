@@ -1,8 +1,9 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { Menu, X, Heart, LogOut, User as UserIcon } from 'lucide-react';
+import { Menu, X, LogOut, User as UserIcon } from 'lucide-react';
 import { auth } from '@/lib/firebase';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
 import toast from 'react-hot-toast';
@@ -105,13 +106,15 @@ export default function Navbar() {
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '70px' }}>
           {/* Logo */}
-          <Link href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'linear-gradient(135deg, #FFDBE9, #E6E6FA)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Heart size={18} fill="#FF6F61" color="#FF6F61" />
-            </div>
-            <span style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.4rem', fontWeight: '700', background: 'linear-gradient(135deg, #FF6F61, #FF9A9E)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: '-0.01em' }}>
-              키링크
-            </span>
+          <Link href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center' }}>
+            <Image
+              src="/logo.png"
+              alt="키링크 로고"
+              width={140}
+              height={42}
+              style={{ height: '42px', width: 'auto', objectFit: 'contain' }}
+              priority
+            />
           </Link>
 
           {/* Desktop Nav */}
