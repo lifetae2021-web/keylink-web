@@ -38,34 +38,6 @@ export default function Footer() {
             <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', lineHeight: 1.7 }}>
               부산 지역 프리미엄<br/>로테이션 소개팅 서비스
             </p>
-            <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
-              <a href="https://instagram.com/keylink_official" target="_blank" rel="noopener noreferrer"
-                style={{
-                  width: '38px', height: '38px', borderRadius: '10px',
-                  background: 'var(--color-surface-2)',
-                  border: '1px solid var(--color-border)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  color: 'var(--color-text-secondary)', transition: 'all 0.2s',
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--color-primary)'; e.currentTarget.style.color = 'var(--color-primary-light)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--color-border)'; e.currentTarget.style.color = 'var(--color-text-secondary)'; }}
-              >
-                <Camera size={17} />
-              </a>
-              <a href="https://open.kakao.com/keylink" target="_blank" rel="noopener noreferrer"
-                style={{
-                  width: '38px', height: '38px', borderRadius: '10px',
-                  background: 'var(--color-surface-2)',
-                  border: '1px solid var(--color-border)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  color: 'var(--color-text-secondary)', transition: 'all 0.2s',
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--color-primary)'; e.currentTarget.style.color = 'var(--color-primary-light)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--color-border)'; e.currentTarget.style.color = 'var(--color-text-secondary)'; }}
-              >
-                <MessageCircle size={17} />
-              </a>
-            </div>
           </div>
 
           {/* Links */}
@@ -110,14 +82,26 @@ export default function Footer() {
           {/* Contact */}
           <div>
             <h4 style={{ fontWeight: '600', marginBottom: '16px', fontSize: '0.875rem', color: 'var(--color-text-primary)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>문의</h4>
-            <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', lineHeight: 1.7 }}>
-              카카오톡 채널<br/>
-              <strong style={{ color: 'var(--color-text-primary)' }}>@키링크</strong>
-            </p>
-            <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', lineHeight: 1.7, marginTop: '12px' }}>
-              인스타그램 DM<br/>
-              <strong style={{ color: 'var(--color-text-primary)' }}>@keylink_official</strong>
-            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <a href="https://open.kakao.com/keylink" target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none', color: 'inherit' }}>
+                <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-secondary)' }}>
+                  <MessageCircle size={16} />
+                </div>
+                <div style={{ fontSize: '0.85rem' }}>
+                  <span style={{ color: 'var(--color-text-muted)', display: 'block', fontSize: '0.75rem', marginBottom: '2px' }}>카카오톡 채널</span>
+                  <strong style={{ color: 'var(--color-text-primary)' }}>@키링크</strong>
+                </div>
+              </a>
+              <a href="https://instagram.com/keylink_official" target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none', color: 'inherit' }}>
+                <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-secondary)' }}>
+                  <Camera size={16} />
+                </div>
+                <div style={{ fontSize: '0.85rem' }}>
+                  <span style={{ color: 'var(--color-text-muted)', display: 'block', fontSize: '0.75rem', marginBottom: '2px' }}>인스타그램 DM</span>
+                  <strong style={{ color: 'var(--color-text-primary)' }}>@keylink_official</strong>
+                </div>
+              </a>
+            </div>
             <div style={{
               marginTop: '20px',
               padding: '14px',
