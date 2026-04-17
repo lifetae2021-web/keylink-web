@@ -121,7 +121,7 @@ export default function HomePage() {
           </div>
 
           <h1 className="kl-heading-xl" style={{ marginBottom: '24px', lineHeight: 1.3, fontSize: 'clamp(1.8rem, 4.5vw, 3rem)', wordBreak: 'keep-all', color: 'var(--color-text-primary)' }}>
-            당신의 이상형에 맞는 <span style={{ color: '#FF6F61' }}>키워드</span>를 <br /> <span style={{ color: '#FF6F61' }}>연결</span>해드립니다
+            당신의 이상형에 맞는 <br /> <span style={{ color: '#FF6F61' }}>키워드</span>를 <span style={{ color: '#FF6F61' }}>연결</span>해드립니다
           </h1>
 
           <p style={{
