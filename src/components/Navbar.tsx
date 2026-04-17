@@ -106,15 +106,17 @@ export default function Navbar() {
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '85px' }}>
           {/* Logo */}
-          <Link href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center' }}>
-            <Image
-              src="/logo.png"
-              alt="키링크 로고"
-              width={200}
-              height={60}
-              style={{ height: '60px', width: 'auto', objectFit: 'contain' }}
-              priority
-            />
+          <Link href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', height: '85px', overflow: 'hidden' }}>
+            <div style={{ position: 'relative', height: '260px', width: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Image
+                src="/logo.png"
+                alt="키링크 로고"
+                width={260}
+                height={260}
+                style={{ height: '260px', width: 'auto', objectFit: 'contain' }}
+                priority
+              />
+            </div>
           </Link>
 
           {/* Desktop Nav */}

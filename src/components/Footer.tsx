@@ -23,14 +23,16 @@ export default function Footer() {
         }}>
           {/* Brand */}
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '16px' }}>
-              <Image
-                src="/logo.png"
-                alt="키링크 로고"
-                width={160}
-                height={48}
-                style={{ height: '48px', width: 'auto', objectFit: 'contain' }}
-              />
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px', height: '60px', overflow: 'hidden' }}>
+              <div style={{ position: 'relative', height: '180px', width: '180px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Image
+                  src="/logo.png"
+                  alt="키링크 로고"
+                  width={180}
+                  height={180}
+                  style={{ height: '180px', width: 'auto', objectFit: 'contain' }}
+                />
+              </div>
             </div>
             <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', lineHeight: 1.7 }}>
               부산 지역 프리미엄<br/>로테이션 소개팅 서비스
