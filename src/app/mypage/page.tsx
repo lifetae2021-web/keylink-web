@@ -438,6 +438,7 @@ export default function MyPage() {
                 <InfoRow label="흡연 유무" value={userData?.smoking} />
                 <InfoRow label="종교" value={userData?.religion} />
                 <InfoRow label="희망 음료" value={userData?.drink} />
+                <InfoRow label="희망 분위기" value={userData?.vibe} />
                 <InfoRow label="이상형" value={userData?.idealType} />
                 <InfoRow label="비선호형" value={userData?.nonIdealType} />
                 <div style={{ borderBottom: '1px solid #FFF0EE', padding: '16px 0' }}>
