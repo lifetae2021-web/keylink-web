@@ -117,7 +117,7 @@ function RegisterForm() {
       setFormStep(2);
       window.scrollTo(0, 0);
     } catch (error: any) {
-      console.error('Registration error:', error);
+      console.error('Firebase Auth Error (Signup):', error.code, error.message, error);
       if (error.code === 'auth/email-already-in-use') {
         toast.error('이미 사용 중인 아이디입니다.');
       } else {

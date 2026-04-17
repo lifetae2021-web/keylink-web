@@ -28,7 +28,7 @@ export default function LoginPage() {
       toast.success('로그인에 성공했습니다!');
       router.push('/');
     } catch (error: any) {
-      console.error('Login error:', error);
+      console.error('Firebase Auth Error (Login):', error.code, error.message, error);
       if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
         toast.error('이메일 또는 비밀번호가 일치하지 않습니다.');
       } else {
