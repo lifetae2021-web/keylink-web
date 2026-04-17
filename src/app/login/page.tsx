@@ -5,6 +5,8 @@ import { Eye, EyeOff, MessageCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import { useRouter } from 'next/navigation';
+import { auth } from '@/lib/firebase';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -20,10 +22,23 @@ export default function LoginPage() {
       return;
     }
     setIsLoading(true);
-    await new Promise(r => setTimeout(r, 1000));
-    setIsLoading(false);
-    toast.success('로그인에 성공했습니다!');
-    router.push('/');
+    try {
+      // Prepend the same dummy domain used during registration
+      const userEmail = `${userId}@keylink.com`;
+      await signInWithEmailAndPassword(auth, userEmail, password);
+      
+      toast.success('로그인에 성공했습니다!');
+      router.push('/');
+    } catch (error: any) {
+      console.error('Login error:', error);
+      if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+        toast.error('아이디 또는 비밀번호가 일치하지 않습니다.');
+      } else {
+        toast.error('로그인 중 오류가 발생했습니다. 다시 시도해 주세요.');
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleKakaoLogin = async () => {

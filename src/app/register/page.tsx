@@ -5,6 +5,9 @@ import { ArrowLeft, ArrowRight, CheckCircle, Heart, User, CheckSquare, Square, E
 import toast from 'react-hot-toast';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
+import { auth, db } from '@/lib/firebase';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 function RegisterForm() {
   const router = useRouter();
@@ -89,10 +92,38 @@ function RegisterForm() {
   const handleSubmit = async () => {
     if (!validateAll()) return;
     setIsSubmitting(true);
-    await new Promise(r => setTimeout(r, 1500));
-    setIsSubmitting(false);
-    setFormStep(2);
-    window.scrollTo(0, 0);
+    
+    try {
+      // 1. Firebase Auth - Create account (Map username to dummy email)
+      const userEmail = `${form.username}@keylink.com`;
+      const userCredential = await createUserWithEmailAndPassword(auth, userEmail, form.password);
+      const user = userCredential.user;
+
+      // 2. Firestore - Save user details
+      await setDoc(doc(db, 'users', user.uid), {
+        uid: user.uid,
+        username: form.username,
+        name: form.name,
+        gender: form.gender,
+        phone: form.phone,
+        birthDate: form.birthDate,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+
+      toast.success('회원가입이 완료되었습니다!');
+      setFormStep(2);
+      window.scrollTo(0, 0);
+    } catch (error: any) {
+      console.error('Registration error:', error);
+      if (error.code === 'auth/email-already-in-use') {
+        toast.error('이미 사용 중인 아이디입니다.');
+      } else {
+        toast.error('회원가입 중 오류가 발생했습니다. 다시 시도해 주세요.');
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
