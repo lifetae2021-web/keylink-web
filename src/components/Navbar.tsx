@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Menu, X, Heart, LogOut } from 'lucide-react';
+import { Menu, X, Heart, LogOut, User as UserIcon } from 'lucide-react';
 import { auth } from '@/lib/firebase';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
 import toast from 'react-hot-toast';
@@ -127,13 +127,22 @@ export default function Navbar() {
           {/* CTA + Mobile Menu */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             {user ? (
-              <button 
-                onClick={handleLogout} 
-                className="kl-btn-outline" 
-                style={{ padding: '10px 20px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}
-              >
-                로그아웃 <LogOut size={16} />
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Link 
+                  href="/mypage" 
+                  className="kl-btn-outline" 
+                  style={{ padding: '10px 16px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <UserIcon size={16} /> 마이페이지
+                </Link>
+                <button 
+                  onClick={handleLogout} 
+                  className="kl-btn-outline" 
+                  style={{ padding: '10px 16px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+                >
+                  로그아웃 <LogOut size={16} />
+                </button>
+              </div>
             ) : (
               <Link href="/login" className="kl-btn-primary" style={{ padding: '10px 20px', fontSize: '0.85rem' }}>
                 로그인/회원가입
@@ -202,13 +211,23 @@ export default function Navbar() {
             {user ? "지금 신청하기" : "로그인하고 신청하기"}
           </Link>
           {user && (
-            <button
-              onClick={handleLogout}
-              className="kl-btn-outline"
-              style={{ marginTop: '8px', width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}
-            >
-              로그아웃 <LogOut size={16} />
-            </button>
+            <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <Link
+                href="/mypage"
+                onClick={() => setIsMenuOpen(false)}
+                className="kl-btn-outline"
+                style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}
+              >
+                <UserIcon size={16} /> 마이페이지
+              </Link>
+              <button
+                onClick={handleLogout}
+                className="kl-btn-outline"
+                style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}
+              >
+                로그아웃 <LogOut size={16} />
+              </button>
+            </div>
           )}
         </div>
       )}
