@@ -36,18 +36,18 @@ export default function StatusPage() {
         <span>현재 {watchers}명이 이 기수를 같이 보고 있어요</span>
       </div>
 
-      <div className="kl-container" style={{ paddingTop: '40px' }}>
+      <div className="kl-container" style={{ paddingTop: '24px' }}>
         {/* Navigation & Back Button */}
-        <div style={{ marginBottom: '30px' }}>
+        <div style={{ marginBottom: '24px' }}>
           <Link href="/status" style={{ 
             display: 'inline-flex', alignItems: 'center', gap: '8px', 
-            color: 'var(--color-text-secondary)', textDecoration: 'none', 
-            fontWeight: '600', fontSize: '0.9rem',
-            padding: '10px 20px', borderRadius: '14px', background: '#fff',
+            color: '#666', textDecoration: 'none', 
+            fontWeight: '700', fontSize: '0.85rem',
+            padding: '10px 20px', borderRadius: '12px', background: '#fff',
             border: '1.5px solid #eee', transition: 'all 0.2s ease',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.03)'
-          }} onMouseEnter={e => { e.currentTarget.style.borderColor = '#FF6F61'; e.currentTarget.style.color = '#FF6F61'; e.currentTarget.style.boxShadow = '0 6px 16px rgba(255,111,97,0.1)'; }} onMouseLeave={e => { e.currentTarget.style.borderColor = '#eee'; e.currentTarget.style.color = 'var(--color-text-secondary)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.03)'; }}>
-            <ArrowRight size={18} style={{ transform: 'rotate(180deg)' }} /> 기수 목록으로 돌아가기
+            boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
+          }} onMouseEnter={e => { e.currentTarget.style.borderColor = '#FF6F61'; e.currentTarget.style.color = '#FF6F61'; e.currentTarget.style.transform = 'translateX(-4px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(255,111,97,0.15)'; }} onMouseLeave={e => { e.currentTarget.style.borderColor = '#eee'; e.currentTarget.style.color = '#666'; e.currentTarget.style.transform = 'translateX(0)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.05)'; }}>
+            <ArrowRight size={16} style={{ transform: 'rotate(180deg)' }} /> 기수 목록으로 돌아가기
           </Link>
         </div>
 
@@ -71,7 +71,7 @@ export default function StatusPage() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
                   <MapPin size={18} /> <span style={{ fontWeight: '600' }}>부산 서면역 인근 프리미엄 공간</span>
                 </div>
-                <h2 style={{ fontSize: '1.5rem', fontWeight: '900' }}>120기 부산 로테이션 소개팅</h2>
+                <h2 style={{ fontSize: '1.8rem', fontWeight: '900', letterSpacing: '-0.02em' }}>120기 부산 로테이션 소개팅</h2>
               </div>
             </div>
 
