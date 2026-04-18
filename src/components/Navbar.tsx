@@ -184,6 +184,20 @@ export default function Navbar() {
                 <Link href="/mypage" className="kl-btn-outline kl-mypage-btn" style={{ padding: '10px 18px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '100px' }}>
                   <UserIcon size={16} className="kl-btn-icon" /> 마이페이지
                 </Link>
+                {/* PC 전용 로그아웃 버튼 (v1.10.0) */}
+                <button 
+                  onClick={handleLogout} 
+                  className="desktop-only-btn"
+                  style={{ 
+                    padding: '10px 18px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px', 
+                    borderRadius: '100px', background: 'transparent', border: '1px solid #EDEDED', 
+                    color: '#888888', cursor: 'pointer', transition: 'all 0.2s', fontWeight: '500'
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = '#FFDBE9'; e.currentTarget.style.color = '#FF6F61'; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = '#EDEDED'; e.currentTarget.style.color = '#888888'; }}
+                >
+                  로그아웃
+                </button>
               </div>
             ) : (
               <Link href="/login" className="kl-btn-primary kl-mypage-btn" style={{ padding: '10px 20px', fontSize: '0.85rem' }}>
@@ -263,8 +277,9 @@ export default function Navbar() {
       )}
 
       <style>{`
-        @media (max-width: 768px) {
+        @media (max-width: 1024px) {
           .desktop-nav { display: none !important; }
+          .desktop-only-btn { display: none !important; }
           .mobile-menu-btn { display: flex !important; }
           .kl-nav-container { padding: 0 10px !important; }
           .kl-mypage-btn { 
@@ -284,12 +299,9 @@ export default function Navbar() {
             height: 13px !important;
           }
         }
-        @media (min-width: 769px) {
-          .mobile-menu-btn { 
-            margin-left: 4px;
-            transition: transform 0.2s;
-          }
-          .mobile-menu-btn:hover { transform: scale(1.1); }
+        @media (min-width: 1025px) {
+          .mobile-menu-btn { display: none !important; }
+          .desktop-only-btn { display: flex !important; }
         }
       `}</style>
     </header>

@@ -140,10 +140,12 @@ export default function MyPage() {
       const updateData = {
         ...sanitizedForm,
         profilePhotos,
-        // Explicitly clear legacy fields to prevent schema conflicts
+        // Explicitly clear legacy fields to prevent schema conflicts (v1.10.0 Comprehensive Cleanup)
         facePhotos: deleteField(),
         bodyPhotos: deleteField(),
         fullBodyPhotos: deleteField(),
+        facePhoto: deleteField(),
+        bodyPhoto: deleteField(),
         updatedAt: serverTimestamp()
       };
       
@@ -159,6 +161,41 @@ export default function MyPage() {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  // v1.10.0: Client-side image compression to bypass Firestore 1MB document limit
+  const compressImage = (base64: string): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.src = base64;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 1200;
+        const MAX_HEIGHT = 1200;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+        
+        // Export to JPEG with 0.8 quality for significant size reduction
+        resolve(canvas.toDataURL('image/jpeg', 0.8));
+      };
+    });
   };
 
   const formatPhone = (v: string) => {
@@ -179,9 +216,11 @@ export default function MyPage() {
 
     files.forEach(file => {
       const reader = new FileReader();
-      reader.onload = (ev) => {
-        const url = ev.target?.result as string;
-        setProfilePhotos(prev => [...prev, url].slice(0, 5));
+      reader.onload = async (ev) => {
+        const rawUrl = ev.target?.result as string;
+        // Apply compression before setting state (v1.10.0)
+        const compressedUrl = await compressImage(rawUrl);
+        setProfilePhotos(prev => [...prev, compressedUrl].slice(0, 5));
       };
       reader.readAsDataURL(file);
     });
