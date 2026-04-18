@@ -2,13 +2,10 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
-  Heart, MapPin, Calendar, Users, ArrowRight, Star,
-  Shield, RefreshCw, Gift, ChevronLeft, ChevronRight,
-  CheckCircle, Clock, Sparkles
+  Heart, MapPin, ArrowRight, Star,
+  CheckCircle, Sparkles, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { mockReviews } from '@/lib/mockData';
-import { format } from 'date-fns';
-import { ko } from 'date-fns/locale';
 import { EventsSection } from '@/components/EventsSection';
 import { Suspense } from 'react';
 
@@ -34,17 +31,6 @@ export default function HomePage() {
     { value: '94%', label: '참가자 만족도', icon: Star },
     { value: '1', label: '운영 지역', icon: MapPin },
     { value: '소규모', label: '8명 이하 프리미엄', icon: Users },
-  ];
-
-  const steps = [
-    { num: '01', title: '신청하기', desc: '원하는 날짜 선택 후 신청' },
-    { num: '02', title: '참가자 선발 및 입금', desc: '선발된 분들께 안내 문자 발송, 입금 확인 후 최종 참여 확정' },
-    { num: '03', title: '행사 당일 참석', desc: '신분증 지참 후 안내 된 장소에 방문' },
-    { num: '04', title: '신원 확인', desc: '신분증 확인 후 자리 안내' },
-    { num: '05', title: '1:1 로테이션 대화', desc: '모든 이성과 약 15분 집중 대화' },
-    { num: '06', title: '호감도 순위 입력', desc: '행사 종료 후 웹사이트에서 1~3순위 선택하여 제출' },
-    { num: '07', title: '매칭 결과 확인', desc: '상호 호감 매칭 시 오픈채팅방 초대' },
-    { num: '08', title: '새로운 시작 ✨', desc: '매칭 성공 시 카카오 오픈채팅방을 통해 자연스러운 만남 시작' },
   ];
 
   const policies = [
@@ -83,22 +69,13 @@ export default function HomePage() {
         overflow: 'hidden',
         background: 'radial-gradient(ellipse at 50% 40%, rgba(255,219,233,0.3) 0%, rgba(253,253,253,1) 75%)',
       }}>
-        {/* Decorative circles */}
         <div style={{
           position: 'absolute', width: '600px', height: '600px',
-          borderRadius: '50%', background: 'rgba(255,219,233,0.2)',
-          border: '1px solid rgba(255,219,233,0.4)',
+          borderRadius: '50%', background: 'rgba(255,111,97,0.1)',
           top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
           animation: 'float 8s ease-in-out infinite',
         }} />
-        <div style={{
-          position: 'absolute', width: '400px', height: '400px',
-          borderRadius: '50%', background: 'rgba(255,219,233,0.3)',
-          border: '1px solid rgba(255,219,233,0.5)',
-          top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-          animation: 'float 6s ease-in-out infinite 1s',
-        }} />
-
+        
         <div style={{
           textAlign: 'center',
           padding: '100px 20px 60px',
@@ -107,7 +84,6 @@ export default function HomePage() {
           transform: heroVisible ? 'translateY(0)' : 'translateY(30px)',
           transition: 'all 1s ease',
         }}>
-          {/* Tag */}
           <div style={{
             display: 'inline-flex', alignItems: 'center', gap: '8px',
             padding: '8px 18px', borderRadius: '100px',
@@ -145,7 +121,6 @@ export default function HomePage() {
             </Link>
           </div>
 
-          {/* Quick stats */}
           <div style={{
             display: 'flex', gap: '32px', justifyContent: 'center',
             marginTop: '64px', flexWrap: 'wrap',
@@ -184,7 +159,7 @@ export default function HomePage() {
                 return (
                   <div key={stat.label} className="kl-stat-card">
                     <div className="kl-stat-icon-box">
-                      <Icon size={20} />
+                      {Icon && <Icon size={20} />}
                     </div>
                     <p className="kl-stat-value">{stat.value}</p>
                     <p className="kl-stat-label">{stat.label}</p>
@@ -201,48 +176,33 @@ export default function HomePage() {
          <EventsSection />
       </Suspense>
 
-      {/* ── HOW IT WORKS ── */}
-      <section id="how-it-works" style={{ padding: '80px 20px', background: 'var(--color-surface)', scrollMarginTop: '80px' }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: '56px' }}>
-            <p style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--color-primary)', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '12px' }}>HOW IT WORKS</p>
+      {/* ── SIMPLE PROCESS SUMMARY ── */}
+      <section style={{ padding: '80px 20px', background: 'var(--color-surface)', textAlign: 'center' }}>
+        <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
+          <div style={{ marginBottom: '48px' }}>
+            <p style={{ fontSize: '0.8rem', fontWeight: '700', color: '#FF6F61', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '12px' }}>SERVICE PROCESS</p>
             <h2 className="kl-heading-lg">
-              <span className="kl-gradient-text">키링크</span>는 이렇게 진행됩니다
+              세상의 모든 인연은<br/><span className="kl-gradient-text">세 단계</span>로 시작됩니다
             </h2>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '24px', justifyContent: 'center' }}>
-            {steps.map((step, idx) => (
-              <div key={idx} style={{
-                background: 'var(--gradient-card)',
-                border: '1px solid var(--color-border)',
-                borderRadius: 'var(--radius-lg)',
-                padding: '28px 24px',
-                position: 'relative',
-                overflow: 'hidden',
-                transition: 'all 0.3s',
-              }}
-                onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(255,111,97,0.4)'; (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-4px)'; }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--color-border)'; (e.currentTarget as HTMLDivElement).style.transform = 'translateY(0)'; }}
-              >
-                <div style={{
-                  position: 'absolute', top: '16px', right: '16px',
-                  fontSize: '3rem', fontWeight: '900', color: 'rgba(255,111,97,0.06)',
-                  lineHeight: 1, userSelect: 'none',
-                }}>{step.num}</div>
-                <div style={{
-                  width: '44px', height: '44px', borderRadius: '12px',
-                  background: 'linear-gradient(135deg, #FFDBE9, #E6E6FA)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  marginBottom: '16px', fontWeight: '800', color: '#333333', fontSize: '0.9rem',
-                }}>
-                  {step.num}
-                </div>
-                <h3 style={{ fontWeight: '700', fontSize: '1rem', marginBottom: '10px', color: 'var(--color-text-primary)' }}>{step.title}</h3>
-                <p style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)', lineHeight: 1.7 }}>{step.desc}</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '40px', marginBottom: '48px' }}>
+            {[
+              { icon: '📝', title: '참여 신청', desc: '검증된 신분의 분들을 대상으로 엄격하게 선별합니다.' },
+              { icon: '🥂', title: '현장 미팅', desc: '자유롭고 편안한 분위기에서 1:1 대화를 나눕니다.' },
+              { icon: '💖', title: '매칭 및 연결', desc: '상호 호감 시 카카오톡 오픈채팅으로 바로 연결해 드립니다.' },
+            ].map((p, i) => (
+              <div key={i} style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '2.5rem', marginBottom: '16px' }}>{p.icon}</div>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '10px' }}>{p.title}</h3>
+                <p style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>{p.desc}</p>
               </div>
             ))}
           </div>
+
+          <Link href="/how-it-works" className="kl-btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+            전체 진행 과정 자세히 보기 <ArrowRight size={18} />
+          </Link>
         </div>
       </section>
 
@@ -293,7 +253,6 @@ export default function HomePage() {
             </h2>
           </div>
 
-          {/* Review Carousel */}
           <div style={{ position: 'relative' }}>
             <div style={{
               background: 'var(--gradient-card)',
@@ -313,7 +272,7 @@ export default function HomePage() {
                 marginBottom: '28px',
                 fontStyle: 'italic',
               }}>
-                &ldquo;{mockReviews[currentReview].text}&rdquo;
+                &ldquo;{mockReviews[currentReview]?.text}&rdquo;
               </p>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -325,9 +284,9 @@ export default function HomePage() {
                     <Heart size={18} fill="#FFFFFF" color="#FFFFFF" />
                   </div>
                   <div>
-                    <p style={{ fontWeight: '700', color: 'var(--color-text-primary)', fontSize: '0.95rem' }}>{mockReviews[currentReview].couple}</p>
+                    <p style={{ fontWeight: '700', color: 'var(--color-text-primary)', fontSize: '0.95rem' }}>{mockReviews[currentReview]?.couple}</p>
                     <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
-                      {mockReviews[currentReview].region} {mockReviews[currentReview].episode}
+                      {mockReviews[currentReview]?.region} {mockReviews[currentReview]?.episode}
                     </p>
                   </div>
                 </div>
@@ -355,7 +314,6 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Dots */}
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginTop: '20px' }}>
               {mockReviews.map((_, i) => (
                 <button key={i} onClick={() => setCurrentReview(i)}
@@ -395,3 +353,10 @@ export default function HomePage() {
     </div>
   );
 }
+
+// Missing variable restoration
+const Users = (props: any) => (
+  <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-users">
+    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+  </svg>
+);

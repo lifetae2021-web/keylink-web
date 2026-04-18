@@ -11,7 +11,7 @@ import toast from 'react-hot-toast';
 // '진행 과정' is a special anchor link pointing to /#how-it-works
 const navLinks = [
   { href: '/', label: 'HOME', anchor: null },
-  { href: '/#how-it-works', label: '진행 과정', anchor: 'how-it-works' },
+  { href: '/how-it-works', label: '진행 과정', anchor: null },
   { href: '/events', label: '참여 신청', anchor: null },
   { href: '/notices', label: '공지 & FAQ', anchor: null },
   { href: '/matching/result', label: '매칭 결과', anchor: null },
@@ -60,37 +60,14 @@ export default function Navbar() {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 40);
       
-      // Prevent scroll-spy from overriding during manual clicks
-      if (isManualScrolling.current) return;
-
-      // Active anchor tracking - Only on homepage
-      if (pathname === '/') {
-        const section = document.getElementById('how-it-works');
-        if (section) {
-          const rect = section.getBoundingClientRect();
-          const inView = rect.top <= 120 && rect.bottom > 120;
-          setActiveAnchor(inView ? 'how-it-works' : null);
-        } else {
-          setActiveAnchor(null);
-        }
-      } else {
-        setActiveAnchor(null);
-      }
+      // Active anchor tracking - Reset on mount
+      setActiveAnchor(null);
     };
     window.addEventListener('scroll', handleScroll, { passive: true });
 
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
     });
-
-    // On mount: check if URL has hash and initialize state
-    const hash = window.location.hash.replace('#', '');
-    if (hash === 'how-it-works') {
-      setActiveAnchor('how-it-works');
-      setTimeout(() => {
-        document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' });
-      }, 300);
-    }
 
     return () => {
       window.removeEventListener('scroll', handleScroll);
