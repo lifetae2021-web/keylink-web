@@ -212,14 +212,7 @@ export default function StatusPage() {
                     e.currentTarget.style.boxShadow = 'none';
                   }}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div style={{ 
-                      padding: '6px 12px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: '800',
-                      background: p.gender === 'male' ? '#EBF5FF' : '#FFF0F3',
-                      color: p.gender === 'male' ? '#007AFF' : '#FF4D8D'
-                    }}>
-                      {p.gender === 'male' ? 'Male' : 'Female'}
-                    </div>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'flex-start', minHeight: '32px' }}>
                     {p.status === 'confirmed' && <Sparkles size={16} color="#FFD700" fill="#FFD700" />}
                   </div>
 

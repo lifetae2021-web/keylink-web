@@ -23,10 +23,7 @@ export default function StatusListPage() {
   return (
     <div style={{ paddingBottom: '100px', background: 'var(--color-bg)', minHeight: '100vh' }}>
       <div className="kl-container" style={{ paddingTop: '60px' }}>
-        <header style={{ textAlign: 'center', marginBottom: '60px' }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', color: '#FF6F61', fontWeight: '800', fontSize: '0.9rem', marginBottom: '16px' }}>
-            <LayoutGrid size={18} /> 실시간 매칭 현황
-          </div>
+        <header style={{ textAlign: 'center', marginBottom: '50px' }}>
           <h1 style={{ fontSize: '2.8rem', fontWeight: '900', marginBottom: '16px', letterSpacing: '-0.04em' }}>
             현재 모집 중인 <span style={{ color: '#FF6F61' }}>기수 명단</span>
           </h1>
