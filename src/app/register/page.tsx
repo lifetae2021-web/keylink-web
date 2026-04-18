@@ -48,6 +48,24 @@ function RegisterForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
   
+  // Input Validation UI Feedback
+  const [idError, setIdError] = useState(false);
+  const [emailError, setEmailError] = useState(false);
+
+  useEffect(() => {
+    if (idError) {
+      const timer = setTimeout(() => setIdError(false), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [idError]);
+
+  useEffect(() => {
+    if (emailError) {
+      const timer = setTimeout(() => setEmailError(false), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [emailError]);
+  
   const formatPhone = (val: string) => {
     const digits = val.replace(/\D/g, '').slice(0, 11);
     if (digits.length <= 3) return digits;
@@ -64,6 +82,21 @@ function RegisterForm() {
 
   const update = (key: string, value: string) => {
     let formattedValue = value;
+    
+    if (key === 'username') {
+      // Allow only lowercase English and numbers
+      const filtered = value.toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (filtered !== value.toLowerCase()) setIdError(true);
+      formattedValue = filtered;
+    }
+
+    if (key === 'email') {
+      // Allow only English, numbers, and @._-
+      const filtered = value.replace(/[^a-zA-Z0-9@._-]/g, '');
+      if (filtered !== value) setEmailError(true);
+      formattedValue = filtered;
+    }
+
     if (key === 'phone') formattedValue = formatPhone(value);
     if (key === 'birthDate') formattedValue = formatBirthDate(value);
     setForm(f => ({ ...f, [key]: formattedValue }));
@@ -169,7 +202,15 @@ function RegisterForm() {
                 <div>
                   <label className="kl-label" style={{ fontWeight: '800', marginBottom: '10px' }}>아이디</label>
                   <div style={{ display: 'flex', gap: '8px' }}>
-                    <input className="kl-input" style={{ flex: 1, borderRadius: '12px', height: '54px' }} placeholder="아이디를 입력해 주세요" value={form.username} onChange={e => { update('username', e.target.value); setIdChecked(false); }} />
+                    <input 
+                      className="kl-input" 
+                      style={{ flex: 1, borderRadius: '12px', height: '54px' }} 
+                      placeholder="영문 소문자, 숫자 조합" 
+                      value={form.username} 
+                      onChange={e => { update('username', e.target.value); setIdChecked(false); }}
+                      inputMode="email"
+                      lang="en"
+                    />
                     <button type="button" onClick={handleIdCheck} style={{ 
                       padding: '0 20px', background: idChecked ? '#F0F0F0' : '#333', color: idChecked ? '#999' : '#FFF', 
                       borderRadius: '12px', border: 'none', fontWeight: '800', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.2s'
@@ -177,6 +218,11 @@ function RegisterForm() {
                       중복확인
                     </button>
                   </div>
+                  {idError && (
+                    <div style={{ color: '#EF4444', fontSize: '0.75rem', marginTop: '6px', fontWeight: '600', animation: 'fadeIn 0.3s' }}>
+                      영문 소문자와 숫자만 입력 가능합니다.
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -184,6 +230,11 @@ function RegisterForm() {
               <div>
                 <label className="kl-label" style={{ fontWeight: '800', marginBottom: '10px' }}>이메일</label>
                 <input className="kl-input" style={{ borderRadius: '12px', height: '54px' }} type="email" placeholder="example@email.com" value={form.email} onChange={e => update('email', e.target.value)} />
+                {emailError && (
+                  <div style={{ color: '#EF4444', fontSize: '0.75rem', marginTop: '6px', fontWeight: '600', animation: 'fadeIn 0.3s' }}>
+                    영문, 숫자, 일부 특수문자만 입력 가능합니다.
+                  </div>
+                )}
               </div>
 
               {/* Password */}
@@ -336,7 +387,10 @@ function RegisterForm() {
           </div>
         )}
       </div>
-      <style>{`@keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }`}</style>
+      <style>{`
+        @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+      `}</style>
     </div>
   );
 }
