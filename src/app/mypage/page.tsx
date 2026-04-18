@@ -73,11 +73,9 @@ export default function MyPage() {
   });
 
   // Photo states in modal (File or URL)
-  const [facePhotos, setFacePhotos] = useState<any[]>([]);
-  const [bodyPhotos, setBodyPhotos] = useState<any[]>([]);
+  const [profilePhotos, setProfilePhotos] = useState<any[]>([]);
   
-  const faceInputRef = useRef<HTMLInputElement>(null);
-  const bodyInputRef = useRef<HTMLInputElement>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
   const mainPhotoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -113,8 +111,11 @@ export default function MyPage() {
           };
           setEditForm(initialForm);
           
-          if (d.facePhotos) setFacePhotos(d.facePhotos);
-          if (d.bodyPhotos) setBodyPhotos(d.bodyPhotos);
+          // Migrate/Consolidate legacy categories
+          const legacyFace = d.facePhotos || [];
+          const legacyBody = d.bodyPhotos || [];
+          const merged = [...legacyFace, ...legacyBody].slice(0, 5);
+          setProfilePhotos(merged);
         }
       } catch (e) { console.error(e); }
       finally { setLoading(false); }
@@ -132,8 +133,10 @@ export default function MyPage() {
     try {
       const updateData = {
         ...editForm,
-        facePhotos,
-        bodyPhotos,
+        profilePhotos,
+        // Keep old fields for backward compatibility if needed, or clear them
+        facePhotos: [],
+        bodyPhotos: [],
         updatedAt: new Date()
       };
       
@@ -156,18 +159,20 @@ export default function MyPage() {
     return `${d.slice(0,3)}-${d.slice(3,7)}-${d.slice(7)}`;
   };
 
-  const handlePhotoUpload = (category: 'face' | 'body', e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
     const files = Array.from(e.target.files);
+    
+    if (profilePhotos.length + files.length > 5) {
+      toast.error('사진은 최대 5장까지만 등록 가능합니다.');
+      return;
+    }
+
     files.forEach(file => {
       const reader = new FileReader();
       reader.onload = (ev) => {
         const url = ev.target?.result as string;
-        if (category === 'face') {
-          setFacePhotos(prev => [...prev, url].slice(0, 5));
-        } else {
-          setBodyPhotos(prev => [...prev, url].slice(0, 5));
-        }
+        setProfilePhotos(prev => [...prev, url].slice(0, 5));
       };
       reader.readAsDataURL(file);
     });
@@ -206,63 +211,33 @@ export default function MyPage() {
               </button>
             </div>
 
-            {/* Photo Section */}
+            {/* Photo Section (Unified v1.9.9) */}
             <div style={{ marginBottom: '40px' }}>
-              <EditRow label="본인 사진 업로드 (최대 5장씩)" required>
+              <EditRow label={`본인 사진 업로드 (${profilePhotos.length}/5)`} required>
                 <div style={{ background: '#FFFDFD', border: '1.5px dashed #FFDBE9', borderRadius: '16px', padding: '24px', marginBottom: '16px' }}>
-                   <p style={{ fontSize: '0.78rem', color: '#666', lineHeight: 1.6, marginBottom: '20px' }}>
+                   <p style={{ fontSize: '0.82rem', color: '#666', lineHeight: 1.6, marginBottom: '20px', fontWeight: '500' }}>
                     과도한 보정이나 마스크 착용 사진은 지양해주세요.<br/>
-                    <strong style={{ color: '#FF6F61' }}>얼굴과 전신 사진을 각각 최소 1장 이상 등록 바랍니다.</strong>
+                    <strong style={{ color: '#FF6F61' }}>얼굴과 전신 사진이 포함되도록 자유롭게 총 5장까지 등록해 주세요.</strong>
                   </p>
                   
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                    {/* Face Category */}
-                    <div>
-                      <p style={{ fontSize: '0.8rem', fontWeight: '800', color: '#333', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <Camera size={14} color="#FF6F61" /> 얼굴 사진 ({facePhotos.length}/5)
-                      </p>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                        {facePhotos.map((src, i) => (
-                          <div key={i} style={{ position: 'relative', width: '60px', height: '60px', borderRadius: '12px', overflow: 'hidden', border: '1px solid #FFDBE9' }}>
-                            <img src={src} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="face" />
-                            <button onClick={() => setFacePhotos(p => p.filter((_, idx) => idx !== i))} style={{ position: 'absolute', top: '2px', right: '2px', background: 'rgba(0,0,0,0.5)', border: 'none', borderRadius: '50%', width: '16px', height: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-                              <X size={10} color="#fff" />
-                            </button>
-                          </div>
-                        ))}
-                        {facePhotos.length < 5 && (
-                          <button onClick={() => faceInputRef.current?.click()} style={{ width: '60px', height: '60px', borderRadius: '12px', border: '1.5px dashed #FFDBE9', background: '#FFFAFA', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#FFDBE9' }}>
-                            <Upload size={20} />
-                          </button>
-                        )}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+                    {profilePhotos.map((src, i) => (
+                      <div key={i} style={{ position: 'relative', width: '80px', height: '80px', borderRadius: '14px', overflow: 'hidden', border: '1px solid #FFDBE9', boxShadow: '0 4px 12px rgba(255,111,97,0.1)' }}>
+                        <img src={src} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="profile" />
+                        <button onClick={() => setProfilePhotos(p => p.filter((_, idx) => idx !== i))} style={{ position: 'absolute', top: '4px', right: '4px', background: 'rgba(0,0,0,0.6)', border: 'none', borderRadius: '50%', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                          <X size={12} color="#fff" />
+                        </button>
                       </div>
-                    </div>
-
-                    {/* Body Category */}
-                    <div>
-                      <p style={{ fontSize: '0.8rem', fontWeight: '800', color: '#333', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <Camera size={14} color="#A98FD5" /> 전신 사진 ({bodyPhotos.length}/5)
-                      </p>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                        {bodyPhotos.map((src, i) => (
-                          <div key={i} style={{ position: 'relative', width: '60px', height: '60px', borderRadius: '12px', overflow: 'hidden', border: '1px solid #E8D5F5' }}>
-                            <img src={src} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="body" />
-                            <button onClick={() => setBodyPhotos(p => p.filter((_, idx) => idx !== i))} style={{ position: 'absolute', top: '2px', right: '2px', background: 'rgba(0,0,0,0.5)', border: 'none', borderRadius: '50%', width: '16px', height: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-                              <X size={10} color="#fff" />
-                            </button>
-                          </div>
-                        ))}
-                        {bodyPhotos.length < 5 && (
-                          <button onClick={() => bodyInputRef.current?.click()} style={{ width: '60px', height: '60px', borderRadius: '12px', border: '1.5px dashed #FFDBE9', background: '#FFFAFA', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#FFDBE9' }}>
-                            <Upload size={20} />
-                          </button>
-                        )}
-                      </div>
-                    </div>
+                    ))}
+                    {profilePhotos.length < 5 && (
+                      <button onClick={() => photoInputRef.current?.click()} style={{ width: '80px', height: '80px', borderRadius: '14px', border: '1.5px dashed #FFDBE9', background: '#FFFAFA', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#FFDBE9', gap: '4px' }}>
+                        <Upload size={24} />
+                        <span style={{ fontSize: '0.7rem', fontWeight: '700' }}>추가</span>
+                      </button>
+                    )}
                   </div>
                 </div>
-                <input ref={faceInputRef} type="file" multiple accept="image/*" style={{ display: 'none' }} onChange={e => handlePhotoUpload('face', e)} />
-                <input ref={bodyInputRef} type="file" multiple accept="image/*" style={{ display: 'none' }} onChange={e => handlePhotoUpload('body', e)} />
+                <input ref={photoInputRef} type="file" multiple accept="image/*" style={{ display: 'none' }} onChange={handlePhotoUpload} />
               </EditRow>
             </div>
 
@@ -397,15 +372,15 @@ export default function MyPage() {
             </button>
           </div>
 
-          {/* Profile Image (First Face Photo or Placeholder) */}
+          {/* Profile Image (First Photo or Placeholder) */}
           <div style={{ margin: '20px 24px', borderRadius: '20px', overflow: 'hidden', background: 'linear-gradient(135deg, #FFDBE9 0%, #E8D5F5 100%)', aspectRatio: '3/2', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '10px', cursor: 'pointer', position: 'relative' }}
             onClick={() => setIsEditing(true)}>
-            {facePhotos.length > 0 ? (
-              <img src={facePhotos[0]} alt="profile" style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }} />
+            {profilePhotos.length > 0 ? (
+              <img src={profilePhotos[0]} alt="profile" style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }} />
             ) : (
               <>
                 <Camera size={40} color="rgba(255,111,97,0.4)" />
-                <span style={{ fontSize: '0.85rem', color: 'rgba(255,111,97,0.5)', fontWeight: '800', textAlign: 'center' }}>얼굴 사진을 등록해주세요</span>
+                <span style={{ fontSize: '0.85rem', color: 'rgba(255,111,97,0.5)', fontWeight: '800', textAlign: 'center' }}>본인 사진을 등록해주세요</span>
               </>
             )}
           </div>
@@ -448,31 +423,17 @@ export default function MyPage() {
                   </span>
                 </div>
 
-                {/* Face Photo Strip */}
+                {/* Consolidated Photo Gallery */}
                 <div style={{ paddingTop: '20px' }}>
                   <p style={{ fontSize: '0.8rem', color: '#AAA', fontWeight: '700', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Camera size={14} color="#FF6F61" /> 얼굴 갤러리 ({facePhotos.length}/5)
+                    <Camera size={14} color="#FF6F61" /> 본인 사진 갤러리 ({profilePhotos.length}/5)
                   </p>
-                  <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '8px' }} className="kl-scrollbar">
-                    {facePhotos.length > 0 ? facePhotos.map((src, i) => (
-                      <div key={i} style={{ width: '80px', height: '80px', borderRadius: '12px', overflow: 'hidden', flexShrink: 0, border: '2px solid #FFE8E5' }}>
-                        <img src={src} alt={`face-${i}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '12px' }} className="kl-scrollbar">
+                    {profilePhotos.length > 0 ? profilePhotos.map((src, i) => (
+                      <div key={i} style={{ width: '100px', height: '100px', borderRadius: '12px', overflow: 'hidden', flexShrink: 0, border: '2.5px solid #FFE8E5', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
+                        <img src={src} alt={`profile-${i}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       </div>
-                    )) : <p style={{ fontSize: '0.85rem', color: '#CCC', fontStyle: 'italic' }}>등록된 얼굴 사진이 없습니다.</p>}
-                  </div>
-                </div>
-
-                {/* Body Photo Strip */}
-                <div style={{ paddingTop: '20px' }}>
-                  <p style={{ fontSize: '0.8rem', color: '#AAA', fontWeight: '700', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Camera size={14} color="#A98FD5" /> 전신 갤러리 ({bodyPhotos.length}/5)
-                  </p>
-                  <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '8px' }} className="kl-scrollbar">
-                    {bodyPhotos.length > 0 ? bodyPhotos.map((src, i) => (
-                      <div key={i} style={{ width: '80px', height: '80px', borderRadius: '12px', overflow: 'hidden', flexShrink: 0, border: '2px solid #E8D5F5' }}>
-                        <img src={src} alt={`body-${i}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      </div>
-                    )) : <p style={{ fontSize: '0.85rem', color: '#CCC', fontStyle: 'italic' }}>등록된 전신 사진이 없습니다.</p>}
+                    )) : <p style={{ fontSize: '0.85rem', color: '#CCC', fontStyle: 'italic' }}>등록된 사진이 없습니다.</p>}
                   </div>
                 </div>
               </div>
