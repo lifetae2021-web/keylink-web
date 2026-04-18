@@ -43,10 +43,11 @@ export default function StatusPage() {
             display: 'inline-flex', alignItems: 'center', gap: '8px', 
             color: 'var(--color-text-secondary)', textDecoration: 'none', 
             fontWeight: '600', fontSize: '0.9rem',
-            padding: '8px 16px', borderRadius: '12px', background: '#fff',
-            border: '1px solid #eee', transition: 'all 0.2s ease'
-          }} onMouseEnter={e => { e.currentTarget.style.borderColor = '#FF6F61'; e.currentTarget.style.color = '#FF6F61'; }} onMouseLeave={e => { e.currentTarget.style.borderColor = '#eee'; e.currentTarget.style.color = 'var(--color-text-secondary)'; }}>
-            <ArrowRight size={18} style={{ transform: 'rotate(180deg)' }} /> 목록으로 돌아가기
+            padding: '10px 20px', borderRadius: '14px', background: '#fff',
+            border: '1.5px solid #eee', transition: 'all 0.2s ease',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.03)'
+          }} onMouseEnter={e => { e.currentTarget.style.borderColor = '#FF6F61'; e.currentTarget.style.color = '#FF6F61'; e.currentTarget.style.boxShadow = '0 6px 16px rgba(255,111,97,0.1)'; }} onMouseLeave={e => { e.currentTarget.style.borderColor = '#eee'; e.currentTarget.style.color = 'var(--color-text-secondary)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.03)'; }}>
+            <ArrowRight size={18} style={{ transform: 'rotate(180deg)' }} /> 기수 목록으로 돌아가기
           </Link>
         </div>
 
@@ -56,9 +57,9 @@ export default function StatusPage() {
             display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '32px',
             alignItems: 'center'
           }}>
-            <div style={{ position: 'relative', borderRadius: '32px', overflow: 'hidden', height: '400px', boxShadow: '0 20px 40px rgba(0,0,0,0.1)' }}>
+            <div style={{ position: 'relative', borderRadius: '32px', overflow: 'hidden', height: '400px', boxShadow: '0 20px 40px rgba(0,0,0,0.1)', background: '#f5f5f5' }}>
               <Image 
-                src="/Users/lifetae2021/.gemini/antigravity/brain/0e7f7e0d-dcfa-4f54-94dd-efae703615ed/venue_interior_mood_1776525335881.png" 
+                src="/images/venue.png" 
                 alt="Venue Interior" 
                 fill 
                 style={{ objectFit: 'cover' }}
