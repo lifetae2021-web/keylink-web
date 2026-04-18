@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
@@ -22,6 +22,7 @@ export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [activeAnchor, setActiveAnchor] = useState<string | null>(null);
+  const isManualScrolling = useRef(false);
   const pathname = usePathname();
 
   // Smooth scroll to anchor, handle cross-page navigation
@@ -29,11 +30,21 @@ export default function Navbar() {
     if (!anchor) return;
     e.preventDefault();
     setIsMenuOpen(false);
+    
+    // Set immediate active state to prevent flicker
+    setActiveAnchor(anchor);
+    isManualScrolling.current = true;
 
     const scrollTo = () => {
       const el = document.getElementById(anchor);
       if (el) {
         el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // Unlock scroll spy after smooth scroll completes
+        setTimeout(() => {
+          isManualScrolling.current = false;
+        }, 800);
+      } else {
+        isManualScrolling.current = false;
       }
     };
 
@@ -49,6 +60,9 @@ export default function Navbar() {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 40);
       
+      // Prevent scroll-spy from overriding during manual clicks
+      if (isManualScrolling.current) return;
+
       // Active anchor tracking - Only on homepage
       if (pathname === '/') {
         const section = document.getElementById('how-it-works');
@@ -69,8 +83,10 @@ export default function Navbar() {
       setUser(currentUser);
     });
 
-    // On mount: check if URL has hash and scroll
-    if (window.location.hash === '#how-it-works') {
+    // On mount: check if URL has hash and initialize state
+    const hash = window.location.hash.replace('#', '');
+    if (hash === 'how-it-works') {
+      setActiveAnchor('how-it-works');
       setTimeout(() => {
         document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' });
       }, 300);
