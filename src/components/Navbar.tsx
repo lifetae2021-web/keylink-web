@@ -11,10 +11,10 @@ import toast from 'react-hot-toast';
 // '진행 과정' is a special anchor link pointing to /#how-it-works
 const navLinks = [
   { href: '/', label: 'HOME', anchor: null },
+  { href: '/notices', label: '공지 & FAQ', anchor: null },
   { href: '/how-it-works', label: '진행 과정', anchor: null },
   { href: '/events', label: '참여 신청', anchor: null },
   { href: '/status', label: '실시간 현황', anchor: null },
-  { href: '/notices', label: '공지 & FAQ', anchor: null },
   { href: '/matching/result', label: '매칭 결과', anchor: null },
 ];
 
