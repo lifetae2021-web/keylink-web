@@ -74,3 +74,25 @@ export const mockReviews = [
     region: '부산',
   },
 ];
+
+export const mockLineup = [
+  // 남성 참가자
+  { id: 'm1', gender: 'male', year: '95', occupation: '개인사업자', mbti: 'ENFJ', keywords: ['운동매니아', '자기관리', '다정다감'], status: 'confirmed' },
+  { id: 'm2', gender: 'male', year: '95', occupation: '공무원', mbti: 'ISTJ', keywords: ['안정적인', '계획형', '듬직한'], status: 'confirmed' },
+  { id: 'm3', gender: 'male', year: '94', occupation: '회사원 (IT)', mbti: 'INTP', keywords: ['지성적인', '여유로운', '유머러스'], status: 'confirmed' },
+  { id: 'm4', gender: 'male', year: '91', occupation: '대기업 사무직', mbti: 'ENTJ', keywords: ['리더십', '열정적인', '자상한'], status: 'confirmed' },
+  { id: 'm5', gender: 'male', year: '91', occupation: '경찰공무원', mbti: 'ESTP', keywords: ['활동적인', '솔직한', '에너지'], status: 'confirmed' },
+  { id: 'm6', gender: 'male', year: '95', occupation: '공공기관', mbti: 'INFJ', keywords: ['경청하는', '섬세한', '차분한'], status: 'confirmed' },
+  { id: 'm7', gender: 'male', year: '92', occupation: '중견기업 연구원', mbti: 'INTJ', keywords: ['분석적인', '목표지향', '성실한'], status: 'confirmed' },
+  { id: 'm8', gender: 'male', year: '', occupation: '모집중', mbti: '', keywords: [], status: 'recruiting' },
+  
+  // 여성 참가자
+  { id: 'f1', gender: 'female', year: '94', occupation: '개인사업자', mbti: 'ENFP', keywords: ['밝은에너지', '사교적인', '공감왕'], status: 'confirmed' },
+  { id: 'f2', gender: 'female', year: '93', occupation: '전문직 (의료)', mbti: 'ISFJ', keywords: ['배려심', '꼼꼼한', '따뜻한'], status: 'confirmed' },
+  { id: 'f3', gender: 'female', year: '94', occupation: '서비스업 (코디)', mbti: 'ESFJ', keywords: ['상냥한', '패션감각', '센스쟁이'], status: 'confirmed' },
+  { id: 'f4', gender: 'female', year: '91', occupation: '중소기업 사무직', mbti: 'ISTP', keywords: ['쿨한성격', '취미부자', '차분한'], status: 'confirmed' },
+  { id: 'f5', gender: 'female', year: '95', occupation: '회사원 (마케팅)', mbti: 'ENFJ', keywords: ['커뮤니케이션', '자기개발', '긍정적'], status: 'confirmed' },
+  { id: 'f6', gender: 'female', year: '97', occupation: '프리랜서 디자이너', mbti: 'INFP', keywords: ['예술적감성', '몽글몽글', '진실된'], status: 'confirmed' },
+  { id: 'f7', gender: 'female', year: '96', occupation: '금융권 사무직', mbti: 'ESTJ', keywords: ['똑부러지는', '성실함', '웃음꽃'], status: 'confirmed' },
+  { id: 'f8', gender: 'female', year: '94', occupation: '보건인력', mbti: 'ISFP', keywords: ['예술가기질', '경청', '감각적인'], status: 'confirmed' },
+];
