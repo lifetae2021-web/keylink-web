@@ -119,7 +119,7 @@ export default function Navbar() {
         borderBottom: isScrolled ? '1px solid rgba(255, 219, 233, 0.5)' : '1px solid transparent',
       }}
     >
-      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px' }}>
+      <div className="kl-nav-container" style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '85px' }}>
           {/* Logo */}
           <Link href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', height: '85px', overflow: 'hidden' }}>
@@ -181,12 +181,12 @@ export default function Navbar() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             {user ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <Link href="/mypage" className="kl-btn-outline" style={{ padding: '10px 18px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '100px' }}>
+                <Link href="/mypage" className="kl-btn-outline kl-mypage-btn" style={{ padding: '10px 18px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '100px' }}>
                   <UserIcon size={16} /> 마이페이지
                 </Link>
               </div>
             ) : (
-              <Link href="/login" className="kl-btn-primary" style={{ padding: '10px 20px', fontSize: '0.85rem' }}>
+              <Link href="/login" className="kl-btn-primary kl-mypage-btn" style={{ padding: '10px 20px', fontSize: '0.85rem' }}>
                 로그인/회원가입
               </Link>
             )}
@@ -266,6 +266,11 @@ export default function Navbar() {
         @media (max-width: 768px) {
           .desktop-nav { display: none !important; }
           .mobile-menu-btn { display: flex !important; }
+          .kl-nav-container { padding: 0 10px !important; }
+          .kl-mypage-btn { 
+            padding: 8px 14px !important; 
+            font-size: 0.78rem !important; 
+          }
         }
         @media (min-width: 769px) {
           .mobile-menu-btn { 
