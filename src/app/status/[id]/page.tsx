@@ -22,9 +22,9 @@ export default function StatusPage() {
     return () => clearInterval(interval);
   }, []);
 
-  const maleCount = mockLineup.filter(p => p.gender === 'male').length;
-  const femaleCount = mockLineup.filter(p => p.gender === 'female').length;
-  const filteredLineup = mockLineup.filter(p => p.gender === activeTab);
+  const maleLineup = mockLineup.filter(p => p.gender === 'male');
+  const femaleLineup = mockLineup.filter(p => p.gender === 'female');
+  const filteredLineup = activeTab === 'male' ? maleLineup : femaleLineup;
 
   const progressMale = 7 / 8;
   const progressFemale = 8 / 8;
@@ -121,133 +121,111 @@ export default function StatusPage() {
           </div>
         </section>
 
-        {/* Participant Lineup Grid */}
+        {/* Participant Lineup Overhaul */}
         <section style={{ marginBottom: '80px' }}>
           <div style={{ textAlign: 'center', marginBottom: '40px' }}>
             <h3 style={{ fontSize: '1.8rem', fontWeight: '900', color: '#111', marginBottom: '12px' }}>
-              실시간 라인업 확인
+              실시간 라인업
             </h3>
             <p style={{ color: 'var(--color-text-secondary)', fontWeight: '500' }}>
-              나이, 직업, 가치관을 미리 확인해 보세요.
+              현재 확정된 참가자분들의 프로필 요약입니다.
             </p>
           </div>
 
-          {/* Gender Tabs */}
+          {/* Gender Tabs (Redesign) */}
           <div style={{ 
-            position: 'sticky', top: '133px', zIndex: 90,
-            display: 'flex', justifyContent: 'center', gap: '12px', 
-            marginBottom: '40px', padding: '10px',
-            background: 'rgba(255,255,255,0.8)', backdropFilter: 'blur(8px)',
-            borderRadius: '100px', width: 'fit-content', margin: '0 auto 40px',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
-            border: '1px solid rgba(0,0,0,0.05)'
+            display: 'flex', justifyContent: 'center', gap: '10px', 
+            marginBottom: '40px'
           }}>
             <button 
               onClick={() => setActiveTab('male')}
               style={{
-                padding: '12px 24px', borderRadius: '100px', border: 'none',
-                fontWeight: '800', fontSize: '0.95rem', cursor: 'pointer',
-                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                background: activeTab === 'male' ? '#007AFF' : 'transparent',
-                color: activeTab === 'male' ? '#fff' : '#666',
-                display: 'flex', alignItems: 'center', gap: '8px',
-                boxShadow: activeTab === 'male' ? '0 8px 16px rgba(0,122,255,0.25)' : 'none'
+                padding: '16px 32px', borderRadius: '100px', border: 'none',
+                fontWeight: '900', fontSize: '1.05rem', cursor: 'pointer',
+                transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                background: activeTab === 'male' ? 'linear-gradient(135deg, #007AFF, #0056B3)' : '#f5f5f5',
+                color: activeTab === 'male' ? '#fff' : '#888',
+                boxShadow: activeTab === 'male' ? '0 10px 20px rgba(0,122,255,0.3)' : 'none',
+                transform: activeTab === 'male' ? 'scale(1.05)' : 'scale(1)'
               }}
             >
-              키링남 라인업 <span style={{ fontSize: '0.8rem', opacity: 0.8 }}>{maleCount}명</span>
+              키링남 라인업
             </button>
             <button 
               onClick={() => setActiveTab('female')}
               style={{
-                padding: '12px 24px', borderRadius: '100px', border: 'none',
-                fontWeight: '800', fontSize: '0.95rem', cursor: 'pointer',
-                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                background: activeTab === 'female' ? '#FF6F61' : 'transparent',
-                color: activeTab === 'female' ? '#fff' : '#666',
-                display: 'flex', alignItems: 'center', gap: '8px',
-                boxShadow: activeTab === 'female' ? '0 8px 16px rgba(255,111,97,0.25)' : 'none'
+                padding: '16px 32px', borderRadius: '100px', border: 'none',
+                fontWeight: '900', fontSize: '1.05rem', cursor: 'pointer',
+                transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                background: activeTab === 'female' ? 'linear-gradient(135deg, #FF6F61, #FF8A71)' : '#f5f5f5',
+                color: activeTab === 'female' ? '#fff' : '#888',
+                boxShadow: activeTab === 'female' ? '0 10px 20px rgba(255,111,97,0.3)' : 'none',
+                transform: activeTab === 'female' ? 'scale(1.05)' : 'scale(1)'
               }}
             >
-              키링녀 라인업 <span style={{ fontSize: '0.8rem', opacity: 0.8 }}>{femaleCount}명</span>
+              키링녀 라인업
             </button>
           </div>
 
-          <AnimatePresence mode="wait">
-            <motion.div 
-              key={activeTab}
-              initial={{ opacity: 0, scale: 0.98 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.98 }}
-              transition={{ duration: 0.3, ease: 'easeOut' }}
-              style={{ 
-                display: 'grid', 
-                gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', 
-                gap: '20px'
-              }}
-            >
-              {filteredLineup.map((p) => (
-                <motion.div 
-                  layout
-                  key={p.id}
-                  style={{ 
-                    background: p.status === 'recruiting' ? 'rgba(0,0,0,0.02)' : '#fff',
-                    border: `1.5px solid ${p.status === 'recruiting' ? '#f0f0f0' : activeTab === 'male' ? 'rgba(0,122,255,0.1)' : 'rgba(255,111,97,0.1)'}`,
-                    borderRadius: '24px',
-                    padding: '24px',
-                    position: 'relative',
-                    transition: 'transform 0.3s ease, box-shadow 0.3s ease',
-                    cursor: 'default',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '12px'
-                  }}
-                  onMouseEnter={e => {
-                    if (p.status !== 'recruiting') {
-                      e.currentTarget.style.transform = 'translateY(-5px)';
-                      e.currentTarget.style.boxShadow = activeTab === 'male' ? '0 15px 30px rgba(0,122,255,0.1)' : '0 15px 30px rgba(255,111,97,0.1)';
-                    }
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow = 'none';
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'flex-start', minHeight: '32px' }}>
-                    {p.status === 'confirmed' && <Sparkles size={16} color="#FFD700" fill="#FFD700" />}
-                  </div>
+          {/* Compact List View */}
+          <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+            {/* Header Row (Desktop only) */}
+            <div className="list-header" style={{ 
+              display: 'grid', gridTemplateColumns: '60px 100px 1fr 120px', gap: '20px',
+              padding: '15px 30px', background: 'rgba(0,0,0,0.03)', borderRadius: '16px',
+              fontWeight: '800', color: '#666', fontSize: '0.9rem', marginBottom: '12px'
+            }}>
+              <span>번호</span>
+              <span>출생연도</span>
+              <span>직업군</span>
+              <span>성향(MBTI)</span>
+            </div>
 
-                {p.status === 'confirmed' ? (
-                  <>
-                    <div>
-                      <div style={{ fontSize: '1.1rem', fontWeight: '900', marginBottom: '4px' }}>
-                        {p.year}년생 | {p.occupation}
-                      </div>
-                      <div style={{ fontSize: '0.85rem', fontWeight: '700', color: '#FF6F61' }}>
-                        MBTI: {p.mbti}
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '4px' }}>
-                      {p.keywords.map(k => (
-                        <span key={k} style={{ 
-                          fontSize: '0.75rem', fontWeight: '600', color: '#666', 
-                          background: '#f5f5f5', padding: '4px 8px', borderRadius: '6px'
-                        }}>#{k}</span>
-                      ))}
-                    </div>
-                  </>
-                ) : (
-                  <div style={{ 
-                    height: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    flexDirection: 'column', gap: '8px'
+            <AnimatePresence mode="wait">
+              <motion.div 
+                key={activeTab}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.3 }}
+                style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}
+              >
+                {filteredLineup.map((p, idx) => (
+                  <div key={p.id} className="compact-row" style={{ 
+                    display: 'grid', alignItems: 'center',
+                    background: '#fff', border: '1px solid #f0f0f0', borderRadius: '20px',
+                    padding: '20px 30px', boxShadow: '0 4px 12px rgba(0,0,0,0.02)',
+                    transition: 'all 0.3s ease'
                   }}>
-                    <Heart size={24} color="#ddd" strokeWidth={1} />
-                    <span style={{ fontWeight: '700', color: '#bbb' }}>참여 대기 중</span>
+                    <div style={{ fontWeight: '900', color: activeTab === 'male' ? '#007AFF' : '#FF6F61', fontSize: '1.2rem' }}>
+                      {idx + 1}
+                    </div>
+
+                    {p.status === 'confirmed' ? (
+                      <>
+                        <div style={{ fontWeight: '700', color: '#333' }}>{p.year}년생</div>
+                        <div className="occ-mbti-cell" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <span style={{ fontWeight: '800', fontSize: '1.05rem', color: '#111' }}>{p.occupation}</span>
+                          <span className="mbti-badge" style={{ 
+                            background: activeTab === 'male' ? 'rgba(0,122,255,0.08)' : 'rgba(255,111,97,0.08)',
+                            color: activeTab === 'male' ? '#007AFF' : '#FF6F61',
+                            padding: '4px 10px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: '800'
+                          }}>{p.mbti}</span>
+                        </div>
+                        <div className="desktop-mbti" style={{ textAlign: 'right' }}>
+                          {p.status === 'confirmed' && <Sparkles size={18} color="#FFD700" fill="#FFD700" />}
+                        </div>
+                      </>
+                    ) : (
+                      <div style={{ gridColumn: 'span 3', display: 'flex', alignItems: 'center', gap: '10px', color: '#bbb', fontWeight: '700' }}>
+                        <Heart size={16} color="#eee" fill="#eee" /> 멋진 인연을 기다려요
+                      </div>
+                    )}
                   </div>
-                )}
-                 </motion.div>
-            ))}
-          </motion.div>
-          </AnimatePresence>
+                ))}
+              </motion.div>
+            </AnimatePresence>
+          </div>
         </section>
 
         {/* Assurance Banners */}
@@ -314,9 +292,35 @@ export default function StatusPage() {
           100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); }
         }
 
+        .compact-row {
+          grid-template-columns: 60px 100px 1fr 120px;
+          gap: 20px;
+        }
+
+        .compact-row:hover {
+          transform: scale(1.01);
+          border-color: #ddd;
+          box-shadow: 0 10px 20px rgba(0,0,0,0.04);
+        }
+
+        @media (max-width: 768px) {
+          .list-header { display: none !important; }
+          .compact-row {
+            grid-template-columns: 50px 80px 1fr;
+            padding: 15px 20px;
+            gap: 10px;
+          }
+          .occ-mbti-cell {
+            flex-direction: column;
+            align-items: flex-start !important;
+            gap: 4px !important;
+          }
+          .desktop-mbti { display: none; }
+        }
+
         @media (max-width: 480px) {
           .kl-container { padding: 20px 15px; }
-          h1 { fontSize: 1.8rem !important; }
+          h1 { font-size: 1.8rem !important; }
         }
       `}</style>
     </div>
