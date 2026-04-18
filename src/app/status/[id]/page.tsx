@@ -244,9 +244,9 @@ export default function StatusPage() {
                     <span style={{ fontWeight: '700', color: '#bbb' }}>참여 대기 중</span>
                   </div>
                 )}
-              </div>
+                 </motion.div>
             ))}
-          </div>
+          </motion.div>
         </section>
 
         {/* Assurance Banners */}

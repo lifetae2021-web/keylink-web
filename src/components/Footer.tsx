@@ -124,7 +124,7 @@ export default function Footer() {
           justifyContent: 'space-between',
           alignItems: 'center',
         }}>
-            © 2026 키링크. All rights reserved. | <span style={{ opacity: 0.6 }}>v1.13.2</span>
+            © 2026 키링크. All rights reserved. | <span style={{ opacity: 0.6 }}>v1.13.3</span>
           <div style={{ display: 'flex', gap: '20px' }}>
             <Link href="/notices#terms" style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', textDecoration: 'none' }}>이용약관</Link>
             <Link href="/notices#privacy" style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', textDecoration: 'none' }}>개인정보처리방침</Link>
