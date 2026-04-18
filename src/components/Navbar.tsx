@@ -182,7 +182,7 @@ export default function Navbar() {
             {user ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <Link href="/mypage" className="kl-btn-outline kl-mypage-btn" style={{ padding: '10px 18px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '100px' }}>
-                  <UserIcon size={16} /> 마이페이지
+                  <UserIcon size={16} className="kl-btn-icon" /> 마이페이지
                 </Link>
               </div>
             ) : (
@@ -270,6 +270,18 @@ export default function Navbar() {
           .kl-mypage-btn { 
             padding: 8px 14px !important; 
             font-size: 0.78rem !important; 
+          }
+        }
+        @media (max-width: 480px) {
+          .kl-mypage-btn {
+            padding: 6px 10px !important;
+            font-size: 12px !important;
+            height: 32px !important;
+            min-height: 32px !important;
+          }
+          .kl-btn-icon {
+            width: 13px !important;
+            height: 13px !important;
           }
         }
         @media (min-width: 769px) {

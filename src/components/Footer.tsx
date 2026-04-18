@@ -125,7 +125,7 @@ export default function Footer() {
           alignItems: 'center',
         }}>
           <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
-            © 2026 키링크. All rights reserved. | 사업자등록번호 준비중
+            © 2026 키링크. All rights reserved. | <span style={{ opacity: 0.6 }}>v1.9.11</span>
           </p>
           <div style={{ display: 'flex', gap: '20px' }}>
             <Link href="/notices#terms" style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', textDecoration: 'none' }}>이용약관</Link>
