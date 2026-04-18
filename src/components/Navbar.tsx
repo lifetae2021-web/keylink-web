@@ -48,12 +48,19 @@ export default function Navbar() {
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 40);
-      // Active anchor tracking
-      const section = document.getElementById('how-it-works');
-      if (section) {
-        const rect = section.getBoundingClientRect();
-        const inView = rect.top <= 120 && rect.bottom > 120;
-        setActiveAnchor(inView ? 'how-it-works' : null);
+      
+      // Active anchor tracking - Only on homepage
+      if (pathname === '/') {
+        const section = document.getElementById('how-it-works');
+        if (section) {
+          const rect = section.getBoundingClientRect();
+          const inView = rect.top <= 120 && rect.bottom > 120;
+          setActiveAnchor(inView ? 'how-it-works' : null);
+        } else {
+          setActiveAnchor(null);
+        }
+      } else {
+        setActiveAnchor(null);
       }
     };
     window.addEventListener('scroll', handleScroll, { passive: true });
@@ -73,7 +80,14 @@ export default function Navbar() {
       window.removeEventListener('scroll', handleScroll);
       unsubscribe();
     };
-  }, []);
+  }, [pathname]);
+
+  // Reset active anchor when leaving homepage
+  useEffect(() => {
+    if (pathname !== '/') {
+      setActiveAnchor(null);
+    }
+  }, [pathname]);
 
   const handleLogout = async () => {
     try {
@@ -86,9 +100,11 @@ export default function Navbar() {
   };
 
   const isLinkActive = (link: typeof navLinks[0]) => {
-    if (link.anchor) return activeAnchor === link.anchor;
+    if (link.anchor) {
+      return pathname === '/' && activeAnchor === link.anchor;
+    }
     if (link.href === '/') return pathname === '/';
-    return pathname.startsWith(link.href);
+    return pathname === link.href || pathname.startsWith(link.href + '/');
   };
 
   return (
