@@ -116,6 +116,13 @@ export default function Navbar() {
   };
 
   const isLinkActive = (link: typeof navLinks[0]) => {
+    // If on homepage, '참여 신청' (/events) is the default active menu
+    if (pathname === '/') {
+      if (link.href === '/events') return true;
+      return false; // Disable HOME and Scroll-spy highlights on homepage
+    }
+
+    // On other pages, use standard routing logic
     if (link.anchor) {
       return pathname === '/' && activeAnchor === link.anchor;
     }
@@ -155,19 +162,23 @@ export default function Navbar() {
           <nav style={{ display: 'flex', alignItems: 'center', gap: '4px' }} className="desktop-nav">
             {navLinks.map((link) => {
               const active = isLinkActive(link);
+              const isConversionMenu = link.href === '/events';
+              const activeColor = isConversionMenu ? '#FF4D3D' : '#FF6F61';
+              const activeBg = isConversionMenu ? 'rgba(255, 77, 61, 0.12)' : 'rgba(255, 111, 97, 0.1)';
+              
               return link.anchor ? (
                 <a
                   key={link.href}
                   href={link.href}
                   onClick={(e) => handleAnchorClick(e, link.anchor)}
                   style={{
-                    padding: '8px 16px', borderRadius: '8px', fontSize: '0.88rem', fontWeight: active ? '800' : '600',
-                    color: active ? '#FF6F61' : '#333333', textDecoration: 'none', transition: 'all 0.2s',
-                    letterSpacing: '0.02em', background: active ? 'rgba(255,111,97,0.1)' : 'transparent',
+                    padding: '8px 16px', borderRadius: '8px', fontSize: '0.88rem', fontWeight: active ? '900' : '600',
+                    color: active ? activeColor : '#333333', textDecoration: 'none', transition: 'all 0.2s',
+                    letterSpacing: '0.02em', background: active ? activeBg : 'transparent',
                     cursor: 'pointer',
                   }}
                   onMouseEnter={(e) => { e.currentTarget.style.color = '#FF6F61'; e.currentTarget.style.background = 'rgba(255, 111, 97, 0.15)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.color = active ? '#FF6F61' : '#333333'; e.currentTarget.style.background = active ? 'rgba(255,111,97,0.1)' : 'transparent'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.color = active ? activeColor : '#333333'; e.currentTarget.style.background = active ? activeBg : 'transparent'; }}
                 >
                   {link.label}
                 </a>
@@ -176,12 +187,12 @@ export default function Navbar() {
                   key={link.href}
                   href={link.href}
                   style={{
-                    padding: '8px 16px', borderRadius: '8px', fontSize: '0.88rem', fontWeight: active ? '800' : '600',
-                    color: active ? '#FF6F61' : '#333333', textDecoration: 'none', transition: 'all 0.2s',
-                    letterSpacing: '0.02em', background: active ? 'rgba(255,111,97,0.1)' : 'transparent',
+                    padding: '8px 16px', borderRadius: '8px', fontSize: '0.88rem', fontWeight: active ? '900' : '600',
+                    color: active ? activeColor : '#333333', textDecoration: 'none', transition: 'all 0.2s',
+                    letterSpacing: '0.02em', background: active ? activeBg : 'transparent',
                   }}
                   onMouseEnter={(e) => { e.currentTarget.style.color = '#FF6F61'; e.currentTarget.style.background = 'rgba(255, 111, 97, 0.15)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.color = active ? '#FF6F61' : '#333333'; e.currentTarget.style.background = active ? 'rgba(255,111,97,0.1)' : 'transparent'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.color = active ? activeColor : '#333333'; e.currentTarget.style.background = active ? activeBg : 'transparent'; }}
                 >
                   {link.label}
                 </Link>
@@ -221,15 +232,19 @@ export default function Navbar() {
         <div style={{ background: 'rgba(253, 253, 253, 0.98)', backdropFilter: 'blur(20px)', borderTop: '1px solid var(--color-border)', padding: '16px 20px' }}>
           {navLinks.map((link) => {
             const active = isLinkActive(link);
+            const isConversionMenu = link.href === '/events';
+            const activeColor = isConversionMenu ? '#FF4D3D' : '#FF6F61';
+            const activeBg = isConversionMenu ? 'rgba(255, 77, 61, 0.12)' : 'rgba(255, 111, 97, 0.08)';
+
             return link.anchor ? (
               <a
                 key={link.href}
                 href={link.href}
                 onClick={(e) => handleAnchorClick(e, link.anchor)}
                 style={{
-                  display: 'block', padding: '14px 16px', fontSize: '1rem', fontWeight: active ? '700' : '500',
-                  color: active ? '#FF6F61' : 'var(--color-text-secondary)', textDecoration: 'none',
-                  borderRadius: '10px', marginBottom: '4px', background: active ? 'rgba(255,111,97,0.08)' : 'transparent',
+                  display: 'block', padding: '14px 16px', fontSize: '1rem', fontWeight: active ? '800' : '500',
+                  color: active ? activeColor : 'var(--color-text-secondary)', textDecoration: 'none',
+                  borderRadius: '10px', marginBottom: '4px', background: active ? activeBg : 'transparent',
                 }}
               >
                 {link.label}
@@ -240,9 +255,9 @@ export default function Navbar() {
                 href={link.href}
                 onClick={() => setIsMenuOpen(false)}
                 style={{
-                  display: 'block', padding: '14px 16px', fontSize: '1rem', fontWeight: active ? '700' : '500',
-                  color: active ? '#FF6F61' : 'var(--color-text-secondary)', textDecoration: 'none',
-                  borderRadius: '10px', marginBottom: '4px', background: active ? 'rgba(255,111,97,0.08)' : 'transparent',
+                  display: 'block', padding: '14px 16px', fontSize: '1rem', fontWeight: active ? '800' : '500',
+                  color: active ? activeColor : 'var(--color-text-secondary)', textDecoration: 'none',
+                  borderRadius: '10px', marginBottom: '4px', background: active ? activeBg : 'transparent',
                 }}
               >
                 {link.label}
