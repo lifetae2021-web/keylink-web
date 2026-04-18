@@ -4,9 +4,11 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Users, ShieldCheck, RefreshCcw, ArrowRight, Heart, Timer, MapPin, Sparkles } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { mockLineup } from '@/lib/mockData';
 
 export default function StatusPage() {
+  const [activeTab, setActiveTab] = useState<'male' | 'female'>('male');
   const [watchers, setWatchers] = useState(24);
   
   useEffect(() => {
@@ -19,6 +21,10 @@ export default function StatusPage() {
     }, 5000);
     return () => clearInterval(interval);
   }, []);
+
+  const maleCount = mockLineup.filter(p => p.gender === 'male').length;
+  const femaleCount = mockLineup.filter(p => p.gender === 'female').length;
+  const filteredLineup = mockLineup.filter(p => p.gender === activeTab);
 
   const progressMale = 7 / 8;
   const progressFemale = 8 / 8;
@@ -126,17 +132,65 @@ export default function StatusPage() {
             </p>
           </div>
 
+          {/* Gender Tabs */}
           <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', 
-            gap: '20px'
+            position: 'sticky', top: '133px', zIndex: 90,
+            display: 'flex', justifyContent: 'center', gap: '12px', 
+            marginBottom: '40px', padding: '10px',
+            background: 'rgba(255,255,255,0.8)', backdropFilter: 'blur(8px)',
+            borderRadius: '100px', width: 'fit-content', margin: '0 auto 40px',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
+            border: '1px solid rgba(0,0,0,0.05)'
           }}>
-            {mockLineup.map((p) => (
-              <div 
+            <button 
+              onClick={() => setActiveTab('male')}
+              style={{
+                padding: '12px 24px', borderRadius: '100px', border: 'none',
+                fontWeight: '800', fontSize: '0.95rem', cursor: 'pointer',
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                background: activeTab === 'male' ? '#007AFF' : 'transparent',
+                color: activeTab === 'male' ? '#fff' : '#666',
+                display: 'flex', alignItems: 'center', gap: '8px',
+                boxShadow: activeTab === 'male' ? '0 8px 16px rgba(0,122,255,0.25)' : 'none'
+              }}
+            >
+              키링남 라인업 <span style={{ fontSize: '0.8rem', opacity: 0.8 }}>{maleCount}명</span>
+            </button>
+            <button 
+              onClick={() => setActiveTab('female')}
+              style={{
+                padding: '12px 24px', borderRadius: '100px', border: 'none',
+                fontWeight: '800', fontSize: '0.95rem', cursor: 'pointer',
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                background: activeTab === 'female' ? '#FF6F61' : 'transparent',
+                color: activeTab === 'female' ? '#fff' : '#666',
+                display: 'flex', alignItems: 'center', gap: '8px',
+                boxShadow: activeTab === 'female' ? '0 8px 16px rgba(255,111,97,0.25)' : 'none'
+              }}
+            >
+              키링녀 라인업 <span style={{ fontSize: '0.8rem', opacity: 0.8 }}>{femaleCount}명</span>
+            </button>
+          </div>
+
+          <motion.div 
+            layout
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            key={activeTab}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+            style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', 
+              gap: '20px'
+            }}
+          >
+            {filteredLineup.map((p) => (
+              <motion.div 
+                layout
                 key={p.id}
                 style={{ 
                   background: p.status === 'recruiting' ? 'rgba(0,0,0,0.02)' : '#fff',
-                  border: `1.5px solid ${p.status === 'recruiting' ? '#f0f0f0' : 'rgba(255,111,97,0.1)'}`,
+                  border: `1.5px solid ${p.status === 'recruiting' ? '#f0f0f0' : activeTab === 'male' ? 'rgba(0,122,255,0.1)' : 'rgba(255,111,97,0.1)'}`,
                   borderRadius: '24px',
                   padding: '24px',
                   position: 'relative',
@@ -149,7 +203,7 @@ export default function StatusPage() {
                 onMouseEnter={e => {
                   if (p.status !== 'recruiting') {
                     e.currentTarget.style.transform = 'translateY(-5px)';
-                    e.currentTarget.style.boxShadow = '0 15px 30px rgba(255,111,97,0.1)';
+                    e.currentTarget.style.boxShadow = activeTab === 'male' ? '0 15px 30px rgba(0,122,255,0.1)' : '0 15px 30px rgba(255,111,97,0.1)';
                   }
                 }}
                 onMouseLeave={e => {
