@@ -172,55 +172,56 @@ export default function StatusPage() {
             </button>
           </div>
 
-          <motion.div 
-            layout
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            key={activeTab}
-            transition={{ duration: 0.4, ease: "easeOut" }}
-            style={{ 
-              display: 'grid', 
-              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', 
-              gap: '20px'
-            }}
-          >
-            {filteredLineup.map((p) => (
-              <motion.div 
-                layout
-                key={p.id}
-                style={{ 
-                  background: p.status === 'recruiting' ? 'rgba(0,0,0,0.02)' : '#fff',
-                  border: `1.5px solid ${p.status === 'recruiting' ? '#f0f0f0' : activeTab === 'male' ? 'rgba(0,122,255,0.1)' : 'rgba(255,111,97,0.1)'}`,
-                  borderRadius: '24px',
-                  padding: '24px',
-                  position: 'relative',
-                  transition: 'transform 0.3s ease, box-shadow 0.3s ease',
-                  cursor: 'default',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '12px'
-                }}
-                onMouseEnter={e => {
-                  if (p.status !== 'recruiting') {
-                    e.currentTarget.style.transform = 'translateY(-5px)';
-                    e.currentTarget.style.boxShadow = activeTab === 'male' ? '0 15px 30px rgba(0,122,255,0.1)' : '0 15px 30px rgba(255,111,97,0.1)';
-                  }
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <div style={{ 
-                    padding: '6px 12px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: '800',
-                    background: p.gender === 'male' ? '#EBF5FF' : '#FFF0F3',
-                    color: p.gender === 'male' ? '#007AFF' : '#FF4D8D'
-                  }}>
-                    {p.gender === 'male' ? 'Male' : 'Female'}
+          <AnimatePresence mode="wait">
+            <motion.div 
+              key={activeTab}
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.98 }}
+              transition={{ duration: 0.3, ease: 'easeOut' }}
+              style={{ 
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', 
+                gap: '20px'
+              }}
+            >
+              {filteredLineup.map((p) => (
+                <motion.div 
+                  layout
+                  key={p.id}
+                  style={{ 
+                    background: p.status === 'recruiting' ? 'rgba(0,0,0,0.02)' : '#fff',
+                    border: `1.5px solid ${p.status === 'recruiting' ? '#f0f0f0' : activeTab === 'male' ? 'rgba(0,122,255,0.1)' : 'rgba(255,111,97,0.1)'}`,
+                    borderRadius: '24px',
+                    padding: '24px',
+                    position: 'relative',
+                    transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+                    cursor: 'default',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '12px'
+                  }}
+                  onMouseEnter={e => {
+                    if (p.status !== 'recruiting') {
+                      e.currentTarget.style.transform = 'translateY(-5px)';
+                      e.currentTarget.style.boxShadow = activeTab === 'male' ? '0 15px 30px rgba(0,122,255,0.1)' : '0 15px 30px rgba(255,111,97,0.1)';
+                    }
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div style={{ 
+                      padding: '6px 12px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: '800',
+                      background: p.gender === 'male' ? '#EBF5FF' : '#FFF0F3',
+                      color: p.gender === 'male' ? '#007AFF' : '#FF4D8D'
+                    }}>
+                      {p.gender === 'male' ? 'Male' : 'Female'}
+                    </div>
+                    {p.status === 'confirmed' && <Sparkles size={16} color="#FFD700" fill="#FFD700" />}
                   </div>
-                  {p.status === 'confirmed' && <Sparkles size={16} color="#FFD700" fill="#FFD700" />}
-                </div>
 
                 {p.status === 'confirmed' ? (
                   <>
