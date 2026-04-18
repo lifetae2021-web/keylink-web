@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, serverTimestamp, deleteField } from 'firebase/firestore';
 import {
   LogOut, ArrowLeft, Camera, ChevronDown, ChevronUp, X, Check, Edit3, Package, Upload, Trash2
 } from 'lucide-react';
@@ -131,22 +131,31 @@ export default function MyPage() {
 
     setIsSaving(true);
     try {
+      // Sanitize editForm to ensure no undefined values are sent to Firestore
+      const sanitizedForm = Object.keys(editForm).reduce((acc: any, key) => {
+        acc[key] = editForm[key] === undefined ? '' : editForm[key];
+        return acc;
+      }, {});
+
       const updateData = {
-        ...editForm,
+        ...sanitizedForm,
         profilePhotos,
-        // Keep old fields for backward compatibility if needed, or clear them
-        facePhotos: [],
-        bodyPhotos: [],
-        updatedAt: new Date()
+        // Explicitly clear legacy fields to prevent schema conflicts
+        facePhotos: deleteField(),
+        bodyPhotos: deleteField(),
+        fullBodyPhotos: deleteField(),
+        updatedAt: serverTimestamp()
       };
       
       await updateDoc(doc(db, 'users', user!.uid), updateData);
       setUserData((p: any) => ({ ...p, ...updateData }));
       setIsEditing(false);
       toast.success('프로필 정보가 안전하게 업데이트되었습니다.');
-    } catch (error) {
-      console.error(error);
-      toast.error('저장 중 오류가 발생했습니다.');
+    } catch (error: any) {
+      console.error('Firestore Save Error:', error);
+      // Detailed error reporting for the user/developer
+      const errorCode = error.code || 'UNKNOWN';
+      toast.error(`저장 중 오류가 발생했습니다: ${error.message || '알 수 없는 에러'} (${errorCode})`);
     } finally {
       setIsSaving(false);
     }
