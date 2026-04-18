@@ -247,6 +247,7 @@ export default function StatusPage() {
                  </motion.div>
             ))}
           </motion.div>
+          </AnimatePresence>
         </section>
 
         {/* Assurance Banners */}
