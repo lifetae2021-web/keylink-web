@@ -36,9 +36,9 @@ export default function StatusPage() {
         <span>현재 {watchers}명이 이 기수를 같이 보고 있어요</span>
       </div>
 
-      <div className="kl-container" style={{ paddingTop: '24px' }}>
+      <div className="kl-container" style={{ paddingTop: '100px' }}>
         {/* Navigation & Back Button */}
-        <div style={{ marginBottom: '24px' }}>
+        <div style={{ marginBottom: '40px' }}>
           <Link href="/status" style={{ 
             display: 'inline-flex', alignItems: 'center', gap: '8px', 
             color: '#666', textDecoration: 'none', 
