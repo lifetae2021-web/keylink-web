@@ -94,5 +94,48 @@ export const mockLineup = [
   { id: 'f5', gender: 'female', year: '95', occupation: '회사원 (마케팅)', mbti: 'ENFJ', keywords: ['커뮤니케이션', '자기개발', '긍정적'], status: 'confirmed' },
   { id: 'f6', gender: 'female', year: '97', occupation: '프리랜서 디자이너', mbti: 'INFP', keywords: ['예술적감성', '몽글몽글', '진실된'], status: 'confirmed' },
   { id: 'f7', gender: 'female', year: '96', occupation: '금융권 사무직', mbti: 'ESTJ', keywords: ['똑부러지는', '성실함', '웃음꽃'], status: 'confirmed' },
-  { id: 'f8', gender: 'female', year: '94', occupation: '보건인력', mbti: 'ISFP', keywords: ['예술가기질', '경청', '감각적인'], status: 'confirmed' },
+  { id: 'f8', gender: 'female', year: '94', occupation: '보건인력', mbti: 'ISFP', keywords: ['감각적인', '경청', '예술가기질'], status: 'confirmed' },
+];
+
+export const mockMatchingResults = [
+  {
+    id: 'res-119',
+    episode: 119,
+    date: '2026-04-19',
+    totalParticipants: 16,
+    coupleCount: 6,
+    matchingRate: 75,
+    atmosphere: '벚꽃이 만개한 주말, 서면의 따뜻한 분위기 속에서 설레는 대화가 이어졌습니다. 역대급 비주얼 기수라는 평이 많았던 만큼 매칭률도 굉장히 높았습니다.',
+    labels: ['역대급 매칭률', '하트 100개 돌파']
+  },
+  {
+    id: 'res-118',
+    episode: 118,
+    date: '2026-04-12',
+    totalParticipants: 16,
+    coupleCount: 5,
+    matchingRate: 62.5,
+    atmosphere: '비가 살짝 오는 일요일이었지만, 실내 공간의 아늑함 덕분에 더 깊은 대화가 가능했습니다. 차분하고 지적인 매력의 참가자분들이 많으셨습니다.',
+    labels: ['지적인 기수']
+  },
+  {
+    id: 'res-117',
+    episode: 117,
+    date: '2026-04-05',
+    totalParticipants: 14,
+    coupleCount: 4,
+    matchingRate: 57,
+    atmosphere: '활기차고 에너제틱한 분위기의 기수였습니다. 대화 시간이 부족할 정도로 웃음소리가 끊이지 않았던 즐거운 시간이었습니다.',
+    labels: ['텐션 업']
+  },
+  {
+    id: 'res-116',
+    episode: 116,
+    date: '2026-03-29',
+    totalParticipants: 16,
+    coupleCount: 7,
+    matchingRate: 87.5,
+    atmosphere: '첫 만남부터 서로의 취향이 잘 맞아떨어진 기수였습니다. 무려 7쌍이나 탄생하며 키링크 역사를 새로 쓴 기적이었습니다.',
+    labels: ['기적의 매칭']
+  }
 ];
