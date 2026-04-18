@@ -160,13 +160,10 @@ export default function Navbar() {
           {/* CTA + Mobile Menu */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             {user ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Link href="/mypage" className="kl-btn-outline" style={{ padding: '10px 16px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <Link href="/mypage" className="kl-btn-outline" style={{ padding: '10px 18px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '100px' }}>
                   <UserIcon size={16} /> 마이페이지
                 </Link>
-                <button onClick={handleLogout} className="kl-btn-outline" style={{ padding: '10px 16px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  로그아웃 <LogOut size={16} />
-                </button>
               </div>
             ) : (
               <Link href="/login" className="kl-btn-primary" style={{ padding: '10px 20px', fontSize: '0.85rem' }}>
@@ -175,7 +172,10 @@ export default function Navbar() {
             )}
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#333333', padding: '6px', display: 'none' }}
+              style={{ 
+                background: 'none', border: 'none', cursor: 'pointer', color: '#333333', padding: '8px',
+                display: user ? 'flex' : 'none' 
+              }}
               className="mobile-menu-btn"
             >
               {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
@@ -242,6 +242,13 @@ export default function Navbar() {
         @media (max-width: 768px) {
           .desktop-nav { display: none !important; }
           .mobile-menu-btn { display: flex !important; }
+        }
+        @media (min-width: 769px) {
+          .mobile-menu-btn { 
+            margin-left: 4px;
+            transition: transform 0.2s;
+          }
+          .mobile-menu-btn:hover { transform: scale(1.1); }
         }
       `}</style>
     </header>

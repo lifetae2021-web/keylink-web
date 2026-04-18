@@ -6,7 +6,13 @@ import toast from 'react-hot-toast';
 
 import { useRouter } from 'next/navigation';
 import { auth, db } from '@/lib/firebase';
-import { signInWithEmailAndPassword, onAuthStateChanged } from 'firebase/auth';
+import { 
+  signInWithEmailAndPassword, 
+  onAuthStateChanged, 
+  setPersistence, 
+  browserLocalPersistence, 
+  browserSessionPersistence 
+} from 'firebase/auth';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 
 export default function LoginPage() {
@@ -14,7 +20,18 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [userId, setUserId] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberId, setRememberId] = useState(false);
+  const [autoLogin, setAutoLogin] = useState(false);
   const router = useRouter();
+
+  // Load saved ID on mount
+  useEffect(() => {
+    const savedId = localStorage.getItem('keylink_saved_id');
+    if (savedId) {
+      setUserId(savedId);
+      setRememberId(true);
+    }
+  }, []);
 
   // Redirect if already logged in
   useEffect(() => {
@@ -47,9 +64,20 @@ export default function LoginPage() {
       const userData = querySnapshot.docs[0].data();
       const userEmail = userData.email;
 
-      // 2. Perform Firebase Auth Login with retrieved email
+      // 2. Set Persistence based on Auto Login preference
+      const persistence = autoLogin ? browserLocalPersistence : browserSessionPersistence;
+      await setPersistence(auth, persistence);
+
+      // 3. Perform Firebase Auth Login with retrieved email
       await signInWithEmailAndPassword(auth, userEmail, password);
       
+      // 4. Handle Remember ID
+      if (rememberId) {
+        localStorage.setItem('keylink_saved_id', userId);
+      } else {
+        localStorage.removeItem('keylink_saved_id');
+      }
+
       toast.success('로그인에 성공했습니다!');
       router.push('/');
     } catch (error: any) {
@@ -134,6 +162,28 @@ export default function LoginPage() {
                 </button>
               </div>
             </div>
+            {/* Checkboxes */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px', padding: '0 4px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.85rem', color: '#666' }}>
+                <input
+                  type="checkbox"
+                  checked={rememberId}
+                  onChange={(e) => setRememberId(e.target.checked)}
+                  style={{ width: '16px', height: '16px', accentColor: '#FF6F61' }}
+                />
+                아이디 기억하기
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.85rem', color: '#666' }}>
+                <input
+                  type="checkbox"
+                  checked={autoLogin}
+                  onChange={(e) => setAutoLogin(e.target.checked)}
+                  style={{ width: '16px', height: '16px', accentColor: '#FF6F61' }}
+                />
+                자동 로그인
+              </label>
+            </div>
+
             <button
               type="submit"
               className="kl-btn-primary"
