@@ -60,28 +60,21 @@ export default function SocialAuth({ isAdmin, isLoading, setIsLoading }: SocialA
   };
 
   const handleKakaoLogin = () => {
-    if (isAdmin) {
-      const clientId = process.env.NEXT_PUBLIC_KAKAO_CLIENT_ID;
-      const redirectUri = typeof window !== 'undefined' 
-        ? `${window.location.origin}/admin/login/callback` 
-        : '';
-      
-      if (!clientId) {
-        toast.error('카카오 클라이언트 ID가 설정되지 않았습니다.');
-        return;
-      }
-
-      const kakaoAuthUrl = `https://kauth.kakao.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code`;
-      window.location.href = kakaoAuthUrl;
-    } else {
-      toast.success('카카오 간편 로그인 준비 중입니다.');
-      router.push('/register?social=true');
+    const clientId = process.env.NEXT_PUBLIC_KAKAO_CLIENT_ID;
+    const redirectUri = encodeURIComponent(window.location.origin + '/admin/login/callback');
+    const state = isAdmin ? 'admin' : 'user';
+    
+    if (!clientId) {
+      toast.error('카카오 클라이언트 ID가 설정되지 않았습니다.');
+      return;
     }
+
+    const kakaoAuthUrl = `https://kauth.kakao.com/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&state=${state}`;
+    window.location.href = kakaoAuthUrl;
   };
 
   const handleNaverLogin = () => {
     toast.success('네이버 간편 로그인 준비 중입니다.');
-    router.push('/register?social=true');
   };
 
   return (

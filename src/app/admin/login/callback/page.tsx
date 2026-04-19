@@ -37,6 +37,8 @@ export default function KakaoCallbackPage() {
 
     const processAuth = async () => {
       try {
+        const state = searchParams.get('state') || 'user';
+        const isAdmin = state === 'admin';
         const redirectUri = window.location.origin + '/admin/login/callback';
         
         const response = await fetch('/api/auth/kakao', {
@@ -44,7 +46,7 @@ export default function KakaoCallbackPage() {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ code, redirectUri }),
+          body: JSON.stringify({ code, redirectUri, isAdmin }),
         });
 
         const data = await response.json();
@@ -56,13 +58,24 @@ export default function KakaoCallbackPage() {
         // Sign in with Firebase Custom Token
         await signInWithCustomToken(auth, data.token);
         
-        toast.success('관리자 카카오 로그인 성공!');
-        router.replace('/admin');
+        if (isAdmin) {
+          toast.success('관리자 카카오 로그인 성공!');
+          router.replace('/admin');
+        } else {
+          toast.success('카카오 로그인 성공!');
+          router.replace('/');
+        }
       } catch (err: any) {
         console.error('Callback error:', err);
         setStatus('error');
         setErrorMessage(err.message || '로그인 처리 중 오류가 발생했습니다.');
-        toast.error(err.message || '관리자 권한 확인에 실패했습니다.');
+        
+        const state = searchParams.get('state') || 'user';
+        if (state === 'admin') {
+          toast.error(err.message || '관리자 권한 확인에 실패했습니다.');
+        } else {
+          toast.error(err.message || '카카오 로그인에 실패했습니다.');
+        }
       }
     };
 

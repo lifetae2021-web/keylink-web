@@ -6,7 +6,7 @@ const KAKAO_USER_PROFILE_URL = 'https://kapi.kakao.com/v2/user/me';
 
 export async function POST(req: NextRequest) {
   try {
-    const { code, redirectUri } = await req.json();
+    const { code, redirectUri, isAdmin } = await req.json();
 
     if (!code) {
       return NextResponse.json({ error: 'Authorization code is missing' }, { status: 400 });
@@ -52,41 +52,61 @@ export async function POST(req: NextRequest) {
 
     const kakaoId = userData.id.toString();
     const email = userData.kakao_account?.email;
+    const nickname = userData.properties?.nickname || userData.kakao_account?.profile?.nickname || '카카오 사용자';
 
     if (!email) {
       return NextResponse.json({ error: 'Kakao account must have an email address' }, { status: 400 });
     }
 
-    // 3. Whitelist check: Find admin user in Firestore by email or kakaoId
-    // We prioritize email matching as per user request "계정 정보가 기존 관리자 이메일 정보와 일치할 경우 자동으로 연동"
+    // 3. Check for existing user in Firestore
     const usersRef = adminDb.collection('users');
-    const qEmail = await usersRef.where('email', '==', email).where('role', '==', 'admin').limit(1).get();
+    const qEmail = await usersRef.where('email', '==', email).limit(1).get();
     
-    let adminUser = null;
+    let targetUid = `kakao_${kakaoId}`;
+    let userDoc = null;
+
     if (!qEmail.empty) {
-      adminUser = qEmail.docs[0];
-    } else {
-      // Last resort: check by kakaoId if already linked
-      const qKakao = await usersRef.where('kakaoId', '==', kakaoId).where('role', '==', 'admin').limit(1).get();
-      if (!qKakao.empty) {
-        adminUser = qKakao.docs[0];
+      userDoc = qEmail.docs[0];
+      targetUid = userDoc.id; // Use existing UID if email matches
+
+      // If requested admin login, check role
+      if (isAdmin && userDoc.data().role !== 'admin') {
+        return NextResponse.json({ 
+          error: 'Admin authorization failed.',
+          details: '관리자 권한이 없는 계정입니다.'
+        }, { status: 403 });
       }
-    }
 
-    if (!adminUser) {
-      return NextResponse.json({ 
-        error: 'Admin authorization failed. Unauthorized Kakao account.',
-        details: '등록된 관리자 이메일과 카카오 계정 이메일이 일치하지 않습니다.'
-      }, { status: 403 });
-    }
+      // Link kakaoId if missing
+      if (!userDoc.data().kakaoId) {
+        await userDoc.ref.update({ kakaoId, updatedBy: 'kakao-login' });
+      }
+    } else {
+      // User does not exist by email
+      if (isAdmin) {
+        return NextResponse.json({ 
+          error: 'Admin authorization failed.',
+          details: '등록된 관리자 정보가 없습니다.'
+        }, { status: 403 });
+      }
 
-    // 4. Update kakaoId if not already present
-    if (!adminUser.data().kakaoId) {
-      await adminUser.ref.update({ kakaoId });
+      // 4. Create new user for regular login
+      const newUser = {
+        uid: targetUid,
+        email,
+        name: nickname,
+        role: 'user',
+        kakaoId,
+        provider: 'kakao',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      
+      await usersRef.doc(targetUid).set(newUser);
     }
 
     // 5. Generate Firebase Custom Token
-    const customToken = await adminAuth.createCustomToken(adminUser.id);
+    const customToken = await adminAuth.createCustomToken(targetUid);
 
     return NextResponse.json({ token: customToken });
 
