@@ -4,9 +4,95 @@ import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 const KAKAO_TOKEN_URL = 'https://kauth.kakao.com/oauth/token';
 const KAKAO_USER_PROFILE_URL = 'https://kapi.kakao.com/v2/user/me';
 
+export async function GET(req: NextRequest) {
+  const { searchParams, origin } = new URL(req.url);
+  const code = searchParams.get('code');
+  const state = searchParams.get('state') || 'user';
+  const isAdmin = state === 'admin';
+  const redirectUri = `${origin}/api/auth/kakao`;
+
+  if (!code) {
+    return NextResponse.redirect(`${origin}/login?error=code_missing`);
+  }
+
+  try {
+    // 1. Exchange code for access token
+    const tokenResponse = await fetch(KAKAO_TOKEN_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8' },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        client_id: process.env.NEXT_PUBLIC_KAKAO_CLIENT_ID || '',
+        client_secret: process.env.KAKAO_CLIENT_SECRET || '',
+        redirect_uri: redirectUri,
+        code,
+      }),
+    });
+
+    const tokenData = await tokenResponse.json();
+    if (tokenData.error) throw new Error(tokenData.error_description);
+
+    const { access_token } = tokenData;
+
+    // 2. Get user profile
+    const userProfileResponse = await fetch(KAKAO_USER_PROFILE_URL, {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${access_token}` },
+    });
+    const userData = await userProfileResponse.json();
+    if (userData.error) throw new Error('Failed to fetch user profile');
+
+    const kakaoId = userData.id.toString();
+    const email = userData.kakao_account?.email;
+    const nickname = userData.properties?.nickname || userData.kakao_account?.profile?.nickname || '카카오 사용자';
+
+    if (!email) throw new Error('email_missing');
+
+    // 3. Firestore Logic
+    const usersRef = adminDb.collection('users');
+    const qEmail = await usersRef.where('email', '==', email).limit(1).get();
+    
+    let targetUid = `kakao_${kakaoId}`;
+    if (!qEmail.empty) {
+      const userDoc = qEmail.docs[0];
+      targetUid = userDoc.id;
+      if (isAdmin && userDoc.data().role !== 'admin') {
+        return NextResponse.redirect(`${origin}/login?error=not_admin`);
+      }
+      if (!userDoc.data().kakaoId) {
+        await userDoc.ref.update({ kakaoId, updatedBy: 'kakao-login' });
+      }
+    } else {
+      if (isAdmin) return NextResponse.redirect(`${origin}/login?error=not_admin_registered`);
+      const newUser = {
+        uid: targetUid,
+        email,
+        name: nickname,
+        role: 'user',
+        kakaoId,
+        provider: 'kakao',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      await usersRef.doc(targetUid).set(newUser);
+    }
+
+    // 4. Generate Token & Redirect
+    const customToken = await adminAuth.createCustomToken(targetUid);
+    const targetPath = isAdmin ? '/admin/callback' : '/login/callback';
+    return NextResponse.redirect(`${origin}${targetPath}?token=${customToken}&state=${state}`);
+
+  } catch (error: any) {
+    console.error('Kakao Redirect Auth Error:', error);
+    return NextResponse.redirect(`${origin}/login?error=auth_failed&message=${encodeURIComponent(error.message)}`);
+  }
+}
+
 export async function POST(req: NextRequest) {
+  // Existing POST logic for manual calls if needed
   try {
     const { code, redirectUri, isAdmin } = await req.json();
+    // ... rest of the code as before ...
 
     if (!code) {
       return NextResponse.json({ error: 'Authorization code is missing' }, { status: 400 });

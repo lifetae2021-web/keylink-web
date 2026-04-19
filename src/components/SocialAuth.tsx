@@ -61,7 +61,7 @@ export default function SocialAuth({ isAdmin, isLoading, setIsLoading }: SocialA
 
   const handleKakaoLogin = () => {
     const clientId = process.env.NEXT_PUBLIC_KAKAO_CLIENT_ID;
-    const redirectUri = encodeURIComponent(window.location.origin + '/admin/login/callback');
+    const redirectUri = encodeURIComponent(window.location.origin + '/api/auth/kakao');
     const state = isAdmin ? 'admin' : 'user';
     
     if (!clientId) {
