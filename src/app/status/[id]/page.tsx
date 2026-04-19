@@ -198,7 +198,6 @@ export default function StatusPage() {
 
           {/* Dissociated List View */}
           <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-            {/* Header Row */}
             <div style={{ 
               display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px',
               padding: '15px 30px', background: 'rgba(0,0,0,0.03)', borderRadius: '16px',
@@ -244,32 +243,44 @@ export default function StatusPage() {
           </div>
         </section>
 
-        {/* Banners */}
-        <section style={{ 
-          display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px',
-          marginBottom: '60px'
+        {/* Assurance Banner v1.14.2 */}
+        <div style={{ 
+          maxWidth: '800px', margin: '0 auto 80px auto',
+          background: 'linear-gradient(135deg, #F0F7FF 0%, #EBF3FF 100%)', 
+          border: '1px solid rgba(0,122,255,0.1)',
+          padding: '40px', borderRadius: '32px', display: 'flex', alignItems: 'center', gap: '30px',
+          boxShadow: '0 10px 30px rgba(0,122,255,0.05)'
         }}>
-          <div style={{ background: 'linear-gradient(135deg, #FFF5F4 0%, #FFF0EF 100%)', border: '1px solid rgba(255,111,97,0.15)', padding: '32px', borderRadius: '24px', display: 'flex', alignItems: 'center', gap: '20px' }}>
-            <div style={{ background: '#FF6F61', width: '56px', height: '56px', borderRadius: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}><RefreshCcw size={28} /></div>
-            <div>
-              <h4 style={{ fontSize: '1.2rem', fontWeight: '900', color: '#111', marginBottom: '4px' }}>매칭 실패 시 100% 환불</h4>
-              <p style={{ fontSize: '0.9rem', color: '#666', fontWeight: '500' }}>단 한 명과도 매칭되지 않을 경우,<br/>참가비 전액을 포인트로 환불해 드립니다.</p>
-            </div>
+          <div style={{ 
+            background: '#007AFF', width: '64px', height: '64px', borderRadius: '20px', 
+            display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff',
+            boxShadow: '0 8px 16px rgba(0,122,255,0.2)'
+          }}>
+            <ShieldCheck size={32} />
           </div>
-          <div style={{ background: 'linear-gradient(135deg, #F0F7FF 0%, #EBF3FF 100%)', border: '1px solid rgba(0,122,255,0.1)', padding: '32px', borderRadius: '24px', display: 'flex', alignItems: 'center', gap: '20px' }}>
-            <div style={{ background: '#007AFF', width: '56px', height: '56px', borderRadius: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}><ShieldCheck size={28} /></div>
-            <div>
-              <h4 style={{ fontSize: '1.2rem', fontWeight: '900', color: '#111', marginBottom: '4px' }}>지인/중복 만남 방지</h4>
-              <p style={{ fontSize: '0.9rem', color: '#666', fontWeight: '500' }}>과거 매칭되었던 분이나 지인을 만날까 봐<br/>걱정 마세요. 꼼꼼히 사전 필터링합니다.</p>
-            </div>
+          <div>
+            <h4 style={{ fontSize: '1.4rem', fontWeight: '900', color: '#111', marginBottom: '8px' }}>
+              지인/중복 만남 시 <span style={{ color: '#007AFF' }}>100% 환불</span>
+            </h4>
+            <p style={{ fontSize: '1rem', color: '#666', fontWeight: '500', lineHeight: '1.5' }}>
+              과거 매칭되었던 분이나 지인을 만날까 봐 걱정 마세요.<br className="desktop-br"/>
+              키링크의 꼼꼼한 사전 필터링 시스템이 완벽하게 보호해 드립니다.
+            </p>
           </div>
-        </section>
+        </div>
 
-        {/* CTA */}
+        {/* Bottom CTA */}
         <section style={{ textAlign: 'center' }}>
-          <Link href="/events" className="kl-btn-primary" style={{ padding: '24px 60px', fontSize: '1.2rem', fontWeight: '900', borderRadius: '100px', boxShadow: '0 20px 40px rgba(255,111,97,0.3)', transition: 'transform 0.3s ease' }} onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'} onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}>
+          <Link href="/events" className="kl-btn-primary" style={{ 
+            display: 'inline-flex', alignItems: 'center', gap: '12px',
+            padding: '24px 60px', fontSize: '1.2rem', fontWeight: '900', borderRadius: '100px',
+            boxShadow: '0 20px 40px rgba(255,111,97,0.3)', transition: 'transform 0.3s ease'
+          }} onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'} onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}>
             지금 참여 신청하기 <ArrowRight size={22} />
           </Link>
+          <p style={{ marginTop: '20px', color: '#888', fontWeight: '500', fontSize: '0.9rem' }}>
+            * 실시간 상황에 따라 인원이 빠르게 마감될 수 있습니다.
+          </p>
         </section>
       </div>
 
