@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { Suspense, useEffect, useState, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { auth } from '@/lib/firebase';
 import { signInWithCustomToken } from 'firebase/auth';
 import { Loader2, AlertCircle, Heart } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-export default function KakaoCallbackPage() {
+function KakaoCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<'loading' | 'error'>('loading');
@@ -98,5 +98,22 @@ export default function KakaoCallbackPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function KakaoCallbackPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-white px-4">
+        <div className="relative">
+          <div className="w-20 h-20 border-4 border-[#FF6F61]/20 border-t-[#FF6F61] rounded-full animate-spin"></div>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <Heart className="text-[#FF6F61] animate-pulse" size={24} fill="#FF6F61" />
+          </div>
+        </div>
+      </div>
+    }>
+      <KakaoCallbackContent />
+    </Suspense>
   );
 }

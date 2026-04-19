@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { Suspense, useEffect, useState, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { auth } from '@/lib/firebase';
 import { signInWithCustomToken } from 'firebase/auth';
 import { Loader2, AlertCircle, ShieldCheck } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-export default function AdminKakaoCallbackPage() {
+function AdminKakaoCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<'loading' | 'error'>('loading');
@@ -91,5 +91,22 @@ export default function AdminKakaoCallbackPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function AdminKakaoCallbackPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-[#0F1115] px-4">
+        <div className="relative">
+          <div className="w-20 h-20 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin"></div>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <ShieldCheck className="text-blue-500" size={24} />
+          </div>
+        </div>
+      </div>
+    }>
+      <AdminKakaoCallbackContent />
+    </Suspense>
   );
 }
