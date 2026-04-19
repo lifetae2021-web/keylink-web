@@ -438,6 +438,30 @@ body {
   overflow-x: hidden;
 }
 
+@media (min-width: 1024px) {
+  .kl-calendar-wrapper {
+    max-width: 860px;
+  }
+  
+  .kl-calendar-container {
+    padding: 32px;
+  }
+
+  .kl-calendar-cell {
+    padding: 10px 4px;
+    min-height: 95px;
+  }
+
+  .kl-event-tag {
+    padding: 4px 2px;
+  }
+
+  .kl-event-tag-age {
+    font-size: 0.65rem;
+    letter-spacing: -0.02em;
+  }
+}
+
 .kl-calendar-container {
   background: #fff;
   border-radius: 16px;
