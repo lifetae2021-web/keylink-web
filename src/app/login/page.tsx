@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { auth, db } from '@/lib/firebase';
 import { 
   signInWithEmailAndPassword, 
@@ -24,6 +24,23 @@ export default function LoginPage() {
   const [rememberId, setRememberId] = useState(false);
   const [autoLogin, setAutoLogin] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Show error messages from URL (e.g. from Kakao OAuth callback)
+  useEffect(() => {
+    const errorParam = searchParams.get('error');
+    const messageParam = searchParams.get('message');
+    if (errorParam) {
+      if (messageParam) {
+        toast.error(`카카오 로그인 오류: ${messageParam}`);
+      } else {
+        toast.error(`오류 발생: ${errorParam}`);
+      }
+      
+      // Remove query string to prevent repeated toasts on refresh
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [searchParams]);
 
   // Load saved ID on mount
   useEffect(() => {
