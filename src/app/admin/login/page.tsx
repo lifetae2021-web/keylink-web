@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation';
 import { auth, db } from '@/lib/firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
-import { Lock, Mail, AlertCircle, Loader2, Unlock } from 'lucide-react';
+import { Lock, Mail, AlertCircle, Loader2, UnlockKeyhole } from 'lucide-react';
 import toast from 'react-hot-toast';
+import SocialAuth from '@/components/SocialAuth';
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState('');
@@ -91,10 +92,19 @@ export default function AdminLoginPage() {
               {isLoading ? (
                 <Loader2 className="animate-spin" size={20} />
               ) : (
-                <>로그인 <Unlock size={18} className="group-hover:translate-x-1 transition-transform" /></>
+                <>로그인 <UnlockKeyhole size={18} className="group-hover:translate-x-1 transition-transform" /></>
               )}
             </button>
           </form>
+
+          <div className="mt-6">
+            <div className="relative flex items-center justify-center mb-6">
+              <div className="border-t border-gray-800 w-full"></div>
+              <span className="bg-[#1A1D23] px-4 text-xs text-gray-500 absolute">또는</span>
+            </div>
+
+            <SocialAuth isAdmin isLoading={isLoading} setIsLoading={setIsLoading} />
+          </div>
 
           <div className="mt-8 pt-8 border-t border-gray-800 flex items-start gap-3 bg-gray-900/50 p-4 rounded-xl">
             <AlertCircle className="text-[#FF6F61] shrink-0" size={18} />

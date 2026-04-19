@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Eye, EyeOff, MessageCircle } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import { useRouter } from 'next/navigation';
@@ -14,6 +14,7 @@ import {
   browserSessionPersistence 
 } from 'firebase/auth';
 import { collection, query, where, getDocs } from 'firebase/firestore';
+import SocialAuth from '@/components/SocialAuth';
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -92,21 +93,6 @@ export default function LoginPage() {
     }
   };
 
-  const handleKakaoLogin = async () => {
-    setIsLoading(true);
-    await new Promise(r => setTimeout(r, 1000));
-    setIsLoading(false);
-    toast.success('카카오 간편 로그인 성공');
-    router.push('/register?social=true');
-  };
-
-  const handleNaverLogin = async () => {
-    setIsLoading(true);
-    await new Promise(r => setTimeout(r, 1000));
-    setIsLoading(false);
-    toast.success('네이버 간편 로그인 성공');
-    router.push('/register?social=true');
-  };
 
   return (
     <div style={{
@@ -216,49 +202,7 @@ export default function LoginPage() {
           </div>
 
           {/* Social Buttons Container */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {/* Kakao Login */}
-            <button
-              onClick={handleKakaoLogin}
-              disabled={isLoading}
-              style={{
-                width: '100%', padding: '16px',
-                background: isLoading ? 'rgba(254,229,0,0.6)' : '#FEE500',
-                border: 'none', borderRadius: '100px',
-                cursor: isLoading ? 'wait' : 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
-                fontSize: '1rem', fontWeight: '800', color: '#191919',
-                transition: 'all 0.2s',
-              }}
-              onMouseEnter={e => { if (!isLoading) e.currentTarget.style.transform = 'translateY(-2px)'; }}
-              onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; }}
-            >
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="#191919">
-                <path d="M12 2C6.48 2 2 5.92 2 10.8c0 3.12 1.75 5.87 4.38 7.53L5.44 22l4.35-2.3c.72.2 1.45.3 2.21.3 5.52 0 10-3.93 10-8.8S17.52 2 12 2z" />
-              </svg>
-              카카오로 시작하기
-            </button>
-
-            {/* Naver Login */}
-            <button
-              onClick={handleNaverLogin}
-              disabled={isLoading}
-              style={{
-                width: '100%', padding: '16px',
-                background: isLoading ? 'rgba(3,199,90,0.6)' : '#03C75A',
-                border: 'none', borderRadius: '100px',
-                cursor: isLoading ? 'wait' : 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
-                fontSize: '1rem', fontWeight: '800', color: '#FFFFFF',
-                transition: 'all 0.2s',
-              }}
-              onMouseEnter={e => { if (!isLoading) e.currentTarget.style.transform = 'translateY(-2px)'; }}
-              onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; }}
-            >
-              <span style={{ fontWeight: '900', fontSize: '1.2rem', fontFamily: 'Arial' }}>N</span>
-              네이버로 시작하기
-            </button>
-          </div>
+          <SocialAuth isLoading={isLoading} setIsLoading={setIsLoading} />
         </div>
 
 
