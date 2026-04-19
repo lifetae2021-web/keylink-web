@@ -4,13 +4,13 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { auth, db } from '@/lib/firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { Lock, Mail, AlertCircle, Loader2, UnlockKeyhole } from 'lucide-react';
 import toast from 'react-hot-toast';
 import SocialAuth from '@/components/SocialAuth';
 
 export default function AdminLoginPage() {
-  const [email, setEmail] = useState('');
+  const [loginId, setLoginId] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
@@ -20,7 +20,20 @@ export default function AdminLoginPage() {
     setIsLoading(true);
 
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      let loginEmail = loginId;
+      if (!loginId.includes('@')) {
+        const q = query(collection(db, 'users'), where('username', '==', loginId));
+        const querySnapshot = await getDocs(q);
+        
+        if (querySnapshot.empty) {
+          toast.error('존재하지 않는 아이디입니다.');
+          setIsLoading(false);
+          return;
+        }
+        loginEmail = querySnapshot.docs[0].data().email;
+      }
+
+      const userCredential = await signInWithEmailAndPassword(auth, loginEmail, password);
       const user = userCredential.user;
 
       // Check for admin role in Firestore
@@ -55,14 +68,14 @@ export default function AdminLoginPage() {
         <div className="bg-[#1A1D23] border border-gray-800 rounded-2xl p-8 shadow-2xl">
           <form onSubmit={handleLogin} className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-gray-400 mb-2">이메일 주소</label>
+              <label className="block text-sm font-medium text-gray-400 mb-2">아이디 (또는 이메일)</label>
               <div className="relative">
                 <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  type="text"
+                  value={loginId}
+                  onChange={(e) => setLoginId(e.target.value)}
                   className="w-full bg-[#0F1115] border border-gray-700 rounded-xl py-3 px-11 text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-[#FF6F61]/50 focus:border-[#FF6F61] transition-all"
-                  placeholder="admin@keylink.com"
+                  placeholder="아이디 또는 이메일 입력"
                   required
                 />
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
