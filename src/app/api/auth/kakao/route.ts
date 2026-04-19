@@ -3,13 +3,13 @@ import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 
 const KAKAO_TOKEN_URL = 'https://kauth.kakao.com/oauth/token';
 const KAKAO_USER_PROFILE_URL = 'https://kapi.kakao.com/v2/user/me';
+const KAKAO_REDIRECT_URI = 'https://www.keylink.kr/api/auth/kakao';
 
 export async function GET(req: NextRequest) {
   const { searchParams, origin } = new URL(req.url);
   const code = searchParams.get('code');
   const state = searchParams.get('state') || 'user';
   const isAdmin = state === 'admin';
-  const redirectUri = `${origin}/api/auth/kakao`;
 
   if (!code) {
     return NextResponse.redirect(`${origin}/login?error=code_missing`);
@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
         grant_type: 'authorization_code',
         client_id: process.env.NEXT_PUBLIC_KAKAO_CLIENT_ID || '',
         client_secret: process.env.KAKAO_CLIENT_SECRET || '',
-        redirect_uri: redirectUri,
+        redirect_uri: KAKAO_REDIRECT_URI,
         code,
       }),
     });
@@ -43,45 +43,26 @@ export async function GET(req: NextRequest) {
     if (userData.error) throw new Error('Failed to fetch user profile');
 
     const kakaoId = userData.id.toString();
-    const email = userData.kakao_account?.email || null;
     const nickname = userData.properties?.nickname || userData.kakao_account?.profile?.nickname || '카카오 사용자';
 
-    // 3. Firestore Logic - Prioritize Kakao ID
+    // 3. Firestore Logic - Purely Kakao ID based (No Email)
     const usersRef = adminDb.collection('users');
+    const targetUid = `kakao_${kakaoId}`;
     
-    // Check if user exists by kakaoId
-    const qId = await usersRef.where('kakaoId', '==', kakaoId).limit(1).get();
-    
-    let targetUid = `kakao_${kakaoId}`;
-    let userDoc = null;
+    const userDocRef = usersRef.doc(targetUid);
+    const userDocSnap = await userDocRef.get();
 
-    if (!qId.empty) {
-      userDoc = qId.docs[0];
-      targetUid = userDoc.id;
-      
-      if (isAdmin && userDoc.data().role !== 'admin') {
+    if (userDocSnap.exists) {
+      // User exists
+      if (isAdmin && userDocSnap.data()?.role !== 'admin') {
         return NextResponse.redirect(`${origin}/login?error=not_admin`);
       }
-    } else if (email) {
-      // Fallback: check by email if available
-      const qEmail = await usersRef.where('email', '==', email).limit(1).get();
-      if (!qEmail.empty) {
-        userDoc = qEmail.docs[0];
-        targetUid = userDoc.id;
-        if (isAdmin && userDoc.data().role !== 'admin') {
-          return NextResponse.redirect(`${origin}/login?error=not_admin`);
-        }
-        // Link kakaoId to existing account
-        await userDoc.ref.update({ kakaoId, updatedBy: 'kakao-login' });
-      }
-    }
-
-    if (!userDoc) {
+    } else {
+      // New User
       if (isAdmin) return NextResponse.redirect(`${origin}/login?error=not_admin_registered`);
       
       const newUser = {
         uid: targetUid,
-        email: email, // Could be null
         name: nickname,
         role: 'user',
         kakaoId,
@@ -89,7 +70,7 @@ export async function GET(req: NextRequest) {
         createdAt: new Date(),
         updatedAt: new Date(),
       };
-      await usersRef.doc(targetUid).set(newUser);
+      await userDocRef.set(newUser);
     }
 
     // 4. Generate Token & Redirect
@@ -105,7 +86,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { code, redirectUri, isAdmin } = await req.json();
+    const { code, isAdmin } = await req.json();
 
     if (!code) {
       return NextResponse.json({ error: 'Authorization code is missing' }, { status: 400 });
@@ -121,7 +102,7 @@ export async function POST(req: NextRequest) {
         grant_type: 'authorization_code',
         client_id: process.env.NEXT_PUBLIC_KAKAO_CLIENT_ID || '',
         client_secret: process.env.KAKAO_CLIENT_SECRET || '',
-        redirect_uri: redirectUri,
+        redirect_uri: KAKAO_REDIRECT_URI,
         code,
       }),
     });
@@ -150,44 +131,23 @@ export async function POST(req: NextRequest) {
     }
 
     const kakaoId = userData.id.toString();
-    const email = userData.kakao_account?.email || null;
     const nickname = userData.properties?.nickname || userData.kakao_account?.profile?.nickname || '카카오 사용자';
 
-    // 3. Firestore Logic - Prioritize Kakao ID
+    // 3. Firestore Logic - Purely Kakao ID based (No Email)
     const usersRef = adminDb.collection('users');
-    const qId = await usersRef.where('kakaoId', '==', kakaoId).limit(1).get();
+    const targetUid = `kakao_${kakaoId}`;
     
-    let targetUid = `kakao_${kakaoId}`;
-    let userDoc = null;
+    const userDocRef = usersRef.doc(targetUid);
+    const userDocSnap = await userDocRef.get();
 
-    if (!qId.empty) {
-      userDoc = qId.docs[0];
-      targetUid = userDoc.id;
-
-      if (isAdmin && userDoc.data().role !== 'admin') {
+    if (userDocSnap.exists) {
+      if (isAdmin && userDocSnap.data()?.role !== 'admin') {
         return NextResponse.json({ 
           error: 'Admin authorization failed.',
           details: '관리자 권한이 없는 계정입니다.'
         }, { status: 403 });
       }
-    } else if (email) {
-      // Fallback: check by email if available
-      const qEmail = await usersRef.where('email', '==', email).limit(1).get();
-      if (!qEmail.empty) {
-        userDoc = qEmail.docs[0];
-        targetUid = userDoc.id;
-        if (isAdmin && userDoc.data().role !== 'admin') {
-          return NextResponse.json({ 
-            error: 'Admin authorization failed.',
-            details: '관리자 권한이 없는 계정입니다.'
-          }, { status: 403 });
-        }
-        // Link kakaoId to existing account
-        await userDoc.ref.update({ kakaoId, updatedBy: 'kakao-login' });
-      }
-    }
-
-    if (!userDoc) {
+    } else {
       if (isAdmin) {
         return NextResponse.json({ 
           error: 'Admin authorization failed.',
@@ -198,7 +158,6 @@ export async function POST(req: NextRequest) {
       // 4. Create new user
       const newUser = {
         uid: targetUid,
-        email: email,
         name: nickname,
         role: 'user',
         kakaoId,
@@ -207,7 +166,7 @@ export async function POST(req: NextRequest) {
         updatedAt: new Date(),
       };
       
-      await usersRef.doc(targetUid).set(newUser);
+      await userDocRef.set(newUser);
     }
 
     // 5. Generate Firebase Custom Token

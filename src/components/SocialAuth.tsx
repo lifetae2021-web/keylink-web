@@ -61,7 +61,7 @@ export default function SocialAuth({ isAdmin, isLoading, setIsLoading }: SocialA
 
   const handleKakaoLogin = () => {
     const clientId = process.env.NEXT_PUBLIC_KAKAO_CLIENT_ID;
-    const redirectUri = encodeURIComponent(window.location.origin + '/api/auth/kakao');
+    const redirectUri = 'https://www.keylink.kr/api/auth/kakao';
     const state = isAdmin ? 'admin' : 'user';
     
     if (!clientId) {
@@ -69,7 +69,7 @@ export default function SocialAuth({ isAdmin, isLoading, setIsLoading }: SocialA
       return;
     }
 
-    const kakaoAuthUrl = `https://kauth.kakao.com/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&state=${state}`;
+    const kakaoAuthUrl = `https://kauth.kakao.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&state=${state}&scope=profile_nickname`;
     window.location.href = kakaoAuthUrl;
   };
 
