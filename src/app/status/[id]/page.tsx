@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Users, ShieldCheck, RefreshCcw, ArrowRight, Heart, Timer, MapPin, Sparkles } from 'lucide-react';
@@ -24,7 +24,41 @@ export default function StatusPage() {
 
   const maleLineup = mockLineup.filter(p => p.gender === 'male');
   const femaleLineup = mockLineup.filter(p => p.gender === 'female');
-  const filteredLineup = activeTab === 'male' ? maleLineup : femaleLineup;
+
+  // Data Dissociation & Anonymization Logic
+  const anonymizedRows = useMemo(() => {
+    const confirmed = (activeTab === 'male' ? maleLineup : femaleLineup).filter(p => p.status === 'confirmed');
+    
+    // 1. Ages: Sort descending (99 -> 90) to show youngest first
+    const ages = confirmed
+      .map(p => `${p.year}년생`)
+      .sort((a, b) => parseInt(b) - parseInt(a));
+      
+    // 2. Jobs: Shuffle
+    const jobs = [...confirmed.map(p => p.occupation)].sort(() => Math.random() - 0.5);
+      
+    // 3. Heights: Shuffle
+    const heights = [...confirmed.map(p => `${p.height}cm`)].sort(() => Math.random() - 0.5);
+    
+    // Combine into rows
+    const rows = [];
+    const maxSlots = 8; // Fixed display count for visual consistency
+    for (let i = 0; i < maxSlots; i++) {
+      if (i < confirmed.length) {
+        rows.push({
+          age: ages[i],
+          job: jobs[i],
+          height: heights[i],
+          status: 'confirmed'
+        });
+      } else {
+        rows.push({
+          status: 'recruiting'
+        });
+      }
+    }
+    return rows;
+  }, [activeTab, maleLineup, femaleLineup]);
 
   const progressMale = 7 / 8;
   const progressFemale = 8 / 8;
@@ -57,7 +91,7 @@ export default function StatusPage() {
           </Link>
         </div>
 
-        {/* Hero Section: Venue & Summary */}
+        {/* Hero Section */}
         <section style={{ marginBottom: '60px' }}>
           <div style={{ 
             display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '32px',
@@ -90,7 +124,6 @@ export default function StatusPage() {
               </h1>
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                {/* Male Progress */}
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontWeight: '700', fontSize: '0.9rem' }}>
                     <span>남성 참가자 (7/8)</span>
@@ -100,7 +133,6 @@ export default function StatusPage() {
                     <div style={{ width: `${progressMale * 100}%`, height: '100%', background: 'linear-gradient(90deg, #FF9A8B, #FF6F61)', borderRadius: '5px' }} />
                   </div>
                 </div>
-                {/* Female Progress */}
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontWeight: '700', fontSize: '0.9rem' }}>
                     <span>여성 참가자 (8/8)</span>
@@ -121,26 +153,23 @@ export default function StatusPage() {
           </div>
         </section>
 
-        {/* Participant Lineup Overhaul */}
+        {/* Anonymized Lineup Section */}
         <section style={{ marginBottom: '80px' }}>
           <div style={{ textAlign: 'center', marginBottom: '40px' }}>
             <h3 style={{ fontSize: '1.8rem', fontWeight: '900', color: '#111', marginBottom: '12px' }}>
               실시간 라인업
             </h3>
-            <p style={{ color: 'var(--color-text-secondary)', fontWeight: '500' }}>
-              현재 확정된 참가자분들의 프로필 요약입니다.
+            <p style={{ color: 'var(--color-text-secondary)', fontWeight: '500', maxWidth: '600px', margin: '0 auto' }}>
+              참여자의 프라이버시 보호를 위해 나이, 직업, 키 정보를 <br className="desktop-br"/>각각 분리하여 랜덤하게 나열하였습니다.
             </p>
           </div>
 
-          {/* Gender Tabs (Redesign) */}
-          <div style={{ 
-            display: 'flex', justifyContent: 'center', gap: '10px', 
-            marginBottom: '40px'
-          }}>
+          {/* Gender Tabs */}
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', marginBottom: '40px' }}>
             <button 
               onClick={() => setActiveTab('male')}
               style={{
-                padding: '16px 32px', borderRadius: '100px', border: 'none',
+                padding: '16px 36px', borderRadius: '100px', border: 'none',
                 fontWeight: '900', fontSize: '1.05rem', cursor: 'pointer',
                 transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
                 background: activeTab === 'male' ? 'linear-gradient(135deg, #007AFF, #0056B3)' : '#f5f5f5',
@@ -154,7 +183,7 @@ export default function StatusPage() {
             <button 
               onClick={() => setActiveTab('female')}
               style={{
-                padding: '16px 32px', borderRadius: '100px', border: 'none',
+                padding: '16px 36px', borderRadius: '100px', border: 'none',
                 fontWeight: '900', fontSize: '1.05rem', cursor: 'pointer',
                 transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
                 background: activeTab === 'female' ? 'linear-gradient(135deg, #FF6F61, #FF8A71)' : '#f5f5f5',
@@ -167,18 +196,18 @@ export default function StatusPage() {
             </button>
           </div>
 
-          {/* Compact List View */}
-          <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-            {/* Header Row (Desktop only) */}
-            <div className="list-header" style={{ 
-              display: 'grid', gridTemplateColumns: '60px 100px 1fr 120px', gap: '20px',
+          {/* Dissociated List View */}
+          <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+            {/* Header Row */}
+            <div style={{ 
+              display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px',
               padding: '15px 30px', background: 'rgba(0,0,0,0.03)', borderRadius: '16px',
-              fontWeight: '800', color: '#666', fontSize: '0.9rem', marginBottom: '12px'
+              fontWeight: '800', color: '#666', fontSize: '0.9rem', marginBottom: '12px',
+              textAlign: 'center'
             }}>
-              <span>번호</span>
-              <span>출생연도</span>
-              <span>직업군</span>
-              <span>성향(MBTI)</span>
+              <span>나이 (정렬됨)</span>
+              <span>직업 (랜덤)</span>
+              <span>키 (랜덤)</span>
             </div>
 
             <AnimatePresence mode="wait">
@@ -190,35 +219,22 @@ export default function StatusPage() {
                 transition={{ duration: 0.3 }}
                 style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}
               >
-                {filteredLineup.map((p, idx) => (
-                  <div key={p.id} className="compact-row" style={{ 
-                    display: 'grid', alignItems: 'center',
+                {anonymizedRows.map((row, idx) => (
+                  <div key={idx} className="anon-row" style={{ 
+                    display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px',
                     background: '#fff', border: '1px solid #f0f0f0', borderRadius: '20px',
-                    padding: '20px 30px', boxShadow: '0 4px 12px rgba(0,0,0,0.02)',
-                    transition: 'all 0.3s ease'
+                    padding: '20px 30px', boxShadow: '0 4px 12px rgba(0,0,0,0.01)',
+                    alignItems: 'center', textAlign: 'center'
                   }}>
-                    <div style={{ fontWeight: '900', color: activeTab === 'male' ? '#007AFF' : '#FF6F61', fontSize: '1.2rem' }}>
-                      {idx + 1}
-                    </div>
-
-                    {p.status === 'confirmed' ? (
+                    {row.status === 'confirmed' ? (
                       <>
-                        <div style={{ fontWeight: '700', color: '#333' }}>{p.year}년생</div>
-                        <div className="occ-mbti-cell" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <span style={{ fontWeight: '800', fontSize: '1.05rem', color: '#111' }}>{p.occupation}</span>
-                          <span className="mbti-badge" style={{ 
-                            background: activeTab === 'male' ? 'rgba(0,122,255,0.08)' : 'rgba(255,111,97,0.08)',
-                            color: activeTab === 'male' ? '#007AFF' : '#FF6F61',
-                            padding: '4px 10px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: '800'
-                          }}>{p.mbti}</span>
-                        </div>
-                        <div className="desktop-mbti" style={{ textAlign: 'right' }}>
-                          {p.status === 'confirmed' && <Sparkles size={18} color="#FFD700" fill="#FFD700" />}
-                        </div>
+                        <div style={{ fontWeight: '700', color: '#111' }}>{row.age}</div>
+                        <div style={{ fontWeight: '800', color: activeTab === 'male' ? '#007AFF' : '#FF6F61' }}>{row.job}</div>
+                        <div style={{ color: '#666', fontWeight: '500' }}>{row.height}</div>
                       </>
                     ) : (
-                      <div style={{ gridColumn: 'span 3', display: 'flex', alignItems: 'center', gap: '10px', color: '#bbb', fontWeight: '700' }}>
-                        <Heart size={16} color="#eee" fill="#eee" /> 멋진 인연을 기다려요
+                      <div style={{ gridColumn: 'span 3', color: '#bbb', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                        <Sparkles size={16} /> 멋진 인연을 기다려요
                       </div>
                     )}
                   </div>
@@ -228,33 +244,20 @@ export default function StatusPage() {
           </div>
         </section>
 
-        {/* Assurance Banners */}
+        {/* Banners */}
         <section style={{ 
           display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px',
           marginBottom: '60px'
         }}>
-          <div style={{ 
-            background: 'linear-gradient(135deg, #FFF5F4 0%, #FFF0EF 100%)', 
-            border: '1px solid rgba(255,111,97,0.15)',
-            padding: '32px', borderRadius: '24px', display: 'flex', alignItems: 'center', gap: '20px'
-          }}>
-            <div style={{ background: '#FF6F61', width: '56px', height: '56px', borderRadius: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
-              <RefreshCcw size={28} />
-            </div>
+          <div style={{ background: 'linear-gradient(135deg, #FFF5F4 0%, #FFF0EF 100%)', border: '1px solid rgba(255,111,97,0.15)', padding: '32px', borderRadius: '24px', display: 'flex', alignItems: 'center', gap: '20px' }}>
+            <div style={{ background: '#FF6F61', width: '56px', height: '56px', borderRadius: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}><RefreshCcw size={28} /></div>
             <div>
               <h4 style={{ fontSize: '1.2rem', fontWeight: '900', color: '#111', marginBottom: '4px' }}>매칭 실패 시 100% 환불</h4>
               <p style={{ fontSize: '0.9rem', color: '#666', fontWeight: '500' }}>단 한 명과도 매칭되지 않을 경우,<br/>참가비 전액을 포인트로 환불해 드립니다.</p>
             </div>
           </div>
-
-          <div style={{ 
-            background: 'linear-gradient(135deg, #F0F7FF 0%, #EBF3FF 100%)', 
-            border: '1px solid rgba(0,122,255,0.1)',
-            padding: '32px', borderRadius: '24px', display: 'flex', alignItems: 'center', gap: '20px'
-          }}>
-            <div style={{ background: '#007AFF', width: '56px', height: '56px', borderRadius: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
-              <ShieldCheck size={28} />
-            </div>
+          <div style={{ background: 'linear-gradient(135deg, #F0F7FF 0%, #EBF3FF 100%)', border: '1px solid rgba(0,122,255,0.1)', padding: '32px', borderRadius: '24px', display: 'flex', alignItems: 'center', gap: '20px' }}>
+            <div style={{ background: '#007AFF', width: '56px', height: '56px', borderRadius: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}><ShieldCheck size={28} /></div>
             <div>
               <h4 style={{ fontSize: '1.2rem', fontWeight: '900', color: '#111', marginBottom: '4px' }}>지인/중복 만남 방지</h4>
               <p style={{ fontSize: '0.9rem', color: '#666', fontWeight: '500' }}>과거 매칭되었던 분이나 지인을 만날까 봐<br/>걱정 마세요. 꼼꼼히 사전 필터링합니다.</p>
@@ -262,64 +265,23 @@ export default function StatusPage() {
           </div>
         </section>
 
-        {/* Bottom CTA */}
+        {/* CTA */}
         <section style={{ textAlign: 'center' }}>
-          <Link href="/events" className="kl-btn-primary" style={{ 
-            display: 'inline-flex', alignItems: 'center', gap: '12px',
-            padding: '24px 60px', fontSize: '1.2rem', fontWeight: '900', borderRadius: '100px',
-            boxShadow: '0 20px 40px rgba(255,111,97,0.3)', transition: 'transform 0.3s ease'
-          }} onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'} onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}>
+          <Link href="/events" className="kl-btn-primary" style={{ padding: '24px 60px', fontSize: '1.2rem', fontWeight: '900', borderRadius: '100px', boxShadow: '0 20px 40px rgba(255,111,97,0.3)', transition: 'transform 0.3s ease' }} onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'} onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}>
             지금 참여 신청하기 <ArrowRight size={22} />
           </Link>
-          <p style={{ marginTop: '20px', color: '#888', fontWeight: '500', fontSize: '0.9rem' }}>
-            * 실시간 상황에 따라 인원이 빠르게 마감될 수 있습니다.
-          </p>
         </section>
       </div>
 
       <style jsx>{`
-        .pulse-circle {
-          width: 8px;
-          height: 8px;
-          background-color: #fff;
-          border-radius: 50%;
-          animation: pulse 1.5s infinite;
-        }
+        .pulse-circle { width: 8px; height: 8px; background-color: #fff; border-radius: 50%; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(255, 255, 255, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); } }
+        
+        .anon-row:hover { transform: translateY(-2px); border-color: #ddd; box-shadow: 0 8px 24px rgba(0,0,0,0.04); }
 
-        @keyframes pulse {
-          0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7); }
-          70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(255, 255, 255, 0); }
-          100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); }
-        }
-
-        .compact-row {
-          grid-template-columns: 60px 100px 1fr 120px;
-          gap: 20px;
-        }
-
-        .compact-row:hover {
-          transform: scale(1.01);
-          border-color: #ddd;
-          box-shadow: 0 10px 20px rgba(0,0,0,0.04);
-        }
-
-        @media (max-width: 768px) {
-          .list-header { display: none !important; }
-          .compact-row {
-            grid-template-columns: 50px 80px 1fr;
-            padding: 15px 20px;
-            gap: 10px;
-          }
-          .occ-mbti-cell {
-            flex-direction: column;
-            align-items: flex-start !important;
-            gap: 4px !important;
-          }
-          .desktop-mbti { display: none; }
-        }
-
-        @media (max-width: 480px) {
-          .kl-container { padding: 20px 15px; }
+        @media (max-width: 640px) {
+          .desktop-br { display: none; }
+          .anon-row { padding: 15px 10px !important; font-size: 0.85rem; }
           h1 { font-size: 1.8rem !important; }
         }
       `}</style>
