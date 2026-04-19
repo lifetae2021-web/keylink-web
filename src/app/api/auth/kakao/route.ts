@@ -43,30 +43,45 @@ export async function GET(req: NextRequest) {
     if (userData.error) throw new Error('Failed to fetch user profile');
 
     const kakaoId = userData.id.toString();
-    const email = userData.kakao_account?.email;
+    const email = userData.kakao_account?.email || null;
     const nickname = userData.properties?.nickname || userData.kakao_account?.profile?.nickname || '카카오 사용자';
 
-    if (!email) throw new Error('email_missing');
-
-    // 3. Firestore Logic
+    // 3. Firestore Logic - Prioritize Kakao ID
     const usersRef = adminDb.collection('users');
-    const qEmail = await usersRef.where('email', '==', email).limit(1).get();
+    
+    // Check if user exists by kakaoId
+    const qId = await usersRef.where('kakaoId', '==', kakaoId).limit(1).get();
     
     let targetUid = `kakao_${kakaoId}`;
-    if (!qEmail.empty) {
-      const userDoc = qEmail.docs[0];
+    let userDoc = null;
+
+    if (!qId.empty) {
+      userDoc = qId.docs[0];
       targetUid = userDoc.id;
+      
       if (isAdmin && userDoc.data().role !== 'admin') {
         return NextResponse.redirect(`${origin}/login?error=not_admin`);
       }
-      if (!userDoc.data().kakaoId) {
+    } else if (email) {
+      // Fallback: check by email if available
+      const qEmail = await usersRef.where('email', '==', email).limit(1).get();
+      if (!qEmail.empty) {
+        userDoc = qEmail.docs[0];
+        targetUid = userDoc.id;
+        if (isAdmin && userDoc.data().role !== 'admin') {
+          return NextResponse.redirect(`${origin}/login?error=not_admin`);
+        }
+        // Link kakaoId to existing account
         await userDoc.ref.update({ kakaoId, updatedBy: 'kakao-login' });
       }
-    } else {
+    }
+
+    if (!userDoc) {
       if (isAdmin) return NextResponse.redirect(`${origin}/login?error=not_admin_registered`);
+      
       const newUser = {
         uid: targetUid,
-        email,
+        email: email, // Could be null
         name: nickname,
         role: 'user',
         kakaoId,
@@ -89,10 +104,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  // Existing POST logic for manual calls if needed
   try {
     const { code, redirectUri, isAdmin } = await req.json();
-    // ... rest of the code as before ...
 
     if (!code) {
       return NextResponse.json({ error: 'Authorization code is missing' }, { status: 400 });
@@ -137,38 +150,44 @@ export async function POST(req: NextRequest) {
     }
 
     const kakaoId = userData.id.toString();
-    const email = userData.kakao_account?.email;
+    const email = userData.kakao_account?.email || null;
     const nickname = userData.properties?.nickname || userData.kakao_account?.profile?.nickname || '카카오 사용자';
 
-    if (!email) {
-      return NextResponse.json({ error: 'Kakao account must have an email address' }, { status: 400 });
-    }
-
-    // 3. Check for existing user in Firestore
+    // 3. Firestore Logic - Prioritize Kakao ID
     const usersRef = adminDb.collection('users');
-    const qEmail = await usersRef.where('email', '==', email).limit(1).get();
+    const qId = await usersRef.where('kakaoId', '==', kakaoId).limit(1).get();
     
     let targetUid = `kakao_${kakaoId}`;
     let userDoc = null;
 
-    if (!qEmail.empty) {
-      userDoc = qEmail.docs[0];
-      targetUid = userDoc.id; // Use existing UID if email matches
+    if (!qId.empty) {
+      userDoc = qId.docs[0];
+      targetUid = userDoc.id;
 
-      // If requested admin login, check role
       if (isAdmin && userDoc.data().role !== 'admin') {
         return NextResponse.json({ 
           error: 'Admin authorization failed.',
           details: '관리자 권한이 없는 계정입니다.'
         }, { status: 403 });
       }
-
-      // Link kakaoId if missing
-      if (!userDoc.data().kakaoId) {
+    } else if (email) {
+      // Fallback: check by email if available
+      const qEmail = await usersRef.where('email', '==', email).limit(1).get();
+      if (!qEmail.empty) {
+        userDoc = qEmail.docs[0];
+        targetUid = userDoc.id;
+        if (isAdmin && userDoc.data().role !== 'admin') {
+          return NextResponse.json({ 
+            error: 'Admin authorization failed.',
+            details: '관리자 권한이 없는 계정입니다.'
+          }, { status: 403 });
+        }
+        // Link kakaoId to existing account
         await userDoc.ref.update({ kakaoId, updatedBy: 'kakao-login' });
       }
-    } else {
-      // User does not exist by email
+    }
+
+    if (!userDoc) {
       if (isAdmin) {
         return NextResponse.json({ 
           error: 'Admin authorization failed.',
@@ -176,10 +195,10 @@ export async function POST(req: NextRequest) {
         }, { status: 403 });
       }
 
-      // 4. Create new user for regular login
+      // 4. Create new user
       const newUser = {
         uid: targetUid,
-        email,
+        email: email,
         name: nickname,
         role: 'user',
         kakaoId,
