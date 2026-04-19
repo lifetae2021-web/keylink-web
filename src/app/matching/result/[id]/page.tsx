@@ -2,7 +2,7 @@
 
 import { use } from 'react';
 import Link from 'next/link';
-import { Heart, ArrowLeft, Trophy, Sparkles, Calendar, Users, BarChart3, MessageCircle, MapPin, ShieldCheck, Clock } from 'lucide-react';
+import { Heart, ArrowLeft, ArrowRight, Trophy, Sparkles, Calendar, Users, BarChart3, MessageCircle, MapPin, ShieldCheck, Clock } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { mockMatchingResults } from '@/lib/mockData';
 import { notFound } from 'next/navigation';
