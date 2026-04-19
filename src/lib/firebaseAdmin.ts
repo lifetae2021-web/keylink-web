@@ -6,6 +6,11 @@ if (!admin.apps.length) {
       process.env.FIREBASE_SERVICE_ACCOUNT_KEY || '{}'
     );
 
+    // Vercel 환경 변수에서 private_key의 \n 문자가 제대로 인식되지 않는 문제 해결
+    if (serviceAccount.private_key) {
+      serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+    }
+
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
     });
