@@ -74,7 +74,17 @@ export default function SocialAuth({ isAdmin, isLoading, setIsLoading }: SocialA
   };
 
   const handleNaverLogin = () => {
-    toast.success('네이버 간편 로그인 준비 중입니다.');
+    const clientId = process.env.NEXT_PUBLIC_NAVER_CLIENT_ID;
+    const redirectUri = 'https://www.keylink.kr/api/auth/naver';
+    const state = isAdmin ? 'admin' : 'user';
+
+    if (!clientId) {
+      toast.error('네이버 클라이언트 ID가 설정되지 않았습니다.');
+      return;
+    }
+
+    const naverAuthUrl = `https://nid.naver.com/oauth2.0/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&state=${state}`;
+    window.location.href = naverAuthUrl;
   };
 
   return (
