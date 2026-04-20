@@ -16,7 +16,8 @@ import { version } from '../../../package.json';
 
 const NAV = [
   { label: '대시보드',      icon: LayoutDashboard, path: '/admin' },
-  { label: '신청자 관리',    icon: Users,           path: '/admin/users',   badge: 2 },
+  { label: '회원 관리',      icon: Users,           path: '/admin/users' },
+  { label: '신청 관리',      icon: FileText,        path: '/admin/applications', badge: 2 },
   { label: '행사 / 매칭',   icon: Calendar,        path: '/admin/events' },
   { label: '매출 통계',     icon: TrendingUp,      path: '/admin/revenue' },
   { label: '콘텐츠 편집',   icon: FileText,        path: '/admin/cms' },
@@ -24,12 +25,13 @@ const NAV = [
 ];
 
 const PAGE_TITLE: Record<string, string> = {
-  '/admin':          '대시보드',
-  '/admin/users':    '신청자 관리',
-  '/admin/events':   '행사 / 매칭 관리',
-  '/admin/revenue':  '매출 통계',
-  '/admin/cms':      '콘텐츠 편집',
-  '/admin/settings': '시스템 설정',
+  '/admin':               '대시보드',
+  '/admin/users':         '회원 관리',
+  '/admin/applications':  '기수별 신청 관리',
+  '/admin/events':        '행사 / 매칭 관리',
+  '/admin/revenue':       '매출 통계',
+  '/admin/cms':           '콘텐츠 편집',
+  '/admin/settings':      '시스템 설정',
 };
 
 const MOCK_NOTIFICATIONS = [

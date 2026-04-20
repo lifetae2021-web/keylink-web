@@ -185,7 +185,7 @@ export default function Navbar() {
                 <Link href="/mypage" className="kl-btn-outline kl-mypage-btn" style={{ padding: '10px 18px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '100px' }}>
                   <UserIcon size={16} className="kl-btn-icon" /> 마이페이지
                 </Link>
-                {/* PC 전용 로그아웃 버튼 (v3.3.0) */}
+                {/* PC 전용 로그아웃 버튼 (v3.4.0) */}
                 <button 
                   onClick={handleLogout} 
                   className="desktop-only-btn"
