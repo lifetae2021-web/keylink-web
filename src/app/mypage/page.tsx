@@ -140,7 +140,7 @@ export default function MyPage() {
       const updateData = {
         ...sanitizedForm,
         profilePhotos,
-        // Explicitly clear legacy fields to prevent schema conflicts (v3.2.4 Comprehensive Cleanup)
+        // Explicitly clear legacy fields to prevent schema conflicts (v3.2.5 Comprehensive Cleanup)
         facePhotos: deleteField(),
         bodyPhotos: deleteField(),
         fullBodyPhotos: deleteField(),
@@ -163,7 +163,7 @@ export default function MyPage() {
     }
   };
 
-  // v3.2.4: Client-side image compression to bypass Firestore 1MB document limit
+  // v3.2.5: Client-side image compression to bypass Firestore 1MB document limit
   const compressImage = (base64: string): Promise<string> => {
     return new Promise((resolve) => {
       const img = new Image();
@@ -218,7 +218,7 @@ export default function MyPage() {
       const reader = new FileReader();
       reader.onload = async (ev) => {
         const rawUrl = ev.target?.result as string;
-        // Apply compression before setting state (v3.2.4)
+        // Apply compression before setting state (v3.2.5)
         const compressedUrl = await compressImage(rawUrl);
         setProfilePhotos(prev => [...prev, compressedUrl].slice(0, 5));
       };
@@ -259,7 +259,7 @@ export default function MyPage() {
               </button>
             </div>
 
-            {/* Photo Section (Unified v3.2.4) */}
+            {/* Photo Section (Unified v3.2.5) */}
             <div style={{ marginBottom: '40px' }}>
               <EditRow label={`본인 사진 업로드 (${profilePhotos.length}/5)`} required>
                 <div style={{ background: '#FFFDFD', border: '1.5px dashed #FFDBE9', borderRadius: '16px', padding: '24px', marginBottom: '16px' }}>

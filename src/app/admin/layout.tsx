@@ -12,12 +12,12 @@ import {
 import Link from 'next/link';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const [isAdmin, setIsAdmin] = useState<boolean | null>(true); // [TEMP] v3.2.4: Default to true for easy initial setup
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(true); // [TEMP] v3.2.5: Default to true for easy initial setup
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
 
-  // [TEMP] v3.2.4: Temporarily disabled authentication for setup convenience
+  // [TEMP] v3.2.5: Temporarily disabled authentication for setup convenience
   /*
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
