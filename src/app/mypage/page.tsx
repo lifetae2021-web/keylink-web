@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { auth, db } from '@/lib/firebase';
+import { auth, db, storage } from '@/lib/firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { doc, getDoc, updateDoc, serverTimestamp, deleteField } from 'firebase/firestore';
+import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import {
   LogOut, ArrowLeft, Camera, ChevronDown, ChevronUp, X, Check, Edit3, Package, Upload, Trash2
 } from 'lucide-react';
@@ -131,6 +132,18 @@ export default function MyPage() {
 
     setIsSaving(true);
     try {
+      // Photo Upload logic: Upload new base64 images to Storage (v3.5.1)
+      const uploadedUrls = await Promise.all(
+        profilePhotos.map(async (photo, index) => {
+          if (typeof photo === 'string' && photo.startsWith('data:')) {
+            const photoRef = ref(storage, `profile_images/${user!.uid}/${Date.now()}_${index}.jpg`);
+            await uploadString(photoRef, photo, 'data_url');
+            return await getDownloadURL(photoRef);
+          }
+          return photo; // Existing URL
+        })
+      );
+
       // Sanitize editForm to ensure no undefined values are sent to Firestore
       const sanitizedForm = Object.keys(editForm).reduce((acc: any, key) => {
         acc[key] = editForm[key] === undefined ? '' : editForm[key];
@@ -139,8 +152,8 @@ export default function MyPage() {
 
       const updateData = {
         ...sanitizedForm,
-        profilePhotos,
-        // Explicitly clear legacy fields to prevent schema conflicts (v3.5.0 Comprehensive Cleanup)
+        profilePhotos: uploadedUrls,
+        // Explicitly clear legacy fields to prevent schema conflicts (v3.5.1 Cleanup)
         facePhotos: deleteField(),
         bodyPhotos: deleteField(),
         fullBodyPhotos: deleteField(),
@@ -151,19 +164,18 @@ export default function MyPage() {
       
       await updateDoc(doc(db, 'users', user!.uid), updateData);
       setUserData((p: any) => ({ ...p, ...updateData }));
+      setProfilePhotos(uploadedUrls); // Update local state with URLs
       setIsEditing(false);
       toast.success('프로필 정보가 안전하게 업데이트되었습니다.');
     } catch (error: any) {
-      console.error('Firestore Save Error:', error);
-      // Detailed error reporting for the user/developer
-      const errorCode = error.code || 'UNKNOWN';
-      toast.error(`저장 중 오류가 발생했습니다: ${error.message || '알 수 없는 에러'} (${errorCode})`);
+      console.error('Profile Save Error:', error);
+      toast.error(`저장 중 오류가 발생했습니다: ${error.message || '알 수 없는 에러'}`);
     } finally {
       setIsSaving(false);
     }
   };
 
-  // v3.5.0: Client-side image compression to bypass Firestore 1MB document limit
+  // v3.5.1: Client-side image compression to bypass Firestore 1MB document limit
   const compressImage = (base64: string): Promise<string> => {
     return new Promise((resolve) => {
       const img = new Image();
@@ -218,7 +230,7 @@ export default function MyPage() {
       const reader = new FileReader();
       reader.onload = async (ev) => {
         const rawUrl = ev.target?.result as string;
-        // Apply compression before setting state (v3.5.0)
+        // Apply compression before setting state (v3.5.1)
         const compressedUrl = await compressImage(rawUrl);
         setProfilePhotos(prev => [...prev, compressedUrl].slice(0, 5));
       };
@@ -259,7 +271,7 @@ export default function MyPage() {
               </button>
             </div>
 
-            {/* Photo Section (Unified v3.5.0) */}
+            {/* Photo Section (Unified v3.5.1) */}
             <div style={{ marginBottom: '40px' }}>
               <EditRow label={`본인 사진 업로드 (${profilePhotos.length}/5)`} required>
                 <div style={{ background: '#FFFDFD', border: '1.5px dashed #FFDBE9', borderRadius: '16px', padding: '24px', marginBottom: '16px' }}>

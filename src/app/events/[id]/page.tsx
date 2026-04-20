@@ -10,9 +10,10 @@ import { mockEvents } from '@/lib/mockData';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import toast from 'react-hot-toast';
-import { auth, db } from '@/lib/firebase';
+import { auth, db, storage } from '@/lib/firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 export default function EventDetailPage() {
   const { id } = useParams();
@@ -150,10 +151,19 @@ export default function EventDetailPage() {
 
     setIsSubmitting(true);
     
-    // Firestore 최신 정보로 업데이트
+    // Firestore 최신 정보 및 사진 업로드 (v3.5.1)
     if (currentUser) {
-      const userRef = doc(db, 'users', currentUser.uid);
       try {
+        const allPhotos = [...facePhotos, ...bodyPhotos].slice(0, 5);
+        const uploadedUrls = await Promise.all(
+          allPhotos.map(async (file, index) => {
+            const photoRef = ref(storage, `profile_images/${currentUser.uid}/event_${id}_${Date.now()}_${index}.jpg`);
+            await uploadBytes(photoRef, file);
+            return await getDownloadURL(photoRef);
+          })
+        );
+
+        const userRef = doc(db, 'users', currentUser.uid);
         await setDoc(userRef, {
           name: form.name,
           gender: form.gender,
@@ -170,9 +180,13 @@ export default function EventDetailPage() {
           smoking: form.smoking,
           drinking: form.drinking,
           religion: form.religion,
+          profilePhotos: uploadedUrls, // 매칭용 사진 동기화
         }, { merge: true });
       } catch (err) {
-        console.error('Failed to update user profile', err);
+        console.error('Failed to update user profile or upload photos', err);
+        toast.error('정보 저장 및 사진 업로드 중 오류가 발생했습니다.');
+        setIsSubmitting(false);
+        return;
       }
     }
 
