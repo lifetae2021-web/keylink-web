@@ -17,7 +17,7 @@ export default function MatchingResultPage() {
     <div style={{ paddingBottom: '100px', background: 'var(--color-bg)', minHeight: '100vh', position: 'relative', overflow: 'hidden' }}>
       <CherryBlossoms />
       
-      {/* Premium Sticky Header for v3.2.3 */}
+      {/* Premium Sticky Header for v3.2.4 */}
       <div style={{ 
         position: 'sticky', top: '85px', zIndex: 100,
         background: 'rgba(255, 111, 97, 0.9)', backdropFilter: 'blur(10px)',
