@@ -61,7 +61,7 @@ export default function SocialAuth({ isAdmin, isLoading, setIsLoading }: SocialA
 
   const handleKakaoLogin = () => {
     const clientId = process.env.NEXT_PUBLIC_KAKAO_CLIENT_ID;
-    const redirectUri = 'https://www.keylink.kr/api/auth/kakao';
+    const redirectUri = `${window.location.origin}/api/auth/kakao`;
     const state = isAdmin ? 'admin' : 'user';
     
     if (!clientId) {
@@ -75,7 +75,7 @@ export default function SocialAuth({ isAdmin, isLoading, setIsLoading }: SocialA
 
   const handleNaverLogin = () => {
     const clientId = process.env.NEXT_PUBLIC_NAVER_CLIENT_ID;
-    const redirectUri = 'https://www.keylink.kr/api/auth/naver';
+    const redirectUri = `${window.location.origin}/api/auth/naver`;
     const state = isAdmin ? 'admin' : 'user';
 
     if (!clientId) {

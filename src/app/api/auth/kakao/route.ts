@@ -3,7 +3,9 @@ import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 
 const KAKAO_TOKEN_URL = 'https://kauth.kakao.com/oauth/token';
 const KAKAO_USER_PROFILE_URL = 'https://kapi.kakao.com/v2/user/me';
-const KAKAO_REDIRECT_URI = 'https://www.keylink.kr/api/auth/kakao';
+const KAKAO_REDIRECT_URI = process.env.NODE_ENV === 'development'
+  ? 'http://localhost:3000/api/auth/kakao'
+  : 'https://www.keylink.kr/api/auth/kakao';
 
 export async function GET(req: NextRequest) {
   const { searchParams, origin } = new URL(req.url);

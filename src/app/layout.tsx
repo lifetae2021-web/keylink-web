@@ -4,6 +4,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Toaster } from "react-hot-toast";
 import CherryBlossoms from "@/components/CherryBlossoms";
+import { version } from "../../package.json";
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://www.keylink.kr'),
@@ -30,6 +31,17 @@ export default function RootLayout({
         <Navbar />
         <main>{children}</main>
         <Footer />
+        <div style={{
+          position: 'fixed', bottom: '16px', right: '16px',
+          fontSize: '0.7rem', color: 'rgba(0,0,0,0.25)',
+          background: 'rgba(255,255,255,0.6)',
+          backdropFilter: 'blur(4px)',
+          padding: '4px 10px', borderRadius: '100px',
+          pointerEvents: 'none', zIndex: 9999,
+          userSelect: 'none',
+        }}>
+          v{version}
+        </div>
         <Toaster
           position="top-center"
           toastOptions={{
