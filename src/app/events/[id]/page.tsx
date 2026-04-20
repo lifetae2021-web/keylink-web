@@ -182,20 +182,27 @@ export default function EventDetailPage() {
           religion: form.religion,
           profilePhotos: uploadedUrls, // 매칭용 사진 동기화
         }, { merge: true });
-      } catch (err) {
-        console.error('Failed to update user profile or upload photos', err);
-        toast.error('정보 저장 및 사진 업로드 중 오류가 발생했습니다.');
+
+        // Submit form (mock or actually separate collection if needed)
+        await new Promise((r) => setTimeout(r, 1000));
+        
+        toast.success('신청서가 접수되었습니다. 검토 후 연락드리겠습니다.');
+        localStorage.removeItem(`keylink_form_${id}`);
+        setStep(2);
+      } catch (err: any) {
+        console.error('Submission Error:', err);
+        let msg = '신청 중 오류가 발생했습니다.';
+        if (err.code === 'storage/unauthorized') msg = '사진 업로드 권한이 없습니다.';
+        else if (err.message) msg = `오류: ${err.message}`;
+        toast.error(msg);
+      } finally {
         setIsSubmitting(false);
-        return;
       }
+      return;
     }
 
-    // 모의 폼 제출
-    await new Promise((r) => setTimeout(r, 1500));
+    // fallback for guest (should not happen with current logic)
     setIsSubmitting(false);
-    toast.success('신청서가 접수되었습니다. 검토 후 연락드리겠습니다.');
-    localStorage.removeItem(`keylink_form_${id}`); // 제출 성공 시 임시저장 삭제
-    setStep(2); // 결제 단계로 이동
   };
 
   const handlePayment = async () => {

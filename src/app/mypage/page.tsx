@@ -169,7 +169,15 @@ export default function MyPage() {
       toast.success('프로필 정보가 안전하게 업데이트되었습니다.');
     } catch (error: any) {
       console.error('Profile Save Error:', error);
-      toast.error(`저장 중 오류가 발생했습니다: ${error.message || '알 수 없는 에러'}`);
+      let errorMessage = '저장 중 오류가 발생했습니다.';
+      if (error.code === 'storage/unauthorized') {
+        errorMessage = '사진 업로드 권한이 없습니다. (Storage Rules 확인 필요)';
+      } else if (error.code === 'storage/canceled') {
+        errorMessage = '업로드가 취소되었습니다.';
+      } else if (error.message) {
+        errorMessage = `저장 오류: ${error.message}`;
+      }
+      toast.error(errorMessage);
     } finally {
       setIsSaving(false);
     }
