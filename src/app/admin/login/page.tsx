@@ -22,15 +22,31 @@ export default function AdminLoginPage() {
     try {
       let loginEmail = loginId;
       if (!loginId.includes('@')) {
-        const q = query(collection(db, 'users'), where('username', '==', loginId));
-        const querySnapshot = await getDocs(q);
+        // Try searching for the user in multiple fields
+        const collectionsRef = collection(db, 'users');
+        const searchQueries = [
+          query(collectionsRef, where('username', '==', loginId)),
+          query(collectionsRef, where('name', '==', loginId)),
+          query(collectionsRef, where('uid', '==', loginId)),
+          query(collectionsRef, where('naverId', '==', loginId)),
+          query(collectionsRef, where('kakaoId', '==', loginId)),
+        ];
+
+        const snapshots = await Promise.all(searchQueries.map(q => getDocs(q)));
+        const foundDoc = snapshots.find(snap => !snap.empty)?.docs[0];
         
-        if (querySnapshot.empty) {
+        if (!foundDoc) {
           toast.error('존재하지 않는 아이디입니다.');
           setIsLoading(false);
           return;
         }
-        loginEmail = querySnapshot.docs[0].data().email;
+        
+        loginEmail = foundDoc.data().email;
+        if (!loginEmail) {
+          toast.error('이메일 정보가 없는 계정입니다. 소셜 로그인을 이용해 주세요.');
+          setIsLoading(false);
+          return;
+        }
       }
 
       const userCredential = await signInWithEmailAndPassword(auth, loginEmail, password);
