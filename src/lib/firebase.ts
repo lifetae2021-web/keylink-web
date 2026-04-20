@@ -16,4 +16,6 @@ const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
+// SDK 기본 10분 재시도를 10초로 제한하여 멈춤 현상(무한 로딩) 방지 (v3.5.3 Hotfix)
+storage.maxUploadRetryTime = 10000;
 export default app;
