@@ -16,7 +16,7 @@ export default function Footer() {
     const now = Date.now();
     const gap = now - lastTapTime.current;
     if (gap > 0 && gap < 2000) {
-      router.push('/admin/login');
+      router.push('/admin');
     }
     lastTapTime.current = now;
   };
@@ -168,7 +168,7 @@ export default function Footer() {
               onDoubleClick={handleHiddenAdminLink}
               onTouchStart={handleHiddenAdminLink}
             >
-              © 2026 키링크. All rights reserved. | <span style={{ opacity: 0.6 }}>v3.2.6</span>
+              © 2026 키링크. All rights reserved. | <span style={{ opacity: 0.6 }}>v3.2.7</span>
             </div>
             <div style={{ display: 'flex', gap: '20px' }}>
               <Link href="/notices?tab=terms" style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', textDecoration: 'none', fontWeight: '500' }}>이용약관</Link>

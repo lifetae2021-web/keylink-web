@@ -12,12 +12,12 @@ import {
 import Link from 'next/link';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const [isAdmin] = useState<boolean>(true); // [TEMP] v3.2.6: Forced bypass for all admin routes as requested
+  const [isAdmin] = useState<boolean>(true); // [TEMP] v3.2.7: Forced bypass for all admin routes as requested
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
 
-  // [TEMP] v3.2.6: Security gates opened. Access verification completely disabled.
+  // [TEMP] v3.2.7: Security gates opened. Access verification completely disabled.
 
   // Don't show layout on login page
   if (pathname === '/admin/login') return <>{children}</>;
