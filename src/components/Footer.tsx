@@ -4,11 +4,23 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Heart, MessageCircle, Camera } from 'lucide-react';
 import { useRef } from 'react';
+import { auth, db, storage } from '@/lib/firebase';
+import { deleteUser, onAuthStateChanged, User } from 'firebase/auth';
+import { collection, query, where, getDocs, deleteDoc, doc } from 'firebase/firestore';
+import { ref, listAll, deleteObject } from 'firebase/storage';
+import toast from 'react-hot-toast';
+import { useEffect, useState } from 'react';
 
 export default function Footer() {
   const pathname = usePathname();
   const router = useRouter();
   const lastTapTime = useRef<number>(0);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, u => setCurrentUser(u));
+    return () => unsub();
+  }, []);
 
   if (pathname === '/register') return null;
 
@@ -19,6 +31,54 @@ export default function Footer() {
       router.push('/admin');
     }
     lastTapTime.current = now;
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!currentUser) return toast.error('로그인 후 이용 가능합니다.');
+
+    const confirmed = window.confirm(
+      '정말 탈퇴하시겠습니까?\n저장된 프로필과 신청 내역이 모두 삭제되며 복구할 수 없습니다.'
+    );
+    if (!confirmed) return;
+
+    const loadingToast = toast.loading('탈퇴 처리 중...');
+    try {
+      const uid = currentUser.uid;
+
+      // 1. Delete Storage Files (profile_images/uid/*)
+      const storageFolderRef = ref(storage, `profile_images/${uid}`);
+      try {
+        const fileList = await listAll(storageFolderRef);
+        await Promise.all(fileList.items.map(fileRef => deleteObject(fileRef)));
+      } catch (err) {
+        console.error('Storage cleanup skipped or failed:', err);
+      }
+
+      // 2. Delete Application History
+      const appQuery = query(collection(db, 'applications'), where('userId', '==', uid));
+      const appSnap = await getDocs(appQuery);
+      await Promise.all(appSnap.docs.map(d => deleteDoc(d.ref)));
+
+      // 3. Delete Profile Doc
+      await deleteDoc(doc(db, 'users', uid));
+
+      // 4. Delete Auth User
+      await deleteUser(currentUser);
+
+      toast.dismiss(loadingToast);
+      toast.success('탈퇴 처리가 완료되었습니다. 그동안 이용해 주셔서 감사합니다.');
+      router.push('/');
+    } catch (error: any) {
+      toast.dismiss(loadingToast);
+      console.error('Withdrawal Error:', error);
+      if (error.code === 'auth/requires-recent-login') {
+        alert('보안을 위해 다시 로그인 후 시도해 주세요.');
+        auth.signOut();
+        router.push('/login');
+      } else {
+        toast.error('탈퇴 처리 중 오류가 발생했습니다: ' + error.message);
+      }
+    }
   };
 
   return (
@@ -89,6 +149,18 @@ export default function Footer() {
                 onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--color-text-muted)'; }}
               >{l.label}</Link>
             ))}
+            <button
+              onClick={handleDeleteAccount}
+              style={{
+                display: 'block', padding: 0, border: 'none', background: 'none',
+                marginTop: '10px', fontSize: '0.75rem', color: '#999',
+                cursor: 'pointer', transition: 'color 0.2s',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = '#FF6F61'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = '#999'; }}
+            >
+              회원탈퇴
+            </button>
           </div>
 
           {/* Contact */}
@@ -168,7 +240,7 @@ export default function Footer() {
               onDoubleClick={handleHiddenAdminLink}
               onTouchStart={handleHiddenAdminLink}
             >
-              © 2026 키링크. All rights reserved. | <span className="text-black text-sm font-semibold">v3.5.3</span>
+              © 2026 키링크. All rights reserved. | <span className="text-black text-sm font-semibold">v3.5.5</span>
             </div>
             <div style={{ display: 'flex', gap: '20px' }}>
               <Link href="/notices?tab=terms" style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', textDecoration: 'none', fontWeight: '500' }}>이용약관</Link>
