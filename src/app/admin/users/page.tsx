@@ -58,7 +58,7 @@ export default function UsersPage() {
       const fetchedUsers = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
-      }));
+      } as any));
       setUsers(fetchedUsers);
     } catch (error) {
       console.error('Error fetching users:', error);

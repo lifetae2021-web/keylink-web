@@ -46,7 +46,7 @@ export default function ApplicationsPage() {
       try {
         const q = query(collection(db, 'events'), orderBy('date', 'desc'));
         const snap = await getDocs(q);
-        const fetchedEvents = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const fetchedEvents = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
         setEvents(fetchedEvents);
         if (fetchedEvents.length > 0) {
           setSelectedEventId(fetchedEvents[0].id);
@@ -74,7 +74,7 @@ export default function ApplicationsPage() {
           orderBy('createdAt', 'desc')
         );
         const snap = await getDocs(q);
-        const apps = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const apps = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
         
         // Fetch User details for joining
         const uids = Array.from(new Set(apps.map(a => a.userId)));
@@ -275,7 +275,7 @@ export default function ApplicationsPage() {
 
                       {/* CreatedAt */}
                       <td style={{ padding: '14px 20px', fontSize: '0.72rem', color: '#555' }}>
-                        {app.createdAt ? format(app.createdAt.toDate(), 'MM.dd HH:mm') : '-'}
+                        {app.createdAt && typeof app.createdAt.toDate === 'function' ? format(app.createdAt.toDate(), 'MM.dd HH:mm') : '-'}
                       </td>
 
                       {/* Actions */}
