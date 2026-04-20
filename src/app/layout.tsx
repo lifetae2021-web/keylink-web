@@ -26,15 +26,7 @@ export default function RootLayout({
     <html lang="ko">
       <body className="antialiased">
         <PublicLayout>{children}</PublicLayout>
-        <div style={{
-          position: 'fixed', bottom: '16px', right: '16px',
-          fontSize: '0.7rem', color: 'rgba(0,0,0,0.25)',
-          background: 'rgba(255,255,255,0.6)',
-          backdropFilter: 'blur(4px)',
-          padding: '4px 10px', borderRadius: '100px',
-          pointerEvents: 'none', zIndex: 9999,
-          userSelect: 'none',
-        }}>
+        <div className="fixed bottom-4 right-4 z-[9999] pointer-events-none select-none text-black font-black text-lg bg-white/80 px-3 py-1 rounded-md shadow-sm">
           v{version}
         </div>
         <Toaster

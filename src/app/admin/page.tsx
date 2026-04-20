@@ -352,7 +352,7 @@ export default function AdminDashboard() {
             <p style={{ fontSize: '0.83rem', color: '#aaa' }}>
               실시간 데이터가 동기화되었습니다. 최신 가입 정보를 확인하세요.
             </p>
-            <span  className="text-[10px] opacity-30">v3.5.1</span>
+            <span  className="text-[10px] opacity-30">v3.5.3</span>
           </div>
         </div>
       </div>

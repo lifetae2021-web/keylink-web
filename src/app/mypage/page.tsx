@@ -177,6 +177,7 @@ export default function MyPage() {
       } else if (error.message) {
         errorMessage = `저장 오류: ${error.message}`;
       }
+      alert(errorMessage);
       toast.error(errorMessage);
     } finally {
       setIsSaving(false);

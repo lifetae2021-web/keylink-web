@@ -194,6 +194,7 @@ export default function EventDetailPage() {
         let msg = '신청 중 오류가 발생했습니다.';
         if (err.code === 'storage/unauthorized') msg = '사진 업로드 권한이 없습니다.';
         else if (err.message) msg = `오류: ${err.message}`;
+        alert(msg);
         toast.error(msg);
       } finally {
         setIsSubmitting(false);
