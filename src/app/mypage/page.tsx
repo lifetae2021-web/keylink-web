@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { auth, db, storage } from '@/lib/firebase';
+import { compressImage } from '@/lib/utils';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { doc, getDoc, updateDoc, serverTimestamp, deleteField } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
@@ -74,7 +75,7 @@ export default function MyPage() {
   });
 
   // Photo states in modal (File or URL)
-  const [profilePhotos, setProfilePhotos] = useState<any[]>([]);
+  const [photos, setPhotos] = useState<any[]>([]);
   
   const photoInputRef = useRef<HTMLInputElement>(null);
   const mainPhotoInputRef = useRef<HTMLInputElement>(null);
@@ -113,11 +114,11 @@ export default function MyPage() {
           setEditForm(initialForm);
           
           // Migrate/Consolidate legacy categories
-          const savedPhotos = d.profilePhotos || [];
+          const savedPhotos = d.photos || d.profilePhotos || [];
           const legacyFace = d.facePhotos || [];
           const legacyBody = d.bodyPhotos || [];
           const merged = savedPhotos.length > 0 ? savedPhotos : [...legacyFace, ...legacyBody].slice(0, 5);
-          setProfilePhotos(merged);
+          setPhotos(merged);
         }
       } catch (e) { console.error(e); }
       finally { setLoading(false); }
@@ -135,7 +136,7 @@ export default function MyPage() {
     try {
       // Photo Upload logic: Upload new base64 images to Storage (v3.5.1)
       const uploadedUrls = await Promise.all(
-        profilePhotos.map(async (photo, index) => {
+        photos.map(async (photo, index) => {
           if (typeof photo === 'string' && photo.startsWith('data:')) {
             const photoRef = ref(storage, `profile_images/${user!.uid}/${Date.now()}_${index}.jpg`);
             await uploadString(photoRef, photo, 'data_url');
@@ -153,8 +154,9 @@ export default function MyPage() {
 
       const updateData = {
         ...sanitizedForm,
-        profilePhotos: uploadedUrls,
+        photos: uploadedUrls,
         // Explicitly clear legacy fields to prevent schema conflicts (v3.5.1 Cleanup)
+        profilePhotos: deleteField(),
         facePhotos: deleteField(),
         bodyPhotos: deleteField(),
         fullBodyPhotos: deleteField(),
@@ -165,7 +167,7 @@ export default function MyPage() {
       
       await updateDoc(doc(db, 'users', user!.uid), updateData);
       setUserData((p: any) => ({ ...p, ...updateData }));
-      setProfilePhotos(uploadedUrls); // Update local state with URLs
+      setPhotos(uploadedUrls); // Update local state with URLs
       setIsEditing(false);
       toast.success('프로필 정보가 안전하게 업데이트되었습니다.');
     } catch (error: any) {
@@ -185,40 +187,6 @@ export default function MyPage() {
     }
   };
 
-  // v3.5.1: Client-side image compression to bypass Firestore 1MB document limit
-  const compressImage = (base64: string): Promise<string> => {
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.src = base64;
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 1200;
-        const MAX_HEIGHT = 1200;
-        let width = img.width;
-        let height = img.height;
-
-        if (width > height) {
-          if (width > MAX_WIDTH) {
-            height *= MAX_WIDTH / width;
-            width = MAX_WIDTH;
-          }
-        } else {
-          if (height > MAX_HEIGHT) {
-            width *= MAX_HEIGHT / height;
-            height = MAX_HEIGHT;
-          }
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx?.drawImage(img, 0, 0, width, height);
-        
-        // Export to JPEG with 0.8 quality for significant size reduction
-        resolve(canvas.toDataURL('image/jpeg', 0.8));
-      };
-    });
-  };
 
   const formatPhone = (v: string) => {
     const d = v.replace(/\D/g, '').slice(0, 11);
@@ -231,7 +199,7 @@ export default function MyPage() {
     if (!e.target.files) return;
     const files = Array.from(e.target.files);
     
-    if (profilePhotos.length + files.length > 5) {
+    if (photos.length + files.length > 5) {
       toast.error('사진은 최대 5장까지만 등록 가능합니다.');
       return;
     }
@@ -242,7 +210,7 @@ export default function MyPage() {
         const rawUrl = ev.target?.result as string;
         // Apply compression before setting state (v3.5.1)
         const compressedUrl = await compressImage(rawUrl);
-        setProfilePhotos(prev => [...prev, compressedUrl].slice(0, 5));
+        setPhotos(prev => [...prev, compressedUrl].slice(0, 5));
       };
       reader.readAsDataURL(file);
     });
@@ -283,7 +251,7 @@ export default function MyPage() {
 
             {/* Photo Section (Unified v3.5.1) */}
             <div style={{ marginBottom: '40px' }}>
-              <EditRow label={`본인 사진 업로드 (${profilePhotos.length}/5)`} required>
+              <EditRow label={`본인 사진 업로드 (${photos.length}/5)`} required>
                 <div style={{ background: '#FFFDFD', border: '1.5px dashed #FFDBE9', borderRadius: '16px', padding: '24px', marginBottom: '16px' }}>
                    <p style={{ fontSize: '0.82rem', color: '#666', lineHeight: 1.6, marginBottom: '20px', fontWeight: '500' }}>
                     과도한 보정이나 마스크 착용 사진은 지양해주세요.<br/>
@@ -291,15 +259,15 @@ export default function MyPage() {
                   </p>
                   
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
-                    {profilePhotos.map((src, i) => (
+                    {photos.map((src, i) => (
                       <div key={i} style={{ position: 'relative', width: '80px', height: '80px', borderRadius: '14px', overflow: 'hidden', border: '1px solid #FFDBE9', boxShadow: '0 4px 12px rgba(255,111,97,0.1)' }}>
                         <img src={src} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="profile" />
-                        <button onClick={() => setProfilePhotos(p => p.filter((_, idx) => idx !== i))} style={{ position: 'absolute', top: '4px', right: '4px', background: 'rgba(0,0,0,0.6)', border: 'none', borderRadius: '50%', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                        <button onClick={() => setPhotos(p => p.filter((_, idx) => idx !== i))} style={{ position: 'absolute', top: '4px', right: '4px', background: 'rgba(0,0,0,0.6)', border: 'none', borderRadius: '50%', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
                           <X size={12} color="#fff" />
                         </button>
                       </div>
                     ))}
-                    {profilePhotos.length < 5 && (
+                    {photos.length < 5 && (
                       <button onClick={() => photoInputRef.current?.click()} style={{ width: '80px', height: '80px', borderRadius: '14px', border: '1.5px dashed #FFDBE9', background: '#FFFAFA', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#FFDBE9', gap: '4px' }}>
                         <Upload size={24} />
                         <span style={{ fontSize: '0.7rem', fontWeight: '700' }}>추가</span>
@@ -445,8 +413,8 @@ export default function MyPage() {
           {/* Profile Image (First Photo or Placeholder) */}
           <div style={{ margin: '20px 24px', borderRadius: '20px', overflow: 'hidden', background: 'linear-gradient(135deg, #FFDBE9 0%, #E8D5F5 100%)', aspectRatio: '3/2', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '10px', cursor: 'pointer', position: 'relative' }}
             onClick={() => setIsEditing(true)}>
-            {profilePhotos.length > 0 ? (
-              <img src={profilePhotos[0]} alt="profile" style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }} />
+            {photos.length > 0 ? (
+              <img src={photos[0]} alt="profile" style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }} />
             ) : (
               <>
                 <Camera size={40} color="rgba(255,111,97,0.4)" />
@@ -496,10 +464,10 @@ export default function MyPage() {
                 {/* Consolidated Photo Gallery */}
                 <div style={{ paddingTop: '20px' }}>
                   <p style={{ fontSize: '0.8rem', color: '#AAA', fontWeight: '700', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Camera size={14} color="#FF6F61" /> 본인 사진 갤러리 ({profilePhotos.length}/5)
+                    <Camera size={14} color="#FF6F61" /> 본인 사진 갤러리 ({photos.length}/5)
                   </p>
                   <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '12px' }} className="kl-scrollbar">
-                    {profilePhotos.length > 0 ? profilePhotos.map((src, i) => (
+                    {photos.length > 0 ? photos.map((src, i) => (
                       <div key={i} style={{ width: '100px', height: '100px', borderRadius: '12px', overflow: 'hidden', flexShrink: 0, border: '2.5px solid #FFE8E5', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
                         <img src={src} alt={`profile-${i}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       </div>

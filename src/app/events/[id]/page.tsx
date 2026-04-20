@@ -11,9 +11,10 @@ import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import toast from 'react-hot-toast';
 import { auth, db, storage } from '@/lib/firebase';
+import { compressImage } from '@/lib/utils';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { doc, getDoc, setDoc, deleteField } from 'firebase/firestore';
+import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 
 export default function EventDetailPage() {
   const { id } = useParams();
@@ -43,14 +44,9 @@ export default function EventDetailPage() {
     maleOption: 'normal', // 'normal' | 'safe'
   });
 
-  // Photo upload state: up to 5 photos each
-  const [facePhotos, setFacePhotos] = useState<File[]>([]);
-  const [bodyPhotos, setBodyPhotos] = useState<File[]>([]);
-  const faceInputRef = useRef<HTMLInputElement>(null);
-  const bodyInputRef = useRef<HTMLInputElement>(null);
-
-  const photoFaceUploaded = facePhotos.length > 0;
-  const photoBodyUploaded = bodyPhotos.length > 0;
+  // Photo upload state: up to 5 photos (consolidated v3.5.3)
+  const [photos, setPhotos] = useState<any[]>([]);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   // Firebase 사용자 인증 및 정보 불러오기
   useEffect(() => {
@@ -63,10 +59,16 @@ export default function EventDetailPage() {
         if (userSnap.exists()) {
           const data = userSnap.data();
           setForm(prev => {
-            // LocalStorage 내용이 있으면 덮어쓰지 않게끔 조치할 수 있으나,
-            // 기본적으로 Firestore 우선이거나 빈값에 대응하도록 병합
             return { ...prev, ...data };
           });
+          
+          // Consolidation migration for application form (v3.5.3)
+          const savedPhotos = data.photos || data.profilePhotos || [];
+          const legacyFace = data.facePhotos || [];
+          const legacyBody = data.bodyPhotos || [];
+          const merged = savedPhotos.length > 0 ? savedPhotos : [...legacyFace, ...legacyBody].slice(0, 5);
+          setPhotos(merged);
+
           toast.success('기존 프로필 정보를 불러왔습니다. 수정이 필요한 부분만 고쳐주세요.', {
             icon: 'ℹ️',
             duration: 4000,
@@ -144,22 +146,24 @@ export default function EventDetailPage() {
       }
     }
 
-    if (!photoFaceUploaded || !photoBodyUploaded) {
-      toast.error('본인 얼굴과 전신 사진을 모두 업로드해주세요.');
+    if (photos.length === 0) {
+      toast.error('본인 사진을 최소 1장 이상 업로드해주세요.');
       return;
     }
 
     setIsSubmitting(true);
     
-    // Firestore 최신 정보 및 사진 업로드 (v3.5.1)
+    // Firestore 최신 정보 및 사진 업로드 (v3.5.3 Unified)
     if (currentUser) {
       try {
-        const allPhotos = [...facePhotos, ...bodyPhotos].slice(0, 5);
         const uploadedUrls = await Promise.all(
-          allPhotos.map(async (file, index) => {
-            const photoRef = ref(storage, `profile_images/${currentUser.uid}/event_${id}_${Date.now()}_${index}.jpg`);
-            await uploadBytes(photoRef, file);
-            return await getDownloadURL(photoRef);
+          photos.map(async (photo, index) => {
+            if (typeof photo === 'string' && photo.startsWith('data:')) {
+              const photoRef = ref(storage, `profile_images/${currentUser.uid}/event_${id}_${Date.now()}_${index}.jpg`);
+              await uploadString(photoRef, photo, 'data_url');
+              return await getDownloadURL(photoRef);
+            }
+            return photo; // Existing URL
           })
         );
 
@@ -180,7 +184,10 @@ export default function EventDetailPage() {
           smoking: form.smoking,
           drinking: form.drinking,
           religion: form.religion,
-          profilePhotos: uploadedUrls, // 매칭용 사진 동기화
+          photos: uploadedUrls, // 매칭용 사진 동기화 (v3.5.3)
+          profilePhotos: deleteField(),
+          facePhotos: deleteField(),
+          bodyPhotos: deleteField(),
         }, { merge: true });
 
         // Submit form (mock or actually separate collection if needed)
@@ -201,9 +208,27 @@ export default function EventDetailPage() {
       }
       return;
     }
+  };
 
-    // fallback for guest (should not happen with current logic)
-    setIsSubmitting(false);
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files) return;
+    const files = Array.from(e.target.files);
+    
+    if (photos.length + files.length > 5) {
+      toast.error('사진은 최대 5장까지만 등록 가능합니다.');
+      return;
+    }
+
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = async (ev) => {
+        const rawUrl = ev.target?.result as string;
+        const compressedUrl = await compressImage(rawUrl);
+        setPhotos(prev => [...prev, compressedUrl].slice(0, 5));
+      };
+      reader.readAsDataURL(file);
+    });
+    e.target.value = '';
   };
 
   const handlePayment = async () => {
@@ -511,18 +536,35 @@ export default function EventDetailPage() {
                       </select>
                     </div>
                     <div>
-                      <label className="kl-label" style={{ marginBottom: '12px' }}>본인 사진 업로드 (최대 5장씩) *</label>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                        <div style={{ padding: '20px', border: '1px dashed #ccc', borderRadius: '12px', textAlign: 'center', background: photoFaceUploaded ? 'rgba(110,174,124,0.05)' : 'transparent' }}>
-                          <Camera size={28} color={photoFaceUploaded ? '#6EAE7C' : '#aaa'} style={{ margin: '0 auto 10px' }} />
-                          <p style={{ fontSize: '0.85rem', fontWeight: '700', color: '#333', marginBottom: '6px' }}>얼굴 사진</p>
-                          <button type="button" onClick={() => faceInputRef.current?.click()} className="kl-btn-outline" style={{ padding: '8px 16px', fontSize: '0.8rem' }}>{facePhotos.length > 0 ? `${facePhotos.length}장 추가됨` : '선택'}</button>
+                      <label className="kl-label" style={{ marginBottom: '12px' }}>본인 사진 업로드 ({photos.length}/5) *</label>
+                      <div style={{ background: '#FFFDFD', border: '1.5px dashed #FFDBE9', borderRadius: '16px', padding: '24px', marginBottom: '16px' }}>
+                         <p style={{ fontSize: '0.82rem', color: '#666', lineHeight: 1.6, marginBottom: '20px', fontWeight: '500' }}>
+                          과도한 보정이나 마스크 착용 사진은 지양해주세요.<br/>
+                          <strong style={{ color: '#FF6F61' }}>얼굴과 전신 사진이 포함되도록 자유롭게 총 5장까지 등록해 주세요.</strong>
+                        </p>
+                        
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', justifyContent: 'center' }}>
+                          {photos.map((src, i) => (
+                            <div key={i} style={{ position: 'relative', width: '80px', height: '80px', borderRadius: '14px', overflow: 'hidden', border: '1px solid #FFDBE9', boxShadow: '0 4px 12px rgba(255,111,97,0.1)' }}>
+                              <img src={src} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="profile" />
+                              <button type="button" onClick={() => setPhotos(p => p.filter((_, idx) => idx !== i))} style={{ position: 'absolute', top: '4px', right: '4px', background: 'rgba(0,0,0,0.6)', border: 'none', borderRadius: '50%', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                                <X size={12} color="#fff" />
+                              </button>
+                            </div>
+                          ))}
+                          
+                          {photos.length < 5 && (
+                            <button 
+                              type="button" 
+                              onClick={() => photoInputRef.current?.click()}
+                              style={{ width: '80px', height: '80px', borderRadius: '14px', border: '1.5px dashed #FFDBE9', background: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '6px', cursor: 'pointer', transition: 'all 0.2s' }}
+                            >
+                              <Upload size={20} color="#FFDBE9" />
+                              <span style={{ fontSize: '0.75rem', color: '#FFDBE9', fontWeight: '700' }}>추가</span>
+                            </button>
+                          )}
                         </div>
-                        <div style={{ padding: '20px', border: '1px dashed #ccc', borderRadius: '12px', textAlign: 'center', background: photoBodyUploaded ? 'rgba(110,174,124,0.05)' : 'transparent' }}>
-                          <Camera size={28} color={photoBodyUploaded ? '#6EAE7C' : '#aaa'} style={{ margin: '0 auto 10px' }} />
-                          <p style={{ fontSize: '0.85rem', fontWeight: '700', color: '#333', marginBottom: '6px' }}>전신 사진</p>
-                          <button type="button" onClick={() => bodyInputRef.current?.click()} className="kl-btn-outline" style={{ padding: '8px 16px', fontSize: '0.8rem' }}>{bodyPhotos.length > 0 ? `${bodyPhotos.length}장 추가됨` : '선택'}</button>
-                        </div>
+                        <input type="file" ref={photoInputRef} onChange={handlePhotoUpload} accept="image/*" multiple style={{ display: 'none' }} />
                       </div>
                     </div>
                   </div>
