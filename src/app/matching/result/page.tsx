@@ -27,7 +27,7 @@ export default function ResultListPage() {
     <div style={{ paddingBottom: '100px', background: 'var(--color-bg)', minHeight: '100vh', position: 'relative', overflow: 'hidden' }}>
       <CherryBlossoms />
 
-      {/* Hero Section: Cumulative Impact (v3.4.0 Redesign) */}
+      {/* Hero Section: Cumulative Impact (v3.5.0 Redesign) */}
       <section style={{
         padding: '120px 20px 100px',
         textAlign: 'center',

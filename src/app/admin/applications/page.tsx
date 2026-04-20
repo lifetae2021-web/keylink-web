@@ -131,7 +131,7 @@ export default function ApplicationsPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 style={{ fontSize: '1.1rem', fontWeight: 700 }}>기수별 신청 관리</h2>
-          <p style={{ fontSize: '0.8rem', color: '#555', marginTop: 2 }}>기수별 신청자 현황, 입금 상태 및 승인을 관리합니다. <span className="text-[10px] opacity-30">v3.4.0</span></p>
+          <p style={{ fontSize: '0.8rem', color: '#555', marginTop: 2 }}>기수별 신청자 현황, 입금 상태 및 승인을 관리합니다. <span className="text-[10px] opacity-30">v3.5.0</span></p>
         </div>
         <div className="flex items-center gap-3">
           <div className="relative">

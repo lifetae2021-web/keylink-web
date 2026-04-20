@@ -126,7 +126,7 @@ export default function UsersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h2 style={{ fontSize: '1.1rem', fontWeight: 700 }}>회원 관리</h2>
-          <p style={{ fontSize: '0.8rem', color: '#555', marginTop: 2 }}>전체 가입자 현황 및 회원 정보를 관리합니다. <span className="text-[10px] opacity-30">v3.4.0</span></p>
+          <p style={{ fontSize: '0.8rem', color: '#555', marginTop: 2 }}>전체 가입자 현황 및 회원 정보를 관리합니다. <span className="text-[10px] opacity-30">v3.5.0</span></p>
         </div>
         <button
           className="flex items-center gap-2 rounded-lg transition-colors hover:text-white"

@@ -179,18 +179,20 @@ export default function EventDetailPage() {
     // 모의 폼 제출
     await new Promise((r) => setTimeout(r, 1500));
     setIsSubmitting(false);
-    toast.success('신청서가 접수되었습니다. 결제를 진행해주세요.');
+    toast.success('신청서가 접수되었습니다. 검토 후 연락드리겠습니다.');
     localStorage.removeItem(`keylink_form_${id}`); // 제출 성공 시 임시저장 삭제
     setStep(2); // 결제 단계로 이동
   };
 
   const handlePayment = async () => {
+    /* 결제 기능은 운영 방침에 따라 일시적으로 비활성화되었습니다.
     setIsSubmitting(true);
     // 모의 결제 연동
     await new Promise((r) => setTimeout(r, 2000));
     setIsSubmitting(false);
     toast.success('🎉 예약 및 결제가 완료되었습니다! 마이페이지에서 확인하세요.');
     router.push('/mypage');
+    */
   };
 
 
@@ -289,7 +291,13 @@ export default function EventDetailPage() {
             </div>
         )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 400px', gap: '32px' }} className="event-detail-grid">
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: step === 2 ? '1fr' : '1fr 400px', 
+          gap: '32px',
+          maxWidth: step === 2 ? '600px' : '1100px',
+          margin: '0 auto'
+        }} className="event-detail-grid">
           {/* Left: Event Info or Form depending on step */}
           <div>
             {step === 0 && (
@@ -599,41 +607,26 @@ export default function EventDetailPage() {
                     <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(110,174,124,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
                         <CheckCircle size={32} color="#6EAE7C" />
                     </div>
-                    <h2 style={{ fontSize: '1.5rem', fontWeight: '800', color: '#111', marginBottom: '10px' }}>운영진 승인 완료!</h2>
-                    <p style={{ fontSize: '0.95rem', color: '#555', marginBottom: '32px', lineHeight: 1.6 }}>신청서 및 인증 내역이 정상적으로 확인되었습니다.<br/>결제를 완료하시면 <strong>[참가 확정]</strong> 처리됩니다.</p>
+                    <h2 style={{ fontSize: '1.5rem', fontWeight: '800', color: '#111', marginBottom: '10px' }}>신청서 제출 완료!</h2>
+                    <p style={{ fontSize: '0.95rem', color: '#555', marginBottom: '32px', lineHeight: 1.6 }}>신청서 및 인증 내역 검토하고 매주 월요일부터 순차적으로 연락드립니다.</p>
                     
+                    {/* 결제 섹션 삭제됨
                     <div style={{ background: '#f8f9fa', borderRadius: '12px', padding: '24px', textAlign: 'left', marginBottom: '32px', border: '1px solid #eee' }}>
                         <h3 style={{ fontSize: '1rem', fontWeight: '700', marginBottom: '16px', color: '#333' }}>결제 상세 정보</h3>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '0.9rem' }}>
-                            <span style={{ color: '#777' }}>{form.gender === 'female' ? '정가' : (form.maleOption === 'safe' ? '안심 매칭 코스' : '일반 매칭 코스')}</span>
-                            <span style={{ fontWeight: '600', color: '#333', textDecoration: isDiscounted ? 'line-through' : 'none' }}>{displayBasePrice.toLocaleString()}원</span>
-                        </div>
-                        {isDiscounted && (
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '0.9rem' }}>
-                                <span style={{ color: '#FF6F61', fontWeight: '600' }}>여성 특별 할인 혜택가</span>
-                                <span style={{ fontWeight: '700', color: '#FF6F61' }}>-{ (displayBasePrice - finalPrice).toLocaleString() }원</span>
-                            </div>
-                        )}
-                        <hr style={{ border: 'none', borderTop: '1px dashed #ccc', margin: '16px 0' }} />
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ fontWeight: '700', color: '#111', fontSize: '1.1rem' }}>최종 결제 금액</span>
-                            <span style={{ fontWeight: '800', color: '#FF6F61', fontSize: '1.4rem' }}>{finalPrice.toLocaleString()}원</span>
-                        </div>
+                        ...
                     </div>
+                    */}
 
-                    <button onClick={handlePayment} disabled={isSubmitting} className="kl-btn-primary" style={{ width: '100%', padding: '18px', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
-                        {isSubmitting ? '결제 진행 중...' : <><CreditCard size={20} /> 토스페이먼츠로 안전하게 결제하기</>}
-                    </button>
-                    <div style={{ marginTop: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                        <Shield size={14} color="#aaa" />
-                        <span style={{ fontSize: '0.8rem', color: '#aaa' }}>안전 결제가 지원됩니다</span>
-                    </div>
+                    <Link href="/mypage" className="kl-btn-primary" style={{ width: '100%', padding: '18px', fontSize: '1.1rem', textAlign: 'center', display: 'block' }}>
+                        마이페이지에서 확인하기
+                    </Link>
                 </div>
             )}
           </div>
 
-          {/* Right: Booking Panel (Sticky) */}
-          <div style={{ position: 'sticky', top: '90px', alignSelf: 'start' }}>
+          {/* Right: Booking Panel (Sticky) - Hide on success step */}
+          {step !== 2 && (
+            <div style={{ position: 'sticky', top: '90px', alignSelf: 'start' }}>
             <div className="kl-card" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
               
               <div style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: '20px', marginBottom: '20px' }}>
@@ -738,6 +731,7 @@ export default function EventDetailPage() {
                   )}
               </div>
             </div>
+          )}
           </div>
         </div>
       </div>
@@ -755,9 +749,9 @@ export default function EventDetailPage() {
             </button>
           )}
            {step === 2 && (
-            <button onClick={handlePayment} className="kl-btn-primary" style={{ width: '100%', padding: '16px', fontSize: '1.1rem', fontWeight: '800' }} disabled={isSubmitting}>
-              {isSubmitting ? '결제 중...' : '토스페이먼츠 안전 결제'}
-            </button>
+            <Link href="/mypage" className="kl-btn-primary" style={{ width: '100%', padding: '16px', fontSize: '1.1rem', fontWeight: '800', textAlign: 'center', display: 'block' }}>
+              마이페이지에서 확인하기
+            </Link>
           )}
       </div>
 
