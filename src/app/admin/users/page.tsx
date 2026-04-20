@@ -1,20 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Search, CheckCircle, XCircle, Eye,
-  Download, ShieldCheck, ChevronLeft, ChevronRight
+  Download, ShieldCheck, ChevronLeft, ChevronRight, Loader2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-
-const MOCK = [
-  { id: 'u1', name: '김지민', gender: 'female', age: 27, job: '삼성전자 연구원', status: 'verified', joined: '2024-04-10', email: 'jimin@gmail.com' },
-  { id: 'u2', name: '박준형', gender: 'male',   age: 31, job: '네이버 개발자',   status: 'pending',  joined: '2024-04-15', email: 'junh@naver.com' },
-  { id: 'u3', name: '이서윤', gender: 'female', age: 25, job: '초등학교 교사',  status: 'pending',  joined: '2024-04-16', email: 'syun@daum.net' },
-  { id: 'u4', name: '최현우', gender: 'male',   age: 29, job: '카카오 디자이너', status: 'verified', joined: '2024-04-12', email: 'hwoo@kakao.com' },
-  { id: 'u5', name: '정다혜', gender: 'female', age: 28, job: '전문직(약사)',   status: 'rejected', joined: '2024-04-08', email: 'dahye@gmail.com' },
-  { id: 'u6', name: '오민석', gender: 'male',   age: 33, job: '공무원',         status: 'verified', joined: '2024-04-05', email: 'msoh@korea.kr' },
-];
+import { db } from '@/lib/firebase';
+import { 
+  collection, getDocs, doc, updateDoc, query, orderBy, Timestamp 
+} from 'firebase/firestore';
+import { format } from 'date-fns';
 
 type Status = 'all' | 'pending' | 'verified' | 'rejected';
 
@@ -33,32 +29,94 @@ const TABS: { key: Status; label: string }[] = [
 
 const panel = { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12 };
 
+// Table Skeleton
+const TableSkeleton = () => (
+  <>
+    {[1, 2, 3, 4, 5].map((i) => (
+      <tr key={i} className="animate-pulse">
+        <td style={{ padding: '14px 20px' }}><div className="h-10 w-40 bg-white/5 rounded"></div></td>
+        <td style={{ padding: '14px 20px' }}><div className="h-8 w-24 bg-white/5 rounded"></div></td>
+        <td style={{ padding: '14px 20px' }}><div className="h-6 w-20 bg-white/5 rounded-full"></div></td>
+        <td style={{ padding: '14px 20px' }}><div className="h-6 w-24 bg-white/5 rounded"></div></td>
+        <td style={{ padding: '14px 20px' }} className="text-right"><div className="h-8 w-16 bg-white/5 rounded ml-auto"></div></td>
+      </tr>
+    ))}
+  </>
+);
+
 export default function UsersPage() {
-  const [search, setSearch]   = useState('');
-  const [filter, setFilter]   = useState<Status>('all');
-  const [users, setUsers]     = useState(MOCK);
+  const [users, setUsers] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState<Status>('all');
+
+  const fetchUsers = async () => {
+    try {
+      setIsLoading(true);
+      const q = query(collection(db, 'users'), orderBy('createdAt', 'desc'));
+      const querySnapshot = await getDocs(q);
+      const fetchedUsers = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setUsers(fetchedUsers);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      toast.error('회원 데이터를 불러오는 중 오류가 발생했습니다.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
 
   const counts = {
     all:      users.length,
-    pending:  users.filter(u => u.status === 'pending').length,
+    pending:  users.filter(u => (u.status || 'pending') === 'pending').length,
     verified: users.filter(u => u.status === 'verified').length,
     rejected: users.filter(u => u.status === 'rejected').length,
   };
 
   const filtered = users.filter(u => {
     const q = search.toLowerCase();
-    const matchSearch = u.name.includes(q) || u.job.includes(q) || u.email.includes(q);
-    const matchFilter = filter === 'all' || u.status === filter;
+    const matchSearch = 
+      (u.name || '').toLowerCase().includes(q) || 
+      (u.job || '').toLowerCase().includes(q) || 
+      (u.email || '').toLowerCase().includes(q);
+    const matchFilter = filter === 'all' || (u.status || 'pending') === filter;
     return matchSearch && matchFilter;
   });
 
-  const approve = (id: string, name: string) => {
-    setUsers(prev => prev.map(u => u.id === id ? { ...u, status: 'verified' } : u));
-    toast.success(`${name} 승인 완료`);
+  const approve = async (id: string, name: string) => {
+    try {
+      const userRef = doc(db, 'users', id);
+      await updateDoc(userRef, { 
+        status: 'verified',
+        updatedAt: Timestamp.now()
+      });
+      setUsers(prev => prev.map(u => u.id === id ? { ...u, status: 'verified' } : u));
+      toast.success(`${name} 승인 완료`);
+    } catch (error) {
+      console.error('Approval error:', error);
+      toast.error('승인 처리 중 오류가 발생했습니다.');
+    }
   };
-  const reject = (id: string, name: string) => {
-    setUsers(prev => prev.map(u => u.id === id ? { ...u, status: 'rejected' } : u));
-    toast.error(`${name} 반려 처리`);
+
+  const reject = async (id: string, name: string) => {
+    try {
+      const userRef = doc(db, 'users', id);
+      await updateDoc(userRef, { 
+        status: 'rejected',
+        updatedAt: Timestamp.now()
+      });
+      setUsers(prev => prev.map(u => u.id === id ? { ...u, status: 'rejected' } : u));
+      toast.error(`${name} 반려 처리`);
+    } catch (error) {
+      console.error('Rejection error:', error);
+      toast.error('반려 처리 중 오류가 발생했습니다.');
+    }
   };
 
   return (
@@ -68,13 +126,11 @@ export default function UsersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h2 style={{ fontSize: '1.1rem', fontWeight: 700 }}>신청자 관리</h2>
-          <p style={{ fontSize: '0.8rem', color: '#555', marginTop: 2 }}>가입자 현황 및 신원인증 요청을 관리합니다.</p>
+          <p style={{ fontSize: '0.8rem', color: '#555', marginTop: 2 }}>가입자 현황 및 신원인증 요청을 관리합니다. <span className="text-[10px] opacity-30">v3.3.0</span></p>
         </div>
         <button
-          className="flex items-center gap-2 rounded-lg transition-colors"
+          className="flex items-center gap-2 rounded-lg transition-colors hover:text-white"
           style={{ padding: '8px 16px', fontSize: '0.82rem', fontWeight: 600, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#888' }}
-          onMouseEnter={e => (e.currentTarget.style.color = '#ccc')}
-          onMouseLeave={e => (e.currentTarget.style.color = '#888')}
         >
           <Download size={14} /> CSV 다운로드
         </button>
@@ -111,7 +167,7 @@ export default function UsersPage() {
         ))}
 
         {/* Search */}
-        <div className="relative ml-auto">
+        <div className="relative ml-auto w-full sm:w-auto mt-4 sm:mt-0">
           <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#444' }} />
           <input
             type="text"
@@ -126,17 +182,26 @@ export default function UsersPage() {
               borderRadius: 8,
               color: '#ccc',
               outline: 'none',
-              width: 220,
+              width: '100%',
             }}
+            className="sm:w-[220px]"
           />
         </div>
       </div>
 
       {/* Table */}
       <div style={{ ...panel, overflow: 'hidden' }}>
-        {filtered.length === 0 ? (
+        {isLoading ? (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <tbody>
+                <TableSkeleton />
+              </tbody>
+            </table>
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20">
-            <p style={{ color: '#555', fontSize: '0.88rem' }}>검색 결과가 없습니다.</p>
+            <p style={{ color: '#555', fontSize: '0.88rem' }}>회원 데이터가 없습니다.</p>
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
@@ -165,13 +230,13 @@ export default function UsersPage() {
               </thead>
               <tbody>
                 {filtered.map(u => {
-                  const sc = STATUS_CFG[u.status as keyof typeof STATUS_CFG];
+                  const currentStatus = (u.status || 'pending') as keyof typeof STATUS_CFG;
+                  const sc = STATUS_CFG[currentStatus];
                   return (
                     <tr
                       key={u.id}
                       style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', cursor: 'default' }}
-                      onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.02)')}
-                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                      className="hover:bg-white/[0.02] transition-colors group"
                     >
                       {/* 회원정보 */}
                       <td style={{ padding: '14px 20px' }}>
@@ -184,7 +249,7 @@ export default function UsersPage() {
                               color:      u.gender === 'male' ? '#60a5fa'              : '#f472b6',
                             }}
                           >
-                            {u.name[0]}
+                            {u.name ? u.name[0] : 'U'}
                             {u.status === 'verified' && (
                               <span
                                 className="absolute flex items-center justify-center rounded-full"
@@ -196,7 +261,7 @@ export default function UsersPage() {
                           </div>
                           <div>
                             <div className="flex items-center gap-1.5">
-                              <span style={{ fontSize: '0.88rem', fontWeight: 600 }}>{u.name}</span>
+                              <span style={{ fontSize: '0.88rem', fontWeight: 600 }}>{u.name || '미입력'}</span>
                               <span
                                 style={{
                                   fontSize: '0.6rem', fontWeight: 700, padding: '1px 5px', borderRadius: 4,
@@ -214,8 +279,8 @@ export default function UsersPage() {
 
                       {/* 직업/나이 */}
                       <td style={{ padding: '14px 20px' }}>
-                        <p style={{ fontSize: '0.85rem', color: '#bbb' }}>{u.job}</p>
-                        <p style={{ fontSize: '0.75rem', color: '#555', marginTop: 1 }}>{u.age}세</p>
+                        <p style={{ fontSize: '0.85rem', color: '#bbb' }}>{u.job || '-'}</p>
+                        <p style={{ fontSize: '0.75rem', color: '#555', marginTop: 1 }}>{u.birthDate ? `${new Date().getFullYear() - parseInt(u.birthDate.split('-')[0]) + 1}세` : '-'}</p>
                       </td>
 
                       {/* 상태 */}
@@ -231,13 +296,15 @@ export default function UsersPage() {
 
                       {/* 가입일 */}
                       <td style={{ padding: '14px 20px' }}>
-                        <span style={{ fontSize: '0.78rem', color: '#555' }}>{u.joined}</span>
+                        <span style={{ fontSize: '0.78rem', color: '#555' }}>
+                          {u.createdAt?.seconds ? format(new Date(u.createdAt.seconds * 1000), 'yyyy-MM-dd') : '-'}
+                        </span>
                       </td>
 
                       {/* 관리 */}
                       <td style={{ padding: '14px 20px' }}>
-                        <div className="flex items-center justify-end gap-1">
-                          {u.status === 'pending' && (
+                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {(u.status || 'pending') === 'pending' && (
                             <>
                               <button
                                 onClick={() => approve(u.id, u.name)}
@@ -277,7 +344,7 @@ export default function UsersPage() {
           </div>
         )}
 
-        {/* Pagination */}
+        {/* Pagination (Mock) */}
         <div className="flex items-center justify-between px-5 py-3" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
           <p style={{ fontSize: '0.75rem', color: '#555' }}>
             총 <strong style={{ color: '#ccc' }}>{filtered.length}</strong>명
