@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
 import { Toaster } from "react-hot-toast";
-import CherryBlossoms from "@/components/CherryBlossoms";
+import PublicLayout from "@/components/PublicLayout";
 import { version } from "../../package.json";
 
 export const metadata: Metadata = {
@@ -27,10 +25,7 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body className="antialiased">
-        <CherryBlossoms />
-        <Navbar />
-        <main>{children}</main>
-        <Footer />
+        <PublicLayout>{children}</PublicLayout>
         <div style={{
           position: 'fixed', bottom: '16px', right: '16px',
           fontSize: '0.7rem', color: 'rgba(0,0,0,0.25)',
