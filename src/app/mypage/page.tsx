@@ -113,9 +113,10 @@ export default function MyPage() {
           setEditForm(initialForm);
           
           // Migrate/Consolidate legacy categories
+          const savedPhotos = d.profilePhotos || [];
           const legacyFace = d.facePhotos || [];
           const legacyBody = d.bodyPhotos || [];
-          const merged = [...legacyFace, ...legacyBody].slice(0, 5);
+          const merged = savedPhotos.length > 0 ? savedPhotos : [...legacyFace, ...legacyBody].slice(0, 5);
           setProfilePhotos(merged);
         }
       } catch (e) { console.error(e); }
