@@ -3,12 +3,10 @@ import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 
 const KAKAO_TOKEN_URL = 'https://kauth.kakao.com/oauth/token';
 const KAKAO_USER_PROFILE_URL = 'https://kapi.kakao.com/v2/user/me';
-const KAKAO_REDIRECT_URI = process.env.NODE_ENV === 'development'
-  ? 'http://localhost:3000/api/auth/kakao'
-  : 'https://www.keylink.kr/api/auth/kakao';
 
 export async function GET(req: NextRequest) {
   const { searchParams, origin } = new URL(req.url);
+  const KAKAO_REDIRECT_URI = `${origin}/api/auth/kakao`;
   const code = searchParams.get('code');
   const state = searchParams.get('state') || 'user';
   const isAdmin = state === 'admin';
@@ -89,6 +87,8 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const { code, isAdmin } = await req.json();
+    const { origin } = new URL(req.url);
+    const KAKAO_REDIRECT_URI = `${origin}/api/auth/kakao`;
 
     if (!code) {
       return NextResponse.json({ error: 'Authorization code is missing' }, { status: 400 });
