@@ -2,9 +2,8 @@
 
 import {
   Users, Calendar, Heart, TrendingUp,
-  ArrowUpRight, ArrowDownRight, Activity,
-  CalendarCheck, UserPlus, ShieldCheck,
-  Clock, ChevronRight, Zap
+  ArrowUpRight, ArrowDownRight, Clock,
+  CalendarCheck, UserPlus, ChevronRight, Zap
 } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
@@ -14,19 +13,14 @@ import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import Link from 'next/link';
 
-const statsData = [
-  { label: '누적 가입자', value: '1,847', change: '+12%', isUp: true, icon: Users, color: '#FF6F61', bg: 'rgba(255,111,97,0.08)' },
-  { label: '이번 주 신청', value: '154', change: '+8%', isUp: true, icon: UserPlus, color: '#6A98C8', bg: 'rgba(106,152,200,0.08)' },
-  { label: '매칭 성공 커플', value: '624', change: '-2%', isUp: false, icon: Heart, color: '#C878A0', bg: 'rgba(200,120,160,0.08)' },
-  { label: '기당 평균 매출', value: '₩3.8M', change: '+5%', isUp: true, icon: TrendingUp, color: '#6EAE7C', bg: 'rgba(110,174,124,0.08)' },
+const STATS = [
+  { label: '누적 가입자',    value: '1,847', change: '+12%', up: true,  icon: Users,    color: '#FF6F61' },
+  { label: '이번 주 신청',   value: '154',   change: '+8%',  up: true,  icon: UserPlus, color: '#60a5fa' },
+  { label: '매칭 성공 커플', value: '624',   change: '-2%',  up: false, icon: Heart,    color: '#f472b6' },
+  { label: '이번 달 매출',   value: '₩3.8M', change: '+5%',  up: true,  icon: TrendingUp, color: '#4ade80' },
 ];
 
-const genderRatioData = [
-  { name: '남성', value: 52, color: '#6A98C8' },
-  { name: '여성', value: 48, color: '#FF6F61' },
-];
-
-const weeklyTrendData = [
+const WEEKLY = [
   { day: '월', applicants: 12, matches: 4 },
   { day: '화', applicants: 18, matches: 6 },
   { day: '수', applicants: 25, matches: 8 },
@@ -36,138 +30,147 @@ const weeklyTrendData = [
   { day: '일', applicants: 38, matches: 15 },
 ];
 
-const upcomingEvents = [
-  { episode: 102, date: '4월 26일 (토) 14:00', venue: '서면 인근', rate: 85 },
-  { episode: 103, date: '5월 3일 (토) 14:00', venue: '해운대 인근', rate: 62 },
-  { episode: 104, date: '5월 10일 (토) 14:00', venue: '남포 인근', rate: 40 },
+const GENDER = [
+  { name: '남성', value: 52, color: '#60a5fa' },
+  { name: '여성', value: 48, color: '#FF6F61' },
 ];
 
-const quickActions = [
-  { label: '신청자 관리', desc: '승인 대기 12명', href: '/admin/users', color: '#6A98C8', icon: Users },
-  { label: '행사 등록', desc: '새 기수 만들기', href: '/admin/events', color: '#6EAE7C', icon: Calendar },
-  { label: '매칭 실행', desc: '102기 준비 완료', href: '/admin/events', color: '#FF6F61', icon: Zap },
+const UPCOMING = [
+  { episode: 120, date: '4월 26일 (토) 14:00', venue: '서면 인근', rate: 87 },
+  { episode: 121, date: '5월 3일 (토) 14:00',  venue: '서면 인근', rate: 31 },
+  { episode: 122, date: '5월 10일 (토) 14:00', venue: '해운대 인근', rate: 0 },
 ];
+
+const RECENT_MEMBERS = [
+  { name: '박준형', email: 'junh@naver.com',  job: '네이버 개발자',  status: 'pending',  joined: '2024-04-15' },
+  { name: '이서윤', email: 'syun@daum.net',   job: '초등학교 교사', status: 'pending',  joined: '2024-04-16' },
+  { name: '김지민', email: 'jimin@gmail.com', job: '삼성전자 연구원', status: 'verified', joined: '2024-04-10' },
+  { name: '최현우', email: 'hwoo@kakao.com',  job: '카카오 디자이너', status: 'verified', joined: '2024-04-12' },
+  { name: '정다혜', email: 'dahye@gmail.com', job: '전문직(약사)',   status: 'rejected', joined: '2024-04-08' },
+];
+
+const STATUS = {
+  verified: { label: '인증 완료', color: '#4ade80', bg: 'rgba(74,222,128,0.1)' },
+  pending:  { label: '승인 대기', color: '#facc15', bg: 'rgba(250,204,21,0.1)' },
+  rejected: { label: '인증 반려', color: '#ef4444', bg: 'rgba(239,68,68,0.1)'  },
+};
+
+const panel = {
+  background: 'rgba(255,255,255,0.03)',
+  border: '1px solid rgba(255,255,255,0.07)',
+  borderRadius: 12,
+};
 
 export default function AdminDashboard() {
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
+    <div className="space-y-8 animate-in fade-in duration-400">
 
-      {/* Welcome Header */}
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">대시보드</h1>
-          <p className="text-gray-500 text-sm mt-1">
-            {format(new Date(), 'yyyy년 M월 d일 (E)', { locale: ko })} · 실시간 운영 현황
+          <p style={{ fontSize: '0.8rem', color: '#555', marginBottom: 2 }}>
+            {format(new Date(), 'yyyy년 M월 d일 (E)', { locale: ko })}
           </p>
+          <h2 style={{ fontSize: '1.4rem', fontWeight: 700 }}>안녕하세요, 관리자님 👋</h2>
         </div>
-        <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-green-500/10 border border-green-500/20 rounded-xl">
-          <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-          <span className="text-xs text-green-400 font-semibold">운영 중</span>
+        <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{ background: 'rgba(74,222,128,0.08)', border: '1px solid rgba(74,222,128,0.15)' }}>
+          <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#4ade80' }} />
+          <span style={{ fontSize: '0.75rem', color: '#4ade80', fontWeight: 600 }}>운영 중</span>
         </div>
       </div>
 
-      {/* Stats Grid */}
+      {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {statsData.map((stat, idx) => (
-          <div
-            key={idx}
-            className="bg-[#1A1D23] border border-gray-800 rounded-2xl p-5 hover:border-gray-700 transition-all duration-200 hover:-translate-y-0.5"
-          >
+        {STATS.map((s, i) => (
+          <div key={i} style={{ ...panel, padding: '20px 24px' }} className="hover:border-white/10 transition-colors">
             <div className="flex items-start justify-between mb-4">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: stat.bg }}>
-                <stat.icon size={20} style={{ color: stat.color }} />
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: `${s.color}14` }}>
+                <s.icon size={17} style={{ color: s.color }} />
               </div>
-              <span className={`flex items-center gap-0.5 text-[11px] font-bold ${stat.isUp ? 'text-green-400' : 'text-red-400'}`}>
-                {stat.isUp ? <ArrowUpRight size={13} /> : <ArrowDownRight size={13} />}
-                {stat.change}
+              <span className="flex items-center gap-0.5" style={{ fontSize: '0.75rem', fontWeight: 700, color: s.up ? '#4ade80' : '#ef4444' }}>
+                {s.up ? <ArrowUpRight size={13} /> : <ArrowDownRight size={13} />}
+                {s.change}
               </span>
             </div>
-            <p className="text-2xl font-extrabold text-white tracking-tight">{stat.value}</p>
-            <p className="text-xs text-gray-500 mt-1 font-medium">{stat.label}</p>
+            <p style={{ fontSize: '1.6rem', fontWeight: 700, letterSpacing: '-0.02em' }}>{s.value}</p>
+            <p style={{ fontSize: '0.78rem', color: '#555', marginTop: 4 }}>{s.label}</p>
           </div>
         ))}
       </div>
 
-      {/* Charts Row */}
+      {/* Charts row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-        {/* Weekly Trend */}
-        <div className="lg:col-span-2 bg-[#1A1D23] border border-gray-800 rounded-2xl p-6">
+        {/* Weekly trend */}
+        <div style={{ ...panel, padding: '24px' }} className="lg:col-span-2">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-base font-bold text-white flex items-center gap-2">
-              <Activity size={16} className="text-[#FF6F61]" /> 주간 신청 및 매칭 추이
-            </h2>
-            <span className="text-xs text-gray-600 font-medium">최근 7일</span>
+            <h3 style={{ fontSize: '0.95rem', fontWeight: 600 }}>주간 신청 및 매칭 추이</h3>
+            <span style={{ fontSize: '0.75rem', color: '#444' }}>최근 7일</span>
           </div>
-          <div className="h-65">
+          <div style={{ height: 220 }}>
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={weeklyTrendData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+              <AreaChart data={WEEKLY} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
                 <defs>
-                  <linearGradient id="gApplicants" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#FF6F61" stopOpacity={0.25} />
+                  <linearGradient id="gA" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#FF6F61" stopOpacity={0.2} />
                     <stop offset="95%" stopColor="#FF6F61" stopOpacity={0} />
                   </linearGradient>
-                  <linearGradient id="gMatches" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#6A98C8" stopOpacity={0.2} />
-                    <stop offset="95%" stopColor="#6A98C8" stopOpacity={0} />
+                  <linearGradient id="gM" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#60a5fa" stopOpacity={0.15} />
+                    <stop offset="95%" stopColor="#60a5fa" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1f2329" vertical={false} />
-                <XAxis dataKey="day" stroke="#4B5563" fontSize={11} tickLine={false} axisLine={false} />
-                <YAxis stroke="#4B5563" fontSize={11} tickLine={false} axisLine={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
+                <XAxis dataKey="day" stroke="#333" fontSize={11} tickLine={false} axisLine={false} />
+                <YAxis stroke="#333" fontSize={11} tickLine={false} axisLine={false} />
                 <Tooltip
-                  contentStyle={{ backgroundColor: '#13161b', border: '1px solid #2D3139', borderRadius: '10px', fontSize: '12px' }}
-                  labelStyle={{ color: '#9CA3AF' }}
+                  contentStyle={{ background: '#1a1a1e', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, fontSize: 12 }}
+                  labelStyle={{ color: '#888' }}
+                  cursor={{ stroke: 'rgba(255,255,255,0.06)' }}
                 />
-                <Area type="monotone" dataKey="applicants" stroke="#FF6F61" strokeWidth={2.5} fill="url(#gApplicants)" name="신청자" />
-                <Area type="monotone" dataKey="matches" stroke="#6A98C8" strokeWidth={2} fill="url(#gMatches)" name="매칭 성사" />
+                <Area type="monotone" dataKey="applicants" stroke="#FF6F61" strokeWidth={2} fill="url(#gA)" name="신청자" />
+                <Area type="monotone" dataKey="matches"    stroke="#60a5fa" strokeWidth={2} fill="url(#gM)" name="매칭 성사" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
-          <div className="flex gap-5 mt-4 pt-4 border-t border-gray-800/60">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-1 rounded-full bg-[#FF6F61]" />
-              <span className="text-xs text-gray-500">신청자</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-1 rounded-full bg-[#6A98C8]" />
-              <span className="text-xs text-gray-500">매칭 성사</span>
-            </div>
+          <div className="flex gap-5 mt-4 pt-4" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+            {[['#FF6F61', '신청자'], ['#60a5fa', '매칭 성사']].map(([c, l]) => (
+              <div key={l} className="flex items-center gap-2">
+                <div style={{ width: 12, height: 2, borderRadius: 2, background: c }} />
+                <span style={{ fontSize: '0.75rem', color: '#555' }}>{l}</span>
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* Gender Ratio */}
-        <div className="bg-[#1A1D23] border border-gray-800 rounded-2xl p-6">
-          <h2 className="text-base font-bold text-white mb-6 flex items-center gap-2">
-            <Users size={16} className="text-[#6A98C8]" /> 성별 비율
-          </h2>
-          <div className="relative h-45">
+        {/* Gender ratio */}
+        <div style={{ ...panel, padding: '24px' }}>
+          <h3 style={{ fontSize: '0.95rem', fontWeight: 600, marginBottom: 24 }}>성별 비율</h3>
+          <div style={{ position: 'relative', height: 160 }}>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={genderRatioData} cx="50%" cy="50%" innerRadius={55} outerRadius={75} paddingAngle={4} dataKey="value" startAngle={90} endAngle={-270}>
-                  {genderRatioData.map((entry, i) => (
-                    <Cell key={i} fill={entry.color} strokeWidth={0} />
-                  ))}
+                <Pie data={GENDER} cx="50%" cy="50%" innerRadius={50} outerRadius={70} paddingAngle={4} dataKey="value" startAngle={90} endAngle={-270}>
+                  {GENDER.map((g, i) => <Cell key={i} fill={g.color} strokeWidth={0} />)}
                 </Pie>
               </PieChart>
             </ResponsiveContainer>
-            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-              <span className="text-xl font-extrabold text-white">1,847</span>
-              <span className="text-[10px] text-gray-500 mt-0.5">전체 회원</span>
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+              <span style={{ fontSize: '1.3rem', fontWeight: 700 }}>1,847</span>
+              <span style={{ fontSize: '0.7rem', color: '#555', marginTop: 2 }}>전체 회원</span>
             </div>
           </div>
           <div className="space-y-3 mt-4">
-            {genderRatioData.map((item, i) => (
-              <div key={i} className="flex items-center justify-between">
+            {GENDER.map(g => (
+              <div key={g.name} className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }} />
-                  <span className="text-sm text-gray-400">{item.name}</span>
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: g.color }} />
+                  <span style={{ fontSize: '0.83rem', color: '#aaa' }}>{g.name}</span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <div className="w-24 h-1.5 bg-gray-800 rounded-full overflow-hidden">
-                    <div className="h-full rounded-full" style={{ width: `${item.value}%`, backgroundColor: item.color }} />
+                  <div style={{ width: 80, height: 4, borderRadius: 4, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+                    <div style={{ width: `${g.value}%`, height: '100%', background: g.color, borderRadius: 4 }} />
                   </div>
-                  <span className="text-sm font-bold text-white w-8 text-right">{item.value}%</span>
+                  <span style={{ fontSize: '0.83rem', fontWeight: 700, width: 32, textAlign: 'right' }}>{g.value}%</span>
                 </div>
               </div>
             ))}
@@ -175,41 +178,41 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Bottom Row */}
+      {/* Bottom row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-        {/* Upcoming Events */}
-        <div className="lg:col-span-2 bg-[#1A1D23] border border-gray-800 rounded-2xl p-6">
+        {/* Upcoming events */}
+        <div style={{ ...panel, padding: '24px' }} className="lg:col-span-2">
           <div className="flex items-center justify-between mb-5">
-            <h2 className="text-base font-bold text-white flex items-center gap-2">
-              <CalendarCheck size={16} className="text-yellow-400" /> 진행 예정 행사
-            </h2>
-            <Link href="/admin/events" className="text-xs text-gray-500 hover:text-white flex items-center gap-1 transition-colors">
-              전체 보기 <ChevronRight size={13} />
+            <h3 className="flex items-center gap-2" style={{ fontSize: '0.95rem', fontWeight: 600 }}>
+              <CalendarCheck size={15} style={{ color: '#facc15' }} /> 진행 예정 행사
+            </h3>
+            <Link href="/admin/events" className="flex items-center gap-1 transition-colors" style={{ fontSize: '0.78rem', color: '#555' }}
+              onMouseEnter={e => (e.currentTarget.style.color = '#ccc')}
+              onMouseLeave={e => (e.currentTarget.style.color = '#555')}
+            >
+              전체 보기 <ChevronRight size={12} />
             </Link>
           </div>
-          <div className="space-y-3">
-            {upcomingEvents.map((ev) => (
-              <div key={ev.episode} className="flex items-center gap-4 p-4 bg-gray-900/40 rounded-xl border border-gray-800/60 hover:border-gray-700 transition-colors">
-                <div className="w-10 h-10 rounded-xl bg-[#FF6F61]/10 flex items-center justify-center shrink-0">
-                  <span className="text-xs font-extrabold text-[#FF6F61]">{ev.episode}</span>
+          <div className="space-y-2.5">
+            {UPCOMING.map(ev => (
+              <div key={ev.episode} className="flex items-center gap-4 rounded-xl transition-colors" style={{ padding: '14px 16px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
+                <div className="flex items-center justify-center rounded-xl shrink-0" style={{ width: 40, height: 40, background: 'rgba(255,111,97,0.08)' }}>
+                  <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#FF6F61' }}>{ev.episode}</span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-white">부산 {ev.episode}기</p>
-                  <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1.5">
-                    <Clock size={11} /> {ev.date} · {ev.venue}
+                  <p style={{ fontSize: '0.88rem', fontWeight: 600 }}>부산 {ev.episode}기</p>
+                  <p className="flex items-center gap-1.5" style={{ fontSize: '0.75rem', color: '#555', marginTop: 2 }}>
+                    <Clock size={10} /> {ev.date} · {ev.venue}
                   </p>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-xs font-bold text-white mb-1.5">{ev.rate}%</p>
-                  <div className="w-20 h-1.5 bg-gray-800 rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all"
-                      style={{
-                        width: `${ev.rate}%`,
-                        background: ev.rate >= 80 ? '#6EAE7C' : ev.rate >= 50 ? '#FF6F61' : '#6A98C8'
-                      }}
-                    />
+                  <p style={{ fontSize: '0.8rem', fontWeight: 700, marginBottom: 4 }}>{ev.rate}%</p>
+                  <div style={{ width: 72, height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 4, overflow: 'hidden' }}>
+                    <div style={{
+                      width: `${ev.rate}%`, height: '100%', borderRadius: 4,
+                      background: ev.rate >= 70 ? '#4ade80' : ev.rate >= 40 ? '#FF6F61' : '#60a5fa'
+                    }} />
                   </div>
                 </div>
               </div>
@@ -217,39 +220,101 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Quick Actions */}
-        <div className="bg-[#1A1D23] border border-gray-800 rounded-2xl p-6">
-          <h2 className="text-base font-bold text-white mb-5 flex items-center gap-2">
-            <ShieldCheck size={16} className="text-[#FF6F61]" /> 빠른 메뉴
-          </h2>
-          <div className="space-y-2">
-            {quickActions.map((action, i) => (
-              <Link
-                key={i}
-                href={action.href}
-                className="flex items-center gap-3 p-3.5 rounded-xl border border-gray-800 hover:border-gray-700 hover:bg-gray-800/30 transition-all group"
-              >
-                <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${action.color}15` }}>
-                  <action.icon size={16} style={{ color: action.color }} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-white">{action.label}</p>
-                  <p className="text-xs text-gray-500">{action.desc}</p>
-                </div>
-                <ChevronRight size={14} className="text-gray-600 group-hover:text-gray-400 transition-colors" />
-              </Link>
-            ))}
+        {/* Quick actions + pending alert */}
+        <div className="space-y-4">
+          <div style={{ ...panel, padding: '24px' }}>
+            <h3 className="flex items-center gap-2 mb-4" style={{ fontSize: '0.95rem', fontWeight: 600 }}>
+              <Zap size={15} style={{ color: '#FF6F61' }} /> 빠른 메뉴
+            </h3>
+            <div className="space-y-1.5">
+              {[
+                { label: '신청자 승인', desc: '대기 중 2명', href: '/admin/users', color: '#60a5fa' },
+                { label: '행사 등록',   desc: '새 기수 만들기', href: '/admin/events', color: '#4ade80' },
+                { label: '매칭 실행',   desc: '120기 준비 완료', href: '/admin/events', color: '#FF6F61' },
+              ].map(a => (
+                <Link
+                  key={a.label}
+                  href={a.href}
+                  className="flex items-center gap-3 rounded-lg transition-colors"
+                  style={{ padding: '11px 14px', border: '1px solid rgba(255,255,255,0.06)', background: 'transparent' }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                >
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${a.color}14` }}>
+                    <span style={{ fontSize: '0.6rem', fontWeight: 800, color: a.color }}>GO</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p style={{ fontSize: '0.83rem', fontWeight: 600 }}>{a.label}</p>
+                    <p style={{ fontSize: '0.72rem', color: '#555' }}>{a.desc}</p>
+                  </div>
+                  <ChevronRight size={13} style={{ color: '#444' }} />
+                </Link>
+              ))}
+            </div>
           </div>
 
-          <div className="mt-4 p-4 bg-yellow-500/5 rounded-xl border border-yellow-500/10">
+          <div className="rounded-xl p-4" style={{ background: 'rgba(250,204,21,0.05)', border: '1px solid rgba(250,204,21,0.12)' }}>
             <div className="flex items-center gap-2 mb-1">
-              <div className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse" />
-              <p className="text-xs font-bold text-yellow-400">승인 대기</p>
+              <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#facc15' }} />
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#facc15' }}>승인 대기</span>
             </div>
-            <p className="text-sm text-gray-300">신원인증 대기 중인 신청자 <span className="font-bold text-white">12명</span></p>
+            <p style={{ fontSize: '0.83rem', color: '#aaa' }}>
+              신원인증 대기 신청자 <strong style={{ color: '#fff' }}>2명</strong>
+            </p>
+            <Link href="/admin/users" style={{ fontSize: '0.75rem', color: '#facc15', marginTop: 8, display: 'inline-block' }}>
+              지금 처리하기 →
+            </Link>
           </div>
         </div>
       </div>
+
+      {/* Recent members table */}
+      <div style={{ ...panel, padding: 0, overflow: 'hidden' }}>
+        <div className="flex items-center justify-between px-6 py-5" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+          <h3 style={{ fontSize: '0.95rem', fontWeight: 600 }}>최근 가입자</h3>
+          <Link href="/admin/users" className="flex items-center gap-1" style={{ fontSize: '0.78rem', color: '#555' }}
+            onMouseEnter={e => (e.currentTarget.style.color = '#ccc')}
+            onMouseLeave={e => (e.currentTarget.style.color = '#555')}
+          >
+            전체 보기 <ChevronRight size={12} />
+          </Link>
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>
+                {['이름', '이메일', '직업', '상태', '가입일'].map(h => (
+                  <th key={h} style={{ padding: '10px 24px', textAlign: 'left', fontSize: '0.72rem', fontWeight: 600, color: '#444', textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '1px solid rgba(255,255,255,0.06)', whiteSpace: 'nowrap' }}>
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {RECENT_MEMBERS.map((m, i) => {
+                const s = STATUS[m.status as keyof typeof STATUS];
+                return (
+                  <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}
+                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.02)')}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                  >
+                    <td style={{ padding: '12px 24px', fontSize: '0.85rem', fontWeight: 600 }}>{m.name}</td>
+                    <td style={{ padding: '12px 24px', fontSize: '0.83rem', color: '#666' }}>{m.email}</td>
+                    <td style={{ padding: '12px 24px', fontSize: '0.83rem', color: '#888' }}>{m.job}</td>
+                    <td style={{ padding: '12px 24px' }}>
+                      <span style={{ fontSize: '0.72rem', fontWeight: 600, padding: '4px 10px', borderRadius: 20, color: s.color, background: s.bg }}>
+                        {s.label}
+                      </span>
+                    </td>
+                    <td style={{ padding: '12px 24px', fontSize: '0.78rem', color: '#555' }}>{m.joined}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
     </div>
   );
 }
