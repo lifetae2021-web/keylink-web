@@ -12,38 +12,15 @@ import {
 import Link from 'next/link';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const [isAdmin, setIsAdmin] = useState<boolean | null>(true); // [TEMP] v3.2.5: Default to true for easy initial setup
+  const [isAdmin] = useState<boolean>(true); // [TEMP] v3.2.6: Forced bypass for all admin routes as requested
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
 
-  // [TEMP] v3.2.5: Temporarily disabled authentication for setup convenience
-  /*
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        const userDoc = await getDoc(doc(db, 'users', user.uid));
-        if (userDoc.exists() && userDoc.data().role === 'admin') {
-          setIsAdmin(true);
-        } else {
-          setIsAdmin(false);
-          if (pathname !== '/admin/login') router.push('/admin/login');
-        }
-      } else {
-        setIsAdmin(false);
-        if (pathname !== '/admin/login') router.push('/admin/login');
-      }
-    });
-    return () => unsubscribe();
-  }, [pathname, router]);
-  */
+  // [TEMP] v3.2.6: Security gates opened. Access verification completely disabled.
 
   // Don't show layout on login page
   if (pathname === '/admin/login') return <>{children}</>;
-
-  // Loading state or Access Denied
-  if (isAdmin === null) return <div className="min-h-screen bg-[#0F1115] flex items-center justify-center text-white">Loading...</div>;
-  if (isAdmin === false && pathname !== '/admin/login') return null;
 
   const menuItems = [
     { name: 'Dashboard', icon: BarChart3, path: '/admin' },
