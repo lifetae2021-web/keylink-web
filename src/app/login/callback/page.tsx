@@ -2,8 +2,9 @@
 
 import { Suspense, useEffect, useState, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { auth } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 import { signInWithCustomToken } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
 import { Loader2, AlertCircle, Heart } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -39,14 +40,23 @@ function KakaoCallbackContent() {
     const finalizeAuth = async () => {
       try {
         // Sign in with Firebase Custom Token received from our API
-        await signInWithCustomToken(auth, token);
+        const userCredential = await signInWithCustomToken(auth, token);
+        const user = userCredential.user;
         
         if (state === 'admin') {
           toast.success('관리자 로그인 성공!');
           router.replace('/admin');
         } else {
-          toast.success('로그인에 성공했습니다!');
-          router.replace('/');
+          // Check if user exists in Firestore (v3.5.6)
+          const userSnap = await getDoc(doc(db, 'users', user.uid));
+          
+          if (userSnap.exists()) {
+            toast.success('로그인에 성공했습니다!');
+            router.replace('/');
+          } else {
+            toast.success('환영합니다! 필수 정보를 입력해 주세요.');
+            router.replace('/register/social-profile');
+          }
         }
       } catch (err: any) {
         console.error('Firebase custom token sign-in error:', err);
