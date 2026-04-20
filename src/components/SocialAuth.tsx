@@ -103,15 +103,20 @@ export default function SocialAuth({ isAdmin, isLoading, setIsLoading }: SocialA
       </button>
 
       {/* Naver Login */}
-      <button
-        onClick={handleNaverLogin}
-        disabled={isLoading}
-        className={`flex items-center justify-center gap-3 w-full py-4 px-6 rounded-full font-bold text-white transition-all
-          ${isLoading ? 'bg-[#03C75A]/60' : 'bg-[#03C75A] hover:bg-[#02b150]'}`}
-      >
-        <span className="font-black text-xl font-sans">N</span>
-        네이버로 시작하기
-      </button>
+      <div className="flex flex-col gap-1.5">
+        <button
+          onClick={handleNaverLogin}
+          disabled={isLoading}
+          className={`flex items-center justify-center gap-3 w-full py-4 px-6 rounded-full font-bold text-white transition-all
+            ${isLoading ? 'bg-[#03C75A]/60' : 'bg-[#03C75A] hover:bg-[#02b150]'}`}
+        >
+          <span className="font-black text-xl font-sans">N</span>
+          네이버로 시작하기
+        </button>
+        <p className="text-center text-[11px] text-gray-400 font-medium">
+          * 네이버 로그인 시 단체 아이디 연동 불가 (개인 아이디 전용)
+        </p>
+      </div>
 
       {/* Google Login */}
       <button

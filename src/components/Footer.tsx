@@ -35,7 +35,7 @@ export default function Footer() {
               </div>
             </div>
             <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', lineHeight: 1.7 }}>
-              부산 지역 프리미엄<br/>로테이션 소개팅 서비스
+              부산 지역 프리미엄<br />로테이션 소개팅 서비스
             </p>
           </div>
 
@@ -109,7 +109,7 @@ export default function Footer() {
               borderRadius: '12px',
             }}>
               <p style={{ fontSize: '0.8rem', color: 'var(--color-accent)', fontWeight: '600' }}>운영 시간</p>
-              <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>평일 10:00 – 22:00<br/>주말 09:00 – 22:00</p>
+              <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>평일 10:00 – 22:00<br />주말 09:00 – 22:00</p>
             </div>
           </div>
         </div>
@@ -123,9 +123,9 @@ export default function Footer() {
           gap: '24px',
         }}>
           {/* Business Info */}
-          <div style={{ 
-            fontSize: '0.75rem', 
-            color: 'var(--color-text-muted)', 
+          <div style={{
+            fontSize: '0.75rem',
+            color: 'var(--color-text-muted)',
             lineHeight: 1.6,
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
@@ -138,7 +138,6 @@ export default function Footer() {
               <p>연락처: 010-4896-2040</p>
             </div>
             <div>
-              <p>통신판매업신고번호: [제202X-부산진구-0000호]</p>
               <p>주소: 부산광역시 부산진구 중앙대로 763-1, 4층(부전동)</p>
               <p>개인정보보호책임자: 태영훈 (keylink2025@gmail.com)</p>
             </div>
@@ -152,7 +151,7 @@ export default function Footer() {
             alignItems: 'center',
           }}>
             <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
-              © 2026 키링크. All rights reserved. | <span style={{ opacity: 0.6 }}>v3.2.0</span>
+              © 2026 키링크. All rights reserved. | <span style={{ opacity: 0.6 }}>v3.2.2</span>
             </div>
             <div style={{ display: 'flex', gap: '20px' }}>
               <Link href="/notices?tab=terms" style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', textDecoration: 'none', fontWeight: '500' }}>이용약관</Link>
