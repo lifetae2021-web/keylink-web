@@ -140,7 +140,7 @@ export default function Footer() {
             <div>
               <p>통신판매업신고번호: [제202X-부산진구-0000호]</p>
               <p>주소: 부산광역시 부산진구 중앙대로 763-1, 4층(부전동)</p>
-              <p>개인정보보호책임자: 태영훈 (support@keylink.kr)</p>
+              <p>개인정보보호책임자: 태영훈 (keylink2025@gmail.com)</p>
             </div>
           </div>
 
