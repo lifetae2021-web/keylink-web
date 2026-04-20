@@ -117,17 +117,46 @@ export default function Footer() {
         {/* Bottom */}
         <div style={{
           borderTop: '1px solid var(--color-border)',
-          paddingTop: '24px',
+          paddingTop: '32px',
           display: 'flex',
-          flexWrap: 'wrap',
-          gap: '12px',
-          justifyContent: 'space-between',
-          alignItems: 'center',
+          flexDirection: 'column',
+          gap: '24px',
         }}>
-            © 2026 키링크. All rights reserved. | <span style={{ opacity: 0.6 }}>v3.1.1</span>
-          <div style={{ display: 'flex', gap: '20px' }}>
-            <Link href="/notices#terms" style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', textDecoration: 'none' }}>이용약관</Link>
-            <Link href="/notices#privacy" style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', textDecoration: 'none' }}>개인정보처리방침</Link>
+          {/* Business Info */}
+          <div style={{ 
+            fontSize: '0.75rem', 
+            color: 'var(--color-text-muted)', 
+            lineHeight: 1.6,
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: '12px'
+          }}>
+            <div>
+              <p>상호명: 키링크(Keylink)</p>
+              <p>대표자: [대표자 성명 입력]</p>
+              <p>사업자등록번호: [000-00-00000]</p>
+            </div>
+            <div>
+              <p>통신판매업신고번호: [제202X-부산XX-0000호]</p>
+              <p>주소: [부산광역시 OO구 OO로 00, 0층]</p>
+              <p>개인정보보호책임자: 관리자 (support@keylink.kr)</p>
+            </div>
+          </div>
+
+          <div style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '24px',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}>
+            <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+              © 2026 키링크. All rights reserved. | <span style={{ opacity: 0.6 }}>v3.2.0</span>
+            </div>
+            <div style={{ display: 'flex', gap: '20px' }}>
+              <Link href="/notices?tab=terms" style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', textDecoration: 'none', fontWeight: '500' }}>이용약관</Link>
+              <Link href="/notices?tab=privacy" style={{ fontSize: '0.8rem', color: 'var(--color-text-primary)', textDecoration: 'none', fontWeight: '700' }}>개인정보처리방침</Link>
+            </div>
           </div>
         </div>
       </div>
