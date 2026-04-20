@@ -1,13 +1,15 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { usePathname } from 'next/navigation';
-import { auth } from '@/lib/firebase';
+import { usePathname, useRouter } from 'next/navigation';
+import { auth, db } from '@/lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
 import {
   LayoutDashboard, Users, Calendar, TrendingUp,
   Settings, LogOut, Bell, Menu, X,
   ExternalLink, ChevronDown, ShieldCheck,
-  FileText
+  FileText, Loader2
 } from 'lucide-react';
 import Link from 'next/link';
 import { version } from '../../../package.json';
@@ -39,14 +41,43 @@ const MOCK_NOTIFICATIONS = [
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router   = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [notiOpen, setNotiOpen] = useState(false);
+  const [notiOpen, setNotiOpen]       = useState(false);
   const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS);
+  const [authState, setAuthState] = useState<'loading' | 'admin' | 'denied'>('loading');
   const notiRef = useRef<HTMLDivElement>(null);
 
   const unreadCount = notifications.filter(n => !n.read).length;
-  const pageTitle = PAGE_TITLE[pathname] ?? '관리자';
+  const pageTitle   = PAGE_TITLE[pathname] ?? '관리자';
 
+  // Auth guard
+  useEffect(() => {
+    if (pathname === '/admin/login') return;
+
+    const unsub = onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        router.replace('/admin/login');
+        return;
+      }
+      try {
+        const snap = await getDoc(doc(db, 'users', user.uid));
+        if (snap.exists() && snap.data().role === 'admin') {
+          setAuthState('admin');
+        } else {
+          await auth.signOut();
+          router.replace('/admin/login');
+        }
+      } catch {
+        await auth.signOut();
+        router.replace('/admin/login');
+      }
+    });
+
+    return () => unsub();
+  }, [pathname, router]);
+
+  // Close notification dropdown on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (notiRef.current && !notiRef.current.contains(e.target as Node)) {
@@ -60,6 +91,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const markAllRead = () => setNotifications(prev => prev.map(n => ({ ...n, read: true })));
 
   if (pathname === '/admin/login') return <>{children}</>;
+
+  // Loading / access denied
+  if (authState === 'loading') {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-3" style={{ background: '#09090b' }}>
+        <Loader2 className="animate-spin" size={28} style={{ color: '#FF6F61' }} />
+        <p style={{ fontSize: '0.85rem', color: '#555' }}>권한 확인 중...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex" style={{ background: '#09090b', color: '#fff', fontFamily: 'inherit' }}>
