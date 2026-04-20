@@ -1,12 +1,24 @@
-'use client';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Heart, MessageCircle, Camera } from 'lucide-react';
+import { useRef } from 'react';
 
 export default function Footer() {
   const pathname = usePathname();
+  const router = useRouter();
+  const lastTapTime = useRef<number>(0);
+
   if (pathname === '/register') return null;
+
+  const handleHiddenAdminLink = () => {
+    const now = Date.now();
+    const gap = now - lastTapTime.current;
+    if (gap > 0 && gap < 2000) {
+      router.push('/admin/login');
+    }
+    lastTapTime.current = now;
+  };
 
   return (
     <footer style={{
@@ -150,8 +162,12 @@ export default function Footer() {
             justifyContent: 'space-between',
             alignItems: 'center',
           }}>
-            <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
-              © 2026 키링크. All rights reserved. | <span style={{ opacity: 0.6 }}>v3.2.2</span>
+            <div 
+              style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', cursor: 'default', userSelect: 'none' }}
+              onDoubleClick={handleHiddenAdminLink}
+              onTouchStart={handleHiddenAdminLink}
+            >
+              © 2026 키링크. All rights reserved. | <span style={{ opacity: 0.6 }}>v3.2.3</span>
             </div>
             <div style={{ display: 'flex', gap: '20px' }}>
               <Link href="/notices?tab=terms" style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', textDecoration: 'none', fontWeight: '500' }}>이용약관</Link>

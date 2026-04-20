@@ -23,7 +23,7 @@ export default function ResultDetailPage({ params }: { params: Promise<{ id: str
     <div style={{ paddingBottom: '100px', background: 'var(--color-bg)', minHeight: '100vh', position: 'relative', overflow: 'hidden' }}>
       <CherryBlossoms />
 
-      {/* Hero: Celebration Header (v3.2.2 Redesign) */}
+      {/* Hero: Celebration Header (v3.2.3 Redesign) */}
       <section style={{
         padding: '120px 20px 80px',
         textAlign: 'center',

@@ -243,7 +243,7 @@ export default function StatusPage() {
           </div>
         </section>
 
-        {/* Assurance Banner v3.2.2 */}
+        {/* Assurance Banner v3.2.3 */}
         <div style={{ 
           maxWidth: '800px', margin: '0 auto 80px auto',
           background: 'linear-gradient(135deg, #F0F7FF 0%, #EBF3FF 100%)', 
