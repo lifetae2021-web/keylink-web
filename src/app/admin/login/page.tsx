@@ -9,10 +9,22 @@ import { Lock, Mail, Loader2, ShieldCheck, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function AdminLoginPage() {
-  const [loginId,   setLoginId]   = useState('');
-  const [password,  setPassword]  = useState('');
-  const [loading,   setLoading]   = useState(false);
+  const [loginId, setLoginId] = useState('');
+  const [password, setPassword] = useState('');
+  const [rememberId, setRememberId] = useState(false);
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
+
+  // Load saved ID on mount
+  useState(() => {
+    if (typeof window !== 'undefined') {
+      const savedId = localStorage.getItem('keylink_admin_saved_id');
+      if (savedId) {
+        setLoginId(savedId);
+        setRememberId(true);
+      }
+    }
+  });
 
   const checkAdmin = async (uid: string): Promise<boolean> => {
     const snap = await getDoc(doc(db, 'users', uid));
@@ -28,17 +40,30 @@ export default function AdminLoginPage() {
         const colRef = collection(db, 'users');
         const queries = [
           query(colRef, where('username', '==', loginId)),
-          query(colRef, where('name',     '==', loginId)),
+          query(colRef, where('name', '==', loginId)),
         ];
         const snaps = await Promise.all(queries.map(q => getDocs(q)));
         const found = snaps.find(s => !s.empty)?.docs[0];
-        if (!found) { toast.error('존재하지 않는 아이디입니다.'); return; }
+        if (!found) {
+          toast.error('존재하지 않는 아이디입니다.');
+          return;
+        }
         email = found.data().email;
-        if (!email) { toast.error('이메일 정보가 없는 계정입니다.'); return; }
+        if (!email) {
+          toast.error('이메일 정보가 없는 계정입니다.');
+          return;
+        }
       }
 
       const { user } = await signInWithEmailAndPassword(auth, email, password);
       if (await checkAdmin(user.uid)) {
+        // Handle Remember ID
+        if (rememberId) {
+          localStorage.setItem('keylink_admin_saved_id', loginId);
+        } else {
+          localStorage.removeItem('keylink_admin_saved_id');
+        }
+
         toast.success('관리자 로그인 성공!');
         router.push('/admin');
       } else {
@@ -157,6 +182,24 @@ export default function AdminLoginPage() {
                   onBlur={e   => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)')}
                 />
               </div>
+            </div>
+
+            {/* Remember ID Checkbox */}
+            <div className="flex items-center gap-2 px-1">
+              <input
+                id="remember-id"
+                type="checkbox"
+                checked={rememberId}
+                onChange={(e) => setRememberId(e.target.checked)}
+                className="w-4 h-4 rounded border-gray-800 bg-gray-900 text-pink-500 focus:ring-pink-500/20 transition-all cursor-pointer"
+                style={{ accentColor: '#FF6F61' }}
+              />
+              <label 
+                htmlFor="remember-id" 
+                className="text-xs font-semibold text-gray-500 cursor-pointer select-none hover:text-gray-400 transition-colors"
+              >
+                아이디 저장
+              </label>
             </div>
 
             {/* Submit */}

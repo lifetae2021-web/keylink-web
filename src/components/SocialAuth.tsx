@@ -94,7 +94,7 @@ export default function SocialAuth({ isAdmin, isLoading, setIsLoading }: SocialA
       <button
         onClick={handleKakaoLogin}
         disabled={isLoading}
-        className={`flex items-center justify-center gap-3 w-full py-4 px-6 rounded-full font-bold text-[#191919] transition-all
+        className={`flex items-center justify-center gap-3 w-full py-4 px-6 rounded-2xl font-bold text-[#191919] transition-all
           ${isLoading ? 'bg-[#FEE500]/60' : 'bg-[#FEE500] hover:bg-[#FADA0A]'}`}
       >
         <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
@@ -108,7 +108,7 @@ export default function SocialAuth({ isAdmin, isLoading, setIsLoading }: SocialA
         <button
           onClick={handleNaverLogin}
           disabled={isLoading}
-          className={`flex items-center justify-center gap-3 w-full py-4 px-6 rounded-full font-bold text-white transition-all
+          className={`flex items-center justify-center gap-3 w-full py-4 px-6 rounded-2xl font-bold text-white transition-all
             ${isLoading ? 'bg-[#03C75A]/60' : 'bg-[#03C75A] hover:bg-[#02b150]'}`}
         >
           <span className="font-black text-xl font-sans">N</span>
@@ -123,7 +123,7 @@ export default function SocialAuth({ isAdmin, isLoading, setIsLoading }: SocialA
       <button
         onClick={handleGoogleLogin}
         disabled={isLoading}
-        className="flex items-center justify-center gap-3 w-full py-4 px-6 bg-white border border-gray-300 rounded-full shadow-sm hover:bg-gray-50 transition-all text-[#3c4043] font-bold"
+        className="flex items-center justify-center gap-3 w-full py-4 px-6 bg-white border border-gray-300 rounded-2xl shadow-sm hover:bg-gray-50 transition-all text-[#3c4043] font-bold"
       >
         {isLoading ? (
           <Loader2 className="animate-spin" size={20} />
