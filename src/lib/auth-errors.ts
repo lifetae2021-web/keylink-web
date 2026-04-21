@@ -4,13 +4,13 @@
 export const getAuthErrorMessage = (code: string): string => {
   switch (code) {
     case 'auth/email-already-in-use':
-      return "이미 가입된 이메일이에요! 기존 계정으로 로그인하거나 다른 이메일을 입력해 주세요. 😊";
+      return "이미 사용 중인 이메일입니다. 다른 이메일을 입력하거나 네이버/구글 등 기존 계정으로 로그인해 주세요! 😊";
     
     case 'auth/invalid-email':
-      return "이메일 형식이 올바르지 않아요. 다시 한번 확인해 주시겠어요?";
+      return "이메일 주소 형식이 맞지 않아요. @와 도메인을 확인해 주세요.";
     
     case 'auth/operation-not-allowed':
-      return "현재 서비스 설정 변경 중입니다. 잠시 후 다시 시도하거나 관리자에게 문의해 주세요!";
+      return "이메일 가입 설정에 문제가 있습니다. 관리자에게 문의해 주세요.";
     
     case 'auth/weak-password':
       return "비밀번호가 너무 쉬워요. 6자리 이상의 안전한 비밀번호를 설정해 주세요.";

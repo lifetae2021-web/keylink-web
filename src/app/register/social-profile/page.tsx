@@ -15,6 +15,7 @@ export default function SocialProfilePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
 
   const [agreements, setAgreements] = useState({
     terms: false,
@@ -87,6 +88,7 @@ export default function SocialProfilePage() {
 
   const update = (key: string, value: string) => {
     if (error) setError(null); // Clear error on any input
+    if (key === 'email' && emailError) setEmailError(null); // Clear email-specific error
     let formattedValue = value;
     if (key === 'phone') formattedValue = formatPhone(value);
     if (key === 'birthDate') formattedValue = formatBirthDate(value);
@@ -105,6 +107,7 @@ export default function SocialProfilePage() {
 
     setIsSubmitting(true);
     setError(null);
+    setEmailError(null);
 
     try {
       // 1. Sync Email to Auth System
@@ -112,10 +115,16 @@ export default function SocialProfilePage() {
         try {
           await updateEmail(user, form.email);
         } catch (authErr: any) {
+          console.log('Firebase Error Code (Auth Sync):', authErr.code);
           const msg = getAuthErrorMessage(authErr.code);
           setError(msg);
-          toast.error(msg); // Toast alert
-          window.scrollTo({ top: 0, behavior: 'smooth' }); // Synergy: scroll to top
+          
+          if (authErr.code.includes('email') || authErr.code === 'auth/operation-not-allowed') {
+            setEmailError(msg);
+          }
+          
+          toast.error(msg);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
           throw new Error(msg); 
         }
       }
@@ -143,8 +152,7 @@ export default function SocialProfilePage() {
       toast.success('프로필 설정이 완료되었습니다!');
       router.push('/');
     } catch (err: any) {
-      console.error('Submit Error:', err);
-      // Already toasted if it was an internal auth error, but just in case
+      console.log('Firebase Error Code (Total):', err.code);
       if (!error) {
         const msg = getAuthErrorMessage(err.code);
         setError(msg);
@@ -226,15 +234,27 @@ export default function SocialProfilePage() {
               <label className="kl-label" style={{ fontWeight: '800', marginBottom: '10px' }}>이메일</label>
               <input 
                 className="kl-input" 
-                style={{ borderRadius: '12px', height: '54px' }} 
+                style={{ 
+                  borderRadius: '12px', 
+                  height: '54px',
+                  border: emailError ? '1.5px solid #FF6F61' : '1px solid var(--color-border)',
+                  background: emailError ? '#FFF5F4' : '#fff'
+                }} 
                 type="email"
                 placeholder="example@gmail.com"
                 value={form.email} 
                 onChange={e => update('email', e.target.value)} 
               />
-              <p style={{ fontSize: '0.75rem', color: '#999', marginTop: '6px', marginLeft: '4px' }}>
-                비밀번호 분실 시 찾기 및 주요 공지 수신용으로 사용됩니다.
-              </p>
+              {emailError && (
+                <p style={{ color: '#FF6F61', fontSize: '0.8rem', fontWeight: '700', marginTop: '8px', marginLeft: '4px' }}>
+                  {emailError}
+                </p>
+              )}
+              {!emailError && (
+                <p style={{ fontSize: '0.75rem', color: '#999', marginTop: '6px', marginLeft: '4px' }}>
+                  비밀번호 분실 시 찾기 및 주요 공지 수신용으로 사용됩니다.
+                </p>
+              )}
             </div>
 
             {/* 2. Name */}
