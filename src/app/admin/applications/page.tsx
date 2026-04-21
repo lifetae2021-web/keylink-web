@@ -19,10 +19,11 @@ const DEPOSIT_STATUS = {
   confirmed: { label: '입금 확인', color: '#60a5fa', bg: 'rgba(96,165,250,0.1)'  },
 };
 
-const APP_STATUS = {
-  pending:  { label: '승인 대기', color: '#facc15', bg: 'rgba(250,204,21,0.1)'  },
-  verified: { label: '승인 완료', color: '#4ade80', bg: 'rgba(74,222,128,0.1)'  },
-  rejected: { label: '인증 반려', color: '#ef4444', bg: 'rgba(239,68,68,0.1)'   },
+const APP_STATUS: Record<string, { label: string; color: string; bg: string }> = {
+  applied:   { label: '검토 중',   color: '#facc15', bg: 'rgba(250,204,21,0.1)'  },
+  selected:  { label: '입금 대기', color: '#a78bfa', bg: 'rgba(167,139,250,0.1)' },
+  confirmed: { label: '참가 확정', color: '#4ade80', bg: 'rgba(74,222,128,0.1)'  },
+  cancelled: { label: '취소',      color: '#ef4444', bg: 'rgba(239,68,68,0.1)'   },
 };
 
 const panel = { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12 };
@@ -40,19 +41,19 @@ export default function ApplicationsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isDataLoading, setIsDataLoading] = useState(false);
 
-  // 1. Fetch Events for selection
+  // 1. sessions 컬렉션에서 기수 목록 로드
   useEffect(() => {
     async function fetchEvents() {
       try {
-        const q = query(collection(db, 'events'), orderBy('date', 'desc'));
+        const q = query(collection(db, 'sessions'), orderBy('eventDate', 'desc'));
         const snap = await getDocs(q);
-        const fetchedEvents = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+        const fetchedEvents = snap.docs.map(d => ({ id: d.id, ...d.data() } as any));
         setEvents(fetchedEvents);
         if (fetchedEvents.length > 0) {
           setSelectedEventId(fetchedEvents[0].id);
         }
       } catch (error) {
-        console.error('Error fetching events:', error);
+        console.error('Error fetching sessions:', error);
         toast.error('기수 목록을 불러오지 못했습니다.');
       } finally {
         setIsLoading(false);
@@ -61,7 +62,7 @@ export default function ApplicationsPage() {
     fetchEvents();
   }, []);
 
-  // 2. Fetch Applications when event changes
+  // 2. 기수 선택 시 해당 applications 로드
   useEffect(() => {
     if (!selectedEventId) return;
 
@@ -70,14 +71,14 @@ export default function ApplicationsPage() {
         setIsDataLoading(true);
         const q = query(
           collection(db, 'applications'),
-          where('eventId', '==', selectedEventId),
-          orderBy('createdAt', 'desc')
+          where('sessionId', '==', selectedEventId),
+          orderBy('appliedAt', 'desc')
         );
         const snap = await getDocs(q);
-        const apps = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+        const apps = snap.docs.map(d => ({ id: d.id, ...d.data() } as any));
         
-        // Fetch User details for joining
-        const uids = Array.from(new Set(apps.map(a => a.userId)));
+        // users 컬렉션에서 추가 정보 조인
+        const uids = Array.from(new Set(apps.map((a: any) => a.userId))) as string[];
         const newUserMap = { ...userMap };
         let updated = false;
 
@@ -95,6 +96,7 @@ export default function ApplicationsPage() {
         setApplications(apps);
       } catch (error) {
         console.error('Error fetching applications:', error);
+        toast.error('신청자 목록 로드 실패:', );
       } finally {
         setIsDataLoading(false);
       }
@@ -102,21 +104,16 @@ export default function ApplicationsPage() {
     fetchApplications();
   }, [selectedEventId]);
 
-  const updateDeposit = async (appId: string, status: 'pending' | 'confirmed') => {
+  // v5.0.0 status 직접 변경
+  const updateAppStatus = async (appId: string, status: string) => {
     try {
-      await updateDoc(doc(db, 'applications', appId), { depositStatus: status });
-      setApplications(prev => prev.map(a => a.id === appId ? { ...a, depositStatus: status } : a));
-      toast.success(status === 'confirmed' ? '입금 확인 처리가 완료되었습니다.' : '입금 대기 상태로 변경되었습니다.');
-    } catch (e) {
-      toast.error('상태 업데이트에 실패했습니다.');
-    }
-  };
-
-  const updateAppStatus = async (appId: string, status: 'verified' | 'rejected') => {
-    try {
-      await updateDoc(doc(db, 'applications', appId), { status });
+      await updateDoc(doc(db, 'applications', appId), {
+        status,
+        updatedAt: Timestamp.now(),
+      });
       setApplications(prev => prev.map(a => a.id === appId ? { ...a, status } : a));
-      toast.success(status === 'verified' ? '신청이 승인되었습니다.' : '신청이 반려되었습니다.');
+      const labels: Record<string, string> = { selected: '선발', confirmed: '입금 확인', cancelled: '취소' };
+      toast.success(`${labels[status] || status} 처리 완료`);
     } catch (e) {
       toast.error('상태 업데이트에 실패했습니다.');
     }
@@ -142,9 +139,12 @@ export default function ApplicationsPage() {
               className="kl-input pl-9 pr-8"
               style={{ padding: '8px 36px 8px 36px', minWidth: '220px', fontSize: '0.85rem' }}
             >
+              {events.length === 0 && !isLoading && (
+                <option disabled>sessions 컬렉션에 기수가 없습니다</option>
+              )}
               {events.map(ev => (
                 <option key={ev.id} value={ev.id}>
-                  {ev.region === 'busan' ? '부산' : '창원'} {ev.episode}기 {ev.title ? `- ${ev.title}` : ''}
+                  {ev.episodeNumber}기 — {ev.title || ev.id}
                 </option>
               ))}
               {isLoading && <option>로딩 중...</option>}
@@ -160,10 +160,10 @@ export default function ApplicationsPage() {
       {activeEvent && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
-            { label: '전체 신청', value: applications.length, icon: Users, color: '#FF6F61' },
-            { label: '입금 확인', value: applications.filter(a => a.depositStatus === 'confirmed').length, icon: CreditCard, color: '#60a5fa' },
-            { label: '최종 승인', value: applications.filter(a => a.status === 'verified').length, icon: CheckCircle, color: '#4ade80' },
-            { label: '정원 현황', value: `${(activeEvent.currentMale || 0) + (activeEvent.currentFemale || 0)} / ${(activeEvent.maxMale || 0) + (activeEvent.maxFemale || 0)}`, icon: Calendar, color: '#facc15' },
+            { label: '전체 신청',   value: applications.length,                                                         icon: Users,       color: '#FF6F61' },
+            { label: '입금 대기',   value: applications.filter((a: any) => a.status === 'selected').length,              icon: CreditCard,  color: '#a78bfa' },
+            { label: '참가 확정',   value: applications.filter((a: any) => a.status === 'confirmed').length,             icon: CheckCircle, color: '#4ade80' },
+            { label: '정원 현황',  value: `${(activeEvent.currentMale||0)+(activeEvent.currentFemale||0)} / ${(activeEvent.maxMale||0)+(activeEvent.maxFemale||0)}`, icon: Calendar, color: '#facc15' },
           ].map((item, i) => (
             <div key={i} style={{ ...panel, padding: '16px 20px' }} className="flex items-center justify-between">
               <div>
@@ -220,7 +220,7 @@ export default function ApplicationsPage() {
                 applications.map((app) => {
                   const user = userMap[app.userId] || {};
                   const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS] || DEPOSIT_STATUS.pending;
-                  const aStatus = APP_STATUS[app.status as keyof typeof APP_STATUS] || APP_STATUS.pending;
+                  const aStatus = APP_STATUS[app.status] || APP_STATUS['applied'];
 
                   return (
                     <tr 
@@ -228,38 +228,26 @@ export default function ApplicationsPage() {
                       style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }} 
                       className="hover:bg-white/[0.01] transition-colors"
                     >
-                      {/* User Column */}
+                      {/* 신청자 이름/성별 */}
                       <td style={{ padding: '14px 20px' }}>
                         <div className="flex items-center gap-3">
                           <div className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center overflow-hidden border border-white/10 shrink-0">
-                            {user.gender === 'female' 
-                              ? <span className="text-[18px]">👩</span> 
+                            {app.gender === 'female'
+                              ? <span className="text-[18px]">👩</span>
                               : <span className="text-[18px]">👨</span>
                             }
                           </div>
                           <div>
-                            <p style={{ fontSize: '0.88rem', fontWeight: 700 }}>{user.name || '알 수 없음'}</p>
-                            <p style={{ fontSize: '0.72rem', color: '#555' }}>{user.gender === 'male' ? '남성' : '여성'} · {user.age || (user.birthDate ? `${2026 - parseInt('19' + user.birthDate.substring(0, 2)) + 1}세` : '??세')}</p>
+                            <p style={{ fontSize: '0.88rem', fontWeight: 700 }}>{app.name || user.name || '알 수 없음'}</p>
+                            <p style={{ fontSize: '0.72rem', color: '#555' }}>{app.gender === 'male' ? '남성' : '여성'} · {app.age || '??'}세</p>
                           </div>
                         </div>
                       </td>
-                      
-                      {/* Deposit Status */}
-                      <td style={{ padding: '14px 20px' }}>
-                        <button 
-                          onClick={() => updateDeposit(app.id, app.depositStatus === 'confirmed' ? 'pending' : 'confirmed')}
-                          className="flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all hover:brightness-110"
-                          style={{ background: dStatus.bg, border: `1px solid ${dStatus.color}20` }}
-                        >
-                          <div className={`w-1.5 h-1.5 rounded-full ${app.depositStatus === 'confirmed' ? 'bg-blue-400' : 'bg-gray-500'}`} />
-                          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: dStatus.color }}>{dStatus.label}</span>
-                        </button>
-                      </td>
 
-                      {/* Approval Status */}
+                      {/* 현재 상태 배지 */}
                       <td style={{ padding: '14px 20px' }}>
                         <span style={{
-                          fontSize: '0.7rem', fontWeight: 700, padding: '3px 8px', borderRadius: 10,
+                          fontSize: '0.7rem', fontWeight: 700, padding: '3px 10px', borderRadius: 10,
                           background: aStatus.bg, color: aStatus.color,
                           border: `1px solid ${aStatus.color}20`
                         }}>
@@ -275,31 +263,35 @@ export default function ApplicationsPage() {
 
                       {/* CreatedAt */}
                       <td style={{ padding: '14px 20px', fontSize: '0.72rem', color: '#555' }}>
-                        {app.createdAt && typeof app.createdAt.toDate === 'function' ? format(app.createdAt.toDate(), 'MM.dd HH:mm') : '-'}
+                        {app.appliedAt && typeof app.appliedAt.toDate === 'function' ? format(app.appliedAt.toDate(), 'MM.dd HH:mm') : '-'}
                       </td>
 
                       {/* Actions */}
                       <td style={{ padding: '14px 20px' }}>
                         <div className="flex items-center gap-2">
-                          {app.status !== 'verified' && (
-                            <button 
-                              onClick={() => updateAppStatus(app.id, 'verified')}
-                              className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors bg-green-500/10 text-green-500 hover:bg-green-500 hover:text-white"
-                              title="승인"
+                          {app.status === 'applied' && (
+                            <button
+                              onClick={() => updateAppStatus(app.id, 'selected')}
+                              className="px-2 py-1 rounded-lg text-xs font-bold transition-colors bg-purple-500/10 text-purple-400 hover:bg-purple-500 hover:text-white"
+                              title="선발"
+                            >선발</button>
+                          )}
+                          {app.status === 'selected' && (
+                            <button
+                              onClick={() => updateAppStatus(app.id, 'confirmed')}
+                              className="px-2 py-1 rounded-lg text-xs font-bold transition-colors bg-green-500/10 text-green-400 hover:bg-green-500 hover:text-white"
+                              title="입금확인"
+                            >입금확인</button>
+                          )}
+                          {app.status !== 'cancelled' && (
+                            <button
+                              onClick={() => updateAppStatus(app.id, 'cancelled')}
+                              className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white"
+                              title="취소"
                             >
-                              <ShieldCheck size={16} />
+                              <XCircle size={16} />
                             </button>
                           )}
-                          <button className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white" title="상세보기">
-                            <Eye size={16} />
-                          </button>
-                          <button 
-                            onClick={() => updateAppStatus(app.id, 'rejected')}
-                            className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white"
-                            title="반려"
-                          >
-                            <XCircle size={16} />
-                          </button>
                         </div>
                       </td>
                     </tr>
