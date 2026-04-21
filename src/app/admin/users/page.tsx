@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import {
   Search, CheckCircle, XCircle, Eye,
-  Download, ShieldCheck, ChevronLeft, ChevronRight, Loader2
+  Download, ShieldCheck, ChevronLeft, ChevronRight, Loader2,
+  Filter, ArrowUpDown, ArrowUp, ArrowDown
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { db } from '@/lib/firebase';
@@ -49,6 +50,8 @@ export default function UsersPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<Status>('all');
+  const [genderFilter, setGenderFilter] = useState<'all' | 'male' | 'female'>('all');
+  const [sortConfig, setSortConfig] = useState<{ key: 'age' | 'createdAt', direction: 'asc' | 'desc' | null }>({ key: 'createdAt', direction: 'desc' });
 
   const fetchUsers = async () => {
     try {
@@ -86,8 +89,36 @@ export default function UsersPage() {
       (u.job || '').toLowerCase().includes(q) || 
       (u.email || '').toLowerCase().includes(q);
     const matchFilter = filter === 'all' || (u.status || 'pending') === filter;
-    return matchSearch && matchFilter;
+    const matchGender = genderFilter === 'all' || u.gender === genderFilter;
+    return matchSearch && matchFilter && matchGender;
+  }).sort((a, b) => {
+    if (!sortConfig.direction || !sortConfig.key) return 0;
+
+    let valA: any, valB: any;
+
+    if (sortConfig.key === 'age') {
+      const getAge = (birth?: string) => birth ? new Date().getFullYear() - parseInt(birth.split('-')[0]) + 1 : 0;
+      valA = getAge(a.birthDate);
+      valB = getAge(b.birthDate);
+    } else {
+      valA = a[sortConfig.key]?.seconds || 0;
+      valB = b[sortConfig.key]?.seconds || 0;
+    }
+
+    if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
+    if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
+    return 0;
   });
+
+  const toggleSort = (key: 'age' | 'createdAt') => {
+    setSortConfig(prev => {
+      if (prev.key === key) {
+        if (prev.direction === 'asc') return { key, direction: 'desc' };
+        if (prev.direction === 'desc') return { key: 'createdAt', direction: 'desc' }; // Reset to default
+      }
+      return { key, direction: 'asc' };
+    });
+  };
 
   const approve = async (id: string, name: string) => {
     try {
@@ -166,6 +197,33 @@ export default function UsersPage() {
           </button>
         ))}
 
+        {/* Gender Filter */}
+        <div className="relative">
+          <select
+            value={genderFilter}
+            onChange={e => setGenderFilter(e.target.value as any)}
+            style={{
+              padding: '7px 32px 7px 12px',
+              fontSize: '0.82rem',
+              background: 'rgba(255,255,255,0.04)',
+              border: '1px solid rgba(255,111,97,0.3)',
+              borderRadius: 8,
+              color: genderFilter === 'all' ? '#888' : '#FF6F61',
+              outline: 'none',
+              cursor: 'pointer',
+              appearance: 'none',
+              fontWeight: genderFilter === 'all' ? 400 : 700,
+            }}
+          >
+            <option value="all">전체 성별</option>
+            <option value="male">남성</option>
+            <option value="female">여성</option>
+          </select>
+          <div style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', opacity: 0.5 }}>
+            <Filter size={12} />
+          </div>
+        </div>
+
         {/* Search */}
         <div className="relative ml-auto w-full sm:w-auto mt-4 sm:mt-0">
           <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#444' }} />
@@ -208,24 +266,45 @@ export default function UsersPage() {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
-                  {['회원정보', '직업 / 나이', '상태', '가입일', '관리'].map((h, i) => (
-                    <th
-                      key={h}
-                      style={{
-                        padding: '12px 20px',
-                        textAlign: i === 4 ? 'right' : 'left',
-                        fontSize: '0.72rem',
-                        fontWeight: 600,
-                        color: '#444',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.04em',
-                        borderBottom: '1px solid rgba(255,255,255,0.06)',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {h}
-                    </th>
-                  ))}
+                  {['회원정보', '직업 / 나이', '상태', '가입일', '관리'].map((h, i) => {
+                    const isSortable = h === '직업 / 나이' || h === '가입일';
+                    const sortKey = h === '직업 / 나이' ? 'age' : 'createdAt';
+                    const isActive = sortConfig.key === sortKey;
+
+                    return (
+                      <th
+                        key={h}
+                        onClick={() => isSortable && toggleSort(sortKey as any)}
+                        style={{
+                          padding: '12px 20px',
+                          textAlign: i === 4 ? 'right' : 'left',
+                          fontSize: '0.72rem',
+                          fontWeight: 600,
+                          color: isActive ? '#FF6F61' : '#444',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.04em',
+                          borderBottom: '1px solid rgba(255,255,255,0.06)',
+                          whiteSpace: 'nowrap',
+                          cursor: isSortable ? 'pointer' : 'default',
+                          userSelect: 'none',
+                        }}
+                        className={isSortable ? 'hover:text-white/40 transition-colors' : ''}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', justifyContent: i === 4 ? 'flex-end' : 'flex-start' }}>
+                          {h}
+                          {isSortable && (
+                            <span style={{ opacity: isActive ? 1 : 0.3 }}>
+                              {isActive ? (
+                                sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />
+                              ) : (
+                                <ArrowUpDown size={10} />
+                              )}
+                            </span>
+                          )}
+                        </div>
+                      </th>
+                    );
+                  })}
                 </tr>
               </thead>
               <tbody>
