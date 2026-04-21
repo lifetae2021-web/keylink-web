@@ -1,0 +1,83 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─────────────────────────────────────
+    // 헬퍼 함수
+    // ─────────────────────────────────────
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isUser(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isSignedIn() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // ─────────────────────────────────────
+    // users 컬렉션
+    // ─────────────────────────────────────
+    match /users/{userId} {
+      allow read: if isUser(userId) || isAdmin();
+      allow write: if isUser(userId) || isAdmin();
+    }
+
+    // ─────────────────────────────────────
+    // sessions (기수) 컬렉션
+    // ─────────────────────────────────────
+    match /sessions/{sessionId} {
+      // 모든 로그인 사용자: 읽기 가능 (신청 페이지에서 기수 정보 조회)
+      allow read: if isSignedIn();
+      // 관리자만 쓰기 가능
+      allow write: if isAdmin();
+    }
+
+    // ─────────────────────────────────────
+    // applications (신청서) 컬렉션
+    // ─────────────────────────────────────
+    match /applications/{applicationId} {
+      // 본인 신청서만 읽기 가능
+      allow read: if isSignedIn() &&
+        resource.data.userId == request.auth.uid;
+      // 관리자: 모든 신청서 읽기/쓰기
+      allow read, write: if isAdmin();
+      // 신규 신청: 본인 UID로만 생성 가능
+      allow create: if isSignedIn() &&
+        request.resource.data.userId == request.auth.uid;
+    }
+
+    // ─────────────────────────────────────
+    // votes (투표) 컬렉션
+    // ─────────────────────────────────────
+    match /votes/{voteId} {
+      // 본인 투표만 읽기 가능
+      allow read: if isSignedIn() &&
+        resource.data.userId == request.auth.uid;
+      // 관리자: 모든 투표 읽기 (매칭 알고리즘용)
+      allow read: if isAdmin();
+      // 투표 제출: 본인 UID + 아직 제출하지 않은 경우에만 허용
+      // (중복 방지는 복합 ID와 서버 로직으로 처리)
+      allow create: if isSignedIn() &&
+        request.resource.data.userId == request.auth.uid;
+      // 제출 후 수정 불가
+      allow update, delete: if false;
+    }
+
+    // ─────────────────────────────────────
+    // matchingResults (매칭 결과) 컬렉션
+    // ─────────────────────────────────────
+    match /matchingResults/{resultId} {
+      // 승인된(approved) 결과만 본인이 읽기 가능
+      allow read: if isSignedIn() &&
+        resource.data.userId == request.auth.uid &&
+        resource.data.status == 'approved';
+      // 관리자: 모든 결과 읽기/쓰기 (알고리즘 실행 및 승인)
+      allow read, write: if isAdmin();
+    }
+
+  }
+}
