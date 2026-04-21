@@ -13,7 +13,7 @@ import toast from 'react-hot-toast';
 import { auth, db, storage } from '@/lib/firebase';
 import { compressImage } from '@/lib/utils';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { doc, getDoc, setDoc, deleteField } from 'firebase/firestore';
+import { doc, getDoc, setDoc, deleteField, addDoc, collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 
 export default function EventDetailPage() {
@@ -131,7 +131,6 @@ export default function EventDetailPage() {
       return;
     }
     
-    // 필수 항목 검사
     const requiredFields = [
       { key: 'birthDate', name: '생년월일' },
       { key: 'height', name: '키' },
@@ -151,62 +150,101 @@ export default function EventDetailPage() {
       return;
     }
 
+    if (!currentUser) {
+      toast.error('로그인이 필요합니다.');
+      return;
+    }
+
     setIsSubmitting(true);
     
-    // Firestore 최신 정보 및 사진 업로드 (v3.5.3 Unified)
-    if (currentUser) {
-      try {
-        const uploadedUrls = await Promise.all(
-          photos.map(async (photo, index) => {
-            if (typeof photo === 'string' && photo.startsWith('data:')) {
-              const photoRef = ref(storage, `profile_images/${currentUser.uid}/event_${id}_${Date.now()}_${index}.jpg`);
-              await uploadString(photoRef, photo, 'data_url');
-              return await getDownloadURL(photoRef);
-            }
-            return photo; // Existing URL
-          })
-        );
-
-        const userRef = doc(db, 'users', currentUser.uid);
-        await setDoc(userRef, {
-          name: form.name,
-          gender: form.gender,
-          phone: form.phone,
-          birthDate: form.birthDate,
-          height: form.height,
-          weight: form.weight,
-          residence: form.residence,
-          workplace: form.workplace,
-          jobRole: form.jobRole,
-          instaId: form.instaId,
-          idealType: form.idealType,
-          nonIdealType: form.nonIdealType,
-          smoking: form.smoking,
-          drinking: form.drinking,
-          religion: form.religion,
-          photos: uploadedUrls, // 매칭용 사진 동기화 (v3.5.3)
-          profilePhotos: deleteField(),
-          facePhotos: deleteField(),
-          bodyPhotos: deleteField(),
-        }, { merge: true });
-
-        // Submit form (mock or actually separate collection if needed)
-        await new Promise((r) => setTimeout(r, 1000));
-        
-        toast.success('신청서가 접수되었습니다. 검토 후 연락드리겠습니다.');
-        localStorage.removeItem(`keylink_form_${id}`);
-        setStep(2);
-      } catch (err: any) {
-        console.error('Submission Error:', err);
-        let msg = '신청 중 오류가 발생했습니다.';
-        if (err.code === 'storage/unauthorized') msg = '사진 업로드 권한이 없습니다.';
-        else if (err.message) msg = `오류: ${err.message}`;
-        alert(msg);
-        toast.error(msg);
-      } finally {
+    try {
+      // 1. 주의: 이 기수에 이미 신청한 경우 충돌 방지
+      const sessionId = typeof id === 'string' ? id : '';
+      const existingQ = query(
+        collection(db, 'applications'),
+        where('userId', '==', currentUser.uid),
+        where('sessionId', '==', sessionId)
+      );
+      const existingSnap = await getDocs(existingQ);
+      if (!existingSnap.empty) {
+        toast.error('이미 이 기수에 신청하셨습니다.');
         setIsSubmitting(false);
+        return;
       }
-      return;
+
+      // 2. 사진 업로드
+      const uploadedUrls = await Promise.all(
+        photos.map(async (photo, index) => {
+          if (typeof photo === 'string' && photo.startsWith('data:')) {
+            const photoRef = ref(storage, `profile_images/${currentUser.uid}/event_${id}_${Date.now()}_${index}.jpg`);
+            await uploadString(photoRef, photo, 'data_url');
+            return await getDownloadURL(photoRef);
+          }
+          return photo;
+        })
+      );
+
+      // 3. users 콜렉션 업데이트 (프로필 동기화)
+      const userRef = doc(db, 'users', currentUser.uid);
+      await setDoc(userRef, {
+        name: form.name,
+        gender: form.gender,
+        phone: form.phone,
+        birthDate: form.birthDate,
+        height: form.height,
+        weight: form.weight,
+        residence: form.residence,
+        workplace: form.workplace,
+        jobRole: form.jobRole,
+        instaId: form.instaId,
+        idealType: form.idealType,
+        nonIdealType: form.nonIdealType,
+        smoking: form.smoking,
+        drinking: form.drinking,
+        religion: form.religion,
+        photos: uploadedUrls,
+        profilePhotos: deleteField(),
+        facePhotos: deleteField(),
+        bodyPhotos: deleteField(),
+      }, { merge: true });
+
+      // 4. applications 콜렉션에 신규 신청서 저장 (v5.0.0 핵심 연결)
+      const now = Timestamp.now();
+      const birthYear = form.birthDate
+        ? (() => {
+            if (form.birthDate.includes('-')) return parseInt(form.birthDate.slice(0, 4));
+            const yy = parseInt(form.birthDate.slice(0, 2));
+            return yy > 30 ? 1900 + yy : 2000 + yy;
+          })()
+        : new Date().getFullYear();
+      const age = new Date().getFullYear() - birthYear;
+
+      await addDoc(collection(db, 'applications'), {
+        userId: currentUser.uid,
+        sessionId,
+        name: form.name || '',
+        age,
+        gender: form.gender || '',
+        job: form.workplace || '',
+        residence: form.residence || '',
+        phone: form.phone || '',
+        status: 'applied',
+        paymentConfirmed: false,
+        appliedAt: now,
+        updatedAt: now,
+      });
+
+      toast.success('신청서가 접수되었습니다. 검토 후 연락드리겠습니다.');
+      localStorage.removeItem(`keylink_form_${id}`);
+      setStep(2);
+    } catch (err: any) {
+      console.error('Submission Error:', err);
+      let msg = '신청 중 오류가 발생했습니다.';
+      if (err.code === 'storage/unauthorized') msg = '사진 업로드 권한이 없습니다.';
+      else if (err.message) msg = `오류: ${err.message}`;
+      toast.error(msg);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 

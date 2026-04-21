@@ -2,7 +2,7 @@ import { KeylinkEvent } from '@/types';
 
 export const mockEvents: KeylinkEvent[] = [
   {
-    id: 'event-busan-120',
+    id: 'session-120',
     title: '부산 로테이션 소개팅',
     region: 'busan',
     venue: '서면역 인근',
@@ -26,7 +26,7 @@ export const mockEvents: KeylinkEvent[] = [
     createdAt: new Date(),
   },
   {
-    id: 'event-busan-121',
+    id: 'session-121',
     title: '부산 로테이션 소개팅',
     region: 'busan',
     venue: '서면역 인근',
