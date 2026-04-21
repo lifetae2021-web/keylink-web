@@ -15,6 +15,8 @@ import {
 } from 'firebase/auth';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import SocialAuth from '@/components/SocialAuth';
+import { getAuthErrorMessage } from '@/lib/auth-errors';
+import { AlertCircle } from 'lucide-react';
 
 function LoginContent() {
   const [isLoading, setIsLoading] = useState(false);
@@ -23,6 +25,7 @@ function LoginContent() {
   const [password, setPassword] = useState('');
   const [rememberId, setRememberId] = useState(false);
   const [autoLogin, setAutoLogin] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -64,17 +67,18 @@ function LoginContent() {
   const handleNormalLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!userId || !password) {
-      toast.error('아이디와 비밀번호를 입력해 주세요.');
+      setError('아이디와 비밀번호를 입력해 주세요.');
       return;
     }
     setIsLoading(true);
+    setError(null);
     try {
       // 1. Query Firestore for the email associated with this ID
       const q = query(collection(db, 'users'), where('username', '==', userId));
       const querySnapshot = await getDocs(q);
       
       if (querySnapshot.empty) {
-        toast.error('아이디 또는 비밀번호가 일치하지 않습니다.');
+        setError('아이디 또는 비밀번호가 일치하지 않습니다.');
         setIsLoading(false);
         return;
       }
@@ -100,14 +104,15 @@ function LoginContent() {
       router.push('/');
     } catch (error: any) {
       console.error('Firebase Auth Error (Login):', error.code, error.message, error);
-      if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
-        toast.error('아이디 또는 비밀번호가 일치하지 않습니다.');
-      } else {
-        toast.error('로그인 중 오류가 발생했습니다. 다시 시도해 주세요.');
-      }
+      setError(getAuthErrorMessage(error.code));
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleInputChange = (setter: (val: string) => void, val: string) => {
+    setter(val);
+    if (error) setError(null);
   };
 
 
@@ -128,6 +133,25 @@ function LoginContent() {
           boxShadow: '0 12px 40px rgba(0,0,0,0.03)',
         }}>
           <h1 style={{ fontSize: '1.6rem', fontWeight: '900', marginBottom: '32px', color: '#111', textAlign: 'center' }}>로그인</h1>
+
+          {/* Error Message Display */}
+          {error && (
+            <div style={{ 
+              marginBottom: '24px', 
+              padding: '14px', 
+              background: '#FFF5F4', 
+              border: '1px solid #FFEBE9', 
+              borderRadius: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+            }}>
+              <AlertCircle size={18} color="#FF6F61" />
+              <p style={{ fontSize: '0.85rem', color: '#FF6F61', fontWeight: '600' }}>
+                {error}
+              </p>
+            </div>
+          )}
           
           {/* Normal Login Form */}
           <form onSubmit={handleNormalLogin} style={{ marginBottom: '24px' }}>
@@ -138,7 +162,7 @@ function LoginContent() {
                 className="kl-input"
                 placeholder="아이디를 입력해 주세요"
                 value={userId}
-                onChange={(e) => setUserId(e.target.value)}
+                onChange={(e) => handleInputChange(setUserId, e.target.value)}
                 style={{ borderRadius: '12px', padding: '14px' }}
               />
             </div>
@@ -150,7 +174,7 @@ function LoginContent() {
                   className="kl-input"
                   placeholder="비밀번호를 입력해 주세요"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => handleInputChange(setPassword, e.target.value)}
                   style={{ borderRadius: '12px', padding: '14px', paddingRight: '46px' }}
                 />
                 <button

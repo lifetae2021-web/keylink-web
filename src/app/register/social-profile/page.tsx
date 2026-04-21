@@ -1,17 +1,20 @@
 'use client';
+
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Heart, CheckCircle, CheckSquare, Square, ArrowRight } from 'lucide-react';
+import { Heart, CheckCircle, CheckSquare, Square, ArrowRight, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, User, updateEmail } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
+import { getAuthErrorMessage } from '@/lib/auth-errors';
 
 export default function SocialProfilePage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const [agreements, setAgreements] = useState({
     terms: false,
@@ -83,6 +86,7 @@ export default function SocialProfilePage() {
   };
 
   const update = (key: string, value: string) => {
+    if (error) setError(null); // Clear error on any input
     let formattedValue = value;
     if (key === 'phone') formattedValue = formatPhone(value);
     if (key === 'birthDate') formattedValue = formatBirthDate(value);
@@ -90,6 +94,7 @@ export default function SocialProfilePage() {
   };
 
   const toggleAll = () => {
+    if (error) setError(null);
     const nextVal = !isAllAgreed;
     setAgreements({ terms: nextVal, privacy: nextVal, thirdParty: nextVal, location: nextVal });
   };
@@ -99,18 +104,17 @@ export default function SocialProfilePage() {
     if (!user) return;
 
     setIsSubmitting(true);
+    setError(null);
+
     try {
       // 1. Sync Email to Auth System
       if (form.email !== user.email) {
         try {
           await updateEmail(user, form.email);
         } catch (authErr: any) {
-          if (authErr.code === 'auth/email-already-in-use') {
-            throw new Error('이미 사용 중인 이메일 주소입니다.');
-          } else if (authErr.code === 'auth/requires-recent-login') {
-            throw new Error('보안을 위해 다시 로그인 후 시도해 주세요.');
-          }
-          throw authErr;
+          const msg = getAuthErrorMessage(authErr.code);
+          setError(msg);
+          throw new Error(msg); // Localized error
         }
       }
 
@@ -138,7 +142,8 @@ export default function SocialProfilePage() {
       router.push('/');
     } catch (err: any) {
       console.error('Submit Error:', err);
-      toast.error('오류가 발생했습니다: ' + err.message);
+      // Error state is already set if it was an Auth error
+      if (!error) setError(getAuthErrorMessage(err.code));
     } finally {
       setIsSubmitting(false);
     }
@@ -180,6 +185,33 @@ export default function SocialProfilePage() {
           </div>
 
           <div style={{ height: '1px', background: '#f0f0f0', margin: '32px 0' }} />
+
+          {/* Error Message Display */}
+          {error && (
+            <div style={{ 
+              marginBottom: '32px', 
+              padding: '16px', 
+              background: '#FFF5F4', 
+              border: '1px solid #FFEBE9', 
+              borderRadius: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              animation: 'shake 0.4s ease-in-out'
+            }}>
+              <AlertCircle size={20} color="#FF6F61" />
+              <p style={{ fontSize: '0.9rem', color: '#FF6F61', fontWeight: '600', lineHeight: 1.4 }}>
+                {error}
+              </p>
+              <style>{`
+                @keyframes shake {
+                  0%, 100% { transform: translateX(0); }
+                  25% { transform: translateX(-4px); }
+                  75% { transform: translateX(4px); }
+                }
+              `}</style>
+            </div>
+          )}
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
             {/* 1. Email */}
