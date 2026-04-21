@@ -240,7 +240,7 @@ export default function Footer() {
               onDoubleClick={handleHiddenAdminLink}
               onTouchStart={handleHiddenAdminLink}
             >
-              © 2026 키링크. All rights reserved. | <span className="text-black text-sm font-semibold">v3.5.5</span>
+              © 2026 키링크. All rights reserved. | <span className="text-black text-sm font-semibold">v5.2.0</span>
             </div>
             <div style={{ display: 'flex', gap: '20px' }}>
               <Link href="/notices?tab=terms" style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', textDecoration: 'none', fontWeight: '500' }}>이용약관</Link>
