@@ -1,12 +1,10 @@
 /**
  * Firestore 신청서(Applications) 컬렉션 쿼리 함수
- * v4.4.0
+ * v5.0.8 - 복합 인덱스 의존성 제거, 실시간 동기화 안정화
  */
 
 import {
   collection,
-  doc,
-  getDoc,
   getDocs,
   addDoc,
   query,
@@ -15,7 +13,6 @@ import {
   onSnapshot,
   Timestamp,
   DocumentSnapshot,
-  limit,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Application, ApplicationStatus } from '@/lib/types';
@@ -42,19 +39,25 @@ function fromDoc(snap: DocumentSnapshot): Application | null {
   };
 }
 
-/** 특정 사용자의 가장 최근 신청서 단건 조회 */
+/**
+ * 특정 사용자의 가장 최근 신청서 단건 조회
+ * ⚠ orderBy 제거: 복합 인덱스 없이도 동작하도록 클라이언트 정렬 사용
+ */
 export async function getMyLatestApplication(
   userId: string
 ): Promise<Application | null> {
   const q = query(
     collection(db, COLLECTION),
-    where('userId', '==', userId),
-    orderBy('appliedAt', 'desc'),
-    limit(1)
+    where('userId', '==', userId)
   );
   const snap = await getDocs(q);
   if (snap.empty) return null;
-  return fromDoc(snap.docs[0]);
+
+  const docs = snap.docs
+    .map((d) => fromDoc(d))
+    .filter(Boolean) as Application[];
+  docs.sort((a, b) => b.appliedAt.getTime() - a.appliedAt.getTime());
+  return docs[0] ?? null;
 }
 
 /** 특정 기수의 모든 신청서 (관리자용) */
@@ -85,7 +88,15 @@ export async function getApplicationsByStatus(
   return snap.docs.map((d) => fromDoc(d)).filter(Boolean) as Application[];
 }
 
-/** 사용자 마이페이지용 신청서 실시간 구독 */
+/**
+ * 사용자 마이페이지용 신청서 실시간 구독 (onSnapshot)
+ *
+ * ✅ 핵심 수정: orderBy 제거로 복합 인덱스 의존성 완전 제거
+ *    - 이전: where(userId) + orderBy(appliedAt) → 복합 인덱스 필요 → 없으면 쿼리 무음 실패
+ *    - 이후: where(userId) 단독 → 단순 인덱스만 필요 → 항상 동작
+ *    - 정렬: 클라이언트에서 updatedAt 기준으로 처리
+ *      (관리자가 status 변경 시 updatedAt이 갱신되므로 즉시 마이페이지에 반영)
+ */
 export function subscribeMyApplication(
   userId: string,
   callback: (application: Application | null) => void,
@@ -93,21 +104,25 @@ export function subscribeMyApplication(
 ) {
   const q = query(
     collection(db, COLLECTION),
-    where('userId', '==', userId),
-    orderBy('appliedAt', 'desc'),
-    limit(1)
+    where('userId', '==', userId)
   );
+
   return onSnapshot(
-    q, 
+    q,
     (snap) => {
       if (snap.empty) {
         callback(null);
-      } else {
-        callback(fromDoc(snap.docs[0]));
+        return;
       }
+      const docs = snap.docs
+        .map((d) => fromDoc(d))
+        .filter(Boolean) as Application[];
+      // updatedAt 기준 최신 정렬: 관리자 상태 변경이 즉시 반영됨
+      docs.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+      callback(docs[0] ?? null);
     },
     (err) => {
-      console.error('subscribeMyApplication error:', err);
+      console.error('[subscribeMyApplication] Firestore 오류:', err);
       if (onError) onError(err);
     }
   );
