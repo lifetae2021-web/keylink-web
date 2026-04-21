@@ -30,7 +30,7 @@ export default function HomePage() {
     { value: '120기+', label: '누적 진행 회차', icon: Sparkles },
     { value: '94%', label: '참가자 만족도', icon: Star },
     { value: '1', label: '운영 지역', icon: MapPin },
-    { value: '8:8~10:10', label: '정원제 진행', icon: Users },
+    { value: '6:6~10:10', label: '정원제 진행', icon: Users },
   ];
 
   const policies = [
@@ -128,7 +128,7 @@ export default function HomePage() {
             {[
               { num: '120기+', label: '누적 진행' },
               { num: '부산', label: '운영 지역' },
-              { num: '8:8~10:10', label: '정원제 진행' },
+              { num: '6:6~10:10', label: '정원제 진행' },
             ].map((s) => (
               <div key={s.label} style={{ textAlign: 'center' }}>
                 <p style={{ fontSize: '1.4rem', fontWeight: '800', color: '#FF6F61', whiteSpace: 'nowrap' }}>{s.num}</p>
