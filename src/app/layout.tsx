@@ -27,7 +27,7 @@ export default function RootLayout({
       <body className="antialiased">
         <PublicLayout>{children}</PublicLayout>
         <div className="fixed bottom-4 right-4 z-[9999] pointer-events-none select-none text-black font-black text-lg bg-white/80 px-3 py-1 rounded-md shadow-sm">
-          v4.2.1
+          v4.3.0
         </div>
         <Toaster
           position="bottom-center"

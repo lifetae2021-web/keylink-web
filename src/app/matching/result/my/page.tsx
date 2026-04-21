@@ -132,7 +132,7 @@ export default function MyMatchingDashboard() {
     <div className="min-h-screen bg-[#FDFDFD] pb-24 relative overflow-hidden">
       <CherryBlossoms />
       {/* marginTop은 Navbar 고정 높이(85px) + 추가 여백(55px) = 140px 로 계산 */}
-      <div className="max-w-5xl mx-auto px-4 relative z-10" style={{ marginTop: '140px' }}>
+      <div className="max-w-4xl mx-auto px-4 relative z-10" style={{ marginTop: '140px', paddingBottom: '6rem' }}>
         
         {/* Title Section */}
         <header className="mb-16 text-center flex flex-col items-center">
@@ -154,16 +154,15 @@ export default function MyMatchingDashboard() {
           </motion.p>
         </header>
 
-        {/* Dynamic Layout Components with space-y-16 */}
-        <div className="space-y-20">
+        {/* All sections with generous vertical rhythm */}
+        <div className="space-y-0">
           
           {/* Section 1: History Cards */}
-          <section className="flex flex-col items-center">
-            <h2 className="text-xl font-black text-gray-900 flex items-center justify-center gap-2 mb-8">
+          <section className="flex flex-col items-center pb-12">
+            <h2 className="text-xl font-black text-gray-900 text-center mb-8">
               참여 히스토리
             </h2>
-            
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full max-w-4xl">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 w-full justify-items-center">
               {MOCK_HISTORY.map((session) => (
                 <HistoryCard 
                   key={session.id} 
@@ -175,23 +174,33 @@ export default function MyMatchingDashboard() {
             </div>
           </section>
 
+          {/* Divider */}
+          <div className="py-2">
+            <hr className="border-gray-100" />
+          </div>
+
           {/* Section 2: Detail View Area */}
-          <section className="bg-white rounded-[48px] p-12 md:p-16 shadow-md shadow-gray-100/50 border border-white relative overflow-hidden">
+          <section className="bg-white rounded-[40px] p-8 md:p-12 shadow-sm border border-gray-50 relative overflow-hidden my-10">
             <AnimatePresence mode="wait">
               <motion.div
                 key={selectedGisuId}
-                initial={{ opacity: 0, scale: 0.98 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 1.02 }}
-                transition={{ duration: 0.5, ease: "circOut" }}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -12 }}
+                transition={{ duration: 0.35, ease: "easeOut" }}
               >
                 <DetailView session={selectedSession} />
               </motion.div>
             </AnimatePresence>
           </section>
 
+          {/* Divider */}
+          <div className="py-2">
+            <hr className="border-gray-100" />
+          </div>
+
           {/* Section 3: Popularity & Choices Dashboard */}
-          <section className="grid md:grid-cols-2 gap-8">
+          <section className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-10">
             <VoteMetricCard count={selectedSession.voteCount} />
             <MyChoicesCard choices={selectedSession.myChoices} />
           </section>
