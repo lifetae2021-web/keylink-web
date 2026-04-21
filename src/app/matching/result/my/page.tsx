@@ -129,7 +129,7 @@ export default function MyMatchingDashboard() {
   const selectedSession = MOCK_HISTORY.find(s => s.id === selectedGisuId) || MOCK_HISTORY[0];
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] pt-32 pb-24 px-6 md:px-12 relative overflow-hidden">
+    <div className="min-h-screen bg-[#FDFDFD] pt-48 pb-24 px-6 md:px-12 relative overflow-hidden">
       <CherryBlossoms />
       <div className="max-w-5xl mx-auto relative z-10">
         
@@ -146,7 +146,7 @@ export default function MyMatchingDashboard() {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="text-5xl md:text-6xl font-black text-gray-900 mb-6 tracking-tight"
+            className="text-4xl md:text-5xl font-black text-gray-900 mb-6 tracking-tight"
           >
             내 매칭 리포트
           </motion.h1>
@@ -154,7 +154,7 @@ export default function MyMatchingDashboard() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
-            className="text-gray-400 text-lg font-medium max-w-xl mx-auto"
+            className="text-gray-400 text-base md:text-lg font-medium max-w-xl mx-auto"
           >
             시간을 넘어 이어지는 당신의 소중한 인연과<br/>참여 히스토리를 한곳에서 만나보세요.
           </motion.p>
@@ -166,10 +166,10 @@ export default function MyMatchingDashboard() {
           {/* Section 1: History Cards */}
           <section>
             <div className="flex items-center justify-between mb-8 px-4">
-              <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+              <h2 className="text-xl font-black text-gray-900 flex items-center gap-2">
                 참여 히스토리
               </h2>
-              <span className="text-xs font-medium text-gray-400">옆으로 스크롤하여 더보기</span>
+              <span className="text-[11px] font-black text-gray-400">옆으로 스크롤하여 더보기</span>
             </div>
             
             <div className="flex overflow-x-auto pb-8 gap-5 no-scrollbar scroll-smooth px-4 -mx-4">
@@ -185,7 +185,7 @@ export default function MyMatchingDashboard() {
           </section>
 
           {/* Section 2: Detail View Area */}
-          <section className="bg-white rounded-[48px] p-12 md:p-20 shadow-sm border border-white relative overflow-hidden">
+          <section className="bg-white rounded-[48px] p-12 md:p-16 shadow-md shadow-gray-100/50 border border-white relative overflow-hidden">
             <AnimatePresence mode="wait">
               <motion.div
                 key={selectedGisuId}
@@ -240,12 +240,12 @@ function HistoryCard({ session, isSelected, onClick }: { session: GisuSession, i
   return (
     <motion.button
       whileHover={{ y: -5 }}
-      whileTap={{ scale: 0.95 }}
+      whileTap={{ scale: 0.98 }}
       onClick={onClick}
       className={`flex-shrink-0 w-44 p-6 rounded-[32px] transition-all relative ${
         isSelected 
-        ? "bg-white shadow-xl shadow-gray-200/50 border-2 border-pink-100" 
-        : "bg-white/50 border border-transparent opacity-60 hover:opacity-100"
+        ? "bg-white shadow-lg shadow-gray-200/50 ring-2 ring-pink-50" 
+        : "bg-white/40 border border-white hover:bg-white/80 opacity-60 hover:opacity-100"
       }`}
     >
       <div className="absolute top-4 right-4">
