@@ -1,11 +1,10 @@
 'use client';
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Heart, CheckCircle, CheckSquare, Square, ArrowRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { auth, db } from '@/lib/firebase';
-import { onAuthStateChanged, User } from 'firebase/auth';
+import { onAuthStateChanged, User, updateEmail } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 
 export default function SocialProfilePage() {
@@ -24,11 +23,21 @@ export default function SocialProfilePage() {
   const isAllAgreed = Object.values(agreements).every(Boolean);
 
   const [form, setForm] = useState({
+    email: '',
     name: '',
     gender: '',
     phone: '',
     birthDate: '',
   });
+
+  // Validation: Enable button only when everything is filled
+  const isValid = 
+    isAllAgreed && 
+    form.email.includes('@') && 
+    form.name.length >= 2 && 
+    form.gender && 
+    form.birthDate.length === 10 && // 1994-05-30 format (hyphened)
+    form.phone.length >= 12;
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
@@ -38,7 +47,6 @@ export default function SocialProfilePage() {
         return;
       }
       
-      // If user already registered WITH COMPLETE profile, skip this page
       const userSnap = await getDoc(doc(db, 'users', u.uid));
       if (userSnap.exists()) {
         const data = userSnap.data();
@@ -50,7 +58,11 @@ export default function SocialProfilePage() {
       }
 
       setUser(u);
-      setForm(prev => ({ ...prev, name: u.displayName || '' }));
+      setForm(prev => ({ 
+        ...prev, 
+        name: u.displayName || '',
+        email: u.email || ''
+      }));
       setIsLoading(false);
     });
     return () => unsub();
@@ -83,17 +95,27 @@ export default function SocialProfilePage() {
   };
 
   const handleSubmit = async () => {
-    if (!isAllAgreed) return toast.error('모든 필수 약관에 동의해 주세요.');
-    if (!form.gender) return toast.error('성별을 선택해 주세요.');
-    if (!form.name) return toast.error('실명을 입력해 주세요.');
-    if (!form.birthDate) return toast.error('생년월일을 입력해 주세요.');
-    if (!form.phone) return toast.error('연락처를 입력해 주세요.');
+    if (!isValid) return;
     if (!user) return;
 
     setIsSubmitting(true);
     try {
-      // Auto-generate username from email or UID part
-      const emailPrefix = user.email?.split('@')[0] || '';
+      // 1. Sync Email to Auth System
+      if (form.email !== user.email) {
+        try {
+          await updateEmail(user, form.email);
+        } catch (authErr: any) {
+          if (authErr.code === 'auth/email-already-in-use') {
+            throw new Error('이미 사용 중인 이메일 주소입니다.');
+          } else if (authErr.code === 'auth/requires-recent-login') {
+            throw new Error('보안을 위해 다시 로그인 후 시도해 주세요.');
+          }
+          throw authErr;
+        }
+      }
+
+      // 2. Setup Firestore Data
+      const emailPrefix = form.email.split('@')[0] || '';
       const sanitizedPrefix = emailPrefix.replace(/[^a-z0-9]/g, '');
       const uniqueSuffix = user.uid.slice(0, 4);
       const generatedUsername = sanitizedPrefix ? `${sanitizedPrefix}_${uniqueSuffix}` : `user_${uniqueSuffix}_${Date.now().toString().slice(-4)}`;
@@ -101,7 +123,7 @@ export default function SocialProfilePage() {
       await setDoc(doc(db, 'users', user.uid), {
         uid: user.uid,
         username: generatedUsername,
-        email: user.email,
+        email: form.email,
         name: form.name,
         gender: form.gender,
         phone: form.phone,
@@ -116,7 +138,7 @@ export default function SocialProfilePage() {
       router.push('/');
     } catch (err: any) {
       console.error('Submit Error:', err);
-      toast.error('저장 중 오류가 발생했습니다: ' + err.message);
+      toast.error('오류가 발생했습니다: ' + err.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -153,7 +175,6 @@ export default function SocialProfilePage() {
             </div>
             <h1 style={{ fontSize: '1.6rem', fontWeight: '900', color: '#111', letterSpacing: '-0.02em' }}>반갑습니다!</h1>
             <p style={{ fontSize: '0.95rem', color: '#666', marginTop: '8px', lineHeight: 1.5 }}>
-              <span style={{ color: '#FF6F61', fontWeight: '800' }}>{user?.displayName || '회원'}</span>({user?.email})님,<br />
               원활한 매칭을 위해 필수 정보를 입력해 주세요.
             </p>
           </div>
@@ -161,7 +182,29 @@ export default function SocialProfilePage() {
           <div style={{ height: '1px', background: '#f0f0f0', margin: '32px 0' }} />
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
-            {/* Gender */}
+            {/* 1. Email */}
+            <div>
+              <label className="kl-label" style={{ fontWeight: '800', marginBottom: '10px' }}>이메일</label>
+              <input 
+                className="kl-input" 
+                style={{ borderRadius: '12px', height: '54px' }} 
+                type="email"
+                placeholder="example@gmail.com"
+                value={form.email} 
+                onChange={e => update('email', e.target.value)} 
+              />
+              <p style={{ fontSize: '0.75rem', color: '#999', marginTop: '6px', marginLeft: '4px' }}>
+                비밀번호 분실 시 찾기 및 주요 공지 수신용으로 사용됩니다.
+              </p>
+            </div>
+
+            {/* 2. Name */}
+            <div>
+              <label className="kl-label" style={{ fontWeight: '800', marginBottom: '10px' }}>이름 (실명)</label>
+              <input className="kl-input" style={{ borderRadius: '12px', height: '54px' }} placeholder="실명을 입력해 주세요" value={form.name} onChange={e => update('name', e.target.value)} />
+            </div>
+
+            {/* 3. Gender */}
             <div>
               <label className="kl-label" style={{ fontWeight: '800', marginBottom: '10px' }}>성별</label>
               <div style={{ display: 'flex', gap: '12px' }}>
@@ -178,22 +221,16 @@ export default function SocialProfilePage() {
               </div>
             </div>
 
-            {/* Name */}
-            <div>
-              <label className="kl-label" style={{ fontWeight: '800', marginBottom: '10px' }}>이름 (실명)</label>
-              <input className="kl-input" style={{ borderRadius: '12px', height: '54px' }} placeholder="실명을 입력해 주세요" value={form.name} onChange={e => update('name', e.target.value)} />
-            </div>
-
-            {/* BirthDate */}
+            {/* 4. BirthDate */}
             <div>
               <label className="kl-label" style={{ fontWeight: '800', marginBottom: '10px' }}>생년월일</label>
-              <input className="kl-input" style={{ borderRadius: '12px', height: '54px' }} type="text" placeholder="ex. 1995-05-18" value={form.birthDate} onChange={e => update('birthDate', e.target.value)} />
+              <input className="kl-input" style={{ borderRadius: '12px', height: '54px' }} type="text" placeholder="예: 19940530" value={form.birthDate} onChange={e => update('birthDate', e.target.value)} />
             </div>
 
-            {/* Phone */}
+            {/* 5. Phone */}
             <div>
               <label className="kl-label" style={{ fontWeight: '800', marginBottom: '10px' }}>연락처</label>
-              <input className="kl-input" style={{ borderRadius: '12px', height: '54px' }} type="tel" placeholder="ex. 010-1234-5678" value={form.phone} onChange={e => update('phone', e.target.value)} />
+              <input className="kl-input" style={{ borderRadius: '12px', height: '54px' }} type="tel" placeholder="010-1234-5678" value={form.phone} onChange={e => update('phone', e.target.value)} />
             </div>
 
             {/* Agreements */}
@@ -221,10 +258,19 @@ export default function SocialProfilePage() {
             </div>
 
             <button 
-              className="kl-btn-primary" 
-              style={{ width: '100%', padding: '20px', borderRadius: '100px', fontSize: '1.1rem', fontWeight: '900', boxShadow: '0 10px 20px rgba(255,111,97,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }} 
+              className={isValid ? "kl-btn-primary" : "kl-btn-disabled"}
+              style={{ 
+                width: '100%', padding: '20px', borderRadius: '100px', fontSize: '1.1rem', fontWeight: '900', 
+                boxShadow: isValid ? '0 10px 20px rgba(255,111,97,0.2)' : 'none', 
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
+                opacity: isValid ? 1 : 0.5,
+                background: isValid ? '#FF6F61' : '#ccc',
+                color: '#fff',
+                border: 'none',
+                cursor: isValid ? 'pointer' : 'not-allowed'
+              }} 
               onClick={handleSubmit} 
-              disabled={isSubmitting}
+              disabled={isSubmitting || !isValid}
             >
               {isSubmitting ? '가입 정보 저장 중...' : <>가입 완료하기 <ArrowRight size={20} /></>}
             </button>
