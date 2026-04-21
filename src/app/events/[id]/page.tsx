@@ -39,7 +39,7 @@ export default function EventDetailPage() {
     jobRole: '', workplace: '', avoidAcquaintance: '',
     idealType: '', nonIdealType: '',
     smoking: '', drinking: '', religion: '',
-    drink: '', vibe: '', etc: '',
+    drink: '', etc: '',
     agreeTerms: true, agreeRule: true, // Auto-checked on load
     maleOption: 'normal', // 'normal' | 'safe'
   });
@@ -136,6 +136,11 @@ export default function EventDetailPage() {
       { key: 'height', name: '키' },
       { key: 'weight', name: '체중' },
       { key: 'workplace', name: '회사명 / 직무' },
+      { key: 'phone', name: '연락처' },
+      { key: 'residence', name: '거주 지역' },
+      { key: 'smoking', name: '흡연 유무' },
+      { key: 'drinking', name: '음주 빈도' },
+      { key: 'religion', name: '종교' },
     ];
     
     for (const field of requiredFields) {
@@ -232,6 +237,16 @@ export default function EventDetailPage() {
         paymentConfirmed: false,
         appliedAt: now,
         updatedAt: now,
+        // v5.1.0 추가 필드 동합 (관리자/매칭용 스냅샷)
+        instaId: form.instaId || '',
+        smoking: form.smoking || '',
+        drinking: form.drinking || '',
+        religion: form.religion || '',
+        drink: form.drink || '',
+        idealType: form.idealType || '',
+        nonIdealType: form.nonIdealType || '',
+        avoidAcquaintance: form.avoidAcquaintance || '',
+        etc: form.etc || '',
       });
 
       toast.success('신청서가 접수되었습니다. 검토 후 연락드리겠습니다.');
@@ -500,8 +515,13 @@ export default function EventDetailPage() {
                         </div>
                       </div>
                       <div>
-                        <label className="kl-label">거주 지역</label>
-                        <input className="kl-input" placeholder="ex. 부산 수영구" value={form.residence} onChange={(e) => setForm(f => ({...f, residence: e.target.value}))} />
+                        <label className="kl-label">거주 지역 *</label>
+                        <select className="kl-input" value={form.residence} onChange={(e) => setForm(f => ({...f, residence: e.target.value}))}>
+                          <option value="">지역을 선택해주세요</option>
+                          {['부산진구', '해운대구', '수영구', '연제구', '동래구', '남구', '금정구', '사하구', '강서구', '북구', '사상구', '기타'].map(r => (
+                            <option key={r} value={r}>{r}</option>
+                          ))}
+                        </select>
                       </div>
                     </div>
                   </div>
@@ -540,9 +560,9 @@ export default function EventDetailPage() {
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                         {[
-                          { key: 'smoking', label: '흡연 유무', options: ['비흡연', '전자담배', '연초'] },
-                          { key: 'drinking', label: '음주 빈도', options: ['안 마심', '가끔 (월 1~2회)', '즐겨 마시는 편'] },
-                          { key: 'religion', label: '종교', options: ['무교', '기독교', '천주교', '불교', '기타'] }
+                          { key: 'smoking', label: '흡연 유무 *', options: ['비흡연', '전자담배', '연초'] },
+                          { key: 'drinking', label: '음주 빈도 *', options: ['안 마심', '가끔 (월 1~2회)', '즐겨 마시는 편'] },
+                          { key: 'religion', label: '종교 *', options: ['무교', '기독교', '천주교', '불교', '기타'] }
                         ].map(radioGroup => (
                           <div key={radioGroup.key}>
                             <p className="kl-label" style={{ marginBottom: '10px' }}>{radioGroup.label}</p>

@@ -1,19 +1,65 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { ArrowRight, Calendar, MapPin, Users, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowRight, Calendar, MapPin, Users, ChevronLeft, ChevronRight } from 'lucide-react';
 import { mockEvents } from '@/lib/mockData';
 import { KeylinkEvent } from '@/types';
+import { Session } from '@/lib/types';
+import { subscribeAllSessions } from '@/lib/firestore/sessions';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from 'date-fns';
 import { ko } from 'date-fns/locale';
 
+// Firestore Session → KeylinkEvent 어댑터
+function sessionToEvent(session: Session): KeylinkEvent {
+  // 기본 메타데이터는 mockEvents에서 id로 조회 (venue, description 등)
+  const mock = mockEvents.find((e) => e.id === session.id);
+  return {
+    id: session.id,
+    title: session.title || mock?.title || '부산 로테이션 소개팅',
+    region: (mock?.region ?? 'busan') as 'busan' | 'changwon',
+    venue: mock?.venue ?? '서면역 인근',
+    venueAddress: mock?.venueAddress ?? '',
+    date: session.eventDate,
+    time: format(session.eventDate, 'HH:mm'),
+    maxMale: session.maxMale,
+    maxFemale: session.maxFemale,
+    currentMale: session.currentMale,
+    currentFemale: session.currentFemale,
+    price: mock?.price ?? 29000,
+    originalPrice: mock?.originalPrice ?? 39000,
+    currentPrice: mock?.currentPrice ?? 29000,
+    status: session.status === 'open' ? 'open' : 'closed',
+    description: mock?.description ?? '',
+    rankingOpen: false,
+    matchingOpen: session.status === 'voting' || session.status === 'matching',
+    episode: session.episodeNumber,
+    targetMaleAge: mock?.targetMaleAge ?? '',
+    targetFemaleAge: mock?.targetFemaleAge ?? '',
+    createdAt: session.createdAt,
+  };
+}
+
 export function EventsSection({ standalone = false }: { standalone?: boolean }) {
   const searchParams = useSearchParams();
-  const regionParam = searchParams ? searchParams.get('region') : null;
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [liveEvents, setLiveEvents] = useState<KeylinkEvent[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const filtered = mockEvents.filter((e) => {
+  // Firestore 실시간 구독
+  useEffect(() => {
+    const unsubscribe = subscribeAllSessions((sessions) => {
+      // open 또는 closed 상태 세션만 이벤트 카드로 표시
+      const displayable = sessions.filter(
+        (s) => s.status === 'open' || s.status === 'closed' || s.status === 'voting'
+      );
+      setLiveEvents(displayable.map(sessionToEvent));
+      setIsLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const filtered = liveEvents.filter((e) => {
     return selectedDate ? isSameDay(e.date, selectedDate) : true;
   });
 
@@ -33,8 +79,6 @@ export function EventsSection({ standalone = false }: { standalone?: boolean }) 
         <p style={{ color: 'var(--color-text-secondary)', fontSize: '1rem', marginBottom: '8px' }}>
           부산 로테이션 소개팅 일정을 확인하고 신청하세요
         </p>
-
-
       </section>
 
       {/* Calendar View */}
@@ -44,7 +88,13 @@ export function EventsSection({ standalone = false }: { standalone?: boolean }) 
 
       {/* Events Grid */}
       <section className="kl-section">
-        {filtered.length === 0 ? (
+        {isLoading ? (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '24px' }}>
+            {[1, 2].map((i) => (
+              <div key={i} style={{ height: '380px', borderRadius: '20px', background: 'var(--color-surface-2)', animation: 'pulse 1.5s ease-in-out infinite' }} />
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '80px 20px', color: 'var(--color-text-muted)' }}>
             <p style={{ fontSize: '3rem', marginBottom: '16px' }}>😢</p>
             <p>해당 조건의 일정이 없습니다.</p>
@@ -145,12 +195,17 @@ function EventCalendar({ events, onDateSelect, selectedDate }: { events: Keylink
 }
 
 function EventCard({ event }: { event: KeylinkEvent }) {
+  // 남성 또는 여성 중 하나라도 정원이 찼으면 마감
   const soldOutM = event.currentMale >= event.maxMale;
   const soldOutF = event.currentFemale >= event.maxFemale;
   const isSoldOut = soldOutM || soldOutF;
 
+  // 배지 상태 결정
+  const badgeStatus = isSoldOut ? 'closed' : event.status === 'open' ? 'open' : 'upcoming';
+  const badgeLabel = isSoldOut ? '마감' : event.status === 'open' ? '모집중' : '오픈예정';
+
   return (
-    <Link href={`/events/${event.id}`} className="event-card">
+    <Link href={`/events/${event.id}`} className="event-card" style={{ pointerEvents: isSoldOut ? 'none' : 'auto', opacity: isSoldOut ? 0.85 : 1 }}>
       <div style={{
         height: '180px',
         background: event.region === 'busan'
@@ -178,8 +233,8 @@ function EventCard({ event }: { event: KeylinkEvent }) {
           </p>
         </div>
         <div style={{ position: 'absolute', top: '12px', right: '12px' }}>
-          <span className={`kl-badge kl-badge-${isSoldOut ? 'closed' : event.status === 'open' ? 'open' : 'upcoming'}`}>
-            {isSoldOut ? '마감' : event.status === 'open' ? '모집중' : '오픈예정'}
+          <span className={`kl-badge kl-badge-${badgeStatus}`}>
+            {badgeLabel}
           </span>
         </div>
       </div>
@@ -206,8 +261,9 @@ function EventCard({ event }: { event: KeylinkEvent }) {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Users size={14} color="var(--color-text-muted)" />
-            <span style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
+            <span style={{ fontSize: '0.85rem', color: isSoldOut ? '#C86A6A' : 'var(--color-text-secondary)', fontWeight: isSoldOut ? '700' : '400' }}>
               남 {event.currentMale}/{event.maxMale} · 여 {event.currentFemale}/{event.maxFemale}
+              {isSoldOut && ' · 정원 마감'}
             </span>
           </div>
         </div>
@@ -226,7 +282,11 @@ function EventCard({ event }: { event: KeylinkEvent }) {
               {(event.currentPrice || event.price).toLocaleString()}원
             </p>
           </div>
-          {!isSoldOut && (
+          {isSoldOut ? (
+            <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#C86A6A', fontSize: '0.85rem', fontWeight: '700', paddingBottom: '4px', background: 'rgba(200,106,106,0.08)', padding: '6px 12px', borderRadius: '8px' }}>
+              마감되었습니다
+            </span>
+          ) : (
             <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#FF6F61', fontSize: '0.85rem', fontWeight: '700', paddingBottom: '4px' }}>
               신청하기 <ArrowRight size={14} />
             </span>
@@ -236,3 +296,4 @@ function EventCard({ event }: { event: KeylinkEvent }) {
     </Link>
   );
 }
+

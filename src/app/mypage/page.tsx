@@ -81,7 +81,7 @@ export default function MyPage() {
     name: '', gender: '', phone: '', instaId: '', birthDate: '', height: '', weight: '',
     residence: '', workplace: '', jobRole: '', avoidAcquaintance: '',
     idealType: '', nonIdealType: '', smoking: '', drinking: '', religion: '',
-    drink: '', vibe: '', etc: '',
+    drink: '', etc: '',
   });
 
   // Photo states in modal (File or URL)
@@ -118,7 +118,6 @@ export default function MyPage() {
             drinking: d.drinking || '',
             religion: d.religion || '',
             drink: d.drink || '',
-            vibe: d.vibe || '',
             etc: d.etc || '',
           };
           setEditForm(initialForm);
@@ -149,10 +148,14 @@ export default function MyPage() {
   }, [router]);
 
   const handleSave = async () => {
-    if (!editForm.name) return toast.error('이름을 입력해주세요.');
-    if (!editForm.birthDate) return toast.error('생년월일을 입력해주세요.');
-    if (!editForm.height || !editForm.weight) return toast.error('키와 체중을 입력해주세요.');
     if (!editForm.workplace) return toast.error('회사명 / 직무를 입력해주세요.');
+
+    // v5.1.0 추가 필수 항목 검사
+    if (!editForm.phone) return toast.error('연락처를 입력해주세요.');
+    if (!editForm.residence) return toast.error('거주 지역을 선택해주세요.');
+    if (!editForm.smoking) return toast.error('흡연 유무를 선택해주세요.');
+    if (!editForm.drinking) return toast.error('음주 빈도를 선택해주세요.');
+    if (!editForm.religion) return toast.error('종교를 선택해주세요.');
 
     setIsSaving(true);
     try {
@@ -320,7 +323,7 @@ export default function MyPage() {
               <input style={inputStyle} value={editForm.birthDate} onChange={e => setEditForm((p: any) => ({ ...p, birthDate: e.target.value }))} placeholder="ex. 1994-05-30" />
             </EditRow>
 
-            <EditRow label="연락처">
+            <EditRow label="연락처" required>
               <input style={inputStyle} type="tel" value={editForm.phone} onChange={e => setEditForm((p: any) => ({ ...p, phone: formatPhone(e.target.value) }))} placeholder="010-0000-0000" />
             </EditRow>
 
@@ -337,8 +340,13 @@ export default function MyPage() {
               </EditRow>
             </div>
 
-            <EditRow label="거주 지역">
-              <input style={inputStyle} value={editForm.residence} onChange={e => setEditForm((p: any) => ({ ...p, residence: e.target.value }))} placeholder="ex. 부산 수영구" />
+            <EditRow label="거주 지역" required>
+              <select style={inputStyle} value={editForm.residence} onChange={e => setEditForm((p: any) => ({ ...p, residence: e.target.value }))}>
+                <option value="">지역 선택</option>
+                {['부산진구', '해운대구', '수영구', '연제구', '동래구', '남구', '금정구', '사하구', '강서구', '북구', '사상구', '기타'].map(r => (
+                  <option key={r} value={r}>{r}</option>
+                ))}
+              </select>
             </EditRow>
 
             <EditRow label="회사명 / 직무" required>
@@ -357,7 +365,7 @@ export default function MyPage() {
               <textarea style={textAreaStyle} value={editForm.nonIdealType} onChange={e => setEditForm((p: any) => ({ ...p, nonIdealType: e.target.value }))} placeholder={'1. 예의 없는 사람\n2. 연락 두절되는 사람'} rows={3} />
             </EditRow>
 
-            <EditRow label="흡연 유무">
+            <EditRow label="흡연 유무" required>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 {['비흡연', '전자담배', '연초'].map(opt => (
                   <button key={opt} onClick={() => setEditForm((p: any) => ({ ...p, smoking: opt }))} style={{ padding: '10px 18px', borderRadius: '100px', border: editForm.smoking === opt ? '2px solid #FF6F61' : '1px solid #FFE8E5', background: editForm.smoking === opt ? '#FFF5F4' : '#fff', color: editForm.smoking === opt ? '#FF6F61' : '#AAA', fontWeight: '700', fontSize: '0.85rem', cursor: 'pointer' }}>
@@ -367,7 +375,7 @@ export default function MyPage() {
               </div>
             </EditRow>
 
-            <EditRow label="음주 빈도">
+            <EditRow label="음주 빈도" required>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 {['안 마심', '가끔 (월 1~2회)', '즐겨 마시는 편'].map(opt => (
                   <button key={opt} onClick={() => setEditForm((p: any) => ({ ...p, drinking: opt }))} style={{ padding: '10px 18px', borderRadius: '100px', border: editForm.drinking === opt ? '2px solid #FF6F61' : '1px solid #FFE8E5', background: editForm.drinking === opt ? '#FFF5F4' : '#fff', color: editForm.drinking === opt ? '#FF6F61' : '#AAA', fontWeight: '700', fontSize: '0.85rem', cursor: 'pointer' }}>
@@ -377,7 +385,7 @@ export default function MyPage() {
               </div>
             </EditRow>
 
-            <EditRow label="종교">
+            <EditRow label="종교" required>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 {['무교', '기독교', '천주교', '불교', '기타'].map(opt => (
                   <button key={opt} onClick={() => setEditForm((p: any) => ({ ...p, religion: opt }))} style={{ padding: '10px 18px', borderRadius: '100px', border: editForm.religion === opt ? '2px solid #FF6F61' : '1px solid #FFE8E5', background: editForm.religion === opt ? '#FFF5F4' : '#fff', color: editForm.religion === opt ? '#FF6F61' : '#AAA', fontWeight: '700', fontSize: '0.85rem', cursor: 'pointer' }}>
@@ -396,9 +404,6 @@ export default function MyPage() {
               </select>
             </EditRow>
 
-            <EditRow label="행사 선호 분위기">
-              <input style={inputStyle} value={editForm.vibe} onChange={e => setEditForm((p: any) => ({ ...p, vibe: e.target.value }))} placeholder="ex. 차분한 대화 위주" />
-            </EditRow>
 
             <EditRow label="특이사항 / 키링크에게 바라는 점">
               <textarea style={textAreaStyle} value={editForm.etc} onChange={e => setEditForm((p: any) => ({ ...p, etc: e.target.value }))} placeholder="알러지 여부나 기타 요청사항" rows={2} />
@@ -473,7 +478,6 @@ export default function MyPage() {
                 <InfoRow label="흡연 유무" value={userData?.smoking} />
                 <InfoRow label="종교" value={userData?.religion} />
                 <InfoRow label="희망 음료" value={userData?.drink} />
-                <InfoRow label="희망 분위기" value={userData?.vibe} />
                 <InfoRow label="이상형" value={userData?.idealType} />
                 <InfoRow label="비선호형" value={userData?.nonIdealType} />
                 <div style={{ borderBottom: '1px solid #FFF0EE', padding: '16px 0' }}>

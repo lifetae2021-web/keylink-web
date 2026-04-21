@@ -49,13 +49,24 @@ export interface Application {
   name: string;
   age: number;
   gender: Gender;
-  job: string;
-  residence: string;
-  phone: string;
+  job: string;                 // workplace (회사명 / 직무)
+  residence: string;           // 거주 지역 (선택)
+  phone: string;               // 연락처 (필수)
   status: ApplicationStatus;
   paymentConfirmed: boolean;
   appliedAt: Date;
   updatedAt: Date;
+  
+  // 추가 프로필 정보 (v5.1.0 데이터 연동 강화)
+  instaId?: string;
+  smoking?: string;
+  drinking?: string;
+  religion?: string;
+  drink?: string;
+  idealType?: string;
+  nonIdealType?: string;
+  avoidAcquaintance?: string;
+  etc?: string;
 }
 
 // ─────────────────────────────────────────────

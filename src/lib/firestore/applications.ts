@@ -36,6 +36,16 @@ function fromDoc(snap: DocumentSnapshot): Application | null {
     paymentConfirmed: d.paymentConfirmed ?? false,
     appliedAt: (d.appliedAt as Timestamp).toDate(),
     updatedAt: (d.updatedAt as Timestamp).toDate(),
+    // v5.1.0 데이터 연동 강화
+    instaId: d.instaId,
+    smoking: d.smoking,
+    drinking: d.drinking,
+    religion: d.religion,
+    drink: d.drink,
+    idealType: d.idealType,
+    nonIdealType: d.nonIdealType,
+    avoidAcquaintance: d.avoidAcquaintance,
+    etc: d.etc,
   };
 }
 

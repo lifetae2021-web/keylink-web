@@ -78,3 +78,17 @@ export function subscribeSession(
     callback(fromDoc(snap));
   });
 }
+
+/** 모든 기수 실시간 구독 (이벤트 카드 UI용) */
+export function subscribeAllSessions(
+  callback: (sessions: Session[]) => void
+) {
+  const q = query(
+    collection(db, COLLECTION),
+    orderBy('episodeNumber', 'desc')
+  );
+  return onSnapshot(q, (snap) => {
+    const sessions = snap.docs.map((d) => fromDoc(d)).filter(Boolean) as Session[];
+    callback(sessions);
+  });
+}
