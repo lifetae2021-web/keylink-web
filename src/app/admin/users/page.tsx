@@ -37,13 +37,13 @@ const panel = { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(25
 // Table Skeleton
 const TableSkeleton = () => (
   <>
-    {[1, 2, 3, 4, 5].map((i) => (
-      <tr key={i} className="animate-pulse">
-        <td style={{ padding: '14px 20px' }}><div className="h-10 w-40 bg-white/5 rounded"></div></td>
-        <td style={{ padding: '14px 20px' }}><div className="h-8 w-24 bg-white/5 rounded"></div></td>
-        <td style={{ padding: '14px 20px' }}><div className="h-6 w-20 bg-white/5 rounded-full"></div></td>
-        <td style={{ padding: '14px 20px' }}><div className="h-6 w-24 bg-white/5 rounded"></div></td>
-        <td style={{ padding: '14px 20px' }} className="text-right"><div className="h-8 w-16 bg-white/5 rounded ml-auto"></div></td>
+    {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+      <tr key={i} className="animate-pulse h-[72px] border-b border-white/5">
+        <td style={{ padding: '0 20px' }}><div className="h-8 w-40 bg-white/5 rounded"></div></td>
+        <td style={{ padding: '0 20px' }}><div className="h-6 w-24 bg-white/5 rounded"></div></td>
+        <td style={{ padding: '0 20px' }}><div className="h-6 w-20 bg-white/5 rounded-full"></div></td>
+        <td style={{ padding: '0 20px' }}><div className="h-6 w-24 bg-white/5 rounded"></div></td>
+        <td style={{ padding: '0 20px' }} className="text-right"><div className="h-6 w-16 bg-white/5 rounded ml-auto"></div></td>
       </tr>
     ))}
   </>
@@ -269,7 +269,7 @@ export default function UsersPage() {
             </table>
           </div>
         ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20">
+          <div style={{ overflowX: 'auto' }} className="min-h-[400px] flex items-center justify-center">
             <p style={{ color: '#555', fontSize: '0.88rem' }}>회원 데이터가 없습니다.</p>
           </div>
         ) : (
@@ -326,15 +326,15 @@ export default function UsersPage() {
                     <tr
                       key={u.id}
                       style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', cursor: 'default' }}
-                      className="hover:bg-white/[0.02] transition-colors group"
+                      className="hover:bg-white/[0.02] transition-colors group h-[72px]"
                     >
                       {/* 회원정보 */}
-                      <td style={{ padding: '14px 20px' }}>
+                      <td style={{ padding: '0 20px' }}>
                         <div className="flex items-center gap-3">
                           <div
-                            className="relative flex items-center justify-center rounded-xl font-bold"
+                            className="relative flex-shrink-0 flex items-center justify-center rounded-xl font-bold"
                             style={{
-                              width: 36, height: 36, fontSize: '0.85rem',
+                              width: 38, height: 38, fontSize: '0.85rem',
                               background: u.gender === 'male' ? 'rgba(96,165,250,0.1)' : 'rgba(244,114,182,0.1)',
                               color:      u.gender === 'male' ? '#60a5fa'              : '#f472b6',
                             }}
@@ -368,13 +368,13 @@ export default function UsersPage() {
                       </td>
 
                       {/* 직업/나이 */}
-                      <td style={{ padding: '14px 20px' }}>
+                      <td style={{ padding: '0 20px' }}>
                         <p style={{ fontSize: '0.85rem', color: '#bbb' }}>{u.job || '-'}</p>
                         <p style={{ fontSize: '0.75rem', color: '#555', marginTop: 1 }}>{u.birthDate ? `${new Date().getFullYear() - parseInt(u.birthDate.split('-')[0]) + 1}세` : '-'}</p>
                       </td>
 
                       {/* 상태 / 권한 */}
-                      <td style={{ padding: '14px 20px' }}>
+                      <td style={{ padding: '0 20px' }}>
                         <div className="flex flex-col gap-2">
                           <span
                             className="inline-flex items-center gap-1.5"
@@ -395,44 +395,44 @@ export default function UsersPage() {
                       </td>
 
                       {/* 활동 지표 (Badges) */}
-                      <td style={{ padding: '14px 20px' }}>
+                      <td style={{ padding: '0 20px' }}>
                         <div className="flex items-center gap-2">
                           <div className="group relative">
-                            <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 text-[10px] font-bold border border-blue-500/20">
+                            <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 text-[10px] font-bold border border-blue-500/20 cursor-default">
                               <UserPlus size={10} /> {u.participationCount || 0}
                             </span>
-                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-2 bg-black text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10 border border-white/10">
-                              총 참여 횟수
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-3 bg-gray-800 text-white text-sm leading-relaxed rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 border border-white/10 shadow-xl min-w-[140px] text-center">
+                              기수 프로그램 <br /> <strong>총 참여 {u.participationCount || 0}회</strong>
                             </div>
                           </div>
                           <div className="group relative">
-                            <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold border border-emerald-500/20">
+                            <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold border border-emerald-500/20 cursor-default">
                               <Award size={10} /> {u.matchCount || 0}
                             </span>
-                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-2 bg-black text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10 border border-white/10">
-                              매칭 성공
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-3 bg-gray-800 text-white text-sm leading-relaxed rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 border border-white/10 shadow-xl min-w-[140px] text-center">
+                              최종 커플 매칭 <br /> <strong>총 성공 {u.matchCount || 0}회</strong>
                             </div>
                           </div>
                           <div className="group relative">
-                            <span className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold border ${u.noShowCount > 0 ? 'bg-rose-500/20 text-rose-400 border-rose-500/30' : 'bg-white/5 text-white/20 border-white/5'}`}>
+                            <span className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold border cursor-default ${u.noShowCount > 0 ? 'bg-rose-500/20 text-rose-400 border-rose-500/30' : 'bg-white/5 text-white/20 border-white/5'}`}>
                               <AlertCircle size={10} /> {u.noShowCount || 0}
                             </span>
-                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-2 bg-black text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10 border border-white/10">
-                              노쇼 기록
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-3 bg-gray-800 text-white text-sm leading-relaxed rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 border border-white/10 shadow-xl min-w-[140px] text-center">
+                              약속 불이행 <br /> <strong className={u.noShowCount > 0 ? 'text-rose-400' : ''}>노쇼 기록 {u.noShowCount || 0}회</strong>
                             </div>
                           </div>
                         </div>
                       </td>
 
                       {/* 가입일 */}
-                      <td style={{ padding: '14px 20px' }}>
+                      <td style={{ padding: '0 20px' }}>
                         <span style={{ fontSize: '0.78rem', color: '#555' }}>
                           {u.createdAt?.seconds ? format(new Date(u.createdAt.seconds * 1000), 'yyyy-MM-dd') : '-'}
                         </span>
                       </td>
 
                       {/* 관리 */}
-                      <td style={{ padding: '14px 20px' }}>
+                      <td style={{ padding: '0 20px' }}>
                         <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button
                             onClick={() => setSelectedUserForCoupon(u)}
