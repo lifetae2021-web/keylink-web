@@ -10,6 +10,26 @@ import CherryBlossoms from '@/components/CherryBlossoms';
 // 데모 매칭 결과 상태: 'matched' | 'unmatched' | 'pending'
 type DemoState = 'matched' | 'unmatched' | 'pending';
 
+interface PartnerProfile {
+  batch: string;
+  number: string;
+  age: string;
+  job: string;
+  height: string;
+  residence: string;
+  gender: 'male' | 'female';
+}
+
+const MOCK_PARTNER: PartnerProfile = {
+  batch: '121기',
+  number: '12',
+  age: '94년생',
+  job: 'IT 대기업',
+  height: '181cm',
+  residence: '서울 강남구',
+  gender: 'male'
+};
+
 export default function MatchingResultPage() {
   const [demoState, setDemoState] = useState<DemoState>('matched');
 
@@ -58,7 +78,7 @@ export default function MatchingResultPage() {
           ))}
         </div>
 
-        <div style={{ maxWidth: '700px', margin: '0 auto' }}>
+        <div style={{ maxWidth: '800px', margin: '0 auto' }}>
           <AnimatePresence mode="wait">
             <motion.div
               key={demoState}
@@ -67,7 +87,7 @@ export default function MatchingResultPage() {
               exit={{ opacity: 0, scale: 0.98 }}
               transition={{ duration: 0.4 }}
             >
-              {demoState === 'matched' && <MatchedResultView />}
+              {demoState === 'matched' && <MatchedResultView partner={MOCK_PARTNER} />}
               {demoState === 'unmatched' && <UnmatchedResultView />}
               {demoState === 'pending' && <PendingResultView />}
             </motion.div>
@@ -83,7 +103,10 @@ export default function MatchingResultPage() {
   );
 }
 
-function MatchedResultView() {
+function MatchedResultView({ partner }: { partner: PartnerProfile }) {
+  const genderLabel = partner.gender === 'male' ? '카랑남' : '키링녀';
+  const partnerName = `${genderLabel} ${partner.number}호`;
+
   return (
     <div style={{ textAlign: 'center' }}>
       {/* Celebration Header */}
@@ -103,11 +126,11 @@ function MatchedResultView() {
         </h2>
         <p style={{ color: '#666', fontWeight: '500', lineHeight: '1.6' }}>
           상대방도 당신을 선택하셨습니다.<br/>
-          아래 정보를 확인하고 대화를 시작해 보세요!
+          아래 프로필 정보를 확인해 보세요!
         </p>
       </div>
 
-      {/* Opponent Info Card - Compact List Style */}
+      {/* Opponent Info Card - Expanded v3.6.9 */}
       <div style={{ 
         background: '#fff', 
         borderRadius: '32px', 
@@ -117,57 +140,38 @@ function MatchedResultView() {
         marginBottom: '32px'
       }}>
         <div style={{ 
-          display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px',
-          padding: '12px 20px', background: 'rgba(0,0,0,0.03)', borderRadius: '16px',
-          fontWeight: '800', color: '#666', fontSize: '0.8rem', marginBottom: '16px',
+          display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '10px',
+          padding: '12px 10px', background: 'rgba(0,0,0,0.03)', borderRadius: '16px',
+          fontWeight: '800', color: '#666', fontSize: '0.75rem', marginBottom: '16px',
           textAlign: 'center'
         }}>
-          <span>번호</span>
+          <span>기수</span>
+          <span>{genderLabel}</span>
           <span>나이</span>
           <span>직업</span>
           <span>키</span>
+          <span>거주지</span>
         </div>
 
         <div style={{ 
-          display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px',
+          display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '10px',
           background: '#fff', border: '1px solid #f0f0f0', borderRadius: '24px',
-          padding: '24px 20px', alignItems: 'center', textAlign: 'center'
+          padding: '24px 10px', alignItems: 'center', textAlign: 'center'
         }}>
-          <div style={{ fontWeight: '800', color: '#FF6F61', fontSize: '1.1rem' }}>M-12</div>
-          <div style={{ fontWeight: '700', color: '#111' }}>94년생</div>
-          <div style={{ fontWeight: '800', color: '#007AFF' }}>IT 대기업</div>
-          <div style={{ color: '#666', fontWeight: '500' }}>181cm</div>
+          <div style={{ fontWeight: '700', color: '#666' }}>{partner.batch}</div>
+          <div style={{ fontWeight: '800', color: '#FF6F61', fontSize: '1rem' }}>{partnerName}</div>
+          <div style={{ fontWeight: '700', color: '#111' }}>{partner.age}</div>
+          <div style={{ fontWeight: '800', color: '#007AFF' }}>{partner.job}</div>
+          <div style={{ color: '#666', fontWeight: '500' }}>{partner.height}</div>
+          <div style={{ fontWeight: '700', color: '#111' }}>{partner.residence}</div>
         </div>
 
-        {/* Contact Links */}
-        <div style={{ marginTop: '24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <a
-            href="https://open.kakao.com/o/sKeylinkMatch"
-            target="_blank" rel="noopener noreferrer"
-            style={{
-              padding: '20px', borderRadius: '20px',
-              background: '#FEE500', color: '#111',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px',
-              textDecoration: 'none', fontWeight: '900', fontSize: '1.1rem',
-              boxShadow: '0 10px 20px rgba(254,229,0,0.3)',
-              transition: 'transform 0.2s ease'
-            }}
-            onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
-            onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
-          >
-            <MessageCircle size={22} fill="#111" />
-            카카오 오픈채팅방 입장하기
-          </a>
-          <div style={{ display: 'flex', gap: '12px' }}>
-            <div style={{ flex: 1, padding: '16px', background: '#f9f9f9', borderRadius: '16px', border: '1px solid #eee' }}>
-              <p style={{ fontSize: '0.75rem', color: '#888', marginBottom: '4px' }}>연락처</p>
-              <p style={{ fontWeight: '700', fontSize: '1rem' }}>010-****-5678</p>
-            </div>
-            <div style={{ flex: 1, padding: '16px', background: '#f9f9f9', borderRadius: '16px', border: '1px solid #eee' }}>
-              <p style={{ fontSize: '0.75rem', color: '#888', marginBottom: '4px' }}>성함</p>
-              <p style={{ fontWeight: '700', fontSize: '1rem' }}>오*연</p>
-            </div>
-          </div>
+        {/* Minimalized v3.6.9 Message */}
+        <div style={{ marginTop: '32px', padding: '20px', background: '#F8F9FA', borderRadius: '20px', border: '1px solid #eeeeee' }}>
+          <p style={{ fontSize: '0.9rem', color: '#444', fontWeight: '600', lineHeight: 1.6 }}>
+            "상대방의 구체적인 연락처와 성함은<br/>
+            운영진을 통해 안전하게 전달될 예정입니다."
+          </p>
         </div>
       </div>
 
@@ -175,8 +179,8 @@ function MatchedResultView() {
         display: 'flex', alignItems: 'center', gap: '12px', justifyContent: 'center',
         background: '#FFF8F7', padding: '16px 24px', borderRadius: '20px', border: '1px dashed #FF6F61'
       }}>
-        <Trophy size={18} color="#FF6F61" />
-        <span style={{ fontSize: '0.85rem', color: '#FF6F61', fontWeight: '600' }}>상대방의 개인정보는 매칭 당사자에게만 안전하게 공개됩니다.</span>
+        <ShieldCheck size={18} color="#FF6F61" />
+        <span style={{ fontSize: '0.85rem', color: '#FF6F61', fontWeight: '600' }}>개인정보 보호를 위해 매칭 당사자에게만 핵심 프로필이 공개됩니다.</span>
       </div>
     </div>
   );
