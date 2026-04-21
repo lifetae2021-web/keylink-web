@@ -15,6 +15,7 @@ import {
   confirmPayment,
   cancelApplicant,
   bulkSelectApplicants,
+  restoreApplicant,
 } from '@/lib/admin/selection';
 import { getSession } from '@/lib/firestore/sessions';
 import { Application, Session, ApplicationStatus } from '@/lib/types';
@@ -104,7 +105,7 @@ export default function ApplicantsPage() {
   // 단일 상태 변경
   const handleAction = async (
     app: Application,
-    action: 'select' | 'confirm' | 'cancel'
+    action: 'select' | 'confirm' | 'cancel' | 'restore'
   ) => {
     setActionLoading(app.id);
     try {
@@ -114,8 +115,11 @@ export default function ApplicantsPage() {
       } else if (action === 'confirm') {
         await confirmPayment(app.id, sessionId, app.gender);
         toast.success(`${app.name}님 입금 확인 완료!`);
+      } else if (action === 'restore') {
+        await restoreApplicant(app.id, sessionId, app.gender);
+        toast.success(`${app.name}님을 참가 확정으로 복구했습니다.`);
       } else {
-        await cancelApplicant(app.id);
+        await cancelApplicant(app.id, sessionId, app.gender, app.status === 'confirmed');
         toast.success(`${app.name}님을 취소 처리했습니다.`);
       }
       await loadData();
@@ -344,6 +348,15 @@ export default function ApplicantsPage() {
                             입금확인
                           </button>
                         )}
+                        {app.status === 'cancelled' && (
+                          <button
+                            onClick={() => handleAction(app, 'restore')}
+                            disabled={actionLoading === app.id}
+                            className="px-3 py-1.5 rounded-lg text-xs font-bold bg-green-600/20 text-green-300 hover:bg-green-600/40 transition-all disabled:opacity-50"
+                          >
+                            참가 확정으로 복구
+                          </button>
+                        )}
                         {app.status !== 'cancelled' && app.status !== 'confirmed' && (
                           <button
                             onClick={() => handleAction(app, 'cancel')}
@@ -352,6 +365,15 @@ export default function ApplicantsPage() {
                           >
                             취소
                           </button>
+                        )}
+                        {app.status === 'confirmed' && (
+                           <button
+                            onClick={() => handleAction(app, 'cancel')}
+                            disabled={actionLoading === app.id}
+                            className="px-3 py-1.5 rounded-lg text-xs font-bold bg-red-600/20 text-red-300 hover:bg-red-600/40 transition-all disabled:opacity-50"
+                           >
+                            취소
+                           </button>
                         )}
                       </div>
                     </td>

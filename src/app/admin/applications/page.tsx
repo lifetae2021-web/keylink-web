@@ -9,8 +9,14 @@ import {
 import toast from 'react-hot-toast';
 import { db } from '@/lib/firebase';
 import { 
-  collection, getDocs, doc, updateDoc, query, where, orderBy, Timestamp, getDoc 
+  collection, getDocs, doc, query, where, orderBy, Timestamp, getDoc 
 } from 'firebase/firestore';
+import {
+  selectApplicant,
+  confirmPayment,
+  cancelApplicant,
+  restoreApplicant,
+} from '@/lib/admin/selection';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 
@@ -104,17 +110,34 @@ export default function ApplicationsPage() {
     fetchApplications();
   }, [selectedEventId]);
 
-  // v5.0.0 status 직접 변경
-  const updateAppStatus = async (appId: string, status: string) => {
+  // v5.0.0 status 변경 로직 개선 (카운트 동기화 포함)
+  const updateAppStatus = async (app: any, status: string) => {
     try {
-      await updateDoc(doc(db, 'applications', appId), {
-        status,
-        updatedAt: Timestamp.now(),
-      });
+      const { id: appId, sessionId, gender, status: prevStatus } = app;
+      
+      if (status === 'selected') {
+        await selectApplicant(appId);
+      } else if (status === 'confirmed') {
+        if (prevStatus === 'cancelled') {
+          await restoreApplicant(appId, sessionId, gender);
+        } else {
+          await confirmPayment(appId, sessionId, gender);
+        }
+      } else if (status === 'cancelled') {
+        await cancelApplicant(appId, sessionId, gender, prevStatus === 'confirmed');
+      }
+
       setApplications(prev => prev.map(a => a.id === appId ? { ...a, status } : a));
-      const labels: Record<string, string> = { selected: '선발', confirmed: '입금 확인', cancelled: '취소' };
+      const labels: Record<string, string> = { selected: '선발', confirmed: '참가 확정', cancelled: '취소' };
       toast.success(`${labels[status] || status} 처리 완료`);
+      
+      // 기수 목록 리프레시 (카운트 업데이트 반영)
+      const q = query(collection(db, 'sessions'), orderBy('eventDate', 'desc'));
+      const snap = await getDocs(q);
+      setEvents(snap.docs.map(d => ({ id: d.id, ...d.data() } as any)));
+      
     } catch (e) {
+      console.error(e);
       toast.error('상태 업데이트에 실패했습니다.');
     }
   };
@@ -271,21 +294,28 @@ export default function ApplicationsPage() {
                         <div className="flex items-center gap-2">
                           {app.status === 'applied' && (
                             <button
-                              onClick={() => updateAppStatus(app.id, 'selected')}
+                              onClick={() => updateAppStatus(app, 'selected')}
                               className="px-2 py-1 rounded-lg text-xs font-bold transition-colors bg-purple-500/10 text-purple-400 hover:bg-purple-500 hover:text-white"
                               title="선발"
                             >선발</button>
                           )}
                           {app.status === 'selected' && (
                             <button
-                              onClick={() => updateAppStatus(app.id, 'confirmed')}
+                              onClick={() => updateAppStatus(app, 'confirmed')}
                               className="px-2 py-1 rounded-lg text-xs font-bold transition-colors bg-green-500/10 text-green-400 hover:bg-green-500 hover:text-white"
                               title="입금확인"
                             >입금확인</button>
                           )}
+                          {app.status === 'cancelled' && (
+                            <button
+                              onClick={() => updateAppStatus(app, 'confirmed')}
+                              className="px-2 py-1 rounded-lg text-xs font-bold transition-colors bg-green-500/10 text-green-400 hover:bg-green-500 hover:text-white"
+                              title="복구"
+                            >복구</button>
+                          )}
                           {app.status !== 'cancelled' && (
                             <button
-                              onClick={() => updateAppStatus(app.id, 'cancelled')}
+                              onClick={() => updateAppStatus(app, 'cancelled')}
                               className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white"
                               title="취소"
                             >
