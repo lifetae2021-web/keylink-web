@@ -38,11 +38,15 @@ export default function SocialProfilePage() {
         return;
       }
       
-      // If user already registered, skip this page
+      // If user already registered WITH COMPLETE profile, skip this page
       const userSnap = await getDoc(doc(db, 'users', u.uid));
       if (userSnap.exists()) {
-        router.replace('/');
-        return;
+        const data = userSnap.data();
+        const isComplete = data && data.gender && data.birthDate && data.phone;
+        if (isComplete) {
+          router.replace('/');
+          return;
+        }
       }
 
       setUser(u);
