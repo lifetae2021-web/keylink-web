@@ -134,14 +134,7 @@ export default function MyMatchingDashboard() {
       <div className="max-w-5xl mx-auto relative z-10">
         
         {/* Title Section */}
-        <header className="mb-20 text-center">
-           <motion.div 
-             initial={{ opacity: 0, y: 10 }}
-             animate={{ opacity: 1, y: 0 }}
-             className="inline-flex items-center gap-2 px-5 py-2 bg-white text-gray-400 rounded-full text-xs font-bold shadow-sm mb-6"
-           >
-            Apple-Style Premium Dashboard
-          </motion.div>
+        <header className="mb-20 text-center flex flex-col items-center">
           <motion.h1 
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
@@ -154,7 +147,7 @@ export default function MyMatchingDashboard() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
-            className="text-gray-400 text-base md:text-lg font-medium max-w-xl mx-auto"
+            className="text-gray-400 text-base md:text-lg font-medium max-w-xl text-center"
           >
             시간을 넘어 이어지는 당신의 소중한 인연과<br/>참여 히스토리를 한곳에서 만나보세요.
           </motion.p>
@@ -164,15 +157,12 @@ export default function MyMatchingDashboard() {
         <div className="space-y-20">
           
           {/* Section 1: History Cards */}
-          <section>
-            <div className="flex items-center justify-between mb-8 px-4">
-              <h2 className="text-xl font-black text-gray-900 flex items-center gap-2">
-                참여 히스토리
-              </h2>
-              <span className="text-[11px] font-black text-gray-400">옆으로 스크롤하여 더보기</span>
-            </div>
+          <section className="flex flex-col items-center">
+            <h2 className="text-xl font-black text-gray-900 flex items-center justify-center gap-2 mb-8">
+              참여 히스토리
+            </h2>
             
-            <div className="flex overflow-x-auto pb-8 gap-5 no-scrollbar scroll-smooth px-4 -mx-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full max-w-4xl">
               {MOCK_HISTORY.map((session) => (
                 <HistoryCard 
                   key={session.id} 
@@ -242,16 +232,16 @@ function HistoryCard({ session, isSelected, onClick }: { session: GisuSession, i
       whileHover={{ y: -5 }}
       whileTap={{ scale: 0.98 }}
       onClick={onClick}
-      className={`flex-shrink-0 w-44 p-6 rounded-[32px] transition-all relative ${
+      className={`w-full p-6 text-center rounded-[32px] transition-all relative ${
         isSelected 
         ? "bg-white shadow-lg shadow-gray-200/50 ring-2 ring-pink-50" 
         : "bg-white/40 border border-white hover:bg-white/80 opacity-60 hover:opacity-100"
       }`}
     >
-      <div className="absolute top-4 right-4">
+      <div className="flex justify-center mb-4">
         {getStatusBadge(session.status)}
       </div>
-      <div className="mt-8 text-left">
+      <div>
         <p className={`text-base font-black mb-1 ${isSelected ? "text-pink-500" : "text-gray-400"}`}>
           {session.episode}기
         </p>
@@ -272,17 +262,17 @@ function DetailView({ session }: { session: GisuSession }) {
 
 function MatchedView({ partner }: { partner: GisuSession['partner'] & {} }) {
   return (
-    <div className="text-center">
-      <div className="inline-flex items-center justify-center w-20 h-20 bg-pink-50 text-pink-500 rounded-[28px] mb-10">
+    <div className="flex flex-col items-center text-center py-6">
+      <div className="inline-flex items-center justify-center w-20 h-20 bg-pink-50 text-pink-500 rounded-[28px] mb-8">
         <Heart size={40} fill="currentColor" />
       </div>
-      <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-8 leading-tight">
+      <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-8 py-4 leading-tight">
         축하합니다!<br/>소중한 <span className="text-pink-500">인연</span>이 닿았습니다.
       </h2>
       
-      <div className="mt-16 bg-pink-50/30 rounded-[40px] p-10 md:p-14 border border-pink-100 overflow-hidden relative">
+      <div className="mt-8 bg-pink-50/30 rounded-[40px] p-10 md:p-14 border border-pink-100 overflow-hidden relative w-full max-w-3xl">
         <div className="absolute top-10 right-10 opacity-20"><Sparkles size={100} className="text-pink-300" /></div>
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-y-10 gap-x-6 text-left relative z-10">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-y-10 gap-x-4 text-center relative z-10 w-full">
           <InfoItem label="기수" value={partner.batch} />
           <InfoItem label="매칭상대" value={`${partner.gender === 'male' ? '카랑남' : '키링녀'} ${partner.number}호`} isHighlight />
           <InfoItem label="나이" value={partner.age} />
@@ -300,11 +290,11 @@ function MatchedView({ partner }: { partner: GisuSession['partner'] & {} }) {
 
 function UnmatchedView() {
   return (
-    <div className="text-center py-10">
-      <div className="inline-flex items-center justify-center w-20 h-20 bg-gray-50 text-gray-300 rounded-[28px] mb-10">
+    <div className="flex flex-col items-center text-center py-10">
+      <div className="inline-flex items-center justify-center w-20 h-20 bg-gray-50 text-gray-300 rounded-[28px] mb-8">
         <Frown size={40} />
       </div>
-      <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-8 leading-tight">
+      <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-8 py-4 leading-tight">
         아쉽지만 이번 기수에는<br/>인연이 닿지 않았습니다.
       </h2>
       <p className="text-gray-400 text-lg font-medium max-w-lg mx-auto leading-relaxed">
@@ -316,14 +306,14 @@ function UnmatchedView() {
 
 function PendingView() {
   return (
-    <div className="text-center py-10">
-      <div className="inline-flex items-center justify-center w-20 h-20 bg-amber-50 text-amber-500 rounded-[28px] mb-10 animate-pulse">
+    <div className="flex flex-col items-center text-center py-10">
+      <div className="inline-flex items-center justify-center w-20 h-20 bg-amber-50 text-amber-500 rounded-[28px] mb-8 animate-pulse">
         <Timer size={40} />
       </div>
-      <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-8 leading-tight">
+      <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-8 py-4 leading-tight">
         현재 매칭 결과를<br/>집계 중입니다 ✨
       </h2>
-      <div className="max-w-md mx-auto mt-16 px-6">
+      <div className="w-full max-w-md mx-auto mt-10 px-6">
         <div className="flex justify-between mb-4">
           <span className="text-sm font-black text-gray-400">실시간 분석 지수</span>
           <span className="text-sm font-black text-amber-500">85%</span>
@@ -338,13 +328,13 @@ function PendingView() {
 
 function ConfirmedView() {
   return (
-    <div className="text-center py-10">
-      <div className="inline-flex items-center justify-center w-20 h-20 bg-blue-50 text-blue-500 rounded-[28px] mb-10">
+    <div className="flex flex-col items-center text-center py-10">
+      <div className="inline-flex items-center justify-center w-20 h-20 bg-blue-50 text-blue-500 rounded-[28px] mb-8">
         <CheckCircle2 size={40} />
       </div>
-      <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-8 leading-tight">참가 확정</h2>
+      <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-8 py-4 leading-tight">참가 확정</h2>
       <p className="text-gray-400 text-lg font-medium mb-12">신청 및 결제가 완료되었습니다.<br/>최고의 매칭을 위해 준비 중입니다!</p>
-      <div className="inline-flex items-start gap-4 p-6 bg-blue-50/50 rounded-3xl border border-blue-50 text-left max-w-lg">
+      <div className="inline-flex items-start gap-4 p-6 bg-blue-50/50 rounded-3xl border border-blue-50 text-left w-full max-w-lg">
         <Info className="text-blue-400 mt-1 shrink-0" size={20} />
         <p className="text-sm text-gray-500 font-medium leading-relaxed">매칭 순위를 행사 종료 후 30분 이내에 입력해 주시면 더욱 정확한 매칭이 가능합니다.</p>
       </div>
@@ -359,10 +349,10 @@ function VoteMetricCard({ count }: { count: number }) {
         <Star size={100} fill="currentColor" />
       </div>
       <div className="relative z-10">
-        <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-10 flex items-center gap-2">
+        <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-10 flex items-center justify-center gap-2">
           <Trophy size={16} className="text-amber-400" /> Received Votes
         </h3>
-        <div className="flex items-baseline gap-2">
+        <div className="flex items-baseline justify-center gap-2">
           <span className="text-8xl font-black text-pink-500 tracking-tighter">{count}</span>
           <span className="text-2xl font-black text-pink-200">표</span>
         </div>
@@ -374,8 +364,8 @@ function VoteMetricCard({ count }: { count: number }) {
 
 function MyChoicesCard({ choices }: { choices: GisuSession['myChoices'] }) {
   return (
-    <div className="bg-white p-12 rounded-[48px] shadow-sm border border-white">
-      <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-10 flex items-center gap-2">
+    <div className="bg-white p-12 rounded-[48px] shadow-sm border border-white text-center">
+      <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-10 flex items-center justify-center gap-2">
         <Heart size={16} className="text-pink-500" /> Your Choices
       </h3>
       {choices.length > 0 ? (
@@ -404,7 +394,7 @@ function MyChoicesCard({ choices }: { choices: GisuSession['myChoices'] }) {
 
 function InfoItem({ label, value, isHighlight, isBlue }: { label: string, value: string, isHighlight?: boolean, isBlue?: boolean }) {
   return (
-    <div>
+    <div className="flex flex-col items-center">
       <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">{label}</p>
       <p className={`text-lg font-black tracking-tight ${isHighlight ? "text-pink-500" : isBlue ? "text-blue-500" : "text-gray-800"}`}>
         {value}
