@@ -1,262 +1,383 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
-import { Heart, MessageCircle, Phone, ArrowRight, Sparkles, Frown, Clock, Trophy, MapPin, ShieldCheck, Users, Timer } from 'lucide-react';
+import { Heart, Trophy, Clock, CheckCircle2, ArrowRight, ArrowLeft, Sparkles, Star, ShieldCheck, Mail, User, Info, Frown, Timer } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import CherryBlossoms from '@/components/CherryBlossoms';
 
-// 데모 매칭 결과 상태: 'matched' | 'unmatched' | 'pending'
-type DemoState = 'matched' | 'unmatched' | 'pending';
+// Types
+type GisuStatus = 'matched' | 'unmatched' | 'pending' | 'confirmed';
 
-interface PartnerProfile {
-  batch: string;
-  number: string;
-  age: string;
-  job: string;
-  height: string;
-  residence: string;
-  gender: 'male' | 'female';
+interface GisuSession {
+  id: string;
+  episode: number;
+  date: string;
+  title: string;
+  status: GisuStatus;
+  voteCount: number;
+  partner?: {
+    gender: 'male' | 'female';
+    number: string;
+    age: string;
+    job: string;
+    height: string;
+    residence: string;
+    batch: string;
+  };
+  myChoices: {
+    priority: number;
+    partnerName: string;
+    job: string;
+  }[];
 }
 
-const MOCK_PARTNER: PartnerProfile = {
-  batch: '121기',
-  number: '12',
-  age: '94년생',
-  job: 'IT 대기업',
-  height: '181cm',
-  residence: '서울 강남구',
-  gender: 'male'
-};
+// Mock Data
+const MOCK_HISTORY: GisuSession[] = [
+  {
+    id: 'gisu-120',
+    episode: 120,
+    date: '2026-04-26',
+    title: '부산 로테이션 소개팅',
+    status: 'matched',
+    voteCount: 4,
+    partner: {
+      gender: 'female',
+      number: '3',
+      age: '95년생',
+      job: '공공기관',
+      height: '165cm',
+      residence: '부산 수영구',
+      batch: '120기'
+    },
+    myChoices: [
+      { priority: 1, partnerName: '키링녀 3호', job: '공공기관' },
+      { priority: 2, partnerName: '키링녀 1호', job: '개인사업자' },
+      { priority: 3, partnerName: '키링녀 5호', job: '마케터' }
+    ]
+  },
+  {
+    id: 'gisu-119',
+    episode: 119,
+    date: '2026-04-19',
+    title: '부산 로테이션 소개팅',
+    status: 'unmatched',
+    voteCount: 2,
+    myChoices: [
+      { priority: 1, partnerName: '키링녀 7호', job: '금융권' },
+      { priority: 2, partnerName: '키링녀 4호', job: '사무직' },
+      { priority: 3, partnerName: '키링녀 2호', job: '의료계' }
+    ]
+  },
+  {
+    id: 'gisu-118',
+    episode: 118,
+    date: '2026-04-12',
+    title: '부산 로테이션 소개팅',
+    status: 'pending',
+    voteCount: 0,
+    myChoices: []
+  },
+  {
+    id: 'gisu-117',
+    episode: 117,
+    date: '2026-04-05',
+    title: '부산 로테이션 소개팅',
+    status: 'confirmed',
+    voteCount: 0,
+    myChoices: []
+  },
+  {
+    id: 'gisu-116',
+    episode: 116,
+    date: '2026-03-29',
+    title: '부산 로테이션 소개팅',
+    status: 'matched',
+    voteCount: 5,
+    partner: {
+      gender: 'female',
+      number: '8',
+      age: '94년생',
+      job: '보건인력',
+      height: '159cm',
+      residence: '부산 남구',
+      batch: '116기'
+    },
+    myChoices: [
+      { priority: 1, partnerName: '키링녀 8호', job: '보건인력' },
+      { priority: 2, partnerName: '키링녀 6호', job: '디자이너' },
+      { priority: 3, partnerName: '키링녀 4호', job: '사무직' }
+    ]
+  },
+  {
+    id: 'gisu-115',
+    episode: 115,
+    date: '2026-03-22',
+    title: '부산 로테이션 소개팅',
+    status: 'unmatched',
+    voteCount: 1,
+    myChoices: [
+      { priority: 1, partnerName: '키링녀 2호', job: '공무원' },
+      { priority: 2, partnerName: '키링녀 5호', job: '회사원' },
+      { priority: 3, partnerName: '키링녀 1호', job: '프리랜서' }
+    ]
+  }
+];
 
-export default function MatchingResultPage() {
-  const [demoState, setDemoState] = useState<DemoState>('matched');
+export default function MyMatchingDashboard() {
+  const [selectedGisuId, setSelectedGisuId] = useState(MOCK_HISTORY[0].id);
+  const selectedSession = MOCK_HISTORY.find(s => s.id === selectedGisuId) || MOCK_HISTORY[0];
+
+  const getStatusBadge = (status: GisuStatus) => {
+    switch (status) {
+      case 'confirmed':
+        return <span className="px-2.5 py-0.5 bg-blue-50 text-blue-600 text-[10px] font-black rounded-full border border-blue-100 uppercase">참가확정</span>;
+      case 'pending':
+        return <span className="px-2.5 py-0.5 bg-amber-50 text-amber-600 text-[10px] font-black rounded-full border border-amber-100 uppercase tracking-tighter">집계중</span>;
+      case 'matched':
+        return <span className="px-2.5 py-0.5 bg-green-50 text-green-600 text-[10px] font-black rounded-full border border-green-100 uppercase">매칭성공</span>;
+      case 'unmatched':
+        return <span className="px-2.5 py-0.5 bg-gray-50 text-gray-400 text-[10px] font-black rounded-full border border-gray-100 uppercase">미매칭</span>;
+      default:
+        return null;
+    }
+  };
 
   return (
-    <div style={{ paddingBottom: '100px', background: 'var(--color-bg)', minHeight: '100vh', position: 'relative', overflow: 'hidden' }}>
+    <div className="min-h-screen bg-[#FDFDFD] pt-24 pb-20 px-6 relative overflow-hidden">
       <CherryBlossoms />
-      
-      {/* Premium Sticky Header for v3.5.3 */}
-      <div style={{ 
-        position: 'sticky', top: '85px', zIndex: 100,
-        background: 'rgba(255, 111, 97, 0.9)', backdropFilter: 'blur(10px)',
-        color: '#fff', padding: '12px 20px', textAlign: 'center',
-        fontWeight: '800', fontSize: '0.95rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px'
-      }}>
-        <div className="pulse-circle" />
-        <span>실시간 매칭 결과가 업데이트되었습니다</span>
-      </div>
-
-      <div className="kl-container" style={{ paddingTop: '100px', position: 'relative', zIndex: 1 }}>
-        {/* Navigation & Title */}
-        <div style={{ marginBottom: '40px', textAlign: 'center' }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(255,111,97,0.1)', color: '#FF6F61', padding: '6px 14px', borderRadius: '100px', fontWeight: '800', fontSize: '0.85rem', marginBottom: '16px' }}>
-            <Sparkles size={14} /> 개인 매칭 리포트
+      <div className="max-w-4xl mx-auto relative z-10">
+        
+        {/* Header */}
+        <div className="mb-10 text-center">
+           <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-pink-50 text-pink-500 rounded-full text-[11px] font-black tracking-wider border border-pink-100 mb-4 uppercase">
+            My Dashboard
           </div>
-          <h1 style={{ fontSize: '2.4rem', fontWeight: '900', marginBottom: '12px', letterSpacing: '-0.03em', color: '#111' }}>
-            내 <span className="kl-gradient-text">매칭 결과</span> 확인하기
-          </h1>
-          <p style={{ color: 'var(--color-text-secondary)', fontWeight: '500' }}>
-            나를 선택한 상대방과의 소중한 인연을 확인해 보세요.
-          </p>
+          <h1 className="text-3xl font-black text-gray-900 mb-4 tracking-tight">내 매칭 리포트</h1>
+          <p className="text-gray-500 font-semibold leading-relaxed">참여하신 기수별 히스토리와 매칭 결과를 확인하세요.</p>
         </div>
 
-        {/* Demo toggle (개발용) */}
-        <div style={{ marginBottom: '48px', display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
-          {(['matched', 'unmatched', 'pending'] as DemoState[]).map((s) => (
-            <button key={s} onClick={() => setDemoState(s)}
-              style={{
-                padding: '10px 20px', borderRadius: '100px', border: '1px solid var(--color-border)',
-                background: demoState === s ? 'var(--color-primary)' : '#fff',
-                color: demoState === s ? '#FFFFFF' : '#666666',
-                cursor: 'pointer', fontSize: '0.85rem', fontWeight: '700', transition: 'all 0.2s',
-                boxShadow: demoState === s ? '0 4px 12px rgba(255,111,97,0.2)' : 'none'
-              }}>
-              {s.toUpperCase()} 상태 보기
-            </button>
-          ))}
+        {/* 1. Participation History Section */}
+        <div className="mb-12">
+          <div className="flex items-center justify-between mb-4 px-2">
+            <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+              <Clock size={16} /> 참여 히스토리
+            </h3>
+            <span className="text-[10px] font-black text-pink-300">최근 6개 기수</span>
+          </div>
+          
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            {MOCK_HISTORY.map((session) => (
+              <button
+                key={session.id}
+                onClick={() => setSelectedGisuId(session.id)}
+                className={`flex flex-col items-center p-4 rounded-[24px] border transition-all ${
+                  selectedGisuId === session.id
+                    ? 'bg-white border-pink-500 shadow-xl shadow-pink-100/50 scale-[1.03]'
+                    : 'bg-gray-50 border-gray-100 hover:bg-white hover:border-pink-200 opacity-60 hover:opacity-100'
+                }`}
+              >
+                <span className={`text-xs font-black mb-2 ${selectedGisuId === session.id ? 'text-pink-500' : 'text-gray-400'}`}>
+                  {session.episode}기
+                </span>
+                <div className="mb-3">
+                  {getStatusBadge(session.status)}
+                </div>
+                <span className="text-[10px] text-gray-400 font-bold tracking-tight">
+                  {session.date.split('-').slice(1).join('.')}
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+        {/* 2. Detail Section Area */}
+        <div className="max-w-3xl mx-auto">
           <AnimatePresence mode="wait">
             <motion.div
-              key={demoState}
-              initial={{ opacity: 0, scale: 0.98 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.98 }}
+              key={selectedGisuId}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.4 }}
             >
-              {demoState === 'matched' && <MatchedResultView partner={MOCK_PARTNER} />}
-              {demoState === 'unmatched' && <UnmatchedResultView />}
-              {demoState === 'pending' && <PendingResultView />}
+              <DetailView session={selectedSession} />
             </motion.div>
           </AnimatePresence>
         </div>
       </div>
-
-      <style jsx>{`
-        .pulse-circle { width: 8px; height: 8px; background-color: #fff; border-radius: 50%; animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(255, 255, 255, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); } }
-      `}</style>
     </div>
   );
 }
 
-function MatchedResultView({ partner }: { partner: PartnerProfile }) {
-  const genderLabel = partner.gender === 'male' ? '카랑남' : '키링녀';
-  const partnerName = `${genderLabel} ${partner.number}호`;
+function DetailView({ session }: { session: GisuSession }) {
+  if (session.status === 'confirmed') return <ConfirmedView session={session} />;
+  if (session.status === 'pending') return <PendingView session={session} />;
+  if (session.status === 'matched') return <MatchedView session={session} />;
+  return <UnmatchedView session={session} />;
+}
 
+function MatchedView({ session }: { session: GisuSession }) {
   return (
-    <div style={{ textAlign: 'center' }}>
-      {/* Celebration Header */}
-      <div style={{ marginBottom: '40px' }}>
-        <div style={{
-          width: '120px', height: '120px', borderRadius: '40px',
-          background: 'linear-gradient(135deg, #FF6F61, #FF8A71)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: '#fff', margin: '0 auto 24px',
-          boxShadow: '0 20px 40px rgba(255,111,97,0.3)',
-          transform: 'rotate(-5deg)'
-        }}>
-          <Heart size={60} fill="white" />
+    <div>
+      {/* Matched Outcome */}
+      <div className="text-center mb-10">
+        <div className="w-20 h-20 bg-gradient-to-br from-pink-400 to-rose-400 rounded-3xl flex items-center justify-center text-white mx-auto mb-6 shadow-xl rotate-[-4deg]">
+          <Heart size={40} fill="white" />
         </div>
-        <h2 style={{ fontSize: '2rem', fontWeight: '900', color: '#111', marginBottom: '16px' }}>
-          축하합니다!<br/>소중한 <span style={{ color: '#FF6F61' }}>인연</span>이 닿았습니다.
+        <h2 className="text-2xl md:text-3xl font-black text-gray-900 mb-3 leading-tight">
+          축하합니다!<br/>소중한 <span className="text-pink-500">인연</span>이 닿았습니다.
         </h2>
-        <p style={{ color: '#666', fontWeight: '500', lineHeight: '1.6' }}>
-          상대방도 당신을 선택하셨습니다.<br/>
-          아래 프로필 정보를 확인해 보세요!
-        </p>
+        <p className="text-gray-500 text-sm font-semibold mb-8">상대방도 회원님을 선택하셨습니다.</p>
+
+        {/* Partner Card */}
+        {session.partner && (
+          <div className="bg-white rounded-[40px] p-8 border border-gray-100 shadow-2xl shadow-pink-100/50 mb-8 overflow-hidden relative text-left">
+            <div className="absolute top-0 right-0 p-4">
+              <Sparkles className="text-pink-200" size={32} />
+            </div>
+            
+            <div className="grid grid-cols-3 md:grid-cols-6 gap-2 mb-8 p-3 bg-gray-50 rounded-2xl text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-tighter text-center">
+               <span>기수</span>
+               <span>{session.partner.gender === 'male' ? '카랑남' : '키링녀'}</span>
+               <span>나이</span>
+               <span>직업</span>
+               <span>키</span>
+               <span>거주지</span>
+            </div>
+
+            <div className="grid grid-cols-3 md:grid-cols-6 gap-2 items-center text-center">
+              <div className="font-bold text-gray-500 text-sm">{session.partner.batch}</div>
+              <div className="font-black text-pink-500 text-sm md:text-base whitespace-nowrap">
+                {session.partner.gender === 'male' ? '카랑남' : '키링녀'} {session.partner.number}호
+              </div>
+              <div className="font-bold text-gray-800 text-sm">{session.partner.age}</div>
+              <div className="font-black text-blue-500 text-sm">{session.partner.job}</div>
+              <div className="font-bold text-gray-500 text-sm">{session.partner.height}</div>
+              <div className="font-bold text-gray-800 text-sm leading-tight">{session.partner.residence}</div>
+            </div>
+
+            <div className="mt-10 p-5 bg-pink-50/50 rounded-3xl border border-pink-100 italic font-bold text-pink-500 text-[11px] text-center">
+              "상대방의 구체적인 연락처와 성함은 운영진을 통해 안전하게 전달될 예정입니다."
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Opponent Info Card - Expanded v3.6.9 */}
-      <div style={{ 
-        background: '#fff', 
-        borderRadius: '32px', 
-        padding: '32px', 
-        border: '1.5px solid #eee',
-        boxShadow: '0 20px 50px rgba(0,0,0,0.04)',
-        marginBottom: '32px'
-      }}>
-        <div style={{ 
-          display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '10px',
-          padding: '12px 10px', background: 'rgba(0,0,0,0.03)', borderRadius: '16px',
-          fontWeight: '800', color: '#666', fontSize: '0.75rem', marginBottom: '16px',
-          textAlign: 'center'
-        }}>
-          <span>기수</span>
-          <span>{genderLabel}</span>
-          <span>나이</span>
-          <span>직업</span>
-          <span>키</span>
-          <span>거주지</span>
-        </div>
-
-        <div style={{ 
-          display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '10px',
-          background: '#fff', border: '1px solid #f0f0f0', borderRadius: '24px',
-          padding: '24px 10px', alignItems: 'center', textAlign: 'center'
-        }}>
-          <div style={{ fontWeight: '700', color: '#666' }}>{partner.batch}</div>
-          <div style={{ fontWeight: '800', color: '#FF6F61', fontSize: '1rem' }}>{partnerName}</div>
-          <div style={{ fontWeight: '700', color: '#111' }}>{partner.age}</div>
-          <div style={{ fontWeight: '800', color: '#007AFF' }}>{partner.job}</div>
-          <div style={{ color: '#666', fontWeight: '500' }}>{partner.height}</div>
-          <div style={{ fontWeight: '700', color: '#111' }}>{partner.residence}</div>
-        </div>
-
-        {/* Minimalized v3.6.9 Message */}
-        <div style={{ marginTop: '32px', padding: '20px', background: '#F8F9FA', borderRadius: '20px', border: '1px solid #eeeeee' }}>
-          <p style={{ fontSize: '0.9rem', color: '#444', fontWeight: '600', lineHeight: 1.6 }}>
-            "상대방의 구체적인 연락처와 성함은<br/>
-            운영진을 통해 안전하게 전달될 예정입니다."
-          </p>
-        </div>
-      </div>
-
-      <div style={{ 
-        display: 'flex', alignItems: 'center', gap: '12px', justifyContent: 'center',
-        background: '#FFF8F7', padding: '16px 24px', borderRadius: '20px', border: '1px dashed #FF6F61'
-      }}>
-        <ShieldCheck size={18} color="#FF6F61" />
-        <span style={{ fontSize: '0.85rem', color: '#FF6F61', fontWeight: '600' }}>개인정보 보호를 위해 매칭 당사자에게만 핵심 프로필이 공개됩니다.</span>
-      </div>
+      <VoteStats session={session} />
+      <MyChoices session={session} />
     </div>
   );
 }
 
-function UnmatchedResultView() {
+function UnmatchedView({ session }: { session: GisuSession }) {
   return (
-    <div style={{ textAlign: 'center' }}>
-      <div style={{
-        width: '100px', height: '100px', borderRadius: '50%',
-        background: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        margin: '0 auto 24px'
-      }}>
-        <Frown size={48} color="#ccc" />
+    <div className="text-center">
+      <div className="w-16 h-16 bg-gray-100 rounded-3xl flex items-center justify-center text-gray-300 mx-auto mb-6 shadow-sm">
+        <Frown size={32} />
       </div>
-      <h2 style={{ fontSize: '1.8rem', fontWeight: '900', color: '#111', marginBottom: '16px' }}>
+      <h2 className="text-2xl font-black text-gray-900 mb-4 leading-tight">
         아쉽지만 이번 기수에는<br/>인연이 닿지 않았습니다.
       </h2>
-      <p style={{ color: '#666', fontWeight: '500', lineHeight: '1.6', marginBottom: '32px' }}>
-        키링크는 당신의 소중한 시간을 존중합니다.<br/>
-        매칭 실패 시 안내된 대로 <span style={{ color: '#FF6F61', fontWeight: '700' }}>30% 부분 환불</span>이 진행됩니다.
+      <p className="text-gray-500 text-sm font-semibold mb-10 leading-relaxed px-10">
+        회원님의 진면목을 알아볼 새로운 인연이<br/>다음 기수에서 기다리고 있습니다! 🌸
       </p>
 
-      <div style={{ background: '#fff', borderRadius: '32px', padding: '40px', border: '1.5px solid #eee', marginBottom: '32px' }}>
-        <p style={{ fontSize: '0.85rem', color: '#888', marginBottom: '8px' }}>환불 예정 금액</p>
-        <p style={{ fontSize: '2.4rem', fontWeight: '900', color: '#111' }}>11,700원</p>
-        <p style={{ fontSize: '0.8rem', color: '#bbb', marginTop: '12px' }}>영업일 기준 1~3일 이내에 신청하신 계좌로 환불됩니다.</p>
-      </div>
+      <VoteStats session={session} />
+      <MyChoices session={session} />
+    </div>
+  );
+}
 
-      <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-        <Link href="/events" className="kl-btn-primary" style={{ padding: '18px 40px', borderRadius: '100px', fontWeight: '800', textDecoration: 'none' }}>
-          다음 기수 신청하러 가기 <ArrowRight size={18} />
-        </Link>
-        <Link href="/" style={{ padding: '18px 30px', borderRadius: '100px', fontWeight: '700', color: '#666', background: '#eee', textDecoration: 'none' }}>
-          홈으로
-        </Link>
+function PendingView({ session }: { session: GisuSession }) {
+  return (
+    <div className="text-center py-10">
+      <div className="w-16 h-16 bg-amber-50 rounded-3xl flex items-center justify-center text-amber-500 mx-auto mb-6 shadow-sm animate-pulse">
+        <Timer size={32} />
+      </div>
+      <h2 className="text-2xl font-black text-gray-900 mb-4 leading-tight">
+        현재 매칭 결과를<br/>집계 중입니다 ✨
+      </h2>
+      <p className="text-gray-500 text-sm font-semibold mb-10 leading-relaxed px-10">
+        성비와 선호도를 바탕으로 최적의 매칭을 조율하고 있습니다.<br/>완료 시 카카오톡으로 개별 안내를 드립니다.
+      </p>
+      
+      <div className="bg-white rounded-[40px] p-8 border border-gray-100 shadow-lg text-left">
+        <div className="flex items-center justify-between mb-4">
+          <span className="text-xs font-black text-gray-400">데이터 실시간 분석 현황</span>
+          <span className="text-xs font-black text-amber-500">85% 완료</span>
+        </div>
+        <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
+          <div className="w-[85%] h-full bg-gradient-to-r from-amber-300 to-amber-500 rounded-full" />
+        </div>
       </div>
     </div>
   );
 }
 
-function PendingResultView() {
+function ConfirmedView({ session }: { session: GisuSession }) {
   return (
-    <div style={{ textAlign: 'center' }}>
-      <div style={{
-        width: '100px', height: '100px', borderRadius: '50%',
-        background: 'rgba(255,111,97,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        margin: '0 auto 24px', animation: 'spin 10s linear infinite'
-      }}>
-        <Clock size={48} color="#FF6F61" />
+    <div className="text-center py-10">
+      <div className="w-16 h-16 bg-blue-50 rounded-3xl flex items-center justify-center text-blue-500 mx-auto mb-6 shadow-sm">
+        <CheckCircle2 size={32} />
       </div>
-      <h2 style={{ fontSize: '1.8rem', fontWeight: '900', color: '#111', marginBottom: '16px' }}>
-        현재 매칭 결과를 <br/>집계 중입니다 ✨
-      </h2>
-      <p style={{ color: '#666', fontWeight: '500', lineHeight: '1.6', marginBottom: '40px' }}>
-        성비와 선호도를 바탕으로 최적의 매칭을 조율하고 있습니다.<br/>
-        완료 시 카카오톡으로 개별 안내를 드립니다.
+      <h2 className="text-2xl font-black text-gray-900 mb-4">참가 확정</h2>
+      <p className="text-gray-500 text-sm font-semibold mb-10 leading-relaxed">
+        행사 참여 신청 및 결제가 완료되었습니다.<br/>행사 당일 매칭 시스템이 활성화됩니다!
       </p>
-
-      <div style={{ background: '#fff', borderRadius: '32px', padding: '32px', border: '1.5px solid #eee', marginBottom: '32px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', fontWeight: '700', fontSize: '0.9rem' }}>
-          <span>참여자 매칭률 데이터 분석</span>
-          <span style={{ color: '#FF6F61' }}>85% 완료</span>
-        </div>
-        <div style={{ height: '12px', background: '#f5f5f5', borderRadius: '6px', overflow: 'hidden' }}>
-          <div style={{ width: '85%', height: '100%', background: 'linear-gradient(90deg, #FF9A8B, #FF6F61)', borderRadius: '6px' }} />
+      <div className="bg-white rounded-[40px] p-8 border border-gray-100 shadow-lg text-left flex items-start gap-4">
+        <Info className="text-blue-400 mt-1" size={20} />
+        <div>
+           <p className="text-sm font-black text-gray-800 mb-1">매칭 가이드 안내</p>
+           <p className="text-xs text-gray-500 leading-relaxed">매칭 순위 1, 2, 3순위를 행사 종료 후 30분 이내에 입력해 주시면 더욱 정확한 결과 도출이 가능합니다.</p>
         </div>
       </div>
+    </div>
+  );
+}
 
-      <Link href="/" style={{ padding: '18px 40px', borderRadius: '100px', fontWeight: '700', color: '#666', background: '#f5f5f5', textDecoration: 'none', display: 'inline-block' }}>
-        홈으로 돌아가기
-      </Link>
-      
-      <style jsx>{`
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-      `}</style>
+function VoteStats({ session }: { session: GisuSession }) {
+  return (
+    <div className="bg-white rounded-[40px] p-8 border border-gray-100 shadow-lg mb-8 relative overflow-hidden text-left">
+      <div className="absolute top-0 right-0 p-6 text-gray-50">
+        <Star size={80} fill="currentColor" />
+      </div>
+      <h4 className="text-base font-black text-gray-900 mb-6 flex items-center gap-2">
+        <Trophy size={18} className="text-amber-400" /> 이번 기수 내가 받은 호감
+      </h4>
+      <div className="flex items-center gap-6">
+        <div className="text-5xl font-black text-pink-500 tracking-tighter shrink-0">
+          {session.voteCount}<span className="text-xl ml-1 text-pink-300 font-black">표</span>
+        </div>
+        <div className="text-gray-500 font-bold leading-relaxed text-[11px] md:text-xs">
+          "이번 기수에서 회원님은 총 {session.voteCount}표를 받으셨습니다. 숫자는 단지 통계일 뿐, 회원님의 매력은 다음 기수에서 더 빛날 거예요! ✨"
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MyChoices({ session }: { session: GisuSession }) {
+  if (session.myChoices.length === 0) return null;
+  
+  return (
+    <div className="bg-white rounded-[40px] p-8 border border-gray-100 shadow-lg mb-10 text-left">
+      <h4 className="text-base font-black text-gray-900 mb-6 flex items-center gap-2">
+         <Heart size={18} className="text-pink-500" /> 내가 선택한 호감 상대
+      </h4>
+      <div className="grid gap-3">
+        {session.myChoices.map((choice) => (
+          <div key={choice.priority} className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100 hover:bg-white hover:border-pink-200 transition-all group">
+            <div className="flex items-center gap-4">
+              <span className={`w-7 h-7 rounded-full flex items-center justify-center font-black text-white text-[10px] ${choice.priority === 1 ? 'bg-pink-500' : 'bg-gray-300'}`}>
+                {choice.priority}
+              </span>
+              <span className="font-black text-gray-900 text-sm">{choice.partnerName}</span>
+            </div>
+            <span className="text-[11px] font-bold text-blue-500">{choice.job}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
