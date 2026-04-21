@@ -38,6 +38,7 @@ export default function SocialAuth({ isAdmin, isLoading, setIsLoading }: SocialA
         // Regular user check
         const userDoc = await getDoc(doc(db, 'users', user.uid));
         if (!userDoc.exists()) {
+          console.log('New User Detected');
           toast.success('환영합니다! 필수 정보를 입력해 주세요.');
           router.push('/register/social-profile');
         } else {

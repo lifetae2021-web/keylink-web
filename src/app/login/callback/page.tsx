@@ -54,6 +54,7 @@ function KakaoCallbackContent() {
             toast.success('로그인에 성공했습니다!');
             router.replace('/');
           } else {
+            console.log('New User Detected');
             toast.success('환영합니다! 필수 정보를 입력해 주세요.');
             router.replace('/register/social-profile');
           }

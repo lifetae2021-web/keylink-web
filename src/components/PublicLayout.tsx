@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation';
 import Navbar from './Navbar';
 import Footer from './Footer';
 import CherryBlossoms from './CherryBlossoms';
+import ProfileGuard from './ProfileGuard';
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -13,6 +14,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
 
   return (
     <>
+      <ProfileGuard />
       <CherryBlossoms />
       <Navbar />
       <main>{children}</main>
