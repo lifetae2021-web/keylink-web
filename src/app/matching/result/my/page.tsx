@@ -129,17 +129,18 @@ export default function MyMatchingDashboard() {
   const selectedSession = MOCK_HISTORY.find(s => s.id === selectedGisuId) || MOCK_HISTORY[0];
 
   return (
-    <div className="min-h-screen bg-[#FDFDFD] pt-48 pb-24 px-6 md:px-12 relative overflow-hidden">
+    <div className="min-h-screen bg-[#FDFDFD] pb-24 relative overflow-hidden">
       <CherryBlossoms />
-      <div className="max-w-5xl mx-auto relative z-10">
+      {/* marginTop은 Navbar 고정 높이(85px) + 추가 여백(55px) = 140px 로 계산 */}
+      <div className="max-w-5xl mx-auto px-4 relative z-10" style={{ marginTop: '140px' }}>
         
         {/* Title Section */}
-        <header className="mb-20 text-center flex flex-col items-center">
+        <header className="mb-16 text-center flex flex-col items-center">
           <motion.h1 
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="text-4xl md:text-5xl font-black text-gray-900 mb-6 tracking-tight"
+            className="text-3xl md:text-4xl font-black text-gray-900 mb-4 tracking-tight"
           >
             내 매칭 리포트
           </motion.h1>
@@ -147,7 +148,7 @@ export default function MyMatchingDashboard() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
-            className="text-gray-400 text-base md:text-lg font-medium max-w-xl text-center"
+            className="text-gray-400 text-sm md:text-base font-medium max-w-lg text-center leading-relaxed"
           >
             시간을 넘어 이어지는 당신의 소중한 인연과<br/>참여 히스토리를 한곳에서 만나보세요.
           </motion.p>
