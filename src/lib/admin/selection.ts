@@ -23,6 +23,14 @@ export async function selectApplicant(applicationId: string): Promise<void> {
   });
 }
 
+/** 단일 신청자 보류 (status: 'held') */
+export async function holdApplicant(applicationId: string): Promise<void> {
+  await updateDoc(doc(db, APPLICATIONS, applicationId), {
+    status: 'held',
+    updatedAt: Timestamp.now(),
+  });
+}
+
 /** 입금 확인 처리 (paymentConfirmed: true, status: 'confirmed') */
 export async function confirmPayment(
   applicationId: string,

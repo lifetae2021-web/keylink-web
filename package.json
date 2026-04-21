@@ -1,6 +1,6 @@
 {
   "name": "keylink",
-  "version": "5.2.0",
+  "version": "5.4.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -11,7 +11,7 @@
   "dependencies": {
     "date-fns": "^4.1.0",
     "firebase": "^12.12.0",
-    "firebase-admin": "^13.1.0",
+    "firebase-admin": "^12.0.0",
     "framer-motion": "^12.38.0",
     "lucide-react": "^1.8.0",
     "next": "16.2.3",
