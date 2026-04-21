@@ -8,10 +8,15 @@ import { onAuthStateChanged, User } from 'firebase/auth';
 import { doc, getDoc, updateDoc, serverTimestamp, deleteField } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import {
-  LogOut, ArrowLeft, Camera, ChevronDown, ChevronUp, X, Check, Edit3, Package, Upload, Trash2
+  LogOut, ArrowLeft, Camera, ChevronDown, ChevronUp, X, Check, Edit3, Package, Upload,
+  Clock, Banknote, CheckCircle2, XCircle, Vote, Lock
 } from 'lucide-react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
+import { subscribeMyApplication } from '@/lib/firestore/applications';
+import { subscribeSession } from '@/lib/firestore/sessions';
+import { getMyVote } from '@/lib/firestore/votes';
+import { Application, Session } from '@/lib/types';
 
 const EMPTY = '미입력';
 
@@ -66,6 +71,11 @@ export default function MyPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
+  // v4.5.0: 신청 현황 상태 관리
+  const [application, setApplication] = useState<Application | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [hasVoted, setHasVoted] = useState(false);
+
   // Edit Form State
   const [editForm, setEditForm] = useState<any>({
     name: '', gender: '', phone: '', instaId: '', birthDate: '', height: '', weight: '',
@@ -100,7 +110,7 @@ export default function MyPage() {
             weight: d.weight || '',
             residence: d.residence || '',
             workplace: d.workplace || '',
-            jobRole: d.jobRole || d.workplace || '', // Fallback for transition
+            jobRole: d.jobRole || d.workplace || '',
             avoidAcquaintance: d.avoidAcquaintance || '',
             idealType: d.idealType || '',
             nonIdealType: d.nonIdealType || '',
@@ -113,7 +123,6 @@ export default function MyPage() {
           };
           setEditForm(initialForm);
           
-          // Migrate/Consolidate legacy categories
           const savedPhotos = d.photos || d.profilePhotos || [];
           const legacyFace = d.facePhotos || [];
           const legacyBody = d.bodyPhotos || [];
@@ -122,6 +131,19 @@ export default function MyPage() {
         }
       } catch (e) { console.error(e); }
       finally { setLoading(false); }
+
+      // v4.5.0: 신청서 실시간 구독
+      const unsubApp = subscribeMyApplication(currentUser.uid, async (app) => {
+        setApplication(app);
+        if (app?.sessionId) {
+          const unsubSession = subscribeSession(app.sessionId, (s) => setSession(s));
+          // 투표 여부 확인
+          const vote = await getMyVote(app.sessionId, currentUser.uid);
+          setHasVoted(!!vote);
+          return () => unsubSession();
+        }
+      });
+      return () => unsubApp();
     });
     return () => unsubscribe();
   }, [router]);
@@ -479,22 +501,13 @@ export default function MyPage() {
           )}
         </div>
 
-        {/* ─── 신청 상품 정보 ─── */}
-        <div style={{ background: '#FFFFFF', borderRadius: '24px', boxShadow: '0 10px 40px rgba(255,111,97,0.08)', border: '1px solid #FFE8E5', marginBottom: '20px', overflow: 'hidden' }}>
-          <div style={{ padding: '20px 24px', borderBottom: '1px solid #FFF0EE', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <Package size={20} color="#FF6F61" />
-            <h2 style={{ fontSize: '1.1rem', fontWeight: '900', color: '#111' }}>신청 상품 정보</h2>
-          </div>
-          <div style={{ padding: '40px 24px', textAlign: 'center' }}>
-            <div style={{ width: '60px', height: '60px', borderRadius: '18px', background: '#FFF5F4', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-              <Package size={28} color="#FFDBE9" />
-            </div>
-            <p style={{ color: '#CCC', fontWeight: '700', fontSize: '0.95rem' }}>신청 내역이 존재하지 않습니다.</p>
-            <Link href="/events" style={{ display: 'inline-block', marginTop: '20px', padding: '14px 32px', borderRadius: '100px', background: 'linear-gradient(135deg, #FF6F61, #FF9A9E)', color: '#fff', fontWeight: '800', fontSize: '0.9rem', textDecoration: 'none', boxShadow: '0 8px 16px rgba(255,111,97,0.2)' }}>
-              새로운 기수 신청하기
-            </Link>
-          </div>
-        </div>
+        {/* ─── v4.5.0: 신청 현황 상태 블록 ─── */}
+        <ApplicationStatusBlock
+          application={application}
+          session={session}
+          userId={user?.uid || ''}
+          hasVoted={hasVoted}
+        />
 
         {/* ─── LOGOUT ─── */}
         <button onClick={async () => { await auth.signOut(); router.push('/'); }}
@@ -504,9 +517,9 @@ export default function MyPage() {
           <LogOut size={18} /> 안전하게 로그아웃
         </button>
 
-        <p style={{ textAlign: 'center', marginTop: '32px', color: '#BBB', fontSize: '0.8rem', fontWeight: '500' }}>
+        <div style={{ textAlign: 'center', marginTop: '32px', color: '#BBB', fontSize: '0.8rem', fontWeight: '500' }}>
           매칭을 위한 모든 정보는 암호화되어 보호됩니다.
-        </p>
+        </div>
       </div>
 
       <style>{`
@@ -515,5 +528,158 @@ export default function MyPage() {
         .kl-scrollbar::-webkit-scrollbar-thumb { background: #FFDBE9; borderRadius: 4px; }
       `}</style>
     </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// v4.5.0 ApplicationStatusBlock — 신청 현황 상태별 UI
+// ─────────────────────────────────────────────────────────────────────────────
+interface StatusBlockProps {
+  application: Application | null;
+  session: Session | null;
+  userId: string;
+  hasVoted: boolean;
+}
+
+function ApplicationStatusBlock({ application, session, hasVoted }: StatusBlockProps) {
+  const card = (content: React.ReactNode) => (
+    <div style={{
+      background: '#FFFFFF', borderRadius: '24px',
+      boxShadow: '0 10px 40px rgba(255,111,97,0.08)',
+      border: '1px solid #FFE8E5', marginBottom: '20px', overflow: 'hidden'
+    }}>
+      {content}
+    </div>
+  );
+
+  const header = (icon: React.ReactNode, title: string, badgeColor: string, badgeText: string) => (
+    <div style={{ padding: '20px 24px', borderBottom: '1px solid #FFF0EE', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        {icon}
+        <span style={{ fontSize: '1.05rem', fontWeight: '900', color: '#111' }}>{title}</span>
+      </div>
+      <span style={{ padding: '5px 14px', borderRadius: '100px', background: badgeColor, fontSize: '0.75rem', fontWeight: '800', color: '#fff' }}>{badgeText}</span>
+    </div>
+  );
+
+  // ── 신청 없음 ──
+  if (!application) {
+    return card(
+      <>
+        {header(<Package size={20} color="#FF6F61" />, '참여 신청 현황', '#DDD', '신청 없음')}
+        <div style={{ padding: '40px 24px', textAlign: 'center' }}>
+          <Package size={32} color="#FFDBE9" style={{ marginBottom: '14px' }} />
+          <p style={{ color: '#CCC', fontWeight: '700', fontSize: '0.9rem', marginBottom: '20px' }}>신청 내역이 없습니다.</p>
+          <Link href="/events" style={{ display: 'inline-block', padding: '14px 32px', borderRadius: '100px', background: 'linear-gradient(135deg, #FF6F61, #FF9A9E)', color: '#fff', fontWeight: '800', fontSize: '0.9rem', textDecoration: 'none' }}>
+            새로운 기수 신청하기 →
+          </Link>
+        </div>
+      </>
+    );
+  }
+
+  const sessionTitle = application.sessionId || '해당 기수';
+
+  // ── 검토 중 (applied) ──
+  if (application.status === 'applied') {
+    return card(
+      <>
+        {header(<Clock size={20} color="#F59E0B" />, `${sessionTitle} 신청 완료`, '#F59E0B', '검토 중')}
+        <div style={{ padding: '32px 24px', textAlign: 'center' }}>
+          <div style={{ width: '64px', height: '64px', borderRadius: '20px', background: '#FFFBEB', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+            <Clock size={32} color="#F59E0B" />
+          </div>
+          <p style={{ color: '#374151', fontWeight: '800', fontSize: '1.05rem', marginBottom: '8px' }}>신청이 접수되었습니다!</p>
+          <p style={{ color: '#9CA3AF', fontWeight: '600', fontSize: '0.85rem', lineHeight: 1.6 }}>
+            운영진이 성비 및 조건을 검토하고 있습니다.<br />선발 결과는 개별 안내될 예정입니다.
+          </p>
+        </div>
+      </>
+    );
+  }
+
+  // ── 선발됨 — 입금 안내 (selected) ──
+  if (application.status === 'selected') {
+    return card(
+      <>
+        {header(<Banknote size={20} color="#8B5CF6" />, `${sessionTitle} 선발 완료`, '#8B5CF6', '입금 대기')}
+        <div style={{ padding: '28px 24px' }}>
+          <div style={{ background: '#F5F3FF', borderRadius: '16px', padding: '20px', marginBottom: '20px' }}>
+            <p style={{ color: '#5B21B6', fontWeight: '900', fontSize: '1rem', marginBottom: '4px' }}>🎉 선발되셨습니다!</p>
+            <p style={{ color: '#6D28D9', fontWeight: '600', fontSize: '0.85rem', lineHeight: 1.6 }}>
+              아래 계좌로 참가비를 입금해 주시면 참가 확정이 완료됩니다.
+            </p>
+          </div>
+          <div style={{ background: '#FFFBEB', borderRadius: '16px', padding: '20px', border: '1px solid #FCD34D' }}>
+            <p style={{ color: '#92400E', fontWeight: '700', fontSize: '0.82rem', marginBottom: '12px' }}>📌 입금 안내</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {[['은행', '카카오뱅크'], ['계좌', '3333-01-8290604'], ['예금주', '박종현'], ['금액', '35,000원']].map(([label, val]) => (
+                <div key={label} style={{ display: 'flex', gap: '12px' }}>
+                  <span style={{ minWidth: '48px', color: '#9CA3AF', fontSize: '0.82rem', fontWeight: '700' }}>{label}</span>
+                  <span style={{ color: '#111', fontSize: '0.9rem', fontWeight: '800' }}>{val}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <p style={{ color: '#9CA3AF', fontSize: '0.78rem', fontWeight: '600', textAlign: 'center', marginTop: '16px' }}>
+            입금 확인 후 운영진이 직접 확정 처리합니다.
+          </p>
+        </div>
+      </>
+    );
+  }
+
+  // ── 참가 확정 (confirmed) ──
+  if (application.status === 'confirmed') {
+    const isVotingActive = session?.status === 'voting';
+    const canVote = isVotingActive && !hasVoted;
+
+    return card(
+      <>
+        {header(<CheckCircle2 size={20} color="#10B981" />, `${sessionTitle} 참가 확정`, '#10B981', '참가 확정 ✓')}
+        <div style={{ padding: '28px 24px', textAlign: 'center' }}>
+          <div style={{ width: '64px', height: '64px', borderRadius: '20px', background: '#ECFDF5', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+            <CheckCircle2 size={32} color="#10B981" />
+          </div>
+          <p style={{ color: '#065F46', fontWeight: '900', fontSize: '1.05rem', marginBottom: '8px' }}>참가가 확정되었습니다!</p>
+          <p style={{ color: '#9CA3AF', fontWeight: '600', fontSize: '0.85rem', marginBottom: '28px', lineHeight: 1.6 }}>
+            행사 당일 멋진 만남이 기다리고 있습니다. 🌸
+          </p>
+
+          {/* 투표 버튼 영역 */}
+          {hasVoted ? (
+            <div style={{ padding: '16px 24px', background: '#F0FDF4', borderRadius: '14px', color: '#15803D', fontWeight: '700', fontSize: '0.9rem' }}>
+              ✅ 투표를 이미 완료하셨습니다.
+            </div>
+          ) : canVote ? (
+            <Link href={`/vote/${application.sessionId}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '16px 36px', borderRadius: '100px', background: 'linear-gradient(135deg, #FF6F61, #FF9A9E)', color: '#fff', fontWeight: '800', fontSize: '0.95rem', textDecoration: 'none', boxShadow: '0 8px 20px rgba(255,111,97,0.3)' }}>
+              <Vote size={20} /> 지금 투표하기
+            </Link>
+          ) : (
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '16px 28px', borderRadius: '14px', background: '#F3F4F6', color: '#9CA3AF', fontWeight: '700', fontSize: '0.85rem' }}>
+              <Lock size={16} /> 행사 당일에 투표가 활성화됩니다
+            </div>
+          )}
+
+          <Link href="/matching/result/my" style={{ display: 'block', marginTop: '16px', color: '#FF6F61', fontWeight: '700', fontSize: '0.85rem', textDecoration: 'none' }}>
+            내 매칭 리포트 보기 →
+          </Link>
+        </div>
+      </>
+    );
+  }
+
+  // ── 취소 (cancelled) ──
+  return card(
+    <>
+      {header(<XCircle size={20} color="#9CA3AF" />, `${sessionTitle} 참여 내역`, '#9CA3AF', '취소됨')}
+      <div style={{ padding: '32px 24px', textAlign: 'center' }}>
+        <XCircle size={32} color="#E5E7EB" style={{ marginBottom: '14px' }} />
+        <p style={{ color: '#9CA3AF', fontWeight: '700', fontSize: '0.9rem', marginBottom: '20px' }}>이번 기수 참여가 취소되었습니다.</p>
+        <Link href="/events" style={{ display: 'inline-block', padding: '14px 32px', borderRadius: '100px', background: 'linear-gradient(135deg, #FF6F61, #FF9A9E)', color: '#fff', fontWeight: '800', fontSize: '0.9rem', textDecoration: 'none' }}>
+          다음 기수 신청하기 →
+        </Link>
+      </div>
+    </>
   );
 }
