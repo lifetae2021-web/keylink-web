@@ -131,7 +131,7 @@ export default function EventsPage() {
                     {active.status === 'open' ? '모집 중' : '종료'}
                   </span>
                 </div>
-                <p style={{ fontSize: '0.78rem', color: '#555' }}>{active.title}</p>
+                </div>
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -154,11 +154,9 @@ export default function EventsPage() {
             </div>
 
             {/* Info grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-5">
               {[
                 { label: '일시',   value: `${format(active.date, 'MM. dd (E)', { locale: ko })} ${active.time}` },
-                { label: '장소',   value: active.venue },
-                { label: '참가비', value: `₩${active.price.toLocaleString()}` },
                 { label: '연령대', value: `${active.targetMaleAge}년생` },
               ].map(info => (
                 <div key={info.label} style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 8, padding: '12px 14px' }}>

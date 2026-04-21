@@ -4,7 +4,9 @@ import { useState, useRef, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { 
+  collection, query, where, onSnapshot, doc, getDoc 
+} from 'firebase/firestore';
 import {
   LayoutDashboard, Users, Calendar, TrendingUp,
   Settings, LogOut, Bell, Menu, X,
@@ -13,16 +15,6 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { version } from '../../../package.json';
-
-const NAV = [
-  { label: '대시보드',      icon: LayoutDashboard, path: '/admin' },
-  { label: '회원 관리',      icon: Users,           path: '/admin/users' },
-  { label: '신청 관리',      icon: FileText,        path: '/admin/applications', badge: 2 },
-  { label: '행사 / 매칭',   icon: Calendar,        path: '/admin/events' },
-  { label: '매출 통계',     icon: TrendingUp,      path: '/admin/revenue' },
-  { label: '콘텐츠 편집',   icon: FileText,        path: '/admin/cms' },
-  { label: '시스템 설정',   icon: Settings,        path: '/admin/settings' },
-];
 
 const PAGE_TITLE: Record<string, string> = {
   '/admin':               '대시보드',
@@ -48,7 +40,36 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [notiOpen, setNotiOpen]       = useState(false);
   const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS);
   const [authState, setAuthState] = useState<'loading' | 'admin' | 'denied'>('loading');
+  const [pendingCount, setPendingCount] = useState(0);
   const notiRef = useRef<HTMLDivElement>(null);
+
+  const NAV = [
+    { label: '대시보드',      icon: LayoutDashboard, path: '/admin' },
+    { label: '회원 관리',      icon: Users,           path: '/admin/users' },
+    { label: '신청 관리',      icon: FileText,        path: '/admin/applications', badge: pendingCount },
+    { label: '행사 / 매칭',   icon: Calendar,        path: '/admin/events' },
+    { label: '매출 통계',     icon: TrendingUp,      path: '/admin/revenue' },
+    { label: '콘텐츠 편집',   icon: FileText,        path: '/admin/cms' },
+    { label: '시스템 설정',   icon: Settings,        path: '/admin/settings' },
+  ];
+
+  // 1. 신청 관리 뱃지 리얼타임 연동 (applied OR selected)
+  useEffect(() => {
+    if (authState !== 'admin') return;
+
+    const q = query(
+      collection(db, 'applications'),
+      where('status', 'in', ['applied', 'selected'])
+    );
+
+    const unsub = onSnapshot(q, (snap) => {
+      setPendingCount(snap.size);
+    }, (err) => {
+      console.error('Error fetching application badge count:', err);
+    });
+
+    return () => unsub();
+  }, [authState]);
 
   const unreadCount = notifications.filter(n => !n.read).length;
   const pageTitle   = PAGE_TITLE[pathname] ?? '관리자';
