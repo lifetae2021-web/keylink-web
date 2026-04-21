@@ -23,7 +23,8 @@ service cloud.firestore {
     // ─────────────────────────────────────
     match /users/{userId} {
       allow read: if isUser(userId) || isAdmin();
-      allow write: if isUser(userId) || isAdmin();
+      // 사용자는 본인 문서를 수정할 수 있지만, role 필드는 관리자만 수정 가능해야 함
+      allow write: if isAdmin() || (isUser(userId) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']));
     }
 
     // ─────────────────────────────────────

@@ -1,17 +1,19 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Search, CheckCircle, XCircle, Eye,
   Download, ShieldCheck, ChevronLeft, ChevronRight, Loader2,
-  Filter, ArrowUpDown, ArrowUp, ArrowDown
+  Filter, ArrowUpDown, ArrowUp, ArrowDown, Ticket,
+  UserPlus, Award, AlertCircle
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { db } from '@/lib/firebase';
 import { 
-  collection, getDocs, doc, updateDoc, query, orderBy, Timestamp 
+  collection, onSnapshot, doc, updateDoc, query, orderBy, Timestamp 
 } from 'firebase/firestore';
 import { format } from 'date-fns';
+import CouponModal from './CouponModal';
 
 type Status = 'all' | 'pending' | 'verified' | 'rejected';
 
@@ -20,6 +22,8 @@ const STATUS_CFG = {
   pending:  { label: '승인 대기', color: '#facc15', bg: 'rgba(250,204,21,0.1)'  },
   rejected: { label: '인증 반려', color: '#ef4444', bg: 'rgba(239,68,68,0.1)'   },
 };
+
+const ROLES = ['일반회원', '신뢰회원', 'VIP회원', '블랙리스트', 'admin'];
 
 const TABS: { key: Status; label: string }[] = [
   { key: 'all',      label: '전체'    },
@@ -52,72 +56,93 @@ export default function UsersPage() {
   const [filter, setFilter] = useState<Status>('all');
   const [genderFilter, setGenderFilter] = useState<'all' | 'male' | 'female'>('all');
   const [sortConfig, setSortConfig] = useState<{ key: 'age' | 'createdAt', direction: 'asc' | 'desc' | null }>({ key: 'createdAt', direction: 'desc' });
-
-  const fetchUsers = async () => {
-    try {
-      setIsLoading(true);
-      const q = query(collection(db, 'users'), orderBy('createdAt', 'desc'));
-      const querySnapshot = await getDocs(q);
-      const fetchedUsers = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      } as any));
-      setUsers(fetchedUsers);
-    } catch (error) {
-      console.error('Error fetching users:', error);
-      toast.error('회원 데이터를 불러오는 중 오류가 발생했습니다.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  
+  // Custom Pagination for performance (Basic Windowing equivalent)
+  const [pageSize, setPageSize] = useState(20);
+  
+  // Modal states
+  const [selectedUserForCoupon, setSelectedUserForCoupon] = useState<any>(null);
 
   useEffect(() => {
-    fetchUsers();
+    setIsLoading(true);
+    const q = query(collection(db, 'users'), orderBy('createdAt', 'desc'));
+    
+    // onSnapshot for real-time updates as requested
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const fetchedUsers = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setUsers(fetchedUsers);
+      setIsLoading(false);
+    }, (error) => {
+      console.error('Error fetching users:', error);
+      toast.error('회원 데이터를 불러오는 중 오류가 발생했습니다.');
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
 
-  const counts = {
+  const counts = useMemo(() => ({
     all:      users.length,
     pending:  users.filter(u => (u.status || 'pending') === 'pending').length,
     verified: users.filter(u => u.status === 'verified').length,
     rejected: users.filter(u => u.status === 'rejected').length,
-  };
+  }), [users]);
 
-  const filtered = users.filter(u => {
-    const q = search.toLowerCase();
-    const matchSearch = 
-      (u.name || '').toLowerCase().includes(q) || 
-      (u.job || '').toLowerCase().includes(q) || 
-      (u.email || '').toLowerCase().includes(q);
-    const matchFilter = filter === 'all' || (u.status || 'pending') === filter;
-    const matchGender = genderFilter === 'all' || u.gender === genderFilter;
-    return matchSearch && matchFilter && matchGender;
-  }).sort((a, b) => {
-    if (!sortConfig.direction || !sortConfig.key) return 0;
+  const filtered = useMemo(() => {
+    return users.filter(u => {
+      const q = search.toLowerCase();
+      const matchSearch = 
+        (u.name || '').toLowerCase().includes(q) || 
+        (u.job || '').toLowerCase().includes(q) || 
+        (u.email || '').toLowerCase().includes(q);
+      const matchFilter = filter === 'all' || (u.status || 'pending') === filter;
+      const matchGender = genderFilter === 'all' || u.gender === genderFilter;
+      return matchSearch && matchFilter && matchGender;
+    }).sort((a, b) => {
+      if (!sortConfig.direction || !sortConfig.key) return 0;
 
-    let valA: any, valB: any;
+      let valA: any, valB: any;
 
-    if (sortConfig.key === 'age') {
-      const getAge = (birth?: string) => birth ? new Date().getFullYear() - parseInt(birth.split('-')[0]) + 1 : 0;
-      valA = getAge(a.birthDate);
-      valB = getAge(b.birthDate);
-    } else {
-      valA = a[sortConfig.key]?.seconds || 0;
-      valB = b[sortConfig.key]?.seconds || 0;
-    }
+      if (sortConfig.key === 'age') {
+        const getAge = (birth?: string) => birth ? new Date().getFullYear() - parseInt(birth.split('-')[0]) + 1 : 0;
+        valA = getAge(a.birthDate);
+        valB = getAge(b.birthDate);
+      } else {
+        valA = a[sortConfig.key]?.seconds || 0;
+        valB = b[sortConfig.key]?.seconds || 0;
+      }
 
-    if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
-    if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
-    return 0;
-  });
+      if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
+      if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [users, search, filter, genderFilter, sortConfig]);
+
+  // Windowing: Current items to display
+  const pagedItems = useMemo(() => filtered.slice(0, pageSize), [filtered, pageSize]);
 
   const toggleSort = (key: 'age' | 'createdAt') => {
     setSortConfig(prev => {
       if (prev.key === key) {
         if (prev.direction === 'asc') return { key, direction: 'desc' };
-        if (prev.direction === 'desc') return { key: 'createdAt', direction: 'desc' }; // Reset to default
+        if (prev.direction === 'desc') return { key: 'createdAt', direction: 'desc' };
       }
       return { key, direction: 'asc' };
     });
+  };
+
+  const updateRole = async (userId: string, newRole: string) => {
+    try {
+      const userRef = doc(db, 'users', userId);
+      await updateDoc(userRef, { role: newRole });
+      toast.success('권한이 업데이트되었습니다.');
+    } catch (error) {
+      console.error(error);
+      toast.error('권한 변경에 실패했습니다.');
+    }
   };
 
   const approve = async (id: string, name: string) => {
@@ -127,7 +152,6 @@ export default function UsersPage() {
         status: 'verified',
         updatedAt: Timestamp.now()
       });
-      setUsers(prev => prev.map(u => u.id === id ? { ...u, status: 'verified' } : u));
       toast.success(`${name} 승인 완료`);
     } catch (error) {
       console.error('Approval error:', error);
@@ -142,7 +166,6 @@ export default function UsersPage() {
         status: 'rejected',
         updatedAt: Timestamp.now()
       });
-      setUsers(prev => prev.map(u => u.id === id ? { ...u, status: 'rejected' } : u));
       toast.error(`${name} 반려 처리`);
     } catch (error) {
       console.error('Rejection error:', error);
@@ -157,7 +180,7 @@ export default function UsersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h2 style={{ fontSize: '1.1rem', fontWeight: 700 }}>회원 관리</h2>
-          <p style={{ fontSize: '0.8rem', color: '#555', marginTop: 2 }}>전체 가입자 현황 및 회원 정보를 관리합니다. <span className="text-[10px] opacity-30">v3.5.3</span></p>
+          <p style={{ fontSize: '0.8rem', color: '#555', marginTop: 2 }}>실시간 데이터 동기화 활성화됨 <span className="text-[10px] opacity-30 text-[#FF6F61] ml-2">Live</span></p>
         </div>
         <button
           className="flex items-center gap-2 rounded-lg transition-colors hover:text-white"
@@ -197,31 +220,19 @@ export default function UsersPage() {
           </button>
         ))}
 
-        {/* Gender Filter */}
-        <div className="relative">
-          <select
-            value={genderFilter}
-            onChange={e => setGenderFilter(e.target.value as any)}
-            style={{
-              padding: '7px 32px 7px 12px',
-              fontSize: '0.82rem',
-              background: 'rgba(255,255,255,0.04)',
-              border: '1px solid rgba(255,111,97,0.3)',
-              borderRadius: 8,
-              color: genderFilter === 'all' ? '#888' : '#FF6F61',
-              outline: 'none',
-              cursor: 'pointer',
-              appearance: 'none',
-              fontWeight: genderFilter === 'all' ? 400 : 700,
-            }}
-          >
-            <option value="all">전체 성별</option>
-            <option value="male">남성</option>
-            <option value="female">여성</option>
-          </select>
-          <div style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', opacity: 0.5 }}>
-            <Filter size={12} />
-          </div>
+        <div className="w-[1px] h-6 bg-white/10 mx-2" />
+
+        {/* Gender Filter Tabs */}
+        <div className="flex bg-white/5 p-1 rounded-lg border border-white/5">
+          {['all', 'male', 'female'].map((g) => (
+            <button
+              key={g}
+              onClick={() => setGenderFilter(g as any)}
+              className={`px-3 py-1 text-[0.75rem] font-semibold rounded-md transition-all ${genderFilter === g ? 'bg-[#FF6F61] text-white shadow-lg' : 'text-white/40 hover:text-white'}`}
+            >
+              {g === 'all' ? '전체' : g === 'male' ? '남성' : '여성'}
+            </button>
+          ))}
         </div>
 
         {/* Search */}
@@ -266,10 +277,10 @@ export default function UsersPage() {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
-                  {['회원정보', '직업 / 나이', '상태', '가입일', '관리'].map((h, i) => {
+                  {['회원정보', '직업 / 나이', '상태 / 권한', '활동 지표', '가입일', '관리'].map((h, i) => {
                     const isSortable = h === '직업 / 나이' || h === '가입일';
-                    const sortKey = h === '직업 / 나이' ? 'age' : 'createdAt';
-                    const isActive = sortConfig.key === sortKey;
+                    const sortKey = (h === '직업 / 나이') ? 'age' : (h === '가입일' ? 'createdAt' : null);
+                    const isActive = sortKey && sortConfig.key === sortKey;
 
                     return (
                       <th
@@ -277,7 +288,7 @@ export default function UsersPage() {
                         onClick={() => isSortable && toggleSort(sortKey as any)}
                         style={{
                           padding: '12px 20px',
-                          textAlign: i === 4 ? 'right' : 'left',
+                          textAlign: (i === 5) ? 'right' : 'left',
                           fontSize: '0.72rem',
                           fontWeight: 600,
                           color: isActive ? '#FF6F61' : '#444',
@@ -290,7 +301,7 @@ export default function UsersPage() {
                         }}
                         className={isSortable ? 'hover:text-white/40 transition-colors' : ''}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', justifyContent: i === 4 ? 'flex-end' : 'flex-start' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', justifyContent: i === 5 ? 'flex-end' : 'flex-start' }}>
                           {h}
                           {isSortable && (
                             <span style={{ opacity: isActive ? 1 : 0.3 }}>
@@ -308,7 +319,7 @@ export default function UsersPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map(u => {
+                {pagedItems.map(u => {
                   const currentStatus = (u.status || 'pending') as keyof typeof STATUS_CFG;
                   const sc = STATUS_CFG[currentStatus];
                   return (
@@ -362,15 +373,55 @@ export default function UsersPage() {
                         <p style={{ fontSize: '0.75rem', color: '#555', marginTop: 1 }}>{u.birthDate ? `${new Date().getFullYear() - parseInt(u.birthDate.split('-')[0]) + 1}세` : '-'}</p>
                       </td>
 
-                      {/* 상태 */}
+                      {/* 상태 / 권한 */}
                       <td style={{ padding: '14px 20px' }}>
-                        <span
-                          className="inline-flex items-center gap-1.5"
-                          style={{ fontSize: '0.72rem', fontWeight: 600, padding: '4px 10px', borderRadius: 20, color: sc.color, background: sc.bg }}
-                        >
-                          <span style={{ width: 5, height: 5, borderRadius: '50%', background: sc.color, display: 'inline-block' }} />
-                          {sc.label}
-                        </span>
+                        <div className="flex flex-col gap-2">
+                          <span
+                            className="inline-flex items-center gap-1.5"
+                            style={{ width: 'fit-content', fontSize: '0.72rem', fontWeight: 600, padding: '4px 10px', borderRadius: 20, color: sc.color, background: sc.bg }}
+                          >
+                            <span style={{ width: 5, height: 5, borderRadius: '50%', background: sc.color, display: 'inline-block' }} />
+                            {sc.label}
+                          </span>
+                          
+                          <select 
+                            value={u.role || '일반회원'} 
+                            onChange={(e) => updateRole(u.id, e.target.value)}
+                            className="bg-white/5 border border-white/10 rounded-md text-[10px] px-2 py-1 text-white outline-none focus:border-[#FF6F61]/50 cursor-pointer"
+                          >
+                            {ROLES.map(r => <option key={r} value={r} className="bg-[#141417]">{r}</option>)}
+                          </select>
+                        </div>
+                      </td>
+
+                      {/* 활동 지표 (Badges) */}
+                      <td style={{ padding: '14px 20px' }}>
+                        <div className="flex items-center gap-2">
+                          <div className="group relative">
+                            <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 text-[10px] font-bold border border-blue-500/20">
+                              <UserPlus size={10} /> {u.participationCount || 0}
+                            </span>
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-2 bg-black text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10 border border-white/10">
+                              총 참여 횟수
+                            </div>
+                          </div>
+                          <div className="group relative">
+                            <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold border border-emerald-500/20">
+                              <Award size={10} /> {u.matchCount || 0}
+                            </span>
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-2 bg-black text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10 border border-white/10">
+                              매칭 성공
+                            </div>
+                          </div>
+                          <div className="group relative">
+                            <span className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold border ${u.noShowCount > 0 ? 'bg-rose-500/20 text-rose-400 border-rose-500/30' : 'bg-white/5 text-white/20 border-white/5'}`}>
+                              <AlertCircle size={10} /> {u.noShowCount || 0}
+                            </span>
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-2 bg-black text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10 border border-white/10">
+                              노쇼 기록
+                            </div>
+                          </div>
+                        </div>
                       </td>
 
                       {/* 가입일 */}
@@ -383,14 +434,20 @@ export default function UsersPage() {
                       {/* 관리 */}
                       <td style={{ padding: '14px 20px' }}>
                         <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={() => setSelectedUserForCoupon(u)}
+                            className="flex items-center gap-1 rounded-lg transition-colors"
+                            style={{ padding: '5px 10px', fontSize: '0.75rem', fontWeight: 600, background: 'rgba(255,111,97,0.08)', color: '#FF6F61', border: '1px solid rgba(255,111,97,0.15)' }}
+                          >
+                            <Ticket size={12} /> 쿠폰
+                          </button>
+                          
                           {(u.status || 'pending') === 'pending' && (
                             <>
                               <button
                                 onClick={() => approve(u.id, u.name)}
                                 className="flex items-center gap-1 rounded-lg transition-colors"
                                 style={{ padding: '5px 10px', fontSize: '0.75rem', fontWeight: 600, background: 'rgba(74,222,128,0.08)', color: '#4ade80', border: '1px solid rgba(74,222,128,0.15)' }}
-                                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(74,222,128,0.14)')}
-                                onMouseLeave={e => (e.currentTarget.style.background = 'rgba(74,222,128,0.08)')}
                               >
                                 <CheckCircle size={12} /> 승인
                               </button>
@@ -398,8 +455,6 @@ export default function UsersPage() {
                                 onClick={() => reject(u.id, u.name)}
                                 className="flex items-center gap-1 rounded-lg transition-colors"
                                 style={{ padding: '5px 10px', fontSize: '0.75rem', fontWeight: 600, background: 'rgba(239,68,68,0.08)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.15)' }}
-                                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(239,68,68,0.14)')}
-                                onMouseLeave={e => (e.currentTarget.style.background = 'rgba(239,68,68,0.08)')}
                               >
                                 <XCircle size={12} /> 반려
                               </button>
@@ -408,8 +463,6 @@ export default function UsersPage() {
                           <button
                             className="flex items-center justify-center rounded-lg transition-colors"
                             style={{ width: 30, height: 30, color: '#444', background: 'transparent' }}
-                            onMouseEnter={e => { (e.currentTarget.style.color = '#ccc'); (e.currentTarget.style.background = 'rgba(255,255,255,0.06)'); }}
-                            onMouseLeave={e => { (e.currentTarget.style.color = '#444'); (e.currentTarget.style.background = 'transparent'); }}
                           >
                             <Eye size={14} />
                           </button>
@@ -423,24 +476,30 @@ export default function UsersPage() {
           </div>
         )}
 
-        {/* Pagination (Mock) */}
+        {/* Loading More / Windows Mechanism */}
         <div className="flex items-center justify-between px-5 py-3" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
           <p style={{ fontSize: '0.75rem', color: '#555' }}>
-            총 <strong style={{ color: '#ccc' }}>{filtered.length}</strong>명
+            성능 최적화: 현재 <strong style={{ color: '#ccc' }}>{pagedItems.length}</strong>명 표시 중 (전체 {filtered.length}명)
           </p>
           <div className="flex items-center gap-1">
-            <button className="flex items-center justify-center rounded-lg" style={{ width: 30, height: 30, color: '#444' }}>
-              <ChevronLeft size={15} />
-            </button>
-            <button className="flex items-center justify-center rounded-lg" style={{ width: 30, height: 30, background: '#FF6F61', color: '#fff', fontSize: '0.75rem', fontWeight: 700 }}>
-              1
-            </button>
-            <button className="flex items-center justify-center rounded-lg" style={{ width: 30, height: 30, color: '#444' }}>
-              <ChevronRight size={15} />
-            </button>
+             {filtered.length > pageSize && (
+               <button 
+                 onClick={() => setPageSize(prev => prev + 20)}
+                 className="px-4 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs font-semibold text-white/60 hover:text-white hover:bg-white/10 transition-all"
+               >
+                 더 보기
+               </button>
+             )}
           </div>
         </div>
       </div>
+      
+      {/* Modals */}
+      <CouponModal 
+        user={selectedUserForCoupon} 
+        isOpen={!!selectedUserForCoupon} 
+        onClose={() => setSelectedUserForCoupon(null)} 
+      />
     </div>
   );
 }
