@@ -88,7 +88,8 @@ export async function getApplicationsByStatus(
 /** 사용자 마이페이지용 신청서 실시간 구독 */
 export function subscribeMyApplication(
   userId: string,
-  callback: (application: Application | null) => void
+  callback: (application: Application | null) => void,
+  onError?: (error: any) => void
 ) {
   const q = query(
     collection(db, COLLECTION),
@@ -96,13 +97,20 @@ export function subscribeMyApplication(
     orderBy('appliedAt', 'desc'),
     limit(1)
   );
-  return onSnapshot(q, (snap) => {
-    if (snap.empty) {
-      callback(null);
-    } else {
-      callback(fromDoc(snap.docs[0]));
+  return onSnapshot(
+    q, 
+    (snap) => {
+      if (snap.empty) {
+        callback(null);
+      } else {
+        callback(fromDoc(snap.docs[0]));
+      }
+    },
+    (err) => {
+      console.error('subscribeMyApplication error:', err);
+      if (onError) onError(err);
     }
-  });
+  );
 }
 
 /** 신규 신청서 제출 */

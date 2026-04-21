@@ -88,6 +88,9 @@ export async function restoreApplicant(
 
   batch.update(doc(db, APPLICATIONS, applicationId), {
     status: 'confirmed',
+    paymentConfirmed: true, // 복구 시 결제 확인 상태도 함께 복구
+    isPaid: true,           // 레거시 필드 대응
+    isCancelled: false,     // 혹시 모를 취소 플러그 초기화
     updatedAt: Timestamp.now(),
   });
 
