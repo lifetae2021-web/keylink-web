@@ -27,22 +27,33 @@ export default function RootLayout({
       <body className="antialiased">
         <PublicLayout>{children}</PublicLayout>
         <div className="fixed bottom-4 right-4 z-[9999] pointer-events-none select-none text-black font-black text-lg bg-white/80 px-3 py-1 rounded-md shadow-sm">
-          v3.6.2
+          v3.6.4
         </div>
         <Toaster
-          position="top-center"
+          position="bottom-center"
           toastOptions={{
+            duration: 3000,
             style: {
-              background: '#211C18',
-              color: '#F5EFE8',
-              border: '1px solid #3A3028',
-              borderRadius: '12px',
-              padding: '14px 20px',
-              fontSize: '0.9rem',
+              background: '#FFFFFF',
+              color: '#333333',
+              border: '1px solid #eeeeee',
+              borderRadius: '16px',
+              padding: '16px 24px',
+              fontSize: '0.95rem',
+              fontWeight: '600',
+              boxShadow: '0 10px 25px rgba(0,0,0,0.08)',
             },
             success: {
-              iconTheme: { primary: '#FF6F61', secondary: '#333333' },
+              iconTheme: { primary: '#4CAF50', secondary: '#FFFFFF' },
             },
+            error: {
+              icon: '⚠️',
+              style: {
+                background: '#FFF5F4',
+                color: '#FF6F61',
+                border: '1px solid #FFEBE9',
+              }
+            }
           }}
         />
       </body>

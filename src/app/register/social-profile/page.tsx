@@ -114,7 +114,9 @@ export default function SocialProfilePage() {
         } catch (authErr: any) {
           const msg = getAuthErrorMessage(authErr.code);
           setError(msg);
-          throw new Error(msg); // Localized error
+          toast.error(msg); // Toast alert
+          window.scrollTo({ top: 0, behavior: 'smooth' }); // Synergy: scroll to top
+          throw new Error(msg); 
         }
       }
 
@@ -142,8 +144,13 @@ export default function SocialProfilePage() {
       router.push('/');
     } catch (err: any) {
       console.error('Submit Error:', err);
-      // Error state is already set if it was an Auth error
-      if (!error) setError(getAuthErrorMessage(err.code));
+      // Already toasted if it was an internal auth error, but just in case
+      if (!error) {
+        const msg = getAuthErrorMessage(err.code);
+        setError(msg);
+        toast.error(msg);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
     } finally {
       setIsSubmitting(false);
     }

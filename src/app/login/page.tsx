@@ -78,7 +78,10 @@ function LoginContent() {
       const querySnapshot = await getDocs(q);
       
       if (querySnapshot.empty) {
-        setError('아이디 또는 비밀번호가 일치하지 않습니다.');
+        const msg = '아이디 또는 비밀번호가 일치하지 않습니다.';
+        setError(msg);
+        toast.error(msg);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
         setIsLoading(false);
         return;
       }
@@ -104,7 +107,10 @@ function LoginContent() {
       router.push('/');
     } catch (error: any) {
       console.error('Firebase Auth Error (Login):', error.code, error.message, error);
-      setError(getAuthErrorMessage(error.code));
+      const msg = getAuthErrorMessage(error.code);
+      setError(msg);
+      toast.error(msg);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setIsLoading(false);
     }
