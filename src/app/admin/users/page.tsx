@@ -274,7 +274,15 @@ export default function UsersPage() {
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+              <colgroup>
+                <col style={{ width: '22%' }} />
+                <col style={{ width: '12%' }} />
+                <col style={{ width: '17%' }} />
+                <col style={{ width: '15%' }} />
+                <col style={{ width: '12%' }} />
+                <col style={{ width: '22%' }} />
+              </colgroup>
               <thead>
                 <tr>
                   {['회원정보', '직업 / 나이', '상태 / 권한', '활동 지표', '가입일', '관리'].map((h, i) => {
@@ -298,6 +306,7 @@ export default function UsersPage() {
                           whiteSpace: 'nowrap',
                           cursor: isSortable ? 'pointer' : 'default',
                           userSelect: 'none',
+                          overflow: 'hidden',
                         }}
                         className={isSortable ? 'hover:text-white/40 transition-colors' : ''}
                       >
@@ -325,11 +334,11 @@ export default function UsersPage() {
                   return (
                     <tr
                       key={u.id}
-                      style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', cursor: 'default' }}
-                      className="hover:bg-white/[0.02] transition-colors group h-[72px]"
+                      style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', cursor: 'default', height: 72 }}
+                      className="hover:bg-white/[0.02] transition-colors group"
                     >
                       {/* 회원정보 */}
-                      <td style={{ padding: '0 20px' }}>
+                      <td style={{ padding: '0 20px', verticalAlign: 'middle' }}>
                         <div className="flex items-center gap-3">
                           <div
                             className="relative flex-shrink-0 flex items-center justify-center rounded-xl font-bold"
@@ -368,13 +377,13 @@ export default function UsersPage() {
                       </td>
 
                       {/* 직업/나이 */}
-                      <td style={{ padding: '0 20px' }}>
+                      <td style={{ padding: '0 20px', verticalAlign: 'middle' }}>
                         <p style={{ fontSize: '0.85rem', color: '#bbb' }}>{u.job || '-'}</p>
                         <p style={{ fontSize: '0.75rem', color: '#555', marginTop: 1 }}>{u.birthDate ? `${new Date().getFullYear() - parseInt(u.birthDate.split('-')[0]) + 1}세` : '-'}</p>
                       </td>
 
                       {/* 상태 / 권한 */}
-                      <td style={{ padding: '0 20px' }}>
+                      <td style={{ padding: '0 20px', verticalAlign: 'middle' }}>
                         <div className="flex flex-col gap-2">
                           <span
                             className="inline-flex items-center gap-1.5"
@@ -395,7 +404,7 @@ export default function UsersPage() {
                       </td>
 
                       {/* 활동 지표 (Badges) */}
-                      <td style={{ padding: '0 20px' }}>
+                      <td style={{ padding: '0 20px', verticalAlign: 'middle' }}>
                         <div className="flex items-center gap-2">
                           <div className="group relative">
                             <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 text-[10px] font-bold border border-blue-500/20 cursor-default">
@@ -425,14 +434,14 @@ export default function UsersPage() {
                       </td>
 
                       {/* 가입일 */}
-                      <td style={{ padding: '0 20px' }}>
+                      <td style={{ padding: '0 20px', verticalAlign: 'middle' }}>
                         <span style={{ fontSize: '0.78rem', color: '#555' }}>
                           {u.createdAt?.seconds ? format(new Date(u.createdAt.seconds * 1000), 'yyyy-MM-dd') : '-'}
                         </span>
                       </td>
 
                       {/* 관리 */}
-                      <td style={{ padding: '0 20px' }}>
+                      <td style={{ padding: '0 20px', verticalAlign: 'middle', textAlign: 'right' }}>
                         <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button
                             onClick={() => setSelectedUserForCoupon(u)}
