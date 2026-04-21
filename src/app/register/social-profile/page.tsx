@@ -106,25 +106,10 @@ export default function SocialProfilePage() {
     if (!user) return;
 
     setIsSubmitting(true);
-    setError(null);
     setEmailError(null);
 
     try {
-      // 1. Sync Email to Auth System
-      if (form.email !== user.email) {
-        try {
-          await updateEmail(user, form.email);
-        } catch (authErr: any) {
-          console.log('Firebase Error Code (Auth Sync):', authErr.code);
-          const msg = getAuthErrorMessage(authErr.code);
-          setEmailError(msg);
-          toast.error('입력 정보를 다시 확인해 주세요!');
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-          throw new Error(msg); 
-        }
-      }
-
-      // 2. Setup Firestore Data
+      // 1. Setup Firestore Data
       const emailPrefix = form.email.split('@')[0] || '';
       const sanitizedPrefix = emailPrefix.replace(/[^a-z0-9]/g, '');
       const uniqueSuffix = user.uid.slice(0, 4);
@@ -144,15 +129,13 @@ export default function SocialProfilePage() {
         photoURL: user.photoURL || null,
       });
 
-      toast.success('프로필 설정이 완료되었습니다!');
+      toast.success('가입이 완료되었습니다! 🎉');
       router.push('/');
     } catch (err: any) {
       console.log('Firebase Error Code (Total):', err.code);
-      if (!emailError) {
-        toast.error('입력 정보를 다시 확인해 주세요!');
-        setEmailError(getAuthErrorMessage(err.code));
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      }
+      toast.error('입력 정보를 다시 확인해 주세요!');
+      setEmailError(getAuthErrorMessage(err.code));
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setIsSubmitting(false);
     }
