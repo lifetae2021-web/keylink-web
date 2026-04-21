@@ -28,6 +28,7 @@ export interface Session {
   maxFemale: number;
   currentMale: number;             // 확정된 남성 참여자 수 (실시간)
   currentFemale: number;           // 확정된 여성 참여자 수 (실시간)
+  region: 'busan' | 'changwon';    // 운영 지역 추가
   status: SessionStatus;
   votingUnlockedAt: Date | null;   // 투표 잠금 해제 시각
   createdAt: Date;

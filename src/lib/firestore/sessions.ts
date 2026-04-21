@@ -34,6 +34,7 @@ function fromDoc(snap: DocumentSnapshot): Session | null {
     maxFemale: d.maxFemale,
     currentMale: d.currentMale ?? 0,
     currentFemale: d.currentFemale ?? 0,
+    region: (d.region || 'busan') as 'busan' | 'changwon',
     status: d.status as SessionStatus,
     votingUnlockedAt: d.votingUnlockedAt
       ? (d.votingUnlockedAt as Timestamp).toDate()

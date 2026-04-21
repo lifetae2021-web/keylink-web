@@ -16,8 +16,8 @@ function sessionToEvent(session: Session): KeylinkEvent {
   const mock = mockEvents.find((e) => e.id === session.id);
   return {
     id: session.id,
-    title: session.title || mock?.title || '부산 로테이션 소개팅',
-    region: (mock?.region ?? 'busan') as 'busan' | 'changwon',
+    title: session.title || mock?.title || '로테이션 소개팅',
+    region: session.region,
     venue: mock?.venue ?? '서면역 인근',
     venueAddress: mock?.venueAddress ?? '',
     date: session.eventDate,
@@ -43,6 +43,7 @@ function sessionToEvent(session: Session): KeylinkEvent {
 export function EventsSection({ standalone = false }: { standalone?: boolean }) {
   const searchParams = useSearchParams();
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [selectedRegion, setSelectedRegion] = useState<'busan' | 'changwon'>('busan');
   const [liveEvents, setLiveEvents] = useState<KeylinkEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -60,7 +61,9 @@ export function EventsSection({ standalone = false }: { standalone?: boolean }) 
   }, []);
 
   const filtered = liveEvents.filter((e) => {
-    return selectedDate ? isSameDay(e.date, selectedDate) : true;
+    const dateMatch = selectedDate ? isSameDay(e.date, selectedDate) : true;
+    const regionMatch = e.region === selectedRegion;
+    return dateMatch && regionMatch;
   });
 
   return (
@@ -74,11 +77,32 @@ export function EventsSection({ standalone = false }: { standalone?: boolean }) 
       }}>
         <p style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--color-primary)', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '12px' }}>UPCOMING EVENTS</p>
         <h2 className="kl-heading-lg" style={{ marginBottom: '16px' }}>
-          <span className="kl-gradient-text">참여 신청</span>
+          <span className="kl-gradient-text">{selectedRegion === 'busan' ? '부산' : '창원'} 참여 신청</span>
         </h2>
-        <p style={{ color: 'var(--color-text-secondary)', fontSize: '1rem', marginBottom: '8px' }}>
-          부산 로테이션 소개팅 일정을 확인하고 신청하세요
+        <p style={{ color: 'var(--color-text-secondary)', fontSize: '1rem', marginBottom: '32px' }}>
+          {selectedRegion === 'busan' ? '부산' : '창원'} 로테이션 소개팅 일정을 확인하고 신청하세요
         </p>
+
+        {/* Region Filter */}
+        <div style={{ display: 'inline-flex', background: 'rgba(0,0,0,0.03)', padding: '6px', borderRadius: '14px', gap: '4px', marginBottom: '12px' }}>
+          {[
+            { id: 'busan', label: '📍 부산점' },
+            { id: 'changwon', label: '📍 창원점' }
+          ].map((r) => (
+            <button
+              key={r.id}
+              onClick={() => setSelectedRegion(r.id as 'busan' | 'changwon')}
+              style={{
+                padding: '10px 24px', borderRadius: '10px', fontSize: '0.9rem', fontWeight: '800', border: 'none', cursor: 'pointer', transition: 'all 0.2s',
+                background: selectedRegion === r.id ? '#FFF' : 'transparent',
+                color: selectedRegion === r.id ? '#FF6F61' : '#888',
+                boxShadow: selectedRegion === r.id ? '0 4px 12px rgba(0,0,0,0.05)' : 'none'
+              }}
+            >
+              {r.label}
+            </button>
+          ))}
+        </div>
       </section>
 
       {/* Calendar View */}

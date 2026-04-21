@@ -29,7 +29,7 @@ export default function HomePage() {
   const stats = [
     { value: '120기+', label: '누적 진행 회차', icon: Sparkles },
     { value: '94%', label: '참가자 만족도', icon: Star },
-    { value: '1', label: '운영 지역', icon: MapPin },
+    { value: '2', label: '운영 지역 (부산&창원)', icon: MapPin },
     { value: '6:6~10:10', label: '정원제 진행', icon: Users },
   ];
 
@@ -127,7 +127,7 @@ export default function HomePage() {
           }}>
             {[
               { num: '120기+', label: '누적 진행' },
-              { num: '부산', label: '운영 지역' },
+              { num: '부산 & 창원', label: '운영 지역' },
               { num: '6:6~10:10', label: '정원제 진행' },
             ].map((s) => (
               <div key={s.label} style={{ textAlign: 'center' }}>

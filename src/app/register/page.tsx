@@ -40,6 +40,7 @@ function RegisterForm() {
     passwordConfirm: '',
     name: '',
     gender: '',
+    interestedRegion: 'busan',
     phone: '',
     birthDate: '',
   });
@@ -154,6 +155,7 @@ function RegisterForm() {
         email: form.email,
         name: form.name,
         gender: form.gender,
+        interestedRegion: form.interestedRegion,
         phone: form.phone,
         birthDate: form.birthDate,
         createdAt: serverTimestamp(),
@@ -303,6 +305,24 @@ function RegisterForm() {
                     </button>
                   ))}
                 </div>
+              </div>
+
+              {/* Interested Region */}
+              <div>
+                <label className="kl-label" style={{ fontWeight: '800', marginBottom: '10px' }}>관심 지역 (운영 지점)</label>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  {[{ v: 'busan', label: '부산점' }, { v: 'changwon', label: '창원점' }].map(({ v, label }) => (
+                    <button key={v} type="button" onClick={() => update('interestedRegion', v)}
+                      style={{
+                        flex: 1, padding: '15px', borderRadius: '14px', border: form.interestedRegion === v ? '2px solid #33C659' : '1px solid #ddd',
+                        background: form.interestedRegion === v ? '#F0FFF4' : '#FFFFFF', color: form.interestedRegion === v ? '#33C659' : '#333333',
+                        cursor: 'pointer', fontWeight: '800', fontSize: '0.95rem', transition: 'all 0.2s'
+                      }}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <p style={{ fontSize: '0.75rem', color: '#888', marginTop: '6px' }}>주로 활동하시는 지역을 선택해 주세요.</p>
               </div>
 
               {/* Name */}
