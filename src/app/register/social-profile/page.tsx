@@ -117,13 +117,8 @@ export default function SocialProfilePage() {
         } catch (authErr: any) {
           console.log('Firebase Error Code (Auth Sync):', authErr.code);
           const msg = getAuthErrorMessage(authErr.code);
-          setError(msg);
-          
-          if (authErr.code.includes('email') || authErr.code === 'auth/operation-not-allowed') {
-            setEmailError(msg);
-          }
-          
-          toast.error(msg);
+          setEmailError(msg);
+          toast.error('입력 정보를 다시 확인해 주세요!');
           window.scrollTo({ top: 0, behavior: 'smooth' });
           throw new Error(msg); 
         }
@@ -153,10 +148,9 @@ export default function SocialProfilePage() {
       router.push('/');
     } catch (err: any) {
       console.log('Firebase Error Code (Total):', err.code);
-      if (!error) {
-        const msg = getAuthErrorMessage(err.code);
-        setError(msg);
-        toast.error(msg);
+      if (!emailError) {
+        toast.error('입력 정보를 다시 확인해 주세요!');
+        setEmailError(getAuthErrorMessage(err.code));
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     } finally {
@@ -200,33 +194,6 @@ export default function SocialProfilePage() {
           </div>
 
           <div style={{ height: '1px', background: '#f0f0f0', margin: '32px 0' }} />
-
-          {/* Error Message Display */}
-          {error && (
-            <div style={{ 
-              marginBottom: '32px', 
-              padding: '16px', 
-              background: '#FFF5F4', 
-              border: '1px solid #FFEBE9', 
-              borderRadius: '12px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              animation: 'shake 0.4s ease-in-out'
-            }}>
-              <AlertCircle size={20} color="#FF6F61" />
-              <p style={{ fontSize: '0.9rem', color: '#FF6F61', fontWeight: '600', lineHeight: 1.4 }}>
-                {error}
-              </p>
-              <style>{`
-                @keyframes shake {
-                  0%, 100% { transform: translateX(0); }
-                  25% { transform: translateX(-4px); }
-                  75% { transform: translateX(4px); }
-                }
-              `}</style>
-            </div>
-          )}
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
             {/* 1. Email */}
@@ -283,13 +250,13 @@ export default function SocialProfilePage() {
             {/* 4. BirthDate */}
             <div>
               <label className="kl-label" style={{ fontWeight: '800', marginBottom: '10px' }}>생년월일</label>
-              <input className="kl-input" style={{ borderRadius: '12px', height: '54px' }} type="text" placeholder="예: 19940530" value={form.birthDate} onChange={e => update('birthDate', e.target.value)} />
+              <input className="kl-input" style={{ borderRadius: '12px', height: '54px' }} type="text" placeholder="ex. 1994-05-30" value={form.birthDate} onChange={e => update('birthDate', e.target.value)} />
             </div>
 
             {/* 5. Phone */}
             <div>
               <label className="kl-label" style={{ fontWeight: '800', marginBottom: '10px' }}>연락처</label>
-              <input className="kl-input" style={{ borderRadius: '12px', height: '54px' }} type="tel" placeholder="010-1234-5678" value={form.phone} onChange={e => update('phone', e.target.value)} />
+              <input className="kl-input" style={{ borderRadius: '12px', height: '54px' }} type="tel" placeholder="ex. 010-0000-0000" value={form.phone} onChange={e => update('phone', e.target.value)} />
             </div>
 
             {/* Agreements */}
