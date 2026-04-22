@@ -310,18 +310,19 @@ export default function UsersPage() {
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
               <colgroup>
-                <col style={{ width: '22%' }} />
-                <col style={{ width: '12%' }} />
-                <col style={{ width: '14%' }} />
                 <col style={{ width: '18%' }} />
                 <col style={{ width: '12%' }} />
-                <col style={{ width: '22%' }} />
+                <col style={{ width: '8%' }} />
+                <col style={{ width: '14%' }} />
+                <col style={{ width: '18%' }} />
+                <col style={{ width: '10%' }} />
+                <col style={{ width: '20%' }} />
               </colgroup>
               <thead>
                 <tr>
-                  {['회원정보', '직업 / 나이', '상태 / 권한', '활동 지표', '가입일', '관리'].map((h, i) => {
-                    const isSortable = h === '직업 / 나이' || h === '가입일';
-                    const sortKey = (h === '직업 / 나이') ? 'age' : (h === '가입일' ? 'createdAt' : null);
+                  {['회원정보', '직업', '나이', '상태 / 권한', '활동 지표', '가입일', '관리'].map((h, i) => {
+                    const isSortable = h === '나이' || h === '가입일';
+                    const sortKey = (h === '나이') ? 'age' : (h === '가입일' ? 'createdAt' : null);
                     const isActive = sortKey && sortConfig.key === sortKey;
 
                     return (
@@ -330,7 +331,7 @@ export default function UsersPage() {
                         onClick={() => isSortable && toggleSort(sortKey as any)}
                         style={{
                           padding: '12px 20px',
-                          textAlign: (i === 5) ? 'right' : 'left',
+                          textAlign: (i === 6) ? 'right' : (i === 2) ? 'center' : 'left',
                           fontSize: '0.72rem',
                           fontWeight: 600,
                           color: isActive ? '#FF6F61' : '#444',
@@ -344,7 +345,7 @@ export default function UsersPage() {
                         }}
                         className={isSortable ? 'hover:text-white/40 transition-colors' : ''}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', justifyContent: i === 5 ? 'flex-end' : 'flex-start' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', justifyContent: i === 6 ? 'flex-end' : (i === 2 ? 'center' : 'flex-start') }}>
                           {h}
                           {isSortable && (
                             <span style={{ opacity: isActive ? 1 : 0.3 }}>
@@ -410,10 +411,18 @@ export default function UsersPage() {
                         </div>
                       </td>
 
-                      {/* 직업/나이 */}
+                      {/* 직업 */}
                       <td style={{ padding: '0 20px', verticalAlign: 'middle' }}>
-                        <p style={{ fontSize: '0.85rem', color: '#bbb' }}>{u.job || '-'}</p>
-                        <p style={{ fontSize: '0.75rem', color: '#555', marginTop: 1 }}>{u.birthDate ? `${new Date().getFullYear() - parseInt(u.birthDate.split('-')[0]) + 1}세` : '-'}</p>
+                        <p style={{ fontSize: '0.85rem', color: u.job ? '#bbb' : '#444', textAlign: u.job ? 'left' : 'center' }}>
+                          {u.job || '-'}
+                        </p>
+                      </td>
+
+                      {/* 나이 */}
+                      <td style={{ padding: '0 20px', verticalAlign: 'middle', textAlign: 'center' }}>
+                        <p style={{ fontSize: '0.85rem', color: u.birthDate ? '#bbb' : '#444' }}>
+                          {u.birthDate ? `${new Date().getFullYear() - parseInt(u.birthDate.split('-')[0]) + 1}세` : '-'}
+                        </p>
                       </td>
 
                       {/* 상태 / 권한 */}
@@ -440,36 +449,31 @@ export default function UsersPage() {
                       {/* 활동 지표 (Badges) */}
                       <td style={{ padding: '0 20px', verticalAlign: 'middle' }}>
                         <div className="flex items-center gap-2">
-                            <div className="group relative">
-                                <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-500 text-[10px] font-bold border border-amber-500/20 cursor-default">
-                                    <Coins size={10} /> {u.points?.toLocaleString() || 0}
-                                </span>
-                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-3 bg-gray-800 text-white text-sm leading-relaxed rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 border border-white/10 shadow-xl min-w-[140px] text-center">
-                                    보유 포인트 <br /> <strong>{u.points?.toLocaleString() || 0} P</strong>
-                                </div>
-                            </div>
+                          {/* T: Total */}
                           <div className="group relative">
                             <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 text-[10px] font-bold border border-blue-500/20 cursor-default">
-                              <UserPlus size={10} /> {u.participationCount || 0}
+                              T {u.participationCount || 0}
                             </span>
                             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-3 bg-gray-800 text-white text-sm leading-relaxed rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 border border-white/10 shadow-xl min-w-[140px] text-center">
-                              기수 프로그램 참여 <br /> <strong>총 {u.participationCount || 0}회</strong>
+                              총 참여 횟수: {u.participationCount || 0}회
                             </div>
                           </div>
+                          {/* M: Match */}
                           <div className="group relative">
                             <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold border border-emerald-500/20 cursor-default">
-                              <Award size={10} /> {u.matchCount || 0}
+                              M {u.matchCount || 0}
                             </span>
                             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-3 bg-gray-800 text-white text-sm leading-relaxed rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 border border-white/10 shadow-xl min-w-[140px] text-center">
-                              최종 커플 매칭 <br /> <strong>총 {u.matchCount || 0}회 성공</strong>
+                              매칭 성공 횟수: {u.matchCount || 0}회
                             </div>
                           </div>
+                          {/* N: No-show */}
                           <div className="group relative">
                             <span className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold border cursor-default ${u.noShowCount > 0 ? 'bg-rose-500/20 text-rose-400 border-rose-500/30' : 'bg-white/5 text-white/20 border-white/5'}`}>
-                              <AlertCircle size={10} /> {u.noShowCount || 0}
+                              N {u.noShowCount || 0}
                             </span>
                             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-3 bg-gray-800 text-white text-sm leading-relaxed rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 border border-white/10 shadow-xl min-w-[140px] text-center">
-                              노쇼 / 지각 기록 <br /> <strong className={u.noShowCount > 0 ? 'text-rose-400' : ''}>총 {u.noShowCount || 0}회 발생</strong>
+                              노쇼/지각 기록: {u.noShowCount || 0}회
                             </div>
                           </div>
                         </div>
