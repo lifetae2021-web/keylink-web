@@ -6,6 +6,8 @@ import * as admin from 'firebase-admin';
  *          Fixed null-caching: getAdminAuth() / getAdminDb() are called at runtime.
  */
 
+let initError: string | null = null;
+
 function initializeAdminApp() {
   if (admin.apps.length > 0) return;
 
@@ -14,10 +16,8 @@ function initializeAdminApp() {
   const privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY;
 
   if (!projectId || !clientEmail || !privateKey) {
-    console.warn('⚠️ [Firebase Admin] Missing environment variables. Admin SDK will not be initialized.');
-    if (!projectId) console.warn('  - FIREBASE_ADMIN_PROJECT_ID is missing');
-    if (!clientEmail) console.warn('  - FIREBASE_ADMIN_CLIENT_EMAIL is missing');
-    if (!privateKey) console.warn('  - FIREBASE_ADMIN_PRIVATE_KEY is missing');
+    initError = `Missing env vars: ID(${!!projectId}) Email(${!!clientEmail}) Key(${!!privateKey})`;
+    console.warn(`⚠️ [Firebase Admin] ${initError}`);
     return;
   }
 
@@ -36,6 +36,7 @@ function initializeAdminApp() {
     });
     console.log('[Firebase Admin] ✅ SDK initialized successfully.');
   } catch (error: any) {
+    initError = `Init Failed: ${error.message}`;
     console.error('[Firebase Admin] ❌ Initialization failed:', error.message);
   }
 }
@@ -44,23 +45,17 @@ initializeAdminApp();
 
 // ── Safe lazy getters (type-safe, call-time evaluated) ──
 export function getAdminAuth() {
-  if (!admin.apps.length) {
-    throw new Error('Firebase Admin SDK not initialized. Check FIREBASE_ADMIN_* env vars in Vercel.');
-  }
+  if (!admin.apps.length) throw new Error(initError || 'Firebase Admin SDK not initialized.');
   return admin.auth();
 }
 
 export function getAdminDb() {
-  if (!admin.apps.length) {
-    throw new Error('Firebase Admin SDK not initialized. Check FIREBASE_ADMIN_* env vars in Vercel.');
-  }
+  if (!admin.apps.length) throw new Error(initError || 'Firebase Admin SDK not initialized.');
   return admin.firestore();
 }
 
 export function getAdminStorage() {
-  if (!admin.apps.length) {
-    throw new Error('Firebase Admin SDK not initialized. Check FIREBASE_ADMIN_* env vars in Vercel.');
-  }
+  if (!admin.apps.length) throw new Error(initError || 'Firebase Admin SDK not initialized.');
   return admin.storage();
 }
 

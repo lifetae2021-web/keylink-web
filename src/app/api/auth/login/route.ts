@@ -32,6 +32,7 @@ export async function POST(req: NextRequest) {
 
   } catch (error: any) {
     console.error('Login Helper API Error:', error);
-    return NextResponse.json({ error: '인증 서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.' }, { status: 500 });
+    // DEBUG: Send exact error to client to bypass Vercel logs
+    return NextResponse.json({ error: `[서버오류 상세] ${error.message}` }, { status: 500 });
   }
 }
