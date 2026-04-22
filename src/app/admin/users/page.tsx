@@ -14,6 +14,7 @@ import {
 } from 'firebase/firestore';
 import { format } from 'date-fns';
 import AssetModal from './AssetModal';
+import UserProfileModal from './UserProfileModal';
 
 type Status = 'all' | 'pending' | 'verified' | 'rejected';
 
@@ -62,6 +63,7 @@ export default function UsersPage() {
   
   // Modal states
   const [selectedUserForAsset, setSelectedUserForAsset] = useState<any>(null);
+  const [selectedUserForProfile, setSelectedUserForProfile] = useState<any>(null);
 
   useEffect(() => {
     setIsLoading(true);
@@ -376,26 +378,35 @@ export default function UsersPage() {
                       <td style={{ padding: '0 20px', verticalAlign: 'middle' }}>
                         <div className="flex items-center gap-3">
                           <div
-                            className="relative flex-shrink-0 flex items-center justify-center rounded-xl font-bold"
+                            onClick={() => setSelectedUserForProfile(u)}
+                            className="relative flex-shrink-0 flex items-center justify-center rounded-xl font-bold cursor-pointer hover:opacity-80 transition-opacity overflow-hidden"
                             style={{
                               width: 38, height: 38, fontSize: '0.85rem',
                               background: u.gender === 'male' ? 'rgba(96,165,250,0.1)' : 'rgba(244,114,182,0.1)',
                               color:      u.gender === 'male' ? '#60a5fa'              : '#f472b6',
                             }}
                           >
-                            {u.name ? u.name[0] : 'U'}
+                            {u.profileImageUrl ? (
+                              <img 
+                                src={u.profileImageUrl} 
+                                alt={u.name} 
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              u.name ? u.name[0] : 'U'
+                            )}
                             {u.status === 'verified' && (
                               <span
-                                className="absolute flex items-center justify-center rounded-full"
+                                className="absolute flex items-center justify-center rounded-full z-10"
                                 style={{ width: 14, height: 14, bottom: -2, right: -2, background: '#09090b' }}
                               >
                                 <ShieldCheck size={10} style={{ color: '#4ade80' }} />
                               </span>
                             )}
                           </div>
-                          <div>
+                          <div className="cursor-pointer group/name" onClick={() => setSelectedUserForProfile(u)}>
                             <div className="flex items-center gap-1.5">
-                              <span style={{ fontSize: '0.88rem', fontWeight: 600 }}>{u.name || '미입력'}</span>
+                              <span className="text-[0.88rem] font-bold group-hover/name:text-[#FF6F61] transition-colors">{u.name || '미입력'}</span>
                               <span
                                 style={{
                                   fontSize: '0.6rem', fontWeight: 700, padding: '1px 5px', borderRadius: 4,
@@ -553,10 +564,10 @@ export default function UsersPage() {
       </div>
       
       {/* Modals */}
-      <AssetModal 
-        user={selectedUserForAsset} 
-        isOpen={!!selectedUserForAsset} 
-        onClose={() => setSelectedUserForAsset(null)} 
+      <UserProfileModal 
+        user={selectedUserForProfile} 
+        isOpen={!!selectedUserForProfile} 
+        onClose={() => setSelectedUserForProfile(null)} 
       />
     </div>
   );
