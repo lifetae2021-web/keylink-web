@@ -132,7 +132,7 @@ export default function SocialProfilePage() {
       toast.success('가입이 완료되었습니다! 🎉');
       router.push('/');
     } catch (err: any) {
-      console.log('Firebase Error Code (Total):', err.code);
+      console.error('Registration Error:', err.code, err);
       toast.error('입력 정보를 다시 확인해 주세요!');
       setEmailError(getAuthErrorMessage(err.code));
       window.scrollTo({ top: 0, behavior: 'smooth' });

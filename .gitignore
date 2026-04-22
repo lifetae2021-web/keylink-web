@@ -43,8 +43,14 @@ next-env.d.ts
 # npm cache
 .npm-cache/
 
+# firebase
+.firebase/
+*.json
+!package.json
+!package-lock.json
+!tsconfig.json
+
 # dev scripts
 replace.py
 replace.js
 npm_cache/
-.firebase/

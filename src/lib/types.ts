@@ -60,6 +60,7 @@ export interface Application {
   
   // 추가 프로필 정보 (v5.1.0 데이터 연동 강화)
   instaId?: string;
+  mbti?: string;
   smoking?: string;
   drinking?: string;
   religion?: string;

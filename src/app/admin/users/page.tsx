@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Search, CheckCircle, XCircle, Eye,
   Download, ShieldCheck, ChevronLeft, ChevronRight, Loader2,
   Filter, ArrowUpDown, ArrowUp, ArrowDown, Ticket,
-  UserPlus, Award, AlertCircle
+  UserPlus, Award, AlertCircle, Coins
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { db } from '@/lib/firebase';
@@ -13,7 +13,7 @@ import {
   collection, onSnapshot, doc, updateDoc, query, orderBy, Timestamp 
 } from 'firebase/firestore';
 import { format } from 'date-fns';
-import CouponModal from './CouponModal';
+import AssetModal from './AssetModal';
 
 type Status = 'all' | 'pending' | 'verified' | 'rejected';
 
@@ -57,17 +57,16 @@ export default function UsersPage() {
   const [genderFilter, setGenderFilter] = useState<'all' | 'male' | 'female'>('all');
   const [sortConfig, setSortConfig] = useState<{ key: 'age' | 'createdAt', direction: 'asc' | 'desc' | null }>({ key: 'createdAt', direction: 'desc' });
   
-  // Custom Pagination for performance (Basic Windowing equivalent)
+  // Custom Pagination for performance
   const [pageSize, setPageSize] = useState(20);
   
   // Modal states
-  const [selectedUserForCoupon, setSelectedUserForCoupon] = useState<any>(null);
+  const [selectedUserForAsset, setSelectedUserForAsset] = useState<any>(null);
 
   useEffect(() => {
     setIsLoading(true);
     const q = query(collection(db, 'users'), orderBy('createdAt', 'desc'));
     
-    // onSnapshot for real-time updates as requested
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const fetchedUsers = snapshot.docs.map(doc => ({
         id: doc.id,
@@ -121,7 +120,6 @@ export default function UsersPage() {
     });
   }, [users, search, filter, genderFilter, sortConfig]);
 
-  // Windowing: Current items to display
   const pagedItems = useMemo(() => filtered.slice(0, pageSize), [filtered, pageSize]);
 
   const toggleSort = (key: 'age' | 'createdAt') => {
@@ -173,6 +171,41 @@ export default function UsersPage() {
     }
   };
 
+  // CSV Export Logic
+  const downloadCSV = useCallback(() => {
+    if (filtered.length === 0) return toast.error('추출할 데이터가 없습니다.');
+
+    const headers = ['이름', '이메일', '성별', '직업', '나이', '상태', '권한', '포인트', '참여횟수', '매칭성공', '노쇼회수', '가입일'];
+    const rows = filtered.map(u => [
+      u.name || '-',
+      u.email || '-',
+      u.gender === 'male' ? '남성' : '여성',
+      u.job || '-',
+      u.birthDate ? `${new Date().getFullYear() - parseInt(u.birthDate.split('-')[0]) + 1}세` : '-',
+      STATUS_CFG[(u.status || 'pending') as keyof typeof STATUS_CFG].label,
+      u.role || '일반회원',
+      u.points || 0,
+      u.participationCount || 0,
+      u.matchCount || 0,
+      u.noShowCount || 0,
+      u.createdAt?.seconds ? format(new Date(u.createdAt.seconds * 1000), 'yyyy-MM-dd') : '-'
+    ]);
+
+    const csvContent = [
+      '\uFEFF' + headers.join(','), // BOM for excel utf-8
+      ...rows.map(r => r.join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `keylink_users_${format(new Date(), 'yyyyMMdd')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }, [filtered]);
+
   return (
     <div className="space-y-6 animate-in fade-in duration-400">
 
@@ -183,7 +216,8 @@ export default function UsersPage() {
           <p style={{ fontSize: '0.8rem', color: '#555', marginTop: 2 }}>실시간 데이터 동기화 활성화됨 <span className="text-[10px] opacity-30 text-[#FF6F61] ml-2">Live</span></p>
         </div>
         <button
-          className="flex items-center gap-2 rounded-lg transition-colors hover:text-white"
+          onClick={downloadCSV}
+          className="flex items-center gap-2 rounded-lg transition-all hover:bg-white/10 hover:text-white"
           style={{ padding: '8px 16px', fontSize: '0.82rem', fontWeight: 600, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#888' }}
         >
           <Download size={14} /> CSV 다운로드
@@ -278,8 +312,8 @@ export default function UsersPage() {
               <colgroup>
                 <col style={{ width: '22%' }} />
                 <col style={{ width: '12%' }} />
-                <col style={{ width: '17%' }} />
-                <col style={{ width: '15%' }} />
+                <col style={{ width: '14%' }} />
+                <col style={{ width: '18%' }} />
                 <col style={{ width: '12%' }} />
                 <col style={{ width: '22%' }} />
               </colgroup>
@@ -406,12 +440,20 @@ export default function UsersPage() {
                       {/* 활동 지표 (Badges) */}
                       <td style={{ padding: '0 20px', verticalAlign: 'middle' }}>
                         <div className="flex items-center gap-2">
+                            <div className="group relative">
+                                <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-500 text-[10px] font-bold border border-amber-500/20 cursor-default">
+                                    <Coins size={10} /> {u.points?.toLocaleString() || 0}
+                                </span>
+                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-3 bg-gray-800 text-white text-sm leading-relaxed rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 border border-white/10 shadow-xl min-w-[140px] text-center">
+                                    보유 포인트 <br /> <strong>{u.points?.toLocaleString() || 0} P</strong>
+                                </div>
+                            </div>
                           <div className="group relative">
                             <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 text-[10px] font-bold border border-blue-500/20 cursor-default">
                               <UserPlus size={10} /> {u.participationCount || 0}
                             </span>
                             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-3 bg-gray-800 text-white text-sm leading-relaxed rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 border border-white/10 shadow-xl min-w-[140px] text-center">
-                              기수 프로그램 <br /> <strong>총 참여 {u.participationCount || 0}회</strong>
+                              기수 프로그램 참여 <br /> <strong>총 {u.participationCount || 0}회</strong>
                             </div>
                           </div>
                           <div className="group relative">
@@ -419,7 +461,7 @@ export default function UsersPage() {
                               <Award size={10} /> {u.matchCount || 0}
                             </span>
                             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-3 bg-gray-800 text-white text-sm leading-relaxed rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 border border-white/10 shadow-xl min-w-[140px] text-center">
-                              최종 커플 매칭 <br /> <strong>총 성공 {u.matchCount || 0}회</strong>
+                              최종 커플 매칭 <br /> <strong>총 {u.matchCount || 0}회 성공</strong>
                             </div>
                           </div>
                           <div className="group relative">
@@ -427,7 +469,7 @@ export default function UsersPage() {
                               <AlertCircle size={10} /> {u.noShowCount || 0}
                             </span>
                             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-3 bg-gray-800 text-white text-sm leading-relaxed rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 border border-white/10 shadow-xl min-w-[140px] text-center">
-                              약속 불이행 <br /> <strong className={u.noShowCount > 0 ? 'text-rose-400' : ''}>노쇼 기록 {u.noShowCount || 0}회</strong>
+                              노쇼 / 지각 기록 <br /> <strong className={u.noShowCount > 0 ? 'text-rose-400' : ''}>총 {u.noShowCount || 0}회 발생</strong>
                             </div>
                           </div>
                         </div>
@@ -442,27 +484,27 @@ export default function UsersPage() {
 
                       {/* 관리 */}
                       <td style={{ padding: '0 20px', verticalAlign: 'middle', textAlign: 'right' }}>
-                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button
-                            onClick={() => setSelectedUserForCoupon(u)}
-                            className="flex items-center gap-1 rounded-lg transition-colors"
-                            style={{ padding: '5px 10px', fontSize: '0.75rem', fontWeight: 600, background: 'rgba(255,111,97,0.08)', color: '#FF6F61', border: '1px solid rgba(255,111,97,0.15)' }}
+                            onClick={() => setSelectedUserForAsset(u)}
+                            className="flex items-center gap-1.5 rounded-lg transition-all"
+                            style={{ padding: '5px 12px', fontSize: '0.75rem', fontWeight: 600, background: 'rgba(255,111,97,0.08)', color: '#FF6F61', border: '1px solid rgba(255,111,97,0.15)' }}
                           >
-                            <Ticket size={12} /> 쿠폰
+                            <Coins size={12} /> 자산 관리
                           </button>
                           
                           {(u.status || 'pending') === 'pending' && (
                             <>
                               <button
                                 onClick={() => approve(u.id, u.name)}
-                                className="flex items-center gap-1 rounded-lg transition-colors"
+                                className="flex items-center gap-1.5 rounded-lg transition-all"
                                 style={{ padding: '5px 10px', fontSize: '0.75rem', fontWeight: 600, background: 'rgba(74,222,128,0.08)', color: '#4ade80', border: '1px solid rgba(74,222,128,0.15)' }}
                               >
                                 <CheckCircle size={12} /> 승인
                               </button>
                               <button
                                 onClick={() => reject(u.id, u.name)}
-                                className="flex items-center gap-1 rounded-lg transition-colors"
+                                className="flex items-center gap-1.5 rounded-lg transition-all"
                                 style={{ padding: '5px 10px', fontSize: '0.75rem', fontWeight: 600, background: 'rgba(239,68,68,0.08)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.15)' }}
                               >
                                 <XCircle size={12} /> 반려
@@ -470,8 +512,8 @@ export default function UsersPage() {
                             </>
                           )}
                           <button
-                            className="flex items-center justify-center rounded-lg transition-colors"
-                            style={{ width: 30, height: 30, color: '#444', background: 'transparent' }}
+                            className="flex items-center justify-center rounded-lg hover:bg-white/5 transition-all text-white/30 hover:text-white"
+                            style={{ width: 32, height: 32 }}
                           >
                             <Eye size={14} />
                           </button>
@@ -504,10 +546,10 @@ export default function UsersPage() {
       </div>
       
       {/* Modals */}
-      <CouponModal 
-        user={selectedUserForCoupon} 
-        isOpen={!!selectedUserForCoupon} 
-        onClose={() => setSelectedUserForCoupon(null)} 
+      <AssetModal 
+        user={selectedUserForAsset} 
+        isOpen={!!selectedUserForAsset} 
+        onClose={() => setSelectedUserForAsset(null)} 
       />
     </div>
   );

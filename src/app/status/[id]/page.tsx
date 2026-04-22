@@ -1,54 +1,75 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { use, useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Users, ShieldCheck, RefreshCcw, ArrowRight, Heart, Timer, MapPin, Sparkles } from 'lucide-react';
+import { Users, ShieldCheck, RefreshCcw, ArrowRight, Heart, Timer, MapPin, Sparkles, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { mockLineup } from '@/lib/mockData';
+import { getSession } from '@/lib/firestore/sessions';
+import { getApplicationsBySession } from '@/lib/firestore/applications';
+import { Session, Application } from '@/lib/types';
 
-export default function StatusPage() {
+export default function StatusPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id: sessionId } = use(params);
   const [activeTab, setActiveTab] = useState<'male' | 'female'>('male');
   const [watchers, setWatchers] = useState(24);
+  const [session, setSession] = useState<Session | null>(null);
+  const [applicants, setApplicants] = useState<Application[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   
   useEffect(() => {
-    // Randomize watchers slightly to simulate real-time activity
+    async function fetchData() {
+      try {
+        const [sessionData, appData] = await Promise.all([
+          getSession(sessionId),
+          getApplicationsBySession(sessionId)
+        ]);
+        setSession(sessionData);
+        setApplicants(appData);
+      } catch (error) {
+        console.error("Error fetching status detail:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    fetchData();
+
     const interval = setInterval(() => {
       setWatchers(prev => {
-        const delta = Math.floor(Math.random() * 5) - 2; // -2 to +2
+        const delta = Math.floor(Math.random() * 5) - 2;
         return Math.max(18, Math.min(42, prev + delta));
       });
     }, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [sessionId]);
 
-  const maleLineup = mockLineup.filter(p => p.gender === 'male');
-  const femaleLineup = mockLineup.filter(p => p.gender === 'female');
+  const maleApplicants = applicants.filter(p => p.gender === 'male' && p.status === 'confirmed');
+  const femaleApplicants = applicants.filter(p => p.gender === 'female' && p.status === 'confirmed');
 
   // Data Dissociation & Anonymization Logic
   const anonymizedRows = useMemo(() => {
-    const confirmed = (activeTab === 'male' ? maleLineup : femaleLineup).filter(p => p.status === 'confirmed');
+    const currentList = activeTab === 'male' ? maleApplicants : femaleApplicants;
     
     // 1. Ages: Sort descending (99 -> 90) to show youngest first
-    const ages = confirmed
-      .map(p => `${p.year}년생`)
+    const ages = currentList
+      .map(p => `${p.age}년생`)
       .sort((a, b) => parseInt(b) - parseInt(a));
       
     // 2. Jobs: Shuffle
-    const jobs = [...confirmed.map(p => p.occupation)].sort(() => Math.random() - 0.5);
+    const jobs = [...currentList.map(p => p.job)].sort(() => Math.random() - 0.5);
       
-    // 3. Heights: Shuffle
-    const heights = [...confirmed.map(p => `${p.height}cm`)].sort(() => Math.random() - 0.5);
+    // 3. MBTI: Shuffle
+    const mbtis = [...currentList.map(p => p.mbti || '공개가능')].sort(() => Math.random() - 0.5);
     
     // Combine into rows
     const rows = [];
-    const maxSlots = 8; // Fixed display count for visual consistency
+    const maxSlots = 8; 
     for (let i = 0; i < maxSlots; i++) {
-      if (i < confirmed.length) {
+      if (i < currentList.length) {
         rows.push({
           age: ages[i],
           job: jobs[i],
-          height: heights[i],
+          mbti: mbtis[i],
           status: 'confirmed'
         });
       } else {
@@ -58,10 +79,32 @@ export default function StatusPage() {
       }
     }
     return rows;
-  }, [activeTab, maleLineup, femaleLineup]);
+  }, [activeTab, maleApplicants, femaleApplicants]);
 
-  const progressMale = 7 / 8;
-  const progressFemale = 8 / 8;
+  const progressMale = session ? (session.currentMale / session.maxMale) : 0;
+  const progressFemale = session ? (session.currentFemale / session.maxFemale) : 0;
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Loader2 className="animate-spin text-pink-500" size={40} />
+      </div>
+    );
+  }
+
+  if (!session) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-6 text-center">
+        <Sparkles className="text-gray-200 mb-4" size={60} />
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">기수 정보를 찾을 수 없습니다</h1>
+        <p className="text-gray-500 mb-6">이미 종료되었거나 잘못된 접근입니다.</p>
+        <Link href="/status" className="px-8 py-3 bg-pink-500 text-white font-bold rounded-2xl shadow-lg">목록으로 돌아가기</Link>
+      </div>
+    );
+  }
+
+  const currentMale = session.currentMale || 0;
+  const currentFemale = session.currentFemale || 0;
 
   return (
     <div style={{ paddingBottom: '100px', background: 'var(--color-bg)' }}>
@@ -109,9 +152,9 @@ export default function StatusPage() {
                 background: 'linear-gradient(to top, rgba(0,0,0,0.7), transparent)', color: '#fff'
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                  <MapPin size={18} /> <span style={{ fontWeight: '600' }}>부산 서면역 인근 프리미엄 공간</span>
+                  <MapPin size={18} /> <span style={{ fontWeight: '600' }}>{session.region === 'busan' ? '부산' : '창원'} {session.location}</span>
                 </div>
-                <h2 style={{ fontSize: '1.8rem', fontWeight: '900', letterSpacing: '-0.02em' }}>120기 부산 로테이션 소개팅</h2>
+                <h2 style={{ fontSize: '1.8rem', fontWeight: '900', letterSpacing: '-0.02em' }}>{session.episodeNumber}기 {session.title}</h2>
               </div>
             </div>
 
@@ -120,13 +163,13 @@ export default function StatusPage() {
                 <Timer size={14} /> 실시간 모집 진행률
               </div>
               <h1 style={{ fontSize: '2.4rem', fontWeight: '900', marginBottom: '24px', letterSpacing: '-0.03em' }}>
-                곧 마감됩니다!<br/>현재 <span style={{ color: '#FF6F61' }}>최종 매칭</span> 조율 중
+                {progressMale >= 1 && progressFemale >= 1 ? '남녀 마감 완료!' : '곧 마감됩니다!'} <br/>현재 <span style={{ color: '#FF6F61' }}>참가 확정</span> 명단
               </h1>
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontWeight: '700', fontSize: '0.9rem' }}>
-                    <span>남성 참가자 (7/8)</span>
+                    <span>남성 참가자 ({currentMale}/{session.maxMale})</span>
                     <span style={{ color: '#FF6F61' }}>{Math.round(progressMale * 100)}%</span>
                   </div>
                   <div style={{ height: '10px', background: '#EDEDED', borderRadius: '5px', overflow: 'hidden' }}>
@@ -135,7 +178,7 @@ export default function StatusPage() {
                 </div>
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontWeight: '700', fontSize: '0.9rem' }}>
-                    <span>여성 참가자 (8/8)</span>
+                    <span>여성 참가자 ({currentFemale}/{session.maxFemale})</span>
                     <span style={{ color: '#FF6F61' }}>{Math.round(progressFemale * 100)}%</span>
                   </div>
                   <div style={{ height: '10px', background: '#EDEDED', borderRadius: '5px', overflow: 'hidden' }}>
@@ -145,7 +188,7 @@ export default function StatusPage() {
               </div>
 
               <div style={{ marginTop: '32px', display: 'flex', gap: '12px', alignItems: 'center', color: 'var(--color-text-muted)', fontSize: '0.9rem', fontWeight: '500' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Users size={16} /> 총 16명 정원</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Users size={16} /> 총 {session.maxMale + session.maxFemale}명 정원</div>
                 <div style={{ width: '1px', height: '12px', background: '#ddd' }} />
                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><ShieldCheck size={16} /> 신원 검증 완료</div>
               </div>
@@ -160,7 +203,7 @@ export default function StatusPage() {
               실시간 라인업
             </h3>
             <p style={{ color: 'var(--color-text-secondary)', fontWeight: '500', maxWidth: '600px', margin: '0 auto' }}>
-              참여자의 프라이버시 보호를 위해 나이, 직업, 키 정보를 <br className="desktop-br"/>각각 분리하여 랜덤하게 나열하였습니다.
+              참여자의 프라이버시 보호를 위해 나이, 직업, MBTI 정보를 <br className="desktop-br"/>각각 분리하여 랜덤하게 나열하였습니다.
             </p>
           </div>
 
@@ -206,7 +249,7 @@ export default function StatusPage() {
             }}>
               <span>나이 (정렬됨)</span>
               <span>직업 (랜덤)</span>
-              <span>키 (랜덤)</span>
+              <span>MBTI (랜덤)</span>
             </div>
 
             <AnimatePresence mode="wait">
@@ -229,7 +272,7 @@ export default function StatusPage() {
                       <>
                         <div style={{ fontWeight: '700', color: '#111' }}>{row.age}</div>
                         <div style={{ fontWeight: '800', color: activeTab === 'male' ? '#007AFF' : '#FF6F61' }}>{row.job}</div>
-                        <div style={{ color: '#666', fontWeight: '500' }}>{row.height}</div>
+                        <div style={{ color: '#666', fontWeight: '500' }}>{row.mbti}</div>
                       </>
                     ) : (
                       <div style={{ gridColumn: 'span 3', color: '#bbb', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>

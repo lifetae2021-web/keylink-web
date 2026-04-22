@@ -9,6 +9,8 @@ import { Heart, ArrowLeft, Trophy, Sparkles, ShieldCheck, Star, Users, MapPin, L
 import { motion, AnimatePresence } from 'framer-motion';
 import CherryBlossoms from '@/components/CherryBlossoms';
 
+import { getUserMatchResult, getUserVoteStats } from '@/lib/firestore/userMatching';
+
 interface ResultData {
   isMatched: boolean;
   partner?: {
@@ -23,7 +25,7 @@ interface ResultData {
 }
 
 export default function MatchingResultDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+  const { id: sessionId } = use(params);
   const [user, setUser] = useState<any>(null);
   const [userName, setUserName] = useState('');
   const [result, setResult] = useState<ResultData | null>(null);
@@ -42,36 +44,33 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
             setUserName(userSnap.data().name || '영훈');
           }
 
-          // 2. Fetch Matching Result (Mocking real Firestore structure)
-          // In real implementation: const resultSnap = await getDocs(query(collection(db, 'MatchingResults'), where('uid', '==', currentUser.uid), where('gisuId', '==', id)));
-          // Simulation for v3.7.4 Demo:
-          const isMatchedDemo = id === 'event-121'; // event-121 is matched for demo
-          setResult({
-            isMatched: isMatchedDemo,
-            partner: isMatchedDemo ? {
-              gender: 'female',
-              number: '5',
-              age: '96년생',
-              job: '디자이너',
-              height: '163cm',
-              residence: '부산 해운대구',
-              batch: '121기'
-            } : undefined
-          });
+          // 2. Fetch Matching Result
+          const matchResult = await getUserMatchResult(currentUser.uid, sessionId);
+          if (matchResult) {
+            setResult({
+              isMatched: matchResult.matched,
+              partner: matchResult.matched && matchResult.partnerProfile ? {
+                gender: matchResult.partnerProfile.gender as any,
+                number: matchResult.partnerProfile.number || '?',
+                age: matchResult.partnerProfile.age || '미입력',
+                job: matchResult.partnerProfile.job || '미입력',
+                height: matchResult.partnerProfile.height || '미입력',
+                residence: matchResult.partnerProfile.residence || '미입력',
+                batch: matchResult.partnerProfile.batch || '알 수 없음'
+              } : undefined
+            });
+          } else {
+            setResult(null);
+          }
 
-          // 3. Fetch Popularity (Votes received)
-          // const votesSnap = await getDocs(query(collection(db, 'Votes'), where('votedFor', '==', currentUser.uid), where('gisuId', '==', id)));
-          // setVoteCount(votesSnap.size);
-          setVoteCount(3); // Demo: 3 votes received
-
-          // 4. Fetch My Choices
-          // const myVotesSnap = await getDocs(query(collection(db, 'Votes'), where('voterUid', '==', currentUser.uid), where('gisuId', '==', id), orderBy('priority')));
-          // setMyChoices(myVotesSnap.docs.map(d => d.data()));
-          setMyChoices([
-            { priority: 1, partnerName: '키링녀 5호', job: '디자이너' },
-            { priority: 2, partnerName: '키링녀 2호', job: '공무원' },
-            { priority: 3, partnerName: '키링녀 8호', job: '보건인력' }
-          ]);
+          // 3. Fetch Stats & Choices
+          const stats = await getUserVoteStats(currentUser.uid, sessionId);
+          setVoteCount(stats.receivedCount);
+          setMyChoices(stats.myChoices.map(v => ({
+            priority: v.priority,
+            partnerName: v.targetUserName || '알 수 없음',
+            job: '확인 중' 
+          })));
 
         } catch (error) {
           console.error("Error fetching detail data:", error);
@@ -84,7 +83,7 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
     });
 
     return () => unsubscribe();
-  }, [id]);
+  }, [sessionId]);
 
   if (isLoading) {
     return (

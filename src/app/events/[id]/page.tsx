@@ -6,7 +6,8 @@ import {
   Calendar, MapPin, Users, ArrowLeft, AlertCircle,
   CheckCircle, Clock, Shield, Camera, X, CreditCard, ChevronRight, Upload
 } from 'lucide-react';
-import { mockEvents } from '@/lib/mockData';
+import { getSession } from '@/lib/firestore/sessions';
+import { Session } from '@/lib/types';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import toast from 'react-hot-toast';
@@ -19,7 +20,23 @@ import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 export default function EventDetailPage() {
   const { id } = useParams();
   const router = useRouter();
-  const event = mockEvents.find((e) => e.id === id);
+  const [event, setEvent] = useState<Session | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchSession() {
+      if (!id || typeof id !== 'string') return;
+      try {
+        const data = await getSession(id);
+        setEvent(data);
+      } catch (e) {
+        console.error("Error fetching session:", e);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    fetchSession();
+  }, [id]);
 
   const [showRuleModal, setShowRuleModal] = useState(false);
   const [ruleAccepted, setRuleAccepted] = useState(false);
@@ -95,13 +112,21 @@ export default function EventDetailPage() {
     localStorage.setItem(`keylink_form_${id}`, JSON.stringify(form));
   }, [form, id]);
 
+  if (isLoading) {
+    return (
+      <div style={{ paddingTop: '120px', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <p style={{ color: 'var(--color-text-muted)' }}>기수 정보를 불러오는 중...</p>
+      </div>
+    );
+  }
+
   if (!event) {
     return (
-      <div style={{ paddingTop: '90px', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ paddingTop: '120px', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ textAlign: 'center' }}>
           <p style={{ fontSize: '3rem', marginBottom: '16px' }}>😢</p>
-          <p style={{ color: 'var(--color-text-secondary)' }}>행사를 찾을 수 없습니다.</p>
-          <Link href="/events" className="kl-btn-primary" style={{ marginTop: '20px', display: 'inline-flex' }}>목록으로</Link>
+          <p style={{ color: 'var(--color-text-secondary)' }}>행사를 찾을 수 없거나 이미 마감되었습니다.</p>
+          <Link href="/events" className="kl-btn-primary" style={{ marginTop: '24px', display: 'inline-flex' }}>다른 일정 보기</Link>
         </div>
       </div>
     );

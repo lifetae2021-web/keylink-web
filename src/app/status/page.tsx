@@ -1,17 +1,38 @@
 'use client';
 
 import Link from 'next/link';
-import { Calendar, MapPin, Users, ArrowRight, Timer, LayoutGrid } from 'lucide-react';
-import { mockEvents } from '@/lib/mockData';
+import { Calendar, MapPin, Users, ArrowRight, Timer, LayoutGrid, Loader2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { getOpenSessions } from '@/lib/firestore/sessions';
+import { Session } from '@/lib/types';
 
 export default function StatusListPage() {
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchSessions() {
+      try {
+        const data = await getOpenSessions();
+        setSessions(data);
+      } catch (error) {
+        console.error("Error fetching sessions:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    fetchSessions();
+  }, []);
+
   // Logic to determine status labels and colors
   const getStatusInfo = (event: any) => {
-    const totalFilled = event.currentMale + event.currentFemale;
+    const currentMale = event.currentMale || 0;
+    const currentFemale = event.currentFemale || 0;
+    const totalFilled = currentMale + currentFemale;
     const totalMax = event.maxMale + event.maxFemale;
     const ratio = totalFilled / totalMax;
 
-    if (event.status === 'closed') {
+    if (event.status === 'closed' || event.status === 'completed') {
       return { label: '진행 완료', color: '#999', bg: '#f5f5f5' };
     }
     if (ratio >= 0.8) {
@@ -19,6 +40,14 @@ export default function StatusListPage() {
     }
     return { label: '모집 중', color: '#FF6F61', bg: '#FFF5F4' };
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Loader2 className="animate-spin text-pink-500" size={40} />
+      </div>
+    );
+  }
 
   return (
     <div style={{ paddingBottom: '100px', background: 'var(--color-bg)', minHeight: '100vh' }}>
@@ -37,10 +66,12 @@ export default function StatusListPage() {
           gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', 
           gap: '30px'
         }}>
-          {mockEvents.map((event) => {
+          {sessions.map((event) => {
             const status = getStatusInfo(event);
-            const progressMale = event.currentMale / event.maxMale;
-            const progressFemale = event.currentFemale / event.maxFemale;
+            const currentMale = event.currentMale || 0;
+            const currentFemale = event.currentFemale || 0;
+            const progressMale = currentMale / event.maxMale;
+            const progressFemale = currentFemale / event.maxFemale;
 
             return (
               <Link 
@@ -80,7 +111,7 @@ export default function StatusListPage() {
                       {status.label}
                     </div>
                     <div style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem', fontWeight: '700' }}>
-                      {event.episode}기
+                      {event.episodeNumber}기
                     </div>
                   </div>
 
@@ -90,10 +121,10 @@ export default function StatusListPage() {
                     </h3>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', color: '#666', fontSize: '0.9rem', fontWeight: '600' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <MapPin size={16} /> {event.venue}
+                        <MapPin size={16} /> {event.region === 'busan' ? '부산' : '창원'}
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <Calendar size={16} /> {new Date(event.date).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' })}
+                        <Calendar size={16} /> {event.eventDate.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' })}
                       </div>
                     </div>
                   </div>
@@ -104,14 +135,14 @@ export default function StatusListPage() {
                       <div style={{ flex: 1, height: '6px', background: '#eee', borderRadius: '3px', overflow: 'hidden' }}>
                         <div style={{ width: `${progressMale * 100}%`, height: '100%', background: '#007AFF', borderRadius: '3px' }} />
                       </div>
-                      <span style={{ fontSize: '0.8rem', fontWeight: '800', color: progressMale >= 1 ? '#007AFF' : '#666' }}>{event.currentMale}/{event.maxMale}</span>
+                      <span style={{ fontSize: '0.8rem', fontWeight: '800', color: progressMale >= 1 ? '#007AFF' : '#666' }}>{currentMale}/{event.maxMale}</span>
                     </div>
                     <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                       <span style={{ fontSize: '0.8rem', fontWeight: '800', color: '#666', width: '30px' }}>여성</span>
                       <div style={{ flex: 1, height: '6px', background: '#eee', borderRadius: '3px', overflow: 'hidden' }}>
                         <div style={{ width: `${progressFemale * 100}%`, height: '100%', background: '#FF4D8D', borderRadius: '3px' }} />
                       </div>
-                      <span style={{ fontSize: '0.8rem', fontWeight: '800', color: progressFemale >= 1 ? '#FF4D8D' : '#666' }}>{event.currentFemale}/{event.maxFemale}</span>
+                      <span style={{ fontSize: '0.8rem', fontWeight: '800', color: progressFemale >= 1 ? '#FF4D8D' : '#666' }}>{currentFemale}/{event.maxFemale}</span>
                     </div>
                   </div>
 
@@ -122,6 +153,13 @@ export default function StatusListPage() {
               </Link>
             );
           })}
+          
+          {sessions.length === 0 && (
+            <div style={{ gridColumn: 'span 12', textAlign: 'center', padding: '100px 0', background: '#fff', borderRadius: '32px', border: '2px dashed #eee' }}>
+              <Users size={48} color="#ddd" style={{ marginBottom: '16px' }} />
+              <p style={{ color: '#999', fontWeight: '700' }}>현재 모집 중인 기수가 없습니다.</p>
+            </div>
+          )}
         </div>
       </div>
 

@@ -4,9 +4,12 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
+import { format } from 'date-fns';
 import { collection, query, orderBy, getDocs } from 'firebase/firestore';
 import { Heart, Trophy, Clock, CheckCircle2, ArrowRight, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
+
+import { getUserParticipations } from '@/lib/firestore/userMatching';
 
 interface MatchingRound {
   id: string;
@@ -14,6 +17,7 @@ interface MatchingRound {
   date: string;
   title: string;
   status: 'confirmed' | 'pending' | 'published';
+  sessionId: string;
 }
 
 export default function MatchingResultsListPage() {
@@ -26,13 +30,15 @@ export default function MatchingResultsListPage() {
       setUser(currentUser);
       if (currentUser) {
         try {
-          // In a real scenario, we would fetch from 'events' or 'matching_rounds'
-          // For now, we'll simulate the fetched data based on the requested statuses
-          const roundsData: MatchingRound[] = [
-            { id: 'event-121', episode: 121, date: '2026-05-03', title: '부산 로테이션 소개팅', status: 'published' },
-            { id: 'event-120', episode: 120, date: '2026-04-26', title: '부산 로테이션 소개팅', status: 'pending' },
-            { id: 'event-119', episode: 119, date: '2026-04-19', title: '부산 로테이션 소개팅', status: 'confirmed' },
-          ];
+          const participations = await getUserParticipations(currentUser.uid);
+          const roundsData: MatchingRound[] = participations.map(p => ({
+            id: p.application.id,
+            sessionId: p.session.id,
+            episode: p.session.episodeNumber,
+            date: format(p.session.eventDate, 'yyyy-MM-dd'),
+            title: `${p.session.region === 'busan' ? '부산' : '창원'} 로테이션 소개팅`,
+            status: p.status as any
+          }));
           setRounds(roundsData);
         } catch (error) {
           console.error("Error fetching matching rounds:", error);
@@ -99,7 +105,7 @@ export default function MatchingResultsListPage() {
               whileHover={{ y: -4 }}
               className="bg-white rounded-[32px] p-6 border border-gray-100 shadow-sm hover:shadow-xl hover:border-pink-200 transition-all group"
             >
-              <Link href={round.status === 'published' ? `/matching-results/${round.id}` : '#'} className={round.status === 'published' ? 'cursor-pointer' : 'cursor-default'}>
+              <Link href={round.status === 'published' ? `/matching-results/${round.sessionId}` : '#'} className={round.status === 'published' ? 'cursor-pointer' : 'cursor-default'}>
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                   <div className="flex items-center gap-5">
                     <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-400 group-hover:bg-pink-50 group-hover:text-pink-500 transition-colors">

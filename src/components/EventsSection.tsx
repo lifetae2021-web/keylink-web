@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { ArrowRight, Calendar, MapPin, Users, ChevronLeft, ChevronRight } from 'lucide-react';
-import { mockEvents } from '@/lib/mockData';
+
 import { KeylinkEvent } from '@/types';
 import { Session } from '@/lib/types';
 import { subscribeAllSessions } from '@/lib/firestore/sessions';
@@ -12,30 +12,28 @@ import { ko } from 'date-fns/locale';
 
 // Firestore Session → KeylinkEvent 어댑터
 function sessionToEvent(session: Session): KeylinkEvent {
-  // 기본 메타데이터는 mockEvents에서 id로 조회 (venue, description 등)
-  const mock = mockEvents.find((e) => e.id === session.id);
   return {
     id: session.id,
-    title: session.title || mock?.title || '로테이션 소개팅',
+    title: session.title || '로테이션 소개팅',
     region: session.region,
-    venue: mock?.venue ?? '서면역 인근',
-    venueAddress: mock?.venueAddress ?? '',
+    venue: (session as any).venue ?? '서면역 인근 (개별 안내)',
+    venueAddress: (session as any).venueAddress ?? '',
     date: session.eventDate,
     time: format(session.eventDate, 'HH:mm'),
     maxMale: session.maxMale,
     maxFemale: session.maxFemale,
     currentMale: session.currentMale,
     currentFemale: session.currentFemale,
-    price: mock?.price ?? 29000,
-    originalPrice: mock?.originalPrice ?? 39000,
-    currentPrice: mock?.currentPrice ?? 29000,
+    price: (session as any).price ?? 29000,
+    originalPrice: (session as any).originalPrice ?? 39000,
+    currentPrice: (session as any).price ?? 29000,
     status: session.status === 'open' ? 'open' : 'closed',
-    description: mock?.description ?? '',
+    description: (session as any).description ?? '키링크 프리미엄 공간에서 진행되는 로테이션 소개팅입니다.',
     rankingOpen: false,
-    matchingOpen: session.status === 'voting' || session.status === 'matching',
+    matchingOpen: session.status === 'voting' || session.status === 'matching' || session.status === 'completed',
     episode: session.episodeNumber,
-    targetMaleAge: mock?.targetMaleAge ?? '',
-    targetFemaleAge: mock?.targetFemaleAge ?? '',
+    targetMaleAge: (session as any).targetMaleAge ?? '',
+    targetFemaleAge: (session as any).targetFemaleAge ?? '',
     createdAt: session.createdAt,
   };
 }

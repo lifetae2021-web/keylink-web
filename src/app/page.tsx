@@ -5,7 +5,7 @@ import {
   Heart, MapPin, ArrowRight, Star,
   CheckCircle, Sparkles, ChevronLeft, ChevronRight
 } from 'lucide-react';
-import { mockReviews } from '@/lib/mockData';
+import { REVIEWS } from '@/lib/constants/reviews';
 import { EventsSection } from '@/components/EventsSection';
 import { Suspense } from 'react';
 

@@ -50,91 +50,41 @@ export default function MatchingAdminPage() {
     finally { setLoading(false); }
   };
 
-  // ─── 매칭 알고리즘 실행 ───
+  // ─── 매칭 알고리즘 실행 (서버사이드 호출) ───
   const runAlgorithm = async () => {
     if (!confirm('매칭 알고리즘을 실행하시겠습니까? 기존 결과가 덮어씌워집니다.')) return;
+    
+    const user = auth.currentUser;
+    if (!user) {
+      toast.error('인증 세션이 만료되었습니다. 다시 로그인해 주세요.');
+      return;
+    }
+
     setRunning(true);
     try {
-      // 1. 모든 투표 데이터 가져오기
-      const votes = await getAllVotesBySession(sessionId);
-      if (votes.length === 0) {
-        toast.error('투표 데이터가 없습니다. 투표가 완료된 후 실행해 주세요.');
-        return;
-      }
-
-      // 2. userId → 선택한 targetUserIds 맵 생성
-      const choiceMap: Record<string, Set<string>> = {};
-      const voteCountMap: Record<string, number> = {};
-
-      votes.forEach(vote => {
-        choiceMap[vote.userId] = new Set(vote.choices.map(c => c.targetUserId));
-        vote.choices.forEach(c => {
-          voteCountMap[c.targetUserId] = (voteCountMap[c.targetUserId] || 0) + 1;
-        });
-      });
-
-      // 3. 상호 선택 매칭 알고리즘
-      const matched = new Set<string>();
-      const matchedPairs: MatchPair[] = [];
-
-      votes.forEach(voteA => {
-        if (matched.has(voteA.userId)) return;
-        const aChoices = choiceMap[voteA.userId] || new Set();
-        
-        for (const targetId of aChoices) {
-          if (matched.has(targetId)) continue;
-          const bChoices = choiceMap[targetId] || new Set();
-          
-          // 상호 선택 확인: A가 B를 선택 AND B가 A를 선택
-          if (bChoices.has(voteA.userId)) {
-            matchedPairs.push({ userAId: voteA.userId, userBId: targetId });
-            matched.add(voteA.userId);
-            matched.add(targetId);
-            break; // A는 첫 번째 상호 매칭 상대와만 매칭
-          }
+      const token = await user.getIdToken();
+      const response = await fetch(`/api/admin/sessions/${sessionId}/match`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         }
       });
 
-      const unmatchedUserIds = votes
-        .map(v => v.userId)
-        .filter(uid => !matched.has(uid));
+      const data = await response.json();
 
-      const algorithmResult: MatchingAlgorithmResult = {
-        sessionId,
-        matchedPairs,
-        unmatchedUserIds,
-        voteCountMap,
-        calculatedAt: new Date(),
-      };
+      if (!response.ok) {
+        throw new Error(data.error || '매칭 연산 중 오류가 발생했습니다.');
+      }
 
-      // 4. matchingResults 컬렉션에 임시 저장 (status: 'pending')
-      const batch: { id: string; userId: string; partnerId: string | null; matched: boolean }[] = [
-        ...matchedPairs.flatMap(pair => [
-          { id: `${sessionId}_${pair.userAId}`, userId: pair.userAId, partnerId: pair.userBId, matched: true },
-          { id: `${sessionId}_${pair.userBId}`, userId: pair.userBId, partnerId: pair.userAId, matched: true },
-        ]),
-        ...unmatchedUserIds.map(uid => ({
-          id: `${sessionId}_${uid}`, userId: uid, partnerId: null, matched: false,
-        })),
-      ];
-
-      await Promise.all(batch.map(entry =>
-        setDoc(doc(db, 'matchingResults', entry.id), {
-          sessionId,
-          userId: entry.userId,
-          matched: entry.matched,
-          partnerId: entry.partnerId,
-          receivedVotes: voteCountMap[entry.userId] || 0,
-          status: 'pending',
-          approvedAt: null,
-        })
-      ));
-
-      setResult(algorithmResult);
-      toast.success(`매칭 완료! ${matchedPairs.length}쌍 성공, ${unmatchedUserIds.length}명 미매칭`);
+      setResult(data.result);
+      toast.success(`매칭 완료! ${data.stats.coupleCount}쌍 성공, ${data.stats.unmatchedCount}명 미매칭`);
+      
+      // 데이터 리로드 (승인 버튼 활성화를 위해)
+      loadData();
     } catch (e: any) {
-      console.error(e);
-      toast.error('알고리즘 실행 중 오류: ' + e.message);
+      console.error('Matching API Error:', e);
+      toast.error(e.message || '알고리즘 실행 중 오류가 발생했습니다.');
     } finally {
       setRunning(false);
     }
