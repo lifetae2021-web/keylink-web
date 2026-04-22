@@ -38,7 +38,7 @@ const panel = { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(25
 const TableSkeleton = () => (
   <>
     {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-      <tr key={i} className="animate-pulse h-[72px] border-b border-white/5">
+      <tr key={i} className="animate-pulse h-[60px] border-b border-white/5">
         <td style={{ padding: '0 20px' }}><div className="h-8 w-40 bg-white/5 rounded"></div></td>
         <td style={{ padding: '0 20px' }}><div className="h-6 w-24 bg-white/5 rounded"></div></td>
         <td style={{ padding: '0 20px' }}><div className="h-6 w-20 bg-white/5 rounded-full"></div></td>
@@ -369,8 +369,8 @@ export default function UsersPage() {
                   return (
                     <tr
                       key={u.id}
-                      style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', cursor: 'default', height: 72 }}
-                      className="hover:bg-white/[0.02] transition-colors group"
+                      style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', cursor: 'default', height: 60 }}
+                      className="hover:bg-white/[0.02] transition-colors group h-[60px]"
                     >
                       {/* 회원정보 */}
                       <td style={{ padding: '0 20px', verticalAlign: 'middle' }}>
@@ -420,7 +420,7 @@ export default function UsersPage() {
 
                       {/* 나이 */}
                       <td style={{ padding: '0 20px', verticalAlign: 'middle', textAlign: 'center' }}>
-                        <p style={{ fontSize: '0.85rem', color: u.birthDate ? '#bbb' : '#444' }}>
+                        <p style={{ fontSize: '0.85rem', color: u.birthDate ? '#bbb' : '#444', textAlign: 'center' }}>
                           {u.birthDate ? `${new Date().getFullYear() - parseInt(u.birthDate.split('-')[0]) + 1}세` : '-'}
                         </p>
                       </td>
@@ -451,38 +451,35 @@ export default function UsersPage() {
                         <div className="flex items-center gap-3">
                           {/* T: Total */}
                           <div className="group relative">
-                            <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 text-[10px] font-bold border border-blue-500/20 cursor-help">
-                              T {u.participationCount || 0}
+                            <div className="flex items-center justify-center w-8 h-5 rounded bg-blue-500/10 text-blue-400 text-[10px] font-bold border border-blue-500/20 cursor-help">
+                              T
                             </div>
-                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-[#1A1A1A] text-white text-[11px] rounded-md opacity-0 group-hover:opacity-100 transition-all duration-200 whitespace-nowrap pointer-events-none z-[100] border border-white/10 shadow-2xl">
-                              <div className="font-bold mb-0.5 text-blue-400">총 참여 횟수</div>
-                              {u.participationCount || 0}회 참여함
-                              {/* Triangle Tip */}
-                              <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-[#1A1A1A]" />
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-[#0F172A] text-white text-[11px] rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-200 whitespace-nowrap pointer-events-none z-[9999] border border-white/10 shadow-2xl flex flex-col items-center">
+                              <span className="font-bold text-blue-400 text-[10px] mb-0.5">총 참여 횟수</span>
+                              <span className="text-[12px]">{u.participationCount || 0}회</span>
+                              <div className="absolute top-full left-1/2 -translate-x-1/2 border-[5px] border-transparent border-t-[#0F172A]" />
                             </div>
                           </div>
                           {/* M: Match */}
                           <div className="group relative">
-                            <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold border border-emerald-500/20 cursor-help">
-                              M {u.matchCount || 0}
+                            <div className="flex items-center justify-center w-8 h-5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold border border-emerald-500/20 cursor-help">
+                              M
                             </div>
-                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-[#1A1A1A] text-white text-[11px] rounded-md opacity-0 group-hover:opacity-100 transition-all duration-200 whitespace-nowrap pointer-events-none z-[100] border border-white/10 shadow-2xl">
-                              <div className="font-bold mb-0.5 text-emerald-400">매칭 성공 횟수</div>
-                              {u.matchCount || 0}회 성공함
-                              {/* Triangle Tip */}
-                              <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-[#1A1A1A]" />
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-[#0F172A] text-white text-[11px] rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-200 whitespace-nowrap pointer-events-none z-[9999] border border-white/10 shadow-2xl flex flex-col items-center">
+                              <span className="font-bold text-emerald-400 text-[10px] mb-0.5">매칭 성공 횟수</span>
+                              <span className="text-[12px]">{u.matchCount || 0}회</span>
+                              <div className="absolute top-full left-1/2 -translate-x-1/2 border-[5px] border-transparent border-t-[#0F172A]" />
                             </div>
                           </div>
                           {/* N: No-show */}
                           <div className="group relative">
-                            <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold border cursor-help ${u.noShowCount > 0 ? 'bg-rose-500/20 text-rose-400 border-rose-500/30' : 'bg-white/5 text-white/20 border-white/5'}`}>
-                              N {u.noShowCount || 0}
+                            <div className={`flex items-center justify-center w-8 h-5 rounded text-[10px] font-bold border cursor-help ${u.noShowCount > 0 ? 'bg-rose-500/20 text-rose-400 border-rose-500/30' : 'bg-white/5 text-white/20 border-white/5'}`}>
+                              N
                             </div>
-                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-[#1A1A1A] text-white text-[11px] rounded-md opacity-0 group-hover:opacity-100 transition-all duration-200 whitespace-nowrap pointer-events-none z-[100] border border-white/10 shadow-2xl">
-                              <div className={`font-bold mb-0.5 ${u.noShowCount > 0 ? 'text-rose-400' : 'text-gray-400'}`}>노쇼/지각 기록</div>
-                              {u.noShowCount || 0}회 발생함
-                              {/* Triangle Tip */}
-                              <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-[#1A1A1A]" />
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-[#0F172A] text-white text-[11px] rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-200 whitespace-nowrap pointer-events-none z-[9999] border border-white/10 shadow-2xl flex flex-col items-center">
+                              <span className={`font-bold text-[10px] mb-0.5 ${u.noShowCount > 0 ? 'text-rose-400' : 'text-gray-400'}`}>노쇼/지각 기록</span>
+                              <span className="text-[12px]">{u.noShowCount || 0}회</span>
+                              <div className="absolute top-full left-1/2 -translate-x-1/2 border-[5px] border-transparent border-t-[#0F172A]" />
                             </div>
                           </div>
                         </div>
