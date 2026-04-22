@@ -21,7 +21,7 @@ export default function HomePage() {
   // Auto-advance reviews
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentReview((prev) => (prev + 1) % mockReviews.length);
+      setCurrentReview((prev) => (prev + 1) % REVIEWS.length);
     }, 5000);
     return () => clearInterval(interval);
   }, []);
@@ -272,7 +272,7 @@ export default function HomePage() {
                 marginBottom: '28px',
                 fontStyle: 'italic',
               }}>
-                &ldquo;{mockReviews[currentReview]?.text}&rdquo;
+                &ldquo;{REVIEWS[currentReview]?.text}&rdquo;
               </p>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -284,15 +284,15 @@ export default function HomePage() {
                     <Heart size={18} fill="#FFFFFF" color="#FFFFFF" />
                   </div>
                   <div>
-                    <p style={{ fontWeight: '700', color: 'var(--color-text-primary)', fontSize: '0.95rem' }}>{mockReviews[currentReview]?.couple}</p>
+                    <p style={{ fontWeight: '700', color: 'var(--color-text-primary)', fontSize: '0.95rem' }}>{REVIEWS[currentReview]?.couple}</p>
                     <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
-                      {mockReviews[currentReview]?.region} {mockReviews[currentReview]?.episode}
+                      {REVIEWS[currentReview]?.region} {REVIEWS[currentReview]?.episode}
                     </p>
                   </div>
                 </div>
 
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <button onClick={() => setCurrentReview((prev) => (prev - 1 + mockReviews.length) % mockReviews.length)}
+                  <button onClick={() => setCurrentReview((prev) => (prev - 1 + REVIEWS.length) % REVIEWS.length)}
                     style={{
                       width: '40px', height: '40px', borderRadius: '50%',
                       background: 'var(--color-surface-2)', border: '1px solid var(--color-border)',
@@ -301,7 +301,7 @@ export default function HomePage() {
                     }}>
                     <ChevronLeft size={18} />
                   </button>
-                  <button onClick={() => setCurrentReview((prev) => (prev + 1) % mockReviews.length)}
+                  <button onClick={() => setCurrentReview((prev) => (prev + 1) % REVIEWS.length)}
                     style={{
                       width: '40px', height: '40px', borderRadius: '50%',
                       background: 'var(--color-surface-2)', border: '1px solid var(--color-border)',
@@ -315,7 +315,7 @@ export default function HomePage() {
             </div>
 
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginTop: '20px' }}>
-              {mockReviews.map((_, i) => (
+              {REVIEWS.map((_, i) => (
                 <button key={i} onClick={() => setCurrentReview(i)}
                   style={{
                     width: i === currentReview ? '24px' : '8px',
