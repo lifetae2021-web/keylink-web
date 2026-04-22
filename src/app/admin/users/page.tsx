@@ -448,32 +448,41 @@ export default function UsersPage() {
 
                       {/* 활동 지표 (Badges) */}
                       <td style={{ padding: '0 20px', verticalAlign: 'middle' }}>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-3">
                           {/* T: Total */}
                           <div className="group relative">
-                            <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 text-[10px] font-bold border border-blue-500/20 cursor-default">
+                            <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 text-[10px] font-bold border border-blue-500/20 cursor-help">
                               T {u.participationCount || 0}
-                            </span>
-                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-3 bg-gray-800 text-white text-sm leading-relaxed rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 border border-white/10 shadow-xl min-w-[140px] text-center">
-                              총 참여 횟수: {u.participationCount || 0}회
+                            </div>
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-[#1A1A1A] text-white text-[11px] rounded-md opacity-0 group-hover:opacity-100 transition-all duration-200 whitespace-nowrap pointer-events-none z-[100] border border-white/10 shadow-2xl">
+                              <div className="font-bold mb-0.5 text-blue-400">총 참여 횟수</div>
+                              {u.participationCount || 0}회 참여함
+                              {/* Triangle Tip */}
+                              <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-[#1A1A1A]" />
                             </div>
                           </div>
                           {/* M: Match */}
                           <div className="group relative">
-                            <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold border border-emerald-500/20 cursor-default">
+                            <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold border border-emerald-500/20 cursor-help">
                               M {u.matchCount || 0}
-                            </span>
-                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-3 bg-gray-800 text-white text-sm leading-relaxed rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 border border-white/10 shadow-xl min-w-[140px] text-center">
-                              매칭 성공 횟수: {u.matchCount || 0}회
+                            </div>
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-[#1A1A1A] text-white text-[11px] rounded-md opacity-0 group-hover:opacity-100 transition-all duration-200 whitespace-nowrap pointer-events-none z-[100] border border-white/10 shadow-2xl">
+                              <div className="font-bold mb-0.5 text-emerald-400">매칭 성공 횟수</div>
+                              {u.matchCount || 0}회 성공함
+                              {/* Triangle Tip */}
+                              <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-[#1A1A1A]" />
                             </div>
                           </div>
                           {/* N: No-show */}
                           <div className="group relative">
-                            <span className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold border cursor-default ${u.noShowCount > 0 ? 'bg-rose-500/20 text-rose-400 border-rose-500/30' : 'bg-white/5 text-white/20 border-white/5'}`}>
+                            <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold border cursor-help ${u.noShowCount > 0 ? 'bg-rose-500/20 text-rose-400 border-rose-500/30' : 'bg-white/5 text-white/20 border-white/5'}`}>
                               N {u.noShowCount || 0}
-                            </span>
-                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-3 bg-gray-800 text-white text-sm leading-relaxed rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 border border-white/10 shadow-xl min-w-[140px] text-center">
-                              노쇼/지각 기록: {u.noShowCount || 0}회
+                            </div>
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-[#1A1A1A] text-white text-[11px] rounded-md opacity-0 group-hover:opacity-100 transition-all duration-200 whitespace-nowrap pointer-events-none z-[100] border border-white/10 shadow-2xl">
+                              <div className={`font-bold mb-0.5 ${u.noShowCount > 0 ? 'text-rose-400' : 'text-gray-400'}`}>노쇼/지각 기록</div>
+                              {u.noShowCount || 0}회 발생함
+                              {/* Triangle Tip */}
+                              <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-[#1A1A1A]" />
                             </div>
                           </div>
                         </div>
