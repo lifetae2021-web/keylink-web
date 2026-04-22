@@ -213,7 +213,7 @@ export default function UsersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h2 style={{ fontSize: '1.1rem', fontWeight: 700 }}>회원 관리</h2>
-          <p style={{ fontSize: '0.8rem', color: '#555', marginTop: 2 }}>실시간 데이터 동기화 활성화됨 <span className="text-[10px] opacity-30 text-[#FF6F61] ml-2">Live</span></p>
+          <p style={{ fontSize: '0.8rem', color: '#555', marginTop: 2 }}>실시간 데이터 동기화 활성화됨 <span className="text-[10px] opacity-30 text-[#FF6F61] ml-2">v5.6.0 Live</span></p>
         </div>
         <button
           onClick={downloadCSV}
@@ -454,8 +454,8 @@ export default function UsersPage() {
                             <div className="flex items-center justify-center w-8 h-5 rounded bg-blue-500/10 text-blue-400 text-[10px] font-bold border border-blue-500/20 cursor-help">
                               T
                             </div>
-                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-slate-800 text-white text-[11px] rounded-md opacity-0 group-hover:opacity-100 transition-all duration-200 whitespace-nowrap pointer-events-none z-[9999] border border-white/10 shadow-2xl">
-                              총 참여 횟수: {u.participationCount || 0}회
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-slate-800 text-white text-[11px] rounded-md opacity-0 group-hover:opacity-100 transition-all duration-150 whitespace-nowrap pointer-events-none z-[9999] border border-white/10 shadow-2xl">
+                              총 참여: {u.participationCount || 0}회
                               <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800" />
                             </div>
                           </div>
@@ -464,8 +464,8 @@ export default function UsersPage() {
                             <div className="flex items-center justify-center w-8 h-5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold border border-emerald-500/20 cursor-help">
                               M
                             </div>
-                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-slate-800 text-white text-[11px] rounded-md opacity-0 group-hover:opacity-100 transition-all duration-200 whitespace-nowrap pointer-events-none z-[9999] border border-white/10 shadow-2xl">
-                              매칭 성공 횟수: {u.matchCount || 0}회
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-slate-800 text-white text-[11px] rounded-md opacity-0 group-hover:opacity-100 transition-all duration-150 whitespace-nowrap pointer-events-none z-[9999] border border-white/10 shadow-2xl">
+                              매칭 성공: {u.matchCount || 0}회
                               <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800" />
                             </div>
                           </div>
@@ -474,8 +474,8 @@ export default function UsersPage() {
                             <div className={`flex items-center justify-center w-8 h-5 rounded text-[10px] font-bold border cursor-help ${u.noShowCount > 0 ? 'bg-rose-500/20 text-rose-400 border-rose-500/30' : 'bg-white/5 text-white/20 border-white/5'}`}>
                               N
                             </div>
-                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-slate-800 text-white text-[11px] rounded-md opacity-0 group-hover:opacity-100 transition-all duration-200 whitespace-nowrap pointer-events-none z-[9999] border border-white/10 shadow-2xl">
-                              노쇼/지각 기록: {u.noShowCount || 0}회
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-slate-800 text-white text-[11px] rounded-md opacity-0 group-hover:opacity-100 transition-all duration-150 whitespace-nowrap pointer-events-none z-[9999] border border-white/10 shadow-2xl">
+                              노쇼/지각: {u.noShowCount || 0}회
                               <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800" />
                             </div>
                           </div>
