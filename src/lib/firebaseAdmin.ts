@@ -22,15 +22,19 @@ function initializeAdminApp() {
   }
 
   try {
+    // Robust cleaning for private key from environment variables
+    const cleanedKey = privateKey
+      .replace(/^"|"$/g, '') // Remove wrapping double quotes if any
+      .replace(/\\n/g, '\n'); // Convert literal \n to actual newlines
+
     admin.initializeApp({
       credential: admin.credential.cert({
         projectId,
         clientEmail,
-        // CRITICAL: Vercel stores env vars with literal \n — must convert to real newlines
-        privateKey: privateKey.replace(/\\n/g, '\n'),
+        privateKey: cleanedKey,
       }),
     });
-    console.log('[Firebase Admin] ✅ SDK initialized. Project:', projectId);
+    console.log('[Firebase Admin] ✅ SDK initialized successfully.');
   } catch (error: any) {
     console.error('[Firebase Admin] ❌ Initialization failed:', error.message);
   }
