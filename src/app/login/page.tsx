@@ -69,7 +69,6 @@ function LoginContent() {
       return;
     }
     setIsLoading(true);
-    setError(null);
     try {
       // 1. Query Firestore for the email associated with this ID
       const q = query(collection(db, 'users'), where('username', '==', userId));
