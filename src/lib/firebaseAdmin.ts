@@ -8,6 +8,33 @@ import * as admin from 'firebase-admin';
 
 let initError: string | null = null;
 
+// Robust cleaning for private key from environment variables (Very common Vercel issue)
+function formatPrivateKey(key: string) {
+  let formatted = key;
+  // 1. Remove wrapping double quotes if any
+  if (formatted.startsWith('"') && formatted.endsWith('"')) {
+    formatted = formatted.substring(1, formatted.length - 1);
+  }
+  // 2. Replace escaped sequences
+  formatted = formatted.replace(/\\\\n/g, '\n').replace(/\\n/g, '\n');
+  
+  // 3. Fallback: If no actual newlines exist, it means the key was pasted as a single line (spaces instead of newlines).
+  // We reconstruct the PEM format forcefully.
+  if (!formatted.includes('\n')) {
+    const header = '-----BEGIN PRIVATE KEY-----';
+    const footer = '-----END PRIVATE KEY-----';
+    if (formatted.includes(header) && formatted.includes(footer)) {
+      let body = formatted.replace(header, '').replace(footer, '');
+      body = body.replace(/\s+/g, ''); // remove all whitespace
+      const match = body.match(/.{1,64}/g); // split into 64-char chunks
+      if (match) {
+        formatted = `${header}\n${match.join('\n')}\n${footer}\n`;
+      }
+    }
+  }
+  return formatted;
+}
+
 function initializeAdminApp() {
   if (admin.apps.length > 0) return;
 
@@ -22,10 +49,7 @@ function initializeAdminApp() {
   }
 
   try {
-    // Robust cleaning for private key from environment variables
-    const cleanedKey = privateKey
-      .replace(/^"|"$/g, '') // Remove wrapping double quotes if any
-      .replace(/\\n/g, '\n'); // Convert literal \n to actual newlines
+    const cleanedKey = formatPrivateKey(privateKey);
 
     admin.initializeApp({
       credential: admin.credential.cert({
