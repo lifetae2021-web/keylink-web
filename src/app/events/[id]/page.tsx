@@ -445,7 +445,7 @@ export default function EventDetailPage() {
                       {event.region === 'busan' ? 'BUSAN' : 'CHANGWON'}
                     </p>
                     <p style={{ fontSize: '4rem', fontWeight: '900', color: '#1A1A1A', lineHeight: 1 }}>
-                      {event.episode}<span style={{ fontSize: '1.5rem' }}>기</span>
+                      {event.episodeNumber}<span style={{ fontSize: '1.5rem' }}>기</span>
                     </p>
                     <p style={{ fontSize: '1rem', color: '#333333', marginTop: '8px' }}>{event.title}</p>
                   </div>
@@ -454,11 +454,13 @@ export default function EventDetailPage() {
                 {/* Description */}
                 <div className="kl-card" style={{ marginBottom: '24px' }}>
                   <h2 style={{ fontSize: '1.2rem', fontWeight: '700', marginBottom: '16px', color: '#1A1A1A' }}>행사 안내</h2>
-                  <p style={{ color: '#333333', lineHeight: 1.8 }}>{event.description}</p>
+                  <p style={{ color: '#333333', lineHeight: 1.8 }}>
+                    {event.region === 'busan' ? '부산' : '창원'} {event.episodeNumber}기 로테이션 소개팅입니다. 매칭을 통해 설레는 첫 만남을 경험해 보세요.
+                  </p>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '24px' }}>
                     {[
-                      { Icon: Calendar, label: '일시', value: format(event.date, 'M월 d일 (EEEE) HH:mm', { locale: ko }) },
-                      { Icon: MapPin, label: '장소', value: event.venue },
+                      { Icon: Calendar, label: '일시', value: format(event.eventDate, 'M월 d일 (EEEE) HH:mm', { locale: ko }) },
+                      { Icon: MapPin, label: '장소', value: event.location },
                       { Icon: Users, label: '정원', value: `남 ${event.maxMale}명 · 여 ${event.maxFemale}명` },
                       { Icon: Clock, label: '1회 대화', value: '약 15분' },
                     ].map(({ Icon, label, value }) => (
