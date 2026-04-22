@@ -6,10 +6,11 @@ import {
   Download, ShieldCheck, ChevronLeft, ChevronRight, Loader2,
   FileText, Users, CreditCard, Filter, Calendar, MapPin,
   X, Phone, Briefcase, Ruler, Smile, Cigarette, Beer, Camera, Info, 
-  Ticket
+  Ticket, Download
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { db } from '@/lib/firebase';
+import UserProfileModal from '../users/UserProfileModal';
 import { 
   collection, getDocs, doc, query, where, orderBy, Timestamp, getDoc, onSnapshot 
 } from 'firebase/firestore';
@@ -24,23 +25,23 @@ import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 
 const DEPOSIT_STATUS = {
-  pending:   { label: '입금 대기', color: '#888', bg: 'rgba(255,255,255,0.05)' },
-  confirmed: { label: '입금 확인', color: '#60a5fa', bg: 'rgba(96,165,250,0.1)'  },
+  pending:   { label: '입금 대기', color: '#64748B', bg: '#F1F5F9' },
+  confirmed: { label: '입금 확인', color: '#2563EB', bg: '#EFF6FF'  },
 };
 
 const APP_STATUS: Record<string, { label: string; color: string; bg: string }> = {
-  applied:   { label: '검토 중',   color: '#facc15', bg: 'rgba(250,204,21,0.1)'  },
-  selected:  { label: '입금 대기', color: '#a78bfa', bg: 'rgba(167,139,250,0.1)' },
-  held:      { label: '보류',      color: '#fb923c', bg: 'rgba(251,146,60,0.1)'  },
-  confirmed: { label: '참가 확정', color: '#4ade80', bg: 'rgba(74,222,128,0.1)'  },
-  cancelled: { label: '취소',      color: '#ef4444', bg: 'rgba(239,68,68,0.1)'   },
+  applied:   { label: '검토 중',   color: '#D97706', bg: '#FFFBEB'  },
+  selected:  { label: '입금 대기', color: '#7C3AED', bg: '#F5F3FF' },
+  held:      { label: '보류',      color: '#EA580C', bg: '#FFF7ED'  },
+  confirmed: { label: '참가 확정', color: '#059669', bg: '#ECFDF5'  },
+  cancelled: { label: '취소',      color: '#DC2626', bg: '#FEF2F2'  },
 };
 
-const panel = { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12 };
+const panel = { background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' };
 
 // Skeletons
 const Skeleton = ({ className }: { className?: string }) => (
-  <div className={`animate-pulse bg-white/5 rounded ${className}`} />
+  <div className={`animate-pulse bg-slate-100 rounded ${className}`} />
 );
 
 export default function ApplicationsPage() {
@@ -147,132 +148,6 @@ export default function ApplicationsPage() {
 
   const activeEvent = events.find(e => e.id === selectedEventId);
 
-  // Quick Profile Modal Component
-  const QuickProfileModal = ({ user, onClose }: { user: any, onClose: () => void }) => {
-    if (!user) return null;
-    return (
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-        <div className="bg-[#141417] border border-white/10 w-full max-w-2xl max-h-[90vh] overflow-hidden rounded-3xl shadow-2xl flex flex-col">
-          {/* Header */}
-          <div className="p-6 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
-            <div className="flex items-center gap-4">
-              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-lg ${user.gender === 'male' ? 'bg-blue-500/20 text-blue-400' : 'bg-pink-500/20 text-pink-400'}`}>
-                {user.name ? user.name[0] : 'U'}
-              </div>
-              <div>
-                <h3 className="text-xl font-bold flex items-center gap-2">
-                  {user.name} 
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-white/5 text-white/40 font-normal">
-                    {user.gender === 'male' ? '남성' : '여성'} · {user.birthDate ? `${new Date().getFullYear() - parseInt(user.birthDate.split('-')[0]) + 1}세` : '??세'}
-                  </span>
-                </h3>
-                <p className="text-sm text-white/40">{user.email}</p>
-              </div>
-            </div>
-            <button onClick={onClose} className="w-10 h-10 rounded-full hover:bg-white/5 flex items-center justify-center transition-colors">
-              <X size={20} />
-            </button>
-          </div>
-
-          {/* Content */}
-          <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* Left Column: Photos & Intro */}
-              <div className="space-y-6">
-                <div>
-                  <h4 className="text-xs font-bold text-white/20 uppercase tracking-widest mb-3">프로필 사진</h4>
-                  <div className="aspect-[3/4] rounded-2xl bg-white/5 overflow-hidden border border-white/10">
-                    {user.profilePhotos && user.profilePhotos.length > 0 ? (
-                      <img src={user.profilePhotos[0]} alt="Profile" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-white/10 italic text-sm">등록된 사진 없음</div>
-                    )}
-                  </div>
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-white/20 uppercase tracking-widest mb-3">자기소개</h4>
-                  <p className="text-sm leading-relaxed text-white/70 bg-white/5 p-4 rounded-2xl border border-white/5 whitespace-pre-wrap">
-                    {user.aboutMe || user.intro || "입력된 자기소개가 없습니다."}
-                  </p>
-                </div>
-              </div>
-
-              {/* Right Column: Details */}
-              <div className="space-y-8">
-                <div className="space-y-4">
-                  <h4 className="text-xs font-bold text-white/20 uppercase tracking-widest">기본 정보</h4>
-                  <div className="grid grid-cols-1 gap-3">
-                    <div className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/5">
-                      <Briefcase size={16} className="text-[#FF6F61]" />
-                      <div>
-                        <p className="text-[10px] text-white/30 leading-none mb-1">직업</p>
-                        <p className="text-sm font-medium">{user.workplace || user.job || "미입력"}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/5">
-                      <MapPin size={16} className="text-[#FF6F61]" />
-                      <div>
-                        <p className="text-[10px] text-white/30 leading-none mb-1">거주지</p>
-                        <p className="text-sm font-medium">{user.residence || user.location || user.city || "미입력"}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/5">
-                      <Ruler size={16} className="text-[#FF6F61]" />
-                      <div>
-                        <p className="text-[10px] text-white/30 leading-none mb-1">키 / 몸무게</p>
-                        <p className="text-sm font-medium">{user.height ? `${user.height}cm` : '??'} / {user.weight ? `${user.weight}kg` : '??'}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/5">
-                      <Phone size={16} className="text-[#FF6F61]" />
-                      <div>
-                        <p className="text-[10px] text-white/30 leading-none mb-1">연락처</p>
-                        <p className="text-sm font-medium">{user.phone || "미입력"}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <h4 className="text-xs font-bold text-white/20 uppercase tracking-widest">라이프스타일</h4>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5">
-                      <p className="text-[10px] text-white/30 mb-1 flex items-center gap-1"><Smile size={10}/> 종교</p>
-                      <p className="text-sm font-medium">{user.religion || "미입력"}</p>
-                    </div>
-                    <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5">
-                      <p className="text-[10px] text-white/30 mb-1 flex items-center gap-1"><Cigarette size={10}/> 흡연</p>
-                      <p className="text-sm font-medium">{user.smoking || "미입력"}</p>
-                    </div>
-                    <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5">
-                      <p className="text-[10px] text-white/30 mb-1 flex items-center gap-1"><Beer size={10}/> 음주</p>
-                      <p className="text-sm font-medium">{user.drinking || "미입력"}</p>
-                    </div>
-                    {user.instagram && (
-                      <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5">
-                        <p className="text-[10px] text-white/30 mb-1 flex items-center gap-1"><Camera size={10}/> 인스타</p>
-                        <p className="text-sm font-medium">@{user.instagram}</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Footer */}
-          <div className="p-4 bg-white/5 flex gap-2">
-            <button 
-              onClick={onClose}
-              className="flex-1 py-3 rounded-xl bg-white/5 hover:bg-white/10 font-bold transition-all"
-            >
-              닫기
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
 
   const filtered = applications.filter(app => {
     const user = userMap[app.userId] || {};
@@ -292,8 +167,8 @@ export default function ApplicationsPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 900, letterSpacing: '-0.02em' }}>기수별 신청 관리</h2>
-          <p style={{ fontSize: '0.85rem', color: '#555', marginTop: 2 }}>참가 신청자들의 상세 정보를 심사하고 선발 여부를 결정합니다. <span className="text-[10px] opacity-30">v5.4.0</span></p>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 900, letterSpacing: '-0.02em', color: '#0F172A' }}>기수별 신청 관리</h2>
+          <p style={{ fontSize: '0.85rem', color: '#64748B', marginTop: 2 }}>참가 신청자들의 상세 정보를 심사하고 선발 여부를 결정합니다. <span className="text-[10px] font-bold text-[#FF7E7E] ml-2">v6.4.0 Premium</span></p>
         </div>
         <div className="flex items-center gap-3">
           <div className="relative">
@@ -311,7 +186,7 @@ export default function ApplicationsPage() {
               ))}
             </select>
           </div>
-          <button className="kl-btn-outline" style={{ height: '42px', padding: '0 16px', fontSize: '0.85rem' }}>
+          <button className="flex items-center gap-2 rounded-lg transition-all hover:bg-slate-100" style={{ height: '42px', padding: '0 16px', fontSize: '0.85rem', background: '#fff', border: '1px solid #E2E8F0', color: '#64748B', fontWeight: 600 }}>
             <Download size={14} /> 엑셀 다운로드
           </button>
         </div>
@@ -328,8 +203,8 @@ export default function ApplicationsPage() {
           ].map((item, i) => (
             <div key={i} style={{ ...panel, padding: '16px 20px' }} className="flex items-center justify-between">
               <div>
-                <p style={{ fontSize: '0.75rem', color: '#555' }}>{item.label}</p>
-                <p style={{ fontSize: '1.25rem', fontWeight: 700, color: item.color, marginTop: 2 }}>{item.value}</p>
+                <p style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748B' }}>{item.label}</p>
+                <p style={{ fontSize: '1.25rem', fontWeight: 800, color: item.color, marginTop: 2 }}>{item.value}</p>
               </div>
               <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: `${item.color}10` }}>
                 <item.icon size={18} style={{ color: item.color }} />
@@ -342,7 +217,7 @@ export default function ApplicationsPage() {
       {/* Filters Bar */}
       <div style={{ ...panel, padding: '12px 20px' }} className="flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-2 w-full md:w-auto">
-          <div className="flex bg-white/5 p-1 rounded-xl border border-white/5">
+          <div className="flex bg-slate-100 p-1.5 rounded-xl border border-slate-200">
             {[
               { id: 'all', label: '전체' },
               { id: 'male', label: '남성' },
@@ -351,7 +226,7 @@ export default function ApplicationsPage() {
               <button
                 key={t.id}
                 onClick={() => setFilterGender(t.id as any)}
-                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${filterGender === t.id ? 'bg-[#FF6F61] text-white shadow-lg' : 'text-white/40 hover:text-white'}`}
+                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${filterGender === t.id ? 'bg-white text-[#FF7E7E] shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
               >
                 {t.label}
               </button>
@@ -359,20 +234,20 @@ export default function ApplicationsPage() {
           </div>
           <button
             onClick={() => setFilterUnselectedOnly(!filterUnselectedOnly)}
-            className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all ${filterUnselectedOnly ? 'bg-purple-500/20 text-purple-400 border-purple-500/30' : 'bg-white/5 text-white/30 border-white/10'}`}
+            className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all ${filterUnselectedOnly ? 'bg-[#FF7E7E] text-white border-[#FF7E7E] shadow-md' : 'bg-white text-slate-400 border-slate-200 hover:border-[#FF7E7E]/30'}`}
           >
             미선발만 보기
           </button>
         </div>
 
         <div className="relative w-full md:w-[320px]">
-          <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" />
+          <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
             placeholder="이름, 직업, 거주지로 검색..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-white/5 border border-white/10 rounded-2xl pl-11 pr-4 py-2.5 text-sm outline-none focus:border-[#FF6F61]/50 transition-colors"
+            className="w-full bg-white border border-slate-200 rounded-2xl pl-11 pr-4 py-2.5 text-sm font-medium text-slate-800 outline-none focus:border-[#FF7E7E]/50 transition-colors shadow-inner"
           />
         </div>
       </div>
@@ -392,11 +267,11 @@ export default function ApplicationsPage() {
               <col style={{ width: '180px' }} />
             </colgroup>
             <thead>
-              <tr style={{ background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+              <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #CBD5E1' }}>
                 {['참가자', '직업', '거주지', '키 / 몸무게', '라이프스타일', '연락처', '상태/결제', '선발 관리'].map((h, i) => (
                   <th key={h} style={{
-                    padding: '16px 20px', textAlign: i === 7 ? 'right' : 'left', fontSize: '0.72rem', fontWeight: 600, color: '#444',
-                    textTransform: 'uppercase', letterSpacing: '0.04em'
+                    padding: '16px 20px', textAlign: i === 7 ? 'right' : 'left', fontSize: '0.75rem', fontWeight: 700, color: '#64748B',
+                    textTransform: 'uppercase', letterSpacing: '0.05em'
                   }}>{h}</th>
                 ))}
               </tr>
@@ -404,7 +279,7 @@ export default function ApplicationsPage() {
             <tbody>
               {isDataLoading ? (
                 [1,2,3,4,5,6,7,8].map(i => (
-                  <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', height: '76px' }}>
+                  <tr key={i} style={{ borderBottom: '1px solid #F1F5F9', height: '76px' }}>
                     <td colSpan={8} style={{ padding: '0 20px' }}><Skeleton className="h-10 w-full" /></td>
                   </tr>
                 ))
@@ -429,68 +304,64 @@ export default function ApplicationsPage() {
                   return (
                     <tr 
                       key={app.id} 
-                      style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', height: '76px' }} 
-                      className="hover:bg-white/[0.015] transition-colors group cursor-default"
+                      style={{ borderBottom: '1px solid #E2E8F0', height: '76px' }} 
+                      className="hover:bg-slate-50 transition-colors group cursor-default"
                     >
                       {/* 1. 참가자 */}
                       <td style={{ padding: '0 20px' }}>
                         <div className="flex items-center gap-3">
                           <button 
                             onClick={() => { setSelectedUser(user); setIsModalOpen(true); }}
-                            className="w-10 h-10 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden shrink-0 hover:border-[#FF6F61]/50 transition-colors"
+                            className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden shrink-0 hover:shadow-md transition-all"
                           >
-                            {user.profilePhotos?.[0] ? <img src={user.profilePhotos[0]} className="w-full h-full object-cover" /> : <span className="text-xl">👤</span>}
+                            {user.photoUrl || user.photoURL ? <img src={user.photoUrl || user.photoURL} className="w-full h-full object-cover" /> : <span className="text-xl">👤</span>}
                           </button>
                           <div className="truncate">
                             <button 
                               onClick={() => { setSelectedUser(user); setIsModalOpen(true); }}
-                              className="text-[0.92rem] font-bold block hover:text-[#FF6F61] transition-colors"
+                              className="text-[0.92rem] font-bold block text-slate-800 hover:text-[#FF7E7E] transition-colors"
                             >
                               {user.name || '미입력'}
                             </button>
-                            <span className={`text-[10px] font-bold ${user.gender === 'male' ? 'text-blue-400' : 'text-pink-400'}`}>
+                            <span className={`text-[10px] font-bold ${user.gender === 'male' ? 'text-blue-500' : 'text-rose-500'}`}>
                               {user.gender === 'male' ? '남성' : '여성'} · {user.birthDate ? `${new Date().getFullYear() - parseInt(user.birthDate.split('-')[0]) + 1}세` : '??'}
                             </span>
                           </div>
                         </div>
                       </td>
 
-                      {/* 2. 직업 */}
                       <td style={{ padding: '0 20px' }}>
-                        <p className="text-[0.82rem] font-medium text-white/80 truncate">{user.workplace || user.job || '미입력'}</p>
+                        <p className="text-[0.82rem] font-bold text-slate-700 truncate">{user.job || user.occupation || <span className="text-slate-300 font-normal">-</span>}</p>
                       </td>
 
-                      {/* 3. 거주지 */}
                       <td style={{ padding: '0 20px' }}>
-                        <p className="text-[0.82rem] text-white/60">{user.residence || user.location || user.city || '미입력'}</p>
+                        <p className="text-[0.82rem] font-medium text-slate-500">{user.location || user.residence || <span className="text-slate-300 font-normal">-</span>}</p>
                       </td>
 
                       {/* 4. 키/몸무게 */}
                       <td style={{ padding: '0 20px' }}>
-                        <p className="text-[0.82rem] text-white/60">{user.height || '??'} / {user.weight || '??'}</p>
+                        <p className="text-[0.82rem] font-semibold text-slate-600">{user.height ? `${user.height}cm` : '??'} / {user.weight ? `${user.weight}kg` : '??'}</p>
                       </td>
 
-                      {/* 5. 라이프스타일 */}
                       <td style={{ padding: '0 20px' }}>
                         <div className="flex flex-col gap-0.5">
-                          <p className="text-[0.7rem] text-white/40 flex items-center gap-1"><Smile size={10}/> {user.religion || '미입력'}</p>
-                          <p className="text-[0.7rem] text-white/40 flex items-center gap-1"><Cigarette size={10}/> {user.smoking || '미입력'}</p>
+                          <p className="text-[0.7rem] font-bold text-slate-400 flex items-center gap-1"><Smile size={10} className="text-[#FF7E7E]"/> {user.religion || '미입력'}</p>
+                          <p className="text-[0.7rem] font-bold text-slate-400 flex items-center gap-1"><Cigarette size={10} className="text-[#FF7E7E]"/> {user.smoking || '미입력'}</p>
                         </div>
                       </td>
 
-                      {/* 6. 연락처 */}
                       <td style={{ padding: '0 20px' }}>
-                        <p className="text-[0.82rem] text-white/70 font-mono tracking-tighter">{user.phone || '미입력'}</p>
+                        <p className="text-[0.82rem] text-slate-600 font-bold tracking-tight">{user.phone || <span className="text-slate-300 font-normal">-</span>}</p>
                       </td>
 
                       {/* 7. 상태/결제 */}
                       <td style={{ padding: '0 20px' }}>
                         <div className="flex flex-col gap-1.5">
-                          <span style={{ fontSize: '0.62rem', fontWeight: 800, padding: '2px 8px', borderRadius: 4, width: 'fit-content', background: aStatus.bg, color: aStatus.color }}>{aStatus.label}</span>
+                          <span style={{ fontSize: '0.62rem', fontWeight: 800, padding: '2px 8px', borderRadius: 6, width: 'fit-content', background: aStatus.bg, color: aStatus.color, boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>{aStatus.label}</span>
                           {app.paymentConfirmed ? (
-                            <span className="text-[10px] text-blue-400 font-bold flex items-center gap-1"><CheckCircle size={10}/> 입금완료</span>
+                            <span className="text-[10px] text-blue-500 font-black flex items-center gap-1"><CheckCircle size={10}/> 입금완료</span>
                           ) : (
-                            <span className="text-[10px] text-white/20 font-bold flex items-center gap-1"><Loader2 size={10}/> 입금대기</span>
+                            <span className="text-[10px] text-slate-300 font-bold flex items-center gap-1"><Loader2 size={10} className="animate-spin" /> 입금대기</span>
                           )}
                         </div>
                       </td>
@@ -500,15 +371,15 @@ export default function ApplicationsPage() {
                         <div className="flex items-center justify-end gap-1.5 transition-all">
                           {app.status === 'applied' && (
                             <>
-                              <button onClick={() => updateAppStatus(app, 'selected')} className="px-3 py-1.5 rounded-xl text-[0.75rem] font-bold bg-[#FF6F61]/10 text-[#FF6F61] border border-[#FF6F61]/20 hover:bg-[#FF6F61] hover:text-white transition-all">선발</button>
-                              <button onClick={() => updateAppStatus(app, 'held')} className="px-3 py-1.5 rounded-xl text-[0.75rem] font-bold bg-orange-500/10 text-orange-400 border border-orange-500/20 hover:bg-orange-500 hover:text-white transition-all">보류</button>
+                              <button onClick={() => updateAppStatus(app, 'selected')} className="px-3 py-1.5 rounded-xl text-[0.75rem] font-bold bg-[#FF7E7E]/10 text-[#FF7E7E] border border-[#FF7E7E]/20 hover:bg-[#FF7E7E] hover:text-white transition-all shadow-sm">선발</button>
+                              <button onClick={() => updateAppStatus(app, 'held')} className="px-3 py-1.5 rounded-xl text-[0.75rem] font-bold bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200 transition-all shadow-sm">보류</button>
                             </>
                           )}
                           {app.status === 'selected' && (
-                            <button onClick={() => updateAppStatus(app, 'confirmed')} className="px-3 py-1.5 rounded-xl text-[0.75rem] font-bold bg-green-500/10 text-green-400 border border-green-500/20 hover:bg-green-500 hover:text-white transition-all">입금확정</button>
+                            <button onClick={() => updateAppStatus(app, 'confirmed')} className="px-3 py-1.5 rounded-xl text-[0.75rem] font-bold bg-blue-500/10 text-blue-600 border border-blue-500/20 hover:bg-blue-500 hover:text-white transition-all shadow-sm">입금확정</button>
                           )}
                           {app.status === 'held' && (
-                            <button onClick={() => updateAppStatus(app, 'selected')} className="px-3 py-1.5 rounded-xl text-[0.75rem] font-bold bg-[#FF6F61] text-white transition-all">선발전환</button>
+                            <button onClick={() => updateAppStatus(app, 'selected')} className="px-3 py-1.5 rounded-xl text-[0.75rem] font-bold bg-[#FF7E7E] text-white transition-all shadow-md">선발전환</button>
                           )}
                           
                           <button 
@@ -517,7 +388,7 @@ export default function ApplicationsPage() {
                                 updateAppStatus(app, app.status === 'cancelled' ? 'confirmed' : 'cancelled');
                               }
                             }} 
-                            className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${app.status === 'cancelled' ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-500 opacity-0 group-hover:opacity-100 hover:bg-red-500 hover:text-white'}`}
+                            className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${app.status === 'cancelled' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100 shadow-sm' : 'bg-rose-50 text-rose-400 opacity-0 group-hover:opacity-100 border border-rose-100 hover:bg-rose-500 hover:text-white shadow-sm'}`}
                           >
                             {app.status === 'cancelled' ? <span className="text-[0.7rem] font-bold">복구</span> : <XCircle size={18} />}
                           </button>
@@ -533,7 +404,7 @@ export default function ApplicationsPage() {
       </div>
 
       {/* Modal Overlay */}
-      {isModalOpen && <QuickProfileModal user={selectedUser} onClose={() => { setIsModalOpen(false); setSelectedUser(null); }} />}
+      <UserProfileModal user={selectedUser} isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); setSelectedUser(null); }} />
     </div>
   );
 }
