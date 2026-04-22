@@ -70,18 +70,22 @@ function LoginContent() {
     }
     setIsLoading(true);
     try {
-      // 1. Query Firestore for the email associated with this ID
-      const q = query(collection(db, 'users'), where('username', '==', userId));
-      const querySnapshot = await getDocs(q);
+      // 1. Call secure helper API to get email by username (fixes permission-denied)
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: userId }),
+      });
+
+      const data = await res.json();
       
-      if (querySnapshot.empty) {
-        toast.error('아이디 또는 비밀번호가 일치하지 않습니다.');
+      if (!res.ok) {
+        toast.error(data.error || '로그인에 실패했습니다.');
         setIsLoading(false);
         return;
       }
       
-      const userData = querySnapshot.docs[0].data();
-      const userEmail = userData.email;
+      const userEmail = data.email;
 
       // 2. Set Persistence based on Auto Login preference
       const persistence = autoLogin ? browserLocalPersistence : browserSessionPersistence;
