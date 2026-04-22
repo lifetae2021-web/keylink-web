@@ -215,7 +215,7 @@ export default function UsersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h2 style={{ fontSize: '1.1rem', fontWeight: 700 }}>회원 관리</h2>
-          <p style={{ fontSize: '0.8rem', color: '#555', marginTop: 2 }}>실시간 데이터 동기화 활성화됨 <span className="text-[10px] opacity-30 text-[#FF6F61] ml-2">v5.7.0 Live</span></p>
+          <p style={{ fontSize: '0.8rem', color: '#555', marginTop: 2 }}>실시간 데이터 동기화 활성화됨 <span className="text-[10px] opacity-30 text-[#FF6F61] ml-2">v6.0.0 Live</span></p>
         </div>
         <button
           onClick={downloadCSV}
@@ -316,8 +316,8 @@ export default function UsersPage() {
                 <col style={{ width: '12%' }} />
                 <col style={{ width: '8%' }} />
                 <col style={{ width: '14%' }} />
-                <col style={{ width: '18%' }} />
-                <col style={{ width: '20%' }} />
+                <col style={{ width: '22%' }} />
+                <col style={{ width: '16%' }} />
                 <col style={{ width: '10%' }} />
               </colgroup>
               <thead>
@@ -347,7 +347,7 @@ export default function UsersPage() {
                         }}
                         className={isSortable ? 'hover:text-white/40 transition-colors' : ''}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', justifyContent: i === 5 ? 'flex-end' : (i === 2 || i === 6 ? 'center' : 'flex-start') }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', justifyContent: i === 5 ? 'flex-end' : (i === 2 || i === 6 || i === 4 ? 'center' : 'flex-start') }}>
                           {h}
                           {isSortable && (
                             <span style={{ opacity: isActive ? 1 : 0.3 }}>
@@ -459,36 +459,21 @@ export default function UsersPage() {
 
                       {/* 활동 지표 (Badges) */}
                       <td style={{ padding: '0 20px', verticalAlign: 'middle' }}>
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-center gap-2">
                           {/* T: Total */}
-                          <div className="group relative">
-                            <div className="flex items-center justify-center w-8 h-5 rounded bg-blue-500/10 text-blue-400 text-[10px] font-bold border border-blue-500/20 cursor-help">
-                              T
-                            </div>
-                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-slate-800 text-white text-[11px] rounded-md opacity-0 group-hover:opacity-100 transition-all duration-150 whitespace-nowrap pointer-events-none z-[9999] border border-white/10 shadow-2xl">
-                              총 참여 횟수: {u.participationCount || 0}회
-                              <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800" />
-                            </div>
+                          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-blue-500/10 border border-blue-500/20">
+                            <span className="text-blue-400 text-[10px] font-black">T</span>
+                            <span className="text-white text-[11px] font-bold">{u.participationCount || 0}</span>
                           </div>
                           {/* M: Match */}
-                          <div className="group relative">
-                            <div className="flex items-center justify-center w-8 h-5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold border border-emerald-500/20 cursor-help">
-                              M
-                            </div>
-                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-slate-800 text-white text-[11px] rounded-md opacity-0 group-hover:opacity-100 transition-all duration-150 whitespace-nowrap pointer-events-none z-[9999] border border-white/10 shadow-2xl">
-                              매칭 성공 횟수: {u.matchCount || 0}회
-                              <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800" />
-                            </div>
+                          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">
+                            <span className="text-emerald-400 text-[10px] font-black">M</span>
+                            <span className="text-white text-[11px] font-bold">{u.matchCount || 0}</span>
                           </div>
                           {/* N: No-show */}
-                          <div className="group relative">
-                            <div className={`flex items-center justify-center w-8 h-5 rounded text-[10px] font-bold border cursor-help ${u.noShowCount > 0 ? 'bg-rose-500/20 text-rose-400 border-rose-500/30' : 'bg-white/5 text-white/20 border-white/5'}`}>
-                              N
-                            </div>
-                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-slate-800 text-white text-[11px] rounded-md opacity-0 group-hover:opacity-100 transition-all duration-150 whitespace-nowrap pointer-events-none z-[9999] border border-white/10 shadow-2xl">
-                              노쇼/지각 기록: {u.noShowCount || 0}회
-                              <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800" />
-                            </div>
+                          <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded border ${u.noShowCount > 0 ? 'bg-rose-500/10 border-rose-500/20' : 'bg-white/5 border-white/5'}`}>
+                            <span className={`${u.noShowCount > 0 ? 'text-rose-400' : 'text-white/20'} text-[10px] font-black`}>N</span>
+                            <span className={`${u.noShowCount > 0 ? 'text-white' : 'text-white/20'} text-[11px] font-bold`}>{u.noShowCount || 0}</span>
                           </div>
                         </div>
                       </td>
