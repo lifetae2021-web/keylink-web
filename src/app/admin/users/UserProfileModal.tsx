@@ -25,7 +25,7 @@ export default function UserProfileModal({ user, isOpen, onClose }: UserProfileM
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            className="absolute inset-0 bg-slate-900/40 backdrop-blur-md"
           />
 
           {/* Modal Content */}
@@ -33,19 +33,19 @@ export default function UserProfileModal({ user, isOpen, onClose }: UserProfileM
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="relative w-full max-w-2xl max-h-[90vh] overflow-hidden bg-[#0A0A0B] border border-white/10 rounded-2xl shadow-2xl flex flex-col"
+            className="relative w-full max-w-2xl max-h-[90vh] overflow-hidden bg-white border border-slate-200 rounded-[2rem] shadow-2xl flex flex-col"
           >
             {/* Close Button */}
             <button
               onClick={onClose}
-              className="absolute top-4 right-4 z-10 p-2 rounded-full bg-black/50 text-white/70 hover:text-white transition-colors border border-white/5"
+              className="absolute top-6 right-6 z-10 p-2.5 rounded-full bg-white/80 text-slate-400 hover:text-slate-900 transition-all border border-slate-100 shadow-sm backdrop-blur-sm"
             >
               <X size={20} />
             </button>
 
             <div className="overflow-y-auto custom-scrollbar">
               {/* Header / Cover Image */}
-              <div className="relative h-64 bg-gradient-to-br from-slate-800 to-slate-900 border-b border-white/10 overflow-hidden">
+              <div className="relative h-72 bg-slate-50 border-b border-slate-100 overflow-hidden">
                 {user.profileImageUrl ? (
                   <img
                     src={user.profileImageUrl}
@@ -53,106 +53,120 @@ export default function UserProfileModal({ user, isOpen, onClose }: UserProfileM
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-white/10">
-                    <User size={120} strokeWidth={1} />
+                  <div className="w-full h-full flex items-center justify-center text-slate-200">
+                    <User size={140} strokeWidth={1} />
                   </div>
                 )}
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0B] to-transparent" />
-                <div className="absolute bottom-6 left-8 flex items-end gap-5">
-                  <div className="flex flex-col gap-1">
+                <div className="absolute inset-0 bg-gradient-to-t from-white via-white/20 to-transparent" />
+                <div className="absolute bottom-8 left-10 flex items-end gap-5">
+                  <div className="flex flex-col gap-1.5">
                     <div className="flex items-center gap-3">
-                      <h3 className="text-3xl font-black text-white">{user.name || '미입력'}</h3>
+                      <h3 className="text-4xl font-black text-slate-900 tracking-tight">{user.name || '미입력'}</h3>
                       {user.status === 'verified' && (
-                        <div className="flex items-center gap-1 bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-md border border-emerald-500/20 text-[10px] font-bold">
-                          <ShieldCheck size={12} /> 인증 완료
+                        <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full border border-emerald-100 text-[11px] font-bold shadow-sm">
+                          <ShieldCheck size={14} /> 신원 인증 완료
                         </div>
                       )}
                     </div>
-                    <div className="flex items-center gap-2 text-white/60 text-sm font-medium">
-                      <span>{user.gender === 'male' ? '남성' : '여성'}</span>
-                      <span className="w-1 h-1 rounded-full bg-white/20" />
+                    <div className="flex items-center gap-2 text-slate-500 text-sm font-bold">
+                      <span className={user.gender === 'male' ? 'text-blue-500' : 'text-rose-500'}>
+                        {user.gender === 'male' ? '남성' : '여성'}
+                      </span>
+                      <span className="w-1 h-1 rounded-full bg-slate-300" />
                       <span>{age}세</span>
-                      <span className="w-1 h-1 rounded-full bg-white/20" />
-                      <span>{user.job || user.occupation || '-'}</span>
+                      <span className="w-1 h-1 rounded-full bg-slate-300" />
+                      <span className="text-slate-700">{user.job || user.occupation || '-'}</span>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="p-8 space-y-8">
+              <div className="p-10 space-y-10">
                 {/* Identity Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-3 text-white/40">
-                      <MapPin size={18} />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+                  <div className="space-y-6">
+                    <div className="flex items-center gap-4 text-slate-400 group">
+                      <div className="w-10 h-10 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:text-[#FF7E7E] transition-colors">
+                        <MapPin size={20} />
+                      </div>
                       <div className="flex flex-col">
-                        <span className="text-[10px] uppercase tracking-wider font-bold">거주지</span>
-                        <span className="text-sm text-white font-medium">{user.location || '-'}</span>
+                        <span className="text-[10px] uppercase tracking-wider font-extrabold text-slate-300">Residence</span>
+                        <span className="text-[0.95rem] text-slate-700 font-bold">{user.location || '-'}</span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 text-white/40">
-                      <Heart size={18} />
+                    <div className="flex items-center gap-4 text-slate-400 group">
+                      <div className="w-10 h-10 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:text-[#FF7E7E] transition-colors">
+                        <Heart size={20} />
+                      </div>
                       <div className="flex flex-col">
-                        <span className="text-[10px] uppercase tracking-wider font-bold">MBTI</span>
-                        <span className="text-sm text-white font-medium uppercase">{user.mbti || '-'}</span>
+                        <span className="text-[10px] uppercase tracking-wider font-extrabold text-slate-300">MBTI Type</span>
+                        <span className="text-[0.95rem] text-slate-700 font-bold uppercase">{user.mbti || '-'}</span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 text-white/40">
-                      <Ruler size={18} />
+                    <div className="flex items-center gap-4 text-slate-400 group">
+                      <div className="w-10 h-10 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:text-[#FF7E7E] transition-colors">
+                        <Ruler size={20} />
+                      </div>
                       <div className="flex flex-col">
-                        <span className="text-[10px] uppercase tracking-wider font-bold">키</span>
-                        <span className="text-sm text-white font-medium">{user.height ? `${user.height}cm` : '-'}</span>
+                        <span className="text-[10px] uppercase tracking-wider font-extrabold text-slate-300">Height</span>
+                        <span className="text-[0.95rem] text-slate-700 font-bold">{user.height ? `${user.height}cm` : '-'}</span>
                       </div>
                     </div>
                   </div>
 
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-3 text-white/40">
-                      <Info size={18} />
+                  <div className="space-y-6">
+                    <div className="flex items-center gap-4 text-slate-400 group">
+                      <div className="w-10 h-10 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:text-[#FF7E7E] transition-colors">
+                        <Info size={20} />
+                      </div>
                       <div className="flex flex-col">
-                        <span className="text-[10px] uppercase tracking-wider font-bold">종교</span>
-                        <span className="text-sm text-white font-medium">{user.religion || '-'}</span>
+                        <span className="text-[10px] uppercase tracking-wider font-extrabold text-slate-300">Religion</span>
+                        <span className="text-[0.95rem] text-slate-700 font-bold">{user.religion || '-'}</span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 text-white/40">
-                      <Cigarette size={18} />
+                    <div className="flex items-center gap-4 text-slate-400 group">
+                      <div className="w-10 h-10 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:text-[#FF7E7E] transition-colors">
+                        <Cigarette size={20} />
+                      </div>
                       <div className="flex flex-col">
-                        <span className="text-[10px] uppercase tracking-wider font-bold">흡연 여부</span>
-                        <span className="text-sm text-white font-medium">{user.smoking || '-'}</span>
+                        <span className="text-[10px] uppercase tracking-wider font-extrabold text-slate-300">Smoking</span>
+                        <span className="text-[0.95rem] text-slate-700 font-bold">{user.smoking || '-'}</span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 text-white/40">
-                      <Wine size={18} />
+                    <div className="flex items-center gap-4 text-slate-400 group">
+                      <div className="w-10 h-10 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:text-[#FF7E7E] transition-colors">
+                        <Wine size={20} />
+                      </div>
                       <div className="flex flex-col">
-                        <span className="text-[10px] uppercase tracking-wider font-bold">음주 여부</span>
-                        <span className="text-sm text-white font-medium">{user.drinking || '-'}</span>
+                        <span className="text-[10px] uppercase tracking-wider font-extrabold text-slate-300">Drinking</span>
+                        <span className="text-[0.95rem] text-slate-700 font-bold">{user.drinking || '-'}</span>
                       </div>
                     </div>
                   </div>
                 </div>
 
                 {/* About Section */}
-                <div className="space-y-3">
-                  <h4 className="text-[10px] uppercase tracking-widest font-black text-[#FF6F61]">Self Introduction</h4>
-                  <div className="p-5 rounded-xl bg-white/5 border border-white/5 italic text-white/80 leading-relaxed text-sm">
-                    {user.about || "자기소개 문구가 작성되지 않았습니다."}
+                <div className="space-y-4">
+                  <h4 className="text-[10px] uppercase tracking-[0.2em] font-black text-[#FF7E7E]">Self Introduction</h4>
+                  <div className="p-7 rounded-3xl bg-slate-50 border border-slate-100 text-slate-600 leading-relaxed text-[0.92rem] font-medium shadow-inner">
+                    {user.about || "자기소개 문구가 아직 작성되지 않았습니다."}
                   </div>
                 </div>
 
                 {/* Contact Detail */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-white/5">
-                  <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/5 text-white/40">
-                    <Mail size={16} />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-6 border-t border-slate-100">
+                  <div className="flex items-center gap-4 px-5 py-4 rounded-2xl bg-slate-50/50 text-slate-400">
+                    <Mail size={18} />
                     <div className="flex flex-col">
-                      <span className="text-[9px] uppercase font-bold">Email Address</span>
-                      <span className="text-xs text-white/80">{user.email || '-'}</span>
+                      <span className="text-[9px] uppercase font-black tracking-wider text-slate-300">Email Address</span>
+                      <span className="text-[0.82rem] text-slate-600 font-bold">{user.email || '-'}</span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/5 text-white/40">
-                    <Calendar size={16} />
+                  <div className="flex items-center gap-4 px-5 py-4 rounded-2xl bg-slate-50/50 text-slate-400">
+                    <Calendar size={18} />
                     <div className="flex flex-col">
-                      <span className="text-[9px] uppercase font-bold">Joined Date</span>
-                      <span className="text-xs text-white/80">
+                      <span className="text-[9px] uppercase font-black tracking-wider text-slate-300">Joined Date</span>
+                      <span className="text-[0.82rem] text-slate-600 font-bold">
                         {user.createdAt?.seconds ? format(new Date(user.createdAt.seconds * 1000), 'yyyy-MM-dd HH:mm') : '-'}
                       </span>
                     </div>
@@ -160,18 +174,18 @@ export default function UserProfileModal({ user, isOpen, onClose }: UserProfileM
                 </div>
 
                 {/* Metrics Summary */}
-                <div className="flex items-center gap-2 pt-4">
-                  <div className="flex-1 flex flex-col items-center p-3 rounded-xl bg-blue-500/10 border border-blue-500/20">
-                    <span className="text-[9px] font-black text-blue-400 uppercase mb-1">Total Participation</span>
-                    <span className="text-xl font-black text-white">{user.participationCount || 0}</span>
+                <div className="flex items-center gap-3 pt-6">
+                  <div className="flex-1 flex flex-col items-center p-4 rounded-2xl bg-sky-50 border border-sky-100 shadow-sm">
+                    <span className="text-[9px] font-black text-sky-500 uppercase tracking-widest mb-1">Participation</span>
+                    <span className="text-2xl font-black text-sky-700">{user.participationCount || 0}</span>
                   </div>
-                  <div className="flex-1 flex flex-col items-center p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-                    <span className="text-[9px] font-black text-emerald-400 uppercase mb-1">Match Success</span>
-                    <span className="text-xl font-black text-white">{user.matchCount || 0}</span>
+                  <div className="flex-1 flex flex-col items-center p-4 rounded-2xl bg-emerald-50 border border-emerald-100 shadow-sm">
+                    <span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest mb-1">Matching</span>
+                    <span className="text-2xl font-black text-emerald-700">{user.matchCount || 0}</span>
                   </div>
-                  <div className="flex-1 flex flex-col items-center p-3 rounded-xl bg-rose-500/10 border border-rose-500/20">
-                    <span className="text-[9px] font-black text-rose-400 uppercase mb-1">No-Show / Late</span>
-                    <span className="text-xl font-black text-white">{user.noShowCount || 0}</span>
+                  <div className="flex-1 flex flex-col items-center p-4 rounded-2xl bg-rose-50 border border-rose-100 shadow-sm">
+                    <span className="text-[9px] font-black text-rose-500 uppercase tracking-widest mb-1">No-Show</span>
+                    <span className="text-2xl font-black text-rose-700">{user.noShowCount || 0}</span>
                   </div>
                 </div>
               </div>

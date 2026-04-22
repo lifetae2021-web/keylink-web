@@ -19,9 +19,9 @@ import UserProfileModal from './UserProfileModal';
 type Status = 'all' | 'pending' | 'verified' | 'rejected';
 
 const STATUS_CFG = {
-  verified: { label: '인증 완료', color: '#4ade80', bg: 'rgba(74,222,128,0.1)'  },
-  pending:  { label: '승인 대기', color: '#facc15', bg: 'rgba(250,204,21,0.1)'  },
-  rejected: { label: '인증 반려', color: '#ef4444', bg: 'rgba(239,68,68,0.1)'   },
+  verified: { label: '인증 완료', color: '#10B981', bg: '#ECFDF5'  },
+  pending:  { label: '승인 대기', color: '#F59E0B', bg: '#FFFBEB'  },
+  rejected: { label: '인증 반려', color: '#EF4444', bg: '#FEF2F2'  },
 };
 
 const ROLES = ['일반회원', '신뢰회원', 'VIP회원', '블랙리스트', 'admin'];
@@ -33,18 +33,18 @@ const TABS: { key: Status; label: string }[] = [
   { key: 'rejected', label: '반려'    },
 ];
 
-const panel = { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12 };
+const panel = { background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' };
 
 // Table Skeleton
 const TableSkeleton = () => (
   <>
     {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-      <tr key={i} className="animate-pulse h-[60px] border-b border-white/5">
-        <td style={{ padding: '0 20px' }}><div className="h-8 w-40 bg-white/5 rounded"></div></td>
-        <td style={{ padding: '0 20px' }}><div className="h-6 w-24 bg-white/5 rounded"></div></td>
-        <td style={{ padding: '0 20px' }}><div className="h-6 w-20 bg-white/5 rounded-full"></div></td>
-        <td style={{ padding: '0 20px' }}><div className="h-6 w-24 bg-white/5 rounded"></div></td>
-        <td style={{ padding: '0 20px' }} className="text-right"><div className="h-6 w-16 bg-white/5 rounded ml-auto"></div></td>
+      <tr key={i} className="animate-pulse h-[60px] border-b border-slate-50">
+        <td style={{ padding: '0 20px' }}><div className="h-8 w-40 bg-slate-100 rounded"></div></td>
+        <td style={{ padding: '0 20px' }}><div className="h-6 w-24 bg-slate-100 rounded"></div></td>
+        <td style={{ padding: '0 20px' }}><div className="h-6 w-20 bg-slate-100 rounded-full"></div></td>
+        <td style={{ padding: '0 20px' }}><div className="h-6 w-24 bg-slate-100 rounded"></div></td>
+        <td style={{ padding: '0 20px' }} className="text-right"><div className="h-6 w-16 bg-slate-100 rounded ml-auto"></div></td>
       </tr>
     ))}
   </>
@@ -214,15 +214,15 @@ export default function UsersPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 style={{ fontSize: '1.1rem', fontWeight: 700 }}>회원 관리</h2>
-          <p style={{ fontSize: '0.8rem', color: '#555', marginTop: 2 }}>실시간 데이터 동기화 활성화됨 <span className="text-[10px] opacity-30 text-[#FF6F61] ml-2">v6.0.0 Live</span></p>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0F172A' }}>회원 관리</h2>
+          <p style={{ fontSize: '0.8rem', color: '#64748B', marginTop: 2 }}>실시간 데이터 동기화 활성화됨 <span className="text-[10px] font-bold text-[#FF7E7E] ml-2">v6.1.0 Premium</span></p>
         </div>
         <button
           onClick={downloadCSV}
-          className="flex items-center gap-2 rounded-lg transition-all hover:bg-white/10 hover:text-white"
-          style={{ padding: '8px 16px', fontSize: '0.82rem', fontWeight: 600, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#888' }}
+          className="flex items-center gap-2 rounded-lg transition-all hover:bg-slate-100"
+          style={{ padding: '8px 16px', fontSize: '0.82rem', fontWeight: 600, background: '#fff', border: '1px solid #E2E8F0', color: '#64748B' }}
         >
-          <Download size={14} /> CSV 다운로드
+          <Download size={14} /> CSV 추출하기
         </button>
       </div>
 
@@ -232,23 +232,24 @@ export default function UsersPage() {
           <button
             key={t.key}
             onClick={() => setFilter(t.key)}
-            className="flex items-center gap-2 rounded-lg transition-all duration-150"
+            className="flex items-center gap-2 rounded-xl transition-all duration-200"
             style={{
-              padding: '7px 16px',
+              padding: '8px 18px',
               fontSize: '0.82rem',
-              fontWeight: filter === t.key ? 600 : 400,
-              color: filter === t.key ? '#FF6F61' : '#555',
-              background: filter === t.key ? 'rgba(255,111,97,0.08)' : 'transparent',
-              border: `1px solid ${filter === t.key ? 'rgba(255,111,97,0.25)' : 'rgba(255,255,255,0.07)'}`,
+              fontWeight: filter === t.key ? 700 : 500,
+              color: filter === t.key ? '#fff' : '#64748B',
+              background: filter === t.key ? '#FF7E7E' : '#fff',
+              border: `1px solid ${filter === t.key ? '#FF7E7E' : '#E2E8F0'}`,
+              boxShadow: filter === t.key ? '0 4px 12px rgba(255,126,126,0.2)' : 'none',
             }}
           >
             {t.label}
             <span
               style={{
-                fontSize: '0.65rem', fontWeight: 700,
+                fontSize: '0.65rem', fontWeight: 800,
                 padding: '1px 6px', borderRadius: 10,
-                background: filter === t.key ? '#FF6F61' : 'rgba(255,255,255,0.06)',
-                color: filter === t.key ? '#fff' : '#555',
+                background: filter === t.key ? 'rgba(0,0,0,0.1)' : '#F1F5F9',
+                color: filter === t.key ? '#fff' : '#64748B',
               }}
             >
               {counts[t.key]}
@@ -256,15 +257,15 @@ export default function UsersPage() {
           </button>
         ))}
 
-        <div className="w-[1px] h-6 bg-white/10 mx-2" />
+        <div className="w-[1px] h-6 bg-slate-200 mx-2" />
 
         {/* Gender Filter Tabs */}
-        <div className="flex bg-white/5 p-1 rounded-lg border border-white/5">
+        <div className="flex bg-slate-100 p-1.5 rounded-xl border border-slate-200">
           {['all', 'male', 'female'].map((g) => (
             <button
               key={g}
               onClick={() => setGenderFilter(g as any)}
-              className={`px-3 py-1 text-[0.75rem] font-semibold rounded-md transition-all ${genderFilter === g ? 'bg-[#FF6F61] text-white shadow-lg' : 'text-white/40 hover:text-white'}`}
+              className={`px-4 py-1.5 text-[0.75rem] font-bold rounded-lg transition-all ${genderFilter === g ? 'bg-white text-[#FF7E7E] shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
             >
               {g === 'all' ? '전체' : g === 'male' ? '남성' : '여성'}
             </button>
@@ -273,23 +274,24 @@ export default function UsersPage() {
 
         {/* Search */}
         <div className="relative ml-auto w-full sm:w-auto mt-4 sm:mt-0">
-          <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#444' }} />
+          <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
           <input
             type="text"
-            placeholder="이름, 직업, 이메일 검색..."
+            placeholder="회원 이름, 직업 등으로 검색..."
             value={search}
             onChange={e => setSearch(e.target.value)}
             style={{
-              padding: '7px 14px 7px 34px',
+              padding: '9px 14px 9px 38px',
               fontSize: '0.82rem',
-              background: 'rgba(255,255,255,0.04)',
-              border: '1px solid rgba(255,255,255,0.08)',
-              borderRadius: 8,
-              color: '#ccc',
+              background: '#fff',
+              border: '1px solid #E2E8F0',
+              borderRadius: 12,
+              color: '#1E293B',
               outline: 'none',
               width: '100%',
+              boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)'
             }}
-            className="sm:w-[220px]"
+            className="sm:w-[260px] focus:border-[#FF7E7E]/50 transition-all"
           />
         </div>
       </div>
@@ -333,19 +335,20 @@ export default function UsersPage() {
                         onClick={() => isSortable && toggleSort(sortKey as any)}
                         style={{
                           padding: '12px 20px',
-                          textAlign: (i === 5) ? 'right' : (i === 2 || i === 6) ? 'center' : 'left',
-                          fontSize: '0.72rem',
-                          fontWeight: 600,
-                          color: isActive ? '#FF6F61' : '#444',
+                          textAlign: (i === 5) ? 'right' : (i === 2 || i === 6 || i === 4 ? 'center' : 'left'),
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          color: isActive ? '#FF7E7E' : '#64748B',
                           textTransform: 'uppercase',
-                          letterSpacing: '0.04em',
-                          borderBottom: '1px solid rgba(255,255,255,0.06)',
+                          letterSpacing: '0.05em',
+                          borderBottom: '1px solid #F1F5F9',
+                          background: '#F8FAFC',
                           whiteSpace: 'nowrap',
                           cursor: isSortable ? 'pointer' : 'default',
                           userSelect: 'none',
                           overflow: 'hidden',
                         }}
-                        className={isSortable ? 'hover:text-white/40 transition-colors' : ''}
+                        className={isSortable ? 'hover:bg-slate-100 transition-colors' : ''}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', justifyContent: i === 5 ? 'flex-end' : (i === 2 || i === 6 || i === 4 ? 'center' : 'flex-start') }}>
                           {h}
@@ -371,19 +374,19 @@ export default function UsersPage() {
                   return (
                     <tr
                       key={u.id}
-                      style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', cursor: 'default', height: 60 }}
-                      className="hover:bg-white/[0.02] transition-colors group h-[60px]"
+                      style={{ borderBottom: '1px solid #F8FAFC', cursor: 'default', height: 60 }}
+                      className="hover:bg-slate-50/80 transition-colors group h-[60px]"
                     >
                       {/* 회원정보 */}
                       <td style={{ padding: '0 20px', verticalAlign: 'middle' }}>
                         <div className="flex items-center gap-3">
                           <div
                             onClick={() => setSelectedUserForProfile(u)}
-                            className="relative flex-shrink-0 flex items-center justify-center rounded-xl font-bold cursor-pointer hover:opacity-80 transition-opacity overflow-hidden"
+                            className="relative flex-shrink-0 flex items-center justify-center rounded-xl font-bold cursor-pointer hover:shadow-md transition-all overflow-hidden border border-slate-200"
                             style={{
                               width: 38, height: 38, fontSize: '0.85rem',
-                              background: u.gender === 'male' ? 'rgba(96,165,250,0.1)' : 'rgba(244,114,182,0.1)',
-                              color:      u.gender === 'male' ? '#60a5fa'              : '#f472b6',
+                              background: u.gender === 'male' ? '#EFF6FF' : '#FFF1F2',
+                              color:      u.gender === 'male' ? '#3B82F6' : '#E11D48',
                             }}
                           >
                             {u.profileImageUrl ? (
@@ -397,41 +400,41 @@ export default function UsersPage() {
                             )}
                             {u.status === 'verified' && (
                               <span
-                                className="absolute flex items-center justify-center rounded-full z-10"
-                                style={{ width: 14, height: 14, bottom: -2, right: -2, background: '#09090b' }}
+                                className="absolute flex items-center justify-center rounded-full z-10 shadow-sm"
+                                style={{ width: 14, height: 14, bottom: -2, right: -2, background: '#fff', border: '1px solid #E2E8F0' }}
                               >
-                                <ShieldCheck size={10} style={{ color: '#4ade80' }} />
+                                <ShieldCheck size={10} style={{ color: '#10B981' }} />
                               </span>
                             )}
                           </div>
                           <div className="cursor-pointer group/name" onClick={() => setSelectedUserForProfile(u)}>
                             <div className="flex items-center gap-1.5">
-                              <span className="text-[0.88rem] font-bold group-hover/name:text-[#FF6F61] transition-colors">{u.name || '미입력'}</span>
+                              <span className="text-[0.88rem] font-bold text-slate-800 group-hover/name:text-[#FF7E7E] transition-colors">{u.name || '미입력'}</span>
                               <span
                                 style={{
-                                  fontSize: '0.6rem', fontWeight: 700, padding: '1px 5px', borderRadius: 4,
-                                  background: u.gender === 'male' ? 'rgba(96,165,250,0.1)' : 'rgba(244,114,182,0.1)',
-                                  color:      u.gender === 'male' ? '#60a5fa'              : '#f472b6',
+                                  fontSize: '0.62rem', fontWeight: 800, padding: '1px 6px', borderRadius: 6,
+                                  background: u.gender === 'male' ? '#EFF6FF' : '#FFF1F2',
+                                  color:      u.gender === 'male' ? '#3B82F6' : '#E11D48',
                                 }}
                               >
                                 {u.gender === 'male' ? 'M' : 'F'}
                               </span>
                             </div>
-                            <p style={{ fontSize: '0.75rem', color: '#555', marginTop: 1 }}>{u.email}</p>
+                            <p style={{ fontSize: '0.75rem', color: '#94A3B8', marginTop: 1 }}>{u.email}</p>
                           </div>
                         </div>
                       </td>
 
                       {/* 직업 */}
                       <td style={{ padding: '0 20px', verticalAlign: 'middle' }}>
-                        <p style={{ fontSize: '0.85rem', color: (u.job || u.occupation) ? '#bbb' : '#444', textAlign: (u.job || u.occupation) ? 'left' : 'center' }}>
+                        <p style={{ fontSize: '0.82rem', fontWeight: 500, color: (u.job || u.occupation) ? '#475569' : '#CBD5E1', textAlign: (u.job || u.occupation) ? 'left' : 'center' }}>
                           {u.job || u.occupation || '-'}
                         </p>
                       </td>
 
                       {/* 나이 */}
                       <td style={{ padding: '0 20px', verticalAlign: 'middle', textAlign: 'center' }}>
-                        <p style={{ fontSize: '0.85rem', color: u.birthDate ? '#bbb' : '#444', textAlign: 'center' }}>
+                        <p style={{ fontSize: '0.82rem', fontWeight: 600, color: u.birthDate ? '#475569' : '#CBD5E1', textAlign: 'center' }}>
                           {u.birthDate ? `${new Date().getFullYear() - parseInt(u.birthDate.split('-')[0]) + 1}세` : '-'}
                         </p>
                       </td>
@@ -450,9 +453,9 @@ export default function UsersPage() {
                           <select 
                             value={u.role || '일반회원'} 
                             onChange={(e) => updateRole(u.id, e.target.value)}
-                            className="bg-white/5 border border-white/10 rounded-md text-[10px] px-2 py-1 text-white outline-none focus:border-[#FF6F61]/50 cursor-pointer"
+                            className="bg-slate-50 border border-slate-200 rounded-lg text-[10px] px-2 py-1 text-slate-700 outline-none focus:border-[#FF7E7E]/50 cursor-pointer shadow-sm"
                           >
-                            {ROLES.map(r => <option key={r} value={r} className="bg-[#141417]">{r}</option>)}
+                            {ROLES.map(r => <option key={r} value={r} className="bg-white">{r}</option>)}
                           </select>
                         </div>
                       </td>
@@ -461,19 +464,19 @@ export default function UsersPage() {
                       <td style={{ padding: '0 20px', verticalAlign: 'middle' }}>
                         <div className="flex items-center justify-center gap-2">
                           {/* T: Total */}
-                          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-blue-500/10 border border-blue-500/20">
-                            <span className="text-blue-400 text-[10px] font-black">T</span>
-                            <span className="text-white text-[11px] font-bold">{u.participationCount || 0}</span>
+                          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-sky-50 border border-sky-100 shadow-sm">
+                            <span className="text-sky-600 text-[10px] font-black">T</span>
+                            <span className="text-sky-700 text-[11px] font-black">{u.participationCount || 0}</span>
                           </div>
                           {/* M: Match */}
-                          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">
-                            <span className="text-emerald-400 text-[10px] font-black">M</span>
-                            <span className="text-white text-[11px] font-bold">{u.matchCount || 0}</span>
+                          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-100 shadow-sm">
+                            <span className="text-emerald-600 text-[10px] font-black">M</span>
+                            <span className="text-emerald-700 text-[11px] font-black">{u.matchCount || 0}</span>
                           </div>
                           {/* N: No-show */}
-                          <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded border ${u.noShowCount > 0 ? 'bg-rose-500/10 border-rose-500/20' : 'bg-white/5 border-white/5'}`}>
-                            <span className={`${u.noShowCount > 0 ? 'text-rose-400' : 'text-white/20'} text-[10px] font-black`}>N</span>
-                            <span className={`${u.noShowCount > 0 ? 'text-white' : 'text-white/20'} text-[11px] font-bold`}>{u.noShowCount || 0}</span>
+                          <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border shadow-sm ${u.noShowCount > 0 ? 'bg-rose-50 border-rose-100' : 'bg-slate-50 border-slate-100'}`}>
+                            <span className={`${u.noShowCount > 0 ? 'text-rose-600' : 'text-slate-300'} text-[10px] font-black`}>N</span>
+                            <span className={`${u.noShowCount > 0 ? 'text-rose-700' : 'text-slate-300'} text-[11px] font-black`}>{u.noShowCount || 0}</span>
                           </div>
                         </div>
                       </td>
@@ -483,8 +486,8 @@ export default function UsersPage() {
                         <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button
                             onClick={() => setSelectedUserForAsset(u)}
-                            className="flex items-center gap-1.5 rounded-lg transition-all"
-                            style={{ padding: '5px 12px', fontSize: '0.75rem', fontWeight: 600, background: 'rgba(255,111,97,0.08)', color: '#FF6F61', border: '1px solid rgba(255,111,97,0.15)' }}
+                            className="flex items-center gap-1.5 rounded-lg transition-all hover:shadow-md"
+                            style={{ padding: '5px 12px', fontSize: '0.75rem', fontWeight: 700, background: '#fff', color: '#FF7E7E', border: '1px solid #FF7E7E' }}
                           >
                             <Coins size={12} /> 자산 관리
                           </button>
@@ -493,22 +496,22 @@ export default function UsersPage() {
                             <>
                               <button
                                 onClick={() => approve(u.id, u.name)}
-                                className="flex items-center gap-1.5 rounded-lg transition-all"
-                                style={{ padding: '5px 10px', fontSize: '0.75rem', fontWeight: 600, background: 'rgba(74,222,128,0.08)', color: '#4ade80', border: '1px solid rgba(74,222,128,0.15)' }}
+                                className="flex items-center gap-1.5 rounded-lg transition-all hover:shadow-sm"
+                                style={{ padding: '5px 10px', fontSize: '0.75rem', fontWeight: 700, background: '#ECFDF5', color: '#10B981', border: '1px solid #D1FAE5' }}
                               >
                                 <CheckCircle size={12} /> 승인
                               </button>
                               <button
                                 onClick={() => reject(u.id, u.name)}
-                                className="flex items-center gap-1.5 rounded-lg transition-all"
-                                style={{ padding: '5px 10px', fontSize: '0.75rem', fontWeight: 600, background: 'rgba(239,68,68,0.08)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.15)' }}
+                                className="flex items-center gap-1.5 rounded-lg transition-all hover:shadow-sm"
+                                style={{ padding: '5px 10px', fontSize: '0.75rem', fontWeight: 700, background: '#FEF2F2', color: '#EF4444', border: '1px solid #FEE2E2' }}
                               >
                                 <XCircle size={12} /> 반려
                               </button>
                             </>
                           )}
                           <button
-                            className="flex items-center justify-center rounded-lg hover:bg-white/5 transition-all text-white/30 hover:text-white"
+                            className="flex items-center justify-center rounded-lg hover:bg-slate-100 transition-all text-slate-300 hover:text-slate-600"
                             style={{ width: 32, height: 32 }}
                           >
                             <Eye size={14} />
@@ -518,7 +521,7 @@ export default function UsersPage() {
 
                       {/* 가입일 */}
                       <td style={{ padding: '0 20px', verticalAlign: 'middle', textAlign: 'center' }}>
-                        <span style={{ fontSize: '0.78rem', color: '#555' }}>
+                        <span style={{ fontSize: '0.78rem', fontWeight: 500, color: '#94A3B8' }}>
                           {u.createdAt?.seconds ? format(new Date(u.createdAt.seconds * 1000), 'yyyy-MM-dd') : '-'}
                         </span>
                       </td>
@@ -531,17 +534,17 @@ export default function UsersPage() {
         )}
 
         {/* Loading More / Windows Mechanism */}
-        <div className="flex items-center justify-between px-5 py-3" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-          <p style={{ fontSize: '0.75rem', color: '#555' }}>
-            성능 최적화: 현재 <strong style={{ color: '#ccc' }}>{pagedItems.length}</strong>명 표시 중 (전체 {filtered.length}명)
+        <div className="flex items-center justify-between px-6 py-4 bg-slate-50/50" style={{ borderTop: '1px solid #F1F5F9' }}>
+          <p style={{ fontSize: '0.75rem', fontWeight: 500, color: '#64748B' }}>
+            프리미엄 대시보드: 현재 <strong style={{ color: '#0F172A' }}>{pagedItems.length}</strong>명 표시 중 (전체 {filtered.length}명)
           </p>
           <div className="flex items-center gap-1">
              {filtered.length > pageSize && (
                <button 
                  onClick={() => setPageSize(prev => prev + 20)}
-                 className="px-4 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs font-semibold text-white/60 hover:text-white hover:bg-white/10 transition-all"
+                 className="px-6 py-2 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 hover:text-[#FF7E7E] transition-all shadow-sm"
                >
-                 더 보기
+                 데이터 더 불러오기
                </button>
              )}
           </div>

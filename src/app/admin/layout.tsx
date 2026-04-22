@@ -126,7 +126,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   return (
-    <div className="min-h-screen flex" style={{ background: '#09090b', color: '#fff', fontFamily: 'inherit' }}>
+    <div className="min-h-screen flex" style={{ background: '#F8FAFC', color: '#1E293B', fontFamily: 'inherit' }}>
 
       {/* Mobile overlay */}
       {sidebarOpen && (
@@ -142,16 +142,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         className={`fixed inset-y-0 left-0 z-50 flex flex-col transition-transform duration-300 lg:translate-x-0 lg:static ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
-        style={{ width: 250, background: '#111113', borderRight: '1px solid rgba(255,255,255,0.06)' }}
+        style={{ width: 250, background: '#FFFFFF', borderRight: '1px solid #E2E8F0' }}
       >
         {/* Logo */}
-        <div className="flex items-center justify-between px-6" style={{ height: 72, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+        <div className="flex items-center justify-between px-6" style={{ height: 72, borderBottom: '1px solid #F1F5F9' }}>
           <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: '#FF6F61' }}>
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center shadow-sm" style={{ background: '#FF7E7E' }}>
               <ShieldCheck size={14} color="#fff" />
             </div>
-            <span style={{ fontWeight: 700, fontSize: '1.1rem', letterSpacing: '0.5px' }}>KEYLINK</span>
-            <span style={{ fontSize: '0.6rem', fontWeight: 700, color: '#FF6F61', background: 'rgba(255,111,97,0.12)', padding: '2px 6px', borderRadius: 4 }}>
+            <span style={{ fontWeight: 800, fontSize: '1.1rem', letterSpacing: '-0.02em', color: '#0F172A' }}>KEYLINK</span>
+            <span style={{ fontSize: '0.6rem', fontWeight: 800, color: '#FF7E7E', background: 'rgba(255,126,126,0.1)', padding: '2px 6px', borderRadius: 4 }}>
               ADMIN
             </span>
           </div>
@@ -172,13 +172,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 className="flex items-center gap-3 rounded-lg mb-0.5 transition-all duration-150"
                 style={{
                   padding: '10px 14px',
-                  color: active ? '#FF6F61' : '#777',
-                  background: active ? 'rgba(255,111,97,0.08)' : 'transparent',
-                  fontWeight: active ? 600 : 400,
+                  color: active ? '#fff' : '#64748B',
+                  background: active ? '#FF7E7E' : 'transparent',
+                  fontWeight: active ? 600 : 500,
                   fontSize: '0.9rem',
+                  boxShadow: active ? '0 4px 12px rgba(255,126,126,0.25)' : 'none'
                 }}
-                onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.color = '#ccc'; }}
-                onMouseLeave={e => { if (!active) (e.currentTarget as HTMLElement).style.color = '#777'; }}
+                onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.background = '#F1F5F9'; }}
+                onMouseLeave={e => { if (!active) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
               >
                 <item.icon size={16} />
                 <span className="flex-1">{item.label}</span>
@@ -197,9 +198,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <button
             onClick={() => auth.signOut()}
             className="w-full flex items-center gap-3 rounded-lg transition-all duration-150"
-            style={{ padding: '10px 14px', color: '#555', fontSize: '0.9rem', background: 'transparent' }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#ef4444'; (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.05)'; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = '#555'; (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+            style={{ padding: '10px 14px', color: '#94A3B8', fontSize: '0.9rem', background: 'transparent' }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#EF4444'; (e.currentTarget as HTMLElement).style.background = '#FEF2F2'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = '#94A3B8'; (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
           >
             <LogOut size={16} />
             <span>로그아웃</span>
@@ -213,14 +214,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         {/* Topbar */}
         <header
-          className="sticky top-0 z-40 flex items-center gap-4 px-6"
-          style={{ height: 72, background: 'rgba(17,17,19,0.85)', backdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+          className="sticky top-0 z-40 flex items-center gap-4 px-6 shadow-sm"
+          style={{ height: 72, background: 'rgba(255,255,255,0.8)', backdropFilter: 'blur(12px)', borderBottom: '1px solid #E2E8F0' }}
         >
           <button onClick={() => setSidebarOpen(true)} className="lg:hidden" style={{ color: '#666' }}>
             <Menu size={20} />
           </button>
 
-          <h1 style={{ fontSize: '1rem', fontWeight: 600, color: '#fff', flex: 1 }}>{pageTitle}</h1>
+          <h1 style={{ fontSize: '1rem', fontWeight: 700, color: '#0F172A', flex: 1 }}>{pageTitle}</h1>
 
           <div className="flex items-center gap-3">
             {/* Live site link */}
@@ -241,9 +242,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <button
                 onClick={() => setNotiOpen(v => !v)}
                 className="relative flex items-center justify-center rounded-lg transition-all duration-150"
-                style={{ width: 38, height: 38, color: '#666', background: notiOpen ? 'rgba(255,255,255,0.06)' : 'transparent' }}
-                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#ccc'; (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.06)'; }}
-                onMouseLeave={e => { if (!notiOpen) { (e.currentTarget as HTMLElement).style.color = '#666'; (e.currentTarget as HTMLElement).style.background = 'transparent'; } }}
+                style={{ width: 38, height: 38, color: '#64748B', background: notiOpen ? '#F1F5F9' : 'transparent' }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#0F172A'; (e.currentTarget as HTMLElement).style.background = '#F1F5F9'; }}
+                onMouseLeave={e => { if (!notiOpen) { (e.currentTarget as HTMLElement).style.color = '#64748B'; (e.currentTarget as HTMLElement).style.background = 'transparent'; } }}
               >
                 <Bell size={17} />
                 {unreadCount > 0 && (
@@ -301,7 +302,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <div className="flex items-center gap-2.5 cursor-pointer" style={{ paddingLeft: 12, borderLeft: '1px solid rgba(255,255,255,0.06)' }}>
               <div
                 className="flex items-center justify-center rounded-full"
-                style={{ width: 34, height: 34, background: '#FF6F61', color: '#fff', fontWeight: 700, fontSize: '0.85rem' }}
+                style={{ width: 34, height: 34, background: '#FF7E7E', color: '#fff', fontWeight: 700, fontSize: '0.85rem', boxShadow: '0 2px 8px rgba(255,126,126,0.3)' }}
               >
                 {auth.currentUser?.email?.[0]?.toUpperCase() ?? 'A'}
               </div>
