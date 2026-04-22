@@ -48,8 +48,8 @@ export async function POST(
         .get()
     ]);
 
-    const participants = appsSnap.docs.map(doc => ({ id: doc.data().userId, gender: doc.data().gender }));
-    const votes = votesSnap.docs.map(doc => doc.data() as Vote);
+    const participants: { id: string; gender: string }[] = appsSnap.docs.map((doc: FirebaseFirestore.QueryDocumentSnapshot) => ({ id: doc.data().userId, gender: doc.data().gender }));
+    const votes: Vote[] = votesSnap.docs.map((doc: FirebaseFirestore.QueryDocumentSnapshot) => doc.data() as Vote);
 
     if (participants.length === 0 || votes.length === 0) {
       return NextResponse.json({ error: 'No data to match' }, { status: 400 });
@@ -59,7 +59,7 @@ export async function POST(
     const weightMap: Record<string, Record<string, number>> = {};
     const voteCountMap: Record<string, number> = {};
 
-    votes.forEach(v => {
+    votes.forEach((v: Vote) => {
       weightMap[v.userId] = {};
       v.choices.forEach((c: VoteChoice) => {
         weightMap[v.userId][c.targetUserId] = WEIGHTS[c.priority as keyof typeof WEIGHTS] || 0;
@@ -69,14 +69,14 @@ export async function POST(
 
     // 4. Calculate Scores for every possible M-F pair
     // Pair score = Weight(A->B) + Weight(B->A)
-    const maleUids = participants.filter(p => p.gender === 'male').map(p => p.id);
-    const femaleUids = participants.filter(p => p.gender === 'female').map(p => p.id);
+    const maleUids = participants.filter((p: { id: string; gender: string }) => p.gender === 'male').map((p: { id: string; gender: string }) => p.id);
+    const femaleUids = participants.filter((p: { id: string; gender: string }) => p.gender === 'female').map((p: { id: string; gender: string }) => p.id);
 
     type ScoringPair = { m: string; f: string; score: number };
     const candidates: ScoringPair[] = [];
 
-    maleUids.forEach(m => {
-      femaleUids.forEach(f => {
+    maleUids.forEach((m: string) => {
+      femaleUids.forEach((f: string) => {
         const scoreM = weightMap[m]?.[f] || 0;
         const scoreF = weightMap[f]?.[m] || 0;
         
@@ -104,8 +104,8 @@ export async function POST(
     });
 
     const unmatchedUserIds = participants
-      .map(p => p.id)
-      .filter(uid => !matchedUids.has(uid));
+      .map((p: { id: string; gender: string }) => p.id)
+      .filter((uid: string) => !matchedUids.has(uid));
 
     // 6. Persistence to Firestore (MatchingResults)
     const batch = adminDb.batch();
@@ -142,7 +142,7 @@ export async function POST(
     });
 
     // Unmatched
-    unmatchedUserIds.forEach(uid => {
+    unmatchedUserIds.forEach((uid: string) => {
       const id = `${sessionId}_${uid}`;
       batch.set(adminDb.collection('matchingResults').doc(id), {
         sessionId,
