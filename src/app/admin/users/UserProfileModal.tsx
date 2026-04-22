@@ -1,6 +1,6 @@
 'use client';
 
-import { X, User, MapPin, Briefcase, Heart, Height, Cigarette, Wine, Info, ShieldCheck, Mail, Calendar } from 'lucide-react';
+import { X, User, MapPin, Briefcase, Heart, Ruler, Cigarette, Wine, Info, ShieldCheck, Mail, Calendar } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 
@@ -98,7 +98,7 @@ export default function UserProfileModal({ user, isOpen, onClose }: UserProfileM
                       </div>
                     </div>
                     <div className="flex items-center gap-3 text-white/40">
-                      <div className="w-[18px] h-[18px] flex items-center justify-center text-[11px] font-bold">Tall</div>
+                      <Ruler size={18} />
                       <div className="flex flex-col">
                         <span className="text-[10px] uppercase tracking-wider font-bold">키</span>
                         <span className="text-sm text-white font-medium">{user.height ? `${user.height}cm` : '-'}</span>
