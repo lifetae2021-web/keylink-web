@@ -213,7 +213,7 @@ export default function UsersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h2 style={{ fontSize: '1.1rem', fontWeight: 700 }}>회원 관리</h2>
-          <p style={{ fontSize: '0.8rem', color: '#555', marginTop: 2 }}>실시간 데이터 동기화 활성화됨 <span className="text-[10px] opacity-30 text-[#FF6F61] ml-2">v5.6.0 Live</span></p>
+          <p style={{ fontSize: '0.8rem', color: '#555', marginTop: 2 }}>실시간 데이터 동기화 활성화됨 <span className="text-[10px] opacity-30 text-[#FF6F61] ml-2">v5.7.0 Live</span></p>
         </div>
         <button
           onClick={downloadCSV}
@@ -315,12 +315,12 @@ export default function UsersPage() {
                 <col style={{ width: '8%' }} />
                 <col style={{ width: '14%' }} />
                 <col style={{ width: '18%' }} />
-                <col style={{ width: '10%' }} />
                 <col style={{ width: '20%' }} />
+                <col style={{ width: '10%' }} />
               </colgroup>
               <thead>
                 <tr>
-                  {['회원정보', '직업', '나이', '상태 / 권한', '활동 지표', '가입일', '관리'].map((h, i) => {
+                  {['회원정보', '직업', '나이', '상태 / 권한', '활동 지표', '관리', '가입일'].map((h, i) => {
                     const isSortable = h === '나이' || h === '가입일';
                     const sortKey = (h === '나이') ? 'age' : (h === '가입일' ? 'createdAt' : null);
                     const isActive = sortKey && sortConfig.key === sortKey;
@@ -331,7 +331,7 @@ export default function UsersPage() {
                         onClick={() => isSortable && toggleSort(sortKey as any)}
                         style={{
                           padding: '12px 20px',
-                          textAlign: (i === 6) ? 'right' : (i === 2) ? 'center' : 'left',
+                          textAlign: (i === 5) ? 'right' : (i === 2 || i === 6) ? 'center' : 'left',
                           fontSize: '0.72rem',
                           fontWeight: 600,
                           color: isActive ? '#FF6F61' : '#444',
@@ -345,7 +345,7 @@ export default function UsersPage() {
                         }}
                         className={isSortable ? 'hover:text-white/40 transition-colors' : ''}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', justifyContent: i === 6 ? 'flex-end' : (i === 2 ? 'center' : 'flex-start') }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', justifyContent: i === 5 ? 'flex-end' : (i === 2 || i === 6 ? 'center' : 'flex-start') }}>
                           {h}
                           {isSortable && (
                             <span style={{ opacity: isActive ? 1 : 0.3 }}>
@@ -413,8 +413,8 @@ export default function UsersPage() {
 
                       {/* 직업 */}
                       <td style={{ padding: '0 20px', verticalAlign: 'middle' }}>
-                        <p style={{ fontSize: '0.85rem', color: u.job ? '#bbb' : '#444', textAlign: u.job ? 'left' : 'center' }}>
-                          {u.job || '-'}
+                        <p style={{ fontSize: '0.85rem', color: (u.job || u.occupation) ? '#bbb' : '#444', textAlign: (u.job || u.occupation) ? 'left' : 'center' }}>
+                          {u.job || u.occupation || '-'}
                         </p>
                       </td>
 
@@ -455,7 +455,7 @@ export default function UsersPage() {
                               T
                             </div>
                             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-slate-800 text-white text-[11px] rounded-md opacity-0 group-hover:opacity-100 transition-all duration-150 whitespace-nowrap pointer-events-none z-[9999] border border-white/10 shadow-2xl">
-                              총 참여: {u.participationCount || 0}회
+                              총 참여 횟수: {u.participationCount || 0}회
                               <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800" />
                             </div>
                           </div>
@@ -465,7 +465,7 @@ export default function UsersPage() {
                               M
                             </div>
                             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-slate-800 text-white text-[11px] rounded-md opacity-0 group-hover:opacity-100 transition-all duration-150 whitespace-nowrap pointer-events-none z-[9999] border border-white/10 shadow-2xl">
-                              매칭 성공: {u.matchCount || 0}회
+                              매칭 성공 횟수: {u.matchCount || 0}회
                               <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800" />
                             </div>
                           </div>
@@ -475,18 +475,11 @@ export default function UsersPage() {
                               N
                             </div>
                             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-slate-800 text-white text-[11px] rounded-md opacity-0 group-hover:opacity-100 transition-all duration-150 whitespace-nowrap pointer-events-none z-[9999] border border-white/10 shadow-2xl">
-                              노쇼/지각: {u.noShowCount || 0}회
+                              노쇼/지각 기록: {u.noShowCount || 0}회
                               <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800" />
                             </div>
                           </div>
                         </div>
-                      </td>
-
-                      {/* 가입일 */}
-                      <td style={{ padding: '0 20px', verticalAlign: 'middle' }}>
-                        <span style={{ fontSize: '0.78rem', color: '#555' }}>
-                          {u.createdAt?.seconds ? format(new Date(u.createdAt.seconds * 1000), 'yyyy-MM-dd') : '-'}
-                        </span>
                       </td>
 
                       {/* 관리 */}
@@ -525,6 +518,13 @@ export default function UsersPage() {
                             <Eye size={14} />
                           </button>
                         </div>
+                      </td>
+
+                      {/* 가입일 */}
+                      <td style={{ padding: '0 20px', verticalAlign: 'middle', textAlign: 'center' }}>
+                        <span style={{ fontSize: '0.78rem', color: '#555' }}>
+                          {u.createdAt?.seconds ? format(new Date(u.createdAt.seconds * 1000), 'yyyy-MM-dd') : '-'}
+                        </span>
                       </td>
                     </tr>
                   );
