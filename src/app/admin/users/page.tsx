@@ -215,7 +215,7 @@ export default function UsersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0F172A' }}>회원 관리</h2>
-          <p style={{ fontSize: '0.8rem', color: '#64748B', marginTop: 2 }}>실시간 데이터 동기화 활성화됨 <span className="text-[10px] font-bold text-[#FF7E7E] ml-2">v6.2.0 Premium</span></p>
+          <p style={{ fontSize: '0.8rem', color: '#64748B', marginTop: 2 }}>실시간 데이터 동기화 활성화됨 <span className="text-[10px] font-bold text-[#FF7E7E] ml-2">v6.3.0 Premium</span></p>
         </div>
         <button
           onClick={downloadCSV}
@@ -341,7 +341,7 @@ export default function UsersPage() {
                           color: isActive ? '#FF7E7E' : '#64748B',
                           textTransform: 'uppercase',
                           letterSpacing: '0.05em',
-                          borderBottom: '1px solid #F1F5F9',
+                          borderBottom: '1px solid #CBD5E1',
                           background: '#F8FAFC',
                           whiteSpace: 'nowrap',
                           cursor: isSortable ? 'pointer' : 'default',
@@ -374,8 +374,8 @@ export default function UsersPage() {
                   return (
                     <tr
                       key={u.id}
-                      style={{ borderBottom: '1px solid #F8FAFC', cursor: 'default', height: 60 }}
-                      className="hover:bg-slate-50/80 transition-colors group h-[60px]"
+                      style={{ borderBottom: '1px solid #E2E8F0', cursor: 'default', height: 60 }}
+                      className="hover:bg-slate-50 transition-colors group h-[60px]"
                     >
                       {/* 회원정보 */}
                       <td style={{ padding: '0 20px', verticalAlign: 'middle' }}>
@@ -439,15 +439,15 @@ export default function UsersPage() {
 
                       {/* 직업 */}
                       <td style={{ padding: '0 20px', verticalAlign: 'middle' }}>
-                        <p style={{ fontSize: '0.82rem', fontWeight: 500, color: (u.job || u.occupation) ? '#475569' : '#CBD5E1', textAlign: (u.job || u.occupation) ? 'left' : 'center' }}>
-                          {u.job || u.occupation || '-'}
+                        <p style={{ fontSize: '0.82rem', fontWeight: 500, color: (u.job || u.occupation) ? '#334155' : '#94A3B8' }}>
+                          {u.job || u.occupation || <span style={{ color: '#94A3B8' }}>-</span>}
                         </p>
                       </td>
 
                       {/* 나이 */}
                       <td style={{ padding: '0 20px', verticalAlign: 'middle', textAlign: 'center' }}>
-                        <p style={{ fontSize: '0.82rem', fontWeight: 600, color: u.birthDate ? '#475569' : '#CBD5E1', textAlign: 'center' }}>
-                          {u.birthDate ? `${new Date().getFullYear() - parseInt(u.birthDate.split('-')[0]) + 1}세` : '-'}
+                        <p style={{ fontSize: '0.82rem', fontWeight: 600, color: u.birthDate ? '#334155' : '#94A3B8', textAlign: 'center' }}>
+                          {u.birthDate ? `${new Date().getFullYear() - parseInt(u.birthDate.split('-')[0]) + 1}세` : <span style={{ color: '#94A3B8' }}>-</span>}
                         </p>
                       </td>
 
@@ -533,8 +533,8 @@ export default function UsersPage() {
 
                       {/* 가입일 */}
                       <td style={{ padding: '0 20px', verticalAlign: 'middle', textAlign: 'center' }}>
-                        <span style={{ fontSize: '0.78rem', fontWeight: 500, color: '#94A3B8' }}>
-                          {u.createdAt?.seconds ? format(new Date(u.createdAt.seconds * 1000), 'yyyy-MM-dd') : '-'}
+                        <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#64748B' }}>
+                          {u.createdAt?.seconds ? format(new Date(u.createdAt.seconds * 1000), 'yyyy-MM-dd') : <span style={{ color: '#94A3B8' }}>-</span>}
                         </span>
                       </td>
                     </tr>
