@@ -16,7 +16,6 @@ import {
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import SocialAuth from '@/components/SocialAuth';
 import { getAuthErrorMessage } from '@/lib/auth-errors';
-import { AlertCircle } from 'lucide-react';
 
 function LoginContent() {
   const [isLoading, setIsLoading] = useState(false);
@@ -25,7 +24,6 @@ function LoginContent() {
   const [password, setPassword] = useState('');
   const [rememberId, setRememberId] = useState(false);
   const [autoLogin, setAutoLogin] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -78,10 +76,7 @@ function LoginContent() {
       const querySnapshot = await getDocs(q);
       
       if (querySnapshot.empty) {
-        const msg = '아이디 또는 비밀번호가 일치하지 않습니다.';
-        setError(msg);
-        toast.error(msg);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        toast.error('아이디 또는 비밀번호가 일치하지 않습니다.');
         setIsLoading(false);
         return;
       }
@@ -108,9 +103,7 @@ function LoginContent() {
     } catch (error: any) {
       console.error('Firebase Auth Error (Login):', error.code, error.message, error);
       const msg = getAuthErrorMessage(error.code);
-      setError(msg);
       toast.error(msg);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setIsLoading(false);
     }
@@ -118,7 +111,6 @@ function LoginContent() {
 
   const handleInputChange = (setter: (val: string) => void, val: string) => {
     setter(val);
-    if (error) setError(null);
   };
 
 
@@ -140,25 +132,6 @@ function LoginContent() {
         }}>
           <h1 style={{ fontSize: '1.6rem', fontWeight: '900', marginBottom: '32px', color: '#111', textAlign: 'center' }}>로그인</h1>
 
-          {/* Error Message Display */}
-          {error && (
-            <div style={{ 
-              marginBottom: '24px', 
-              padding: '14px', 
-              background: '#FFF5F4', 
-              border: '1px solid #FFEBE9', 
-              borderRadius: '12px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-            }}>
-              <AlertCircle size={18} color="#FF6F61" />
-              <p style={{ fontSize: '0.85rem', color: '#FF6F61', fontWeight: '600' }}>
-                {error}
-              </p>
-            </div>
-          )}
-          
           {/* Normal Login Form */}
           <form onSubmit={handleNormalLogin} style={{ marginBottom: '24px' }}>
             <div style={{ marginBottom: '16px' }}>

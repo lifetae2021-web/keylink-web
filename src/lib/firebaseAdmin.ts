@@ -2,7 +2,7 @@ import * as admin from 'firebase-admin';
 
 /**
  * Firebase Admin SDK Initialization (Singleton Pattern)
- * v5.5.1 - Safe initialization: exports are lazy getters to prevent crash on missing env vars.
+ * v6.5.0 - Fixed null-caching bug in legacy exports. Now uses safe late-binding getters.
  */
 
 function initializeAdminApp() {
@@ -29,35 +29,55 @@ function initializeAdminApp() {
         privateKey: privateKey.replace(/\\n/g, '\n'),
       }),
     });
-    console.log('[Firebase Admin] SDK initialized successfully.');
-  } catch (error) {
-    console.error('[Firebase Admin] Initialization failed:', error);
+    console.log('[Firebase Admin] ✅ SDK initialized successfully. Project:', projectId);
+  } catch (error: any) {
+    console.error('[Firebase Admin] ❌ Initialization failed:', error.message);
+    console.error('[Firebase Admin] Error code:', error.code);
+    console.error('[Firebase Admin] Full error:', error);
   }
 }
 
 // Initialize on module load
 initializeAdminApp();
 
-// Safe lazy getters — will not crash if admin app failed to init
-// Each usage will get a proper error at call-time instead of at build-time
+// ── Safe lazy getters (recommended) ──
+// Throws a descriptive error at call-time if SDK failed to initialize
 export function getAdminAuth() {
-  if (!admin.apps.length) throw new Error('Firebase Admin SDK not initialized. Check environment variables.');
+  if (!admin.apps.length) throw new Error('Firebase Admin SDK not initialized. Check FIREBASE_ADMIN_* environment variables in Vercel dashboard.');
   return admin.auth();
 }
 
 export function getAdminDb() {
-  if (!admin.apps.length) throw new Error('Firebase Admin SDK not initialized. Check environment variables.');
+  if (!admin.apps.length) throw new Error('Firebase Admin SDK not initialized. Check FIREBASE_ADMIN_* environment variables in Vercel dashboard.');
   return admin.firestore();
 }
 
 export function getAdminStorage() {
-  if (!admin.apps.length) throw new Error('Firebase Admin SDK not initialized. Check environment variables.');
+  if (!admin.apps.length) throw new Error('Firebase Admin SDK not initialized. Check FIREBASE_ADMIN_* environment variables in Vercel dashboard.');
   return admin.storage();
 }
 
-// Legacy named exports for backward compatibility (safe: only called at runtime, not build time)
-export const adminAuth = admin.apps.length ? admin.auth() : null as any;
-export const adminDb = admin.apps.length ? admin.firestore() : null as any;
-export const adminStorage = admin.apps.length ? admin.storage() : null as any;
+// ── Legacy named exports (backward compatibility) ──
+// FIXED v6.5.0: Now uses getter pattern to prevent null-caching at module load time.
+// Previously: `admin.apps.length ? admin.auth() : null` — always null if evaluated before init.
+export const adminAuth = {
+  createCustomToken: (...args: any[]) => getAdminAuth().createCustomToken(...args),
+  verifyIdToken: (...args: any[]) => getAdminAuth().verifyIdToken(...args),
+  getUser: (...args: any[]) => getAdminAuth().getUser(...args),
+  createUser: (...args: any[]) => getAdminAuth().createUser(...args),
+  updateUser: (...args: any[]) => getAdminAuth().updateUser(...args),
+  deleteUser: (...args: any[]) => getAdminAuth().deleteUser(...args),
+};
+
+export const adminDb = {
+  collection: (...args: any[]) => getAdminDb().collection(...args as [any]),
+  doc: (...args: any[]) => getAdminDb().doc(...args as [any]),
+  batch: () => getAdminDb().batch(),
+  runTransaction: (...args: any[]) => getAdminDb().runTransaction(...args as [any]),
+};
+
+export const adminStorage = {
+  bucket: (...args: any[]) => getAdminStorage().bucket(...args as [any]),
+};
 
 export default admin;
