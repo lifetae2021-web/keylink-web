@@ -6,7 +6,7 @@ import {
   Download, ShieldCheck, ChevronLeft, ChevronRight, Loader2,
   FileText, Users, CreditCard, Filter, Calendar, MapPin,
   X, Phone, Briefcase, Ruler, Smile, Cigarette, Beer, Camera, Info, 
-  Ticket, Download
+  Ticket
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { db } from '@/lib/firebase';
