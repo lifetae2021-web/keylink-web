@@ -215,7 +215,7 @@ export default function UsersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0F172A' }}>회원 관리</h2>
-          <p style={{ fontSize: '0.8rem', color: '#64748B', marginTop: 2 }}>실시간 데이터 동기화 활성화됨 <span className="text-[10px] font-bold text-[#FF7E7E] ml-2">v6.1.0 Premium</span></p>
+          <p style={{ fontSize: '0.8rem', color: '#64748B', marginTop: 2 }}>실시간 데이터 동기화 활성화됨 <span className="text-[10px] font-bold text-[#FF7E7E] ml-2">v6.2.0 Premium</span></p>
         </div>
         <button
           onClick={downloadCSV}
@@ -389,11 +389,23 @@ export default function UsersPage() {
                               color:      u.gender === 'male' ? '#3B82F6' : '#E11D48',
                             }}
                           >
-                            {u.profileImageUrl ? (
+                            {/* 실제 프로필 이미지 - photoUrl 또는 photoURL 필드 지원 */}
+                            {(u.photoUrl || u.photoURL) ? (
                               <img 
-                                src={u.profileImageUrl} 
-                                alt={u.name} 
+                                src={u.photoUrl || u.photoURL} 
+                                alt={u.name}
                                 className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  // 이미지 로드 실패 시 아바타로 폴백
+                                  const target = e.currentTarget as HTMLImageElement;
+                                  target.style.display = 'none';
+                                  const parent = target.parentElement;
+                                  if (parent) {
+                                    const span = document.createElement('span');
+                                    span.textContent = u.name ? u.name[0] : 'U';
+                                    parent.appendChild(span);
+                                  }
+                                }}
                               />
                             ) : (
                               u.name ? u.name[0] : 'U'

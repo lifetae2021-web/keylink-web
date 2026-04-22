@@ -46,11 +46,14 @@ export default function UserProfileModal({ user, isOpen, onClose }: UserProfileM
             <div className="overflow-y-auto custom-scrollbar">
               {/* Header / Cover Image */}
               <div className="relative h-72 bg-slate-50 border-b border-slate-100 overflow-hidden">
-                {user.profileImageUrl ? (
+                {(user.photoUrl || user.photoURL) ? (
                   <img
-                    src={user.profileImageUrl}
+                    src={user.photoUrl || user.photoURL}
                     alt={user.name}
                     className="w-full h-full object-cover"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).style.display = 'none';
+                    }}
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-slate-200">
