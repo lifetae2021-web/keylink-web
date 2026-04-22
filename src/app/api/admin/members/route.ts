@@ -1,17 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
-import type { QueryDocumentSnapshot } from 'firebase-admin/firestore';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(_req: NextRequest) {
   try {
-    // 1. 관리자 권한 확인 (Session/Token check should be done here in a real app)
-    // For now, we assume the middleware or a token header handles this.
-    // In many Next.js setups, we'd check a secure cookie or Authorization header.
-    
     const usersSnapshot = await adminDb.collection('users').orderBy('createdAt', 'desc').get();
-    const users = usersSnapshot.docs.map((doc: FirebaseFirestore.QueryDocumentSnapshot) => ({
+    const users = usersSnapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data()
     }));
