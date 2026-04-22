@@ -65,7 +65,7 @@ function LoginContent() {
   const handleNormalLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!userId || !password) {
-      setError('아이디와 비밀번호를 입력해 주세요.');
+      toast.error('아이디와 비밀번호를 입력해 주세요.');
       return;
     }
     setIsLoading(true);
