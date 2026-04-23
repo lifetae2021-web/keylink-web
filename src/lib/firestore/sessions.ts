@@ -63,8 +63,7 @@ export async function getSession(sessionId: string): Promise<Session | null> {
 export async function getOpenSessions(): Promise<Session[]> {
   const q = query(
     collection(db, COLLECTION),
-    where('status', '==', 'open'),
-    orderBy('eventDate', 'desc')
+    where('status', '==', 'open')
   );
   const snap = await getDocs(q);
   return snap.docs.map((d) => fromDoc(d)).filter(Boolean) as Session[];
@@ -95,8 +94,7 @@ export function subscribeAllSessions(
   callback: (sessions: Session[]) => void
 ) {
   const q = query(
-    collection(db, COLLECTION),
-    orderBy('episodeNumber', 'desc')
+    collection(db, COLLECTION)
   );
   return onSnapshot(q, (snap) => {
     const sessions = snap.docs.map((d) => fromDoc(d)).filter(Boolean) as Session[];
