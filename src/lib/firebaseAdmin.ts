@@ -2,52 +2,28 @@ import * as admin from 'firebase-admin';
 
 /**
  * Firebase Admin SDK Initialization (Singleton Pattern)
- * v6.7.0 - Standard Vercel private key parsing via JSON.parse.
- * Ref: https://vercel.com/guides/firebase-remote-config-react-native#firebase-server-config
+ * v6.7.2 - Single JSON key approach: FIREBASE_SERVICE_ACCOUNT_KEY
+ * Parses the entire service account JSON in one shot, eliminating all PEM issues.
  */
 
 let initError: string | null = null;
 
-/**
- * Vercel 확정 파싱 방법 (Final Fix):
- * JSON.parse는 \n 이스케이프 시퀀스를 실제 개행문자로 변환합니다.
- * 이 방식이 Vercel 환경에서 100% 작동하는 유일한 방법입니다.
- * Ref: https://vercel.com/guides/using-firebase-with-vercel#using-a-service-account
- */
-function parsePrivateKey(raw: string): string {
-  // 1. 앞뒤 공백 제거
-  const stripped = raw.trim();
-  // 2. JSON.parse로 \n → 실제 개행문자 변환 시도 (Vercel 공식 방법)
-  try {
-    return JSON.parse(`"${stripped}"`);
-  } catch {
-    // Fallback: 직접 replace (엣지 케이스 대비)
-    return stripped.replace(/\\n/g, '\n');
-  }
-}
-
 function initializeAdminApp() {
   if (admin.apps.length > 0) return;
 
-  const projectId = process.env.FIREBASE_ADMIN_PROJECT_ID;
-  const clientEmail = process.env.FIREBASE_ADMIN_CLIENT_EMAIL;
-  const privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY;
+  const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
 
-  if (!projectId || !clientEmail || !privateKey) {
-    initError = `Missing env vars: ID(${!!projectId}) Email(${!!clientEmail}) Key(${!!privateKey})`;
+  if (!serviceAccountJson) {
+    initError = 'Missing env var: FIREBASE_SERVICE_ACCOUNT_KEY';
     console.warn(`⚠️ [Firebase Admin] ${initError}`);
     return;
   }
 
   try {
-    const parsedKey = parsePrivateKey(privateKey);
+    const serviceAccount = JSON.parse(serviceAccountJson);
 
     admin.initializeApp({
-      credential: admin.credential.cert({
-        projectId,
-        clientEmail,
-        privateKey: parsedKey,
-      }),
+      credential: admin.credential.cert(serviceAccount),
     });
     console.log('[Firebase Admin] ✅ Auth System Initialized Successfully.');
   } catch (error: any) {
