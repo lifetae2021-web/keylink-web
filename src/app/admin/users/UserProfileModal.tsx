@@ -200,16 +200,3 @@ export default function UserProfileModal({ user, isOpen, onClose }: UserProfileM
     </AnimatePresence>
   );
 }
->
-                      <span className="text-2xl font-black text-rose-700">{user.noShowCount || 0}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      )}
-    </AnimatePresence>
-  );
-}
