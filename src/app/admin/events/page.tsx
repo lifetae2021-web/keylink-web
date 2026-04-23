@@ -50,6 +50,16 @@ export default function EventsPage() {
   };
 
   const [formData, setFormData] = useState(initialFormData);
+  
+  // v8.1.1: 투표 설정 모달 상태
+  const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
+  const [isConfigSaving, setIsConfigSaving] = useState(false);
+  const [configFormData, setConfigFormData] = useState({
+    maxSelection: 3,
+    questionText: '오늘 가장 호감 갔던 이성을 3명까지 골라주세요.',
+    showReason: false,
+    resultVisibility: 'all' as 'all' | 'mutual'
+  });
 
   // 1. 실시간 데이터 구독 (기수 목록)
   useEffect(() => {
@@ -165,7 +175,7 @@ export default function EventsPage() {
     };
   }, [sessions]);
 
-  // v8.1.0: 투표 폼 상태 퀵 토글
+  // v8.1.1: 투표 폼 상태 퀵 토글
   const toggleVotingForm = async (newStatus: SessionStatus) => {
     if (!selectedId) return;
     try {
@@ -226,6 +236,43 @@ export default function EventsPage() {
       status: session.status
     });
     setIsModalOpen(true);
+  };
+
+  // v8.1.1: 투표 설정 모달 열기
+  const openConfigModal = (session: Session) => {
+    if (session.voteConfig) {
+      setConfigFormData({
+        maxSelection: session.voteConfig.maxSelection || 3,
+        questionText: session.voteConfig.questionText || '오늘 가장 호감 갔던 이성을 3명까지 골라주세요.',
+        showReason: !!session.voteConfig.showReason,
+        resultVisibility: session.voteConfig.resultVisibility || 'all'
+      });
+    } else {
+      setConfigFormData({
+        maxSelection: 3,
+        questionText: '오늘 가장 호감 갔던 이성을 3명까지 골라주세요.',
+        showReason: false,
+        resultVisibility: 'all'
+      });
+    }
+    setIsConfigModalOpen(true);
+  };
+
+  const handleSaveConfig = async () => {
+    if (!selectedId) return;
+    setIsConfigSaving(true);
+    try {
+      const { updateDoc, doc } = await import('firebase/firestore');
+      await updateDoc(doc(db, 'sessions', selectedId), {
+        voteConfig: configFormData
+      });
+      toast.success('설정이 저장되었습니다.');
+      setIsConfigModalOpen(false);
+    } catch (e) {
+      toast.error('설정 저장 중 오류 발생');
+    } finally {
+      setIsConfigSaving(false);
+    }
   };
 
   // 4. 삭제 처리
@@ -485,7 +532,7 @@ export default function EventsPage() {
                   <Zap size={18} style={{ color: '#FF6F61' }} /> 매칭 알고리즘 가동 시스템
                 </h3>
                 
-                {/* v8.1.0: 3컬럼 레이아웃 개편 */}
+                {/* v8.1.1: 3컬럼 레이아웃 개편 */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                   {/* 신규: 호감도 매칭 폼 제어 */}
                   <div className="flex flex-col gap-3 rounded-xl border border-indigo-100 p-5 bg-indigo-50/30">
@@ -506,7 +553,7 @@ export default function EventsPage() {
                         {active.status === 'voting' ? '폼 닫기' : '폼 열기'}
                       </button>
                       <button 
-                        onClick={() => toast.success('항목 설정 모달 준비 중...')}
+                        onClick={() => openConfigModal(active)}
                         className="w-9 h-9 flex items-center justify-center rounded-lg bg-white border border-indigo-200 text-indigo-400 hover:text-indigo-600 transition-colors"
                       >
                         <ListChecks size={14} />
@@ -685,6 +732,102 @@ export default function EventsPage() {
           </div>
         </div>
       </div>
+
+      {/* v8.1.1: 호감도 신청폼 세부 설정 모달 */}
+      {isConfigModalOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
+              <h3 className="text-lg font-black text-slate-800">호감도 신청폼 세부 설정</h3>
+              <button onClick={() => setIsConfigModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1"><X size={20} /></button>
+            </div>
+            
+            <div className="p-6 space-y-8">
+              {/* 모집 정원 및 제한 */}
+              <section className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-bold text-slate-700">최대 선택 인원</p>
+                    <p className="text-[0.75rem] text-slate-400">유저가 투표 시 고를 수 있는 최대 인원</p>
+                  </div>
+                  <input 
+                    type="number" 
+                    value={configFormData.maxSelection}
+                    onChange={e => setConfigFormData({ ...configFormData, maxSelection: Number(e.target.value) })}
+                    className="w-16 h-10 text-center rounded-lg border border-slate-200 font-bold focus:ring-2 focus:ring-indigo-100 outline-none"
+                  />
+                </div>
+              </section>
+
+              {/* 질문 문구 */}
+              <section className="space-y-4">
+                <div>
+                  <p className="text-sm font-bold text-slate-700 mb-2">질문 문구 설정</p>
+                  <textarea 
+                    value={configFormData.questionText}
+                    onChange={e => setConfigFormData({ ...configFormData, questionText: e.target.value })}
+                    rows={2}
+                    placeholder="투표 페이지 상단에 노출될 문구를 입력하세요."
+                    className="w-full p-3 rounded-xl border border-slate-200 text-sm font-medium focus:ring-2 focus:ring-indigo-100 outline-none resize-none"
+                  />
+                </div>
+              </section>
+
+              {/* 선택 사유 활성화 */}
+              <section className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-bold text-slate-700">선택 사유 입력 여부</p>
+                  <p className="text-[0.75rem] text-slate-400">호감 표시와 함께 짧은 코멘트 허용</p>
+                </div>
+                <button 
+                  onClick={() => setConfigFormData({ ...configFormData, showReason: !configFormData.showReason })}
+                  className={`w-11 h-6 rounded-full transition-colors relative ${configFormData.showReason ? 'bg-indigo-600' : 'bg-slate-200'}`}
+                >
+                  <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${configFormData.showReason ? 'left-6' : 'left-1'}`} />
+                </button>
+              </section>
+
+              {/* 결과 공개 로직 */}
+              <section className="space-y-4">
+                <p className="text-sm font-bold text-slate-700">결과 공개 로직 설정</p>
+                <div className="space-y-2">
+                  {[
+                    { id: 'all', label: '나를 선택한 사람 모두 공개' },
+                    { id: 'mutual', label: '맞호감(매칭 성공)인 경우만 공개' }
+                  ].map(opt => (
+                    <label key={opt.id} className="flex items-center gap-3 p-3 rounded-xl border border-slate-100 hover:bg-slate-50 cursor-pointer transition-colors">
+                      <input 
+                        type="radio" 
+                        name="visibility" 
+                        checked={configFormData.resultVisibility === opt.id}
+                        onChange={() => setConfigFormData({ ...configFormData, resultVisibility: opt.id as any })}
+                        className="w-4 h-4 text-indigo-600 border-slate-300 focus:ring-indigo-500"
+                      />
+                      <span className="text-sm font-semibold text-slate-600">{opt.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </section>
+            </div>
+
+            <div className="p-6 bg-slate-50 flex gap-3">
+              <button 
+                onClick={() => setIsConfigModalOpen(false)}
+                className="flex-1 h-12 rounded-xl border border-slate-200 bg-white text-slate-600 font-bold hover:bg-slate-100 transition-colors"
+              >
+                취소
+              </button>
+              <button 
+                onClick={handleSaveConfig}
+                disabled={isConfigSaving}
+                className="flex-1 h-12 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 disabled:opacity-50"
+              >
+                {isConfigSaving ? '저장 중...' : '설정 저장하기'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* New Session Config Modal */}
       {isModalOpen && (

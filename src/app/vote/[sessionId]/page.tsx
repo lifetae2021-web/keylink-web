@@ -32,6 +32,7 @@ export default function VotePage() {
   const [myApplication, setMyApplication] = useState<Application | null>(null);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [choices, setChoices] = useState<Record<number, string>>({}); // priority → userId
+  const [reasons, setReasons] = useState<Record<string, string>>({}); // userId → reason (v8.1.1)
   const [hasVoted, setHasVoted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -112,6 +113,7 @@ export default function VotePage() {
       const voteChoices: VoteChoice[] = Object.entries(choices).map(([p, uid]) => ({
         priority: Number(p) as 1 | 2 | 3,
         targetUserId: uid,
+        reason: reasons[uid] || '', // v8.1.1: 사유 포함
       }));
       await submitVote(sessionId, userId, voteChoices);
       setHasVoted(true);
@@ -129,8 +131,13 @@ export default function VotePage() {
     </div>
   );
 
-  // 세션이 투표 활성화 상태가 아닌 경우
-  if (session?.status !== 'voting') {
+  // 투표 활성화 로직: v7.9.9 행사 당일 체크 + v8.1.1 퀵 토글 상태 체크
+  const isEventDay = session ? (
+    new Date().toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' }) === 
+    session.eventDate.toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' })
+  ) : false;
+  
+  if (session?.status !== 'voting' && !isEventDay) {
     return (
       <div className="min-h-screen bg-[#FFFAF9] flex flex-col items-center justify-center p-6 text-center">
         <div className="w-20 h-20 rounded-[28px] bg-gray-100 flex items-center justify-center mb-6">
@@ -147,6 +154,11 @@ export default function VotePage() {
       </div>
     );
   }
+
+  // v8.1.1: 동적 설정값 추출
+  const maxLimit = session?.voteConfig?.maxSelection || 3;
+  const questionText = session?.voteConfig?.questionText || '오늘 가장 호감 갔던 이성을 3명까지 골라주세요.';
+  const priorityList = Array.from({ length: maxLimit }, (_, i) => i + 1);
 
   // 이미 투표한 경우
   if (hasVoted) {
@@ -176,18 +188,18 @@ export default function VotePage() {
             <Heart size={32} className="text-pink-500" fill="currentColor" />
           </div>
           <h1 className="text-3xl font-black text-gray-900 mb-3">오늘의 인연 선택</h1>
-          <p className="text-gray-400 font-medium text-sm leading-relaxed">
-            마음에 드는 분을 1~3순위로 선택해 주세요.<br />
+          <p className="text-gray-400 font-medium text-sm leading-relaxed whitespace-pre-wrap px-4">
+            {questionText}<br />
             상대방도 나를 선택하면 매칭이 성사됩니다! 🌸
           </p>
         </header>
 
         {/* 선택 현황 */}
-        <div className="flex gap-3 mb-8 justify-center">
-          {([1, 2, 3] as const).map(p => (
+        <div className="flex gap-3 mb-8 justify-center flex-wrap px-4">
+          {priorityList.map(p => (
             <div
               key={p}
-              className={`flex-1 py-3 rounded-2xl text-center text-sm font-black transition-all ${
+              className={`flex-1 min-w-[80px] py-3 rounded-2xl text-center text-sm font-black transition-all ${
                 choices[p]
                   ? 'bg-pink-500 text-white shadow-lg shadow-pink-200'
                   : 'bg-white border-2 border-dashed border-gray-200 text-gray-300'
@@ -196,7 +208,7 @@ export default function VotePage() {
               <Star size={14} className="inline mr-1" fill={choices[p] ? 'white' : 'none'} />
               {p}순위
               {choices[p] && (
-                <div className="text-xs mt-0.5 opacity-80">
+                <div className="text-xs mt-0.5 opacity-80 overflow-hidden text-ellipsis whitespace-nowrap px-2">
                   {candidates.find(c => c.userId === choices[p])?.name || ''}
                 </div>
               )}
@@ -249,16 +261,29 @@ export default function VotePage() {
                   ))}
                 </div>
 
+                {/* v8.1.1: 선택 사유 입력 (관리자 활성 시) */}
+                {session?.voteConfig?.showReason && isSelected && (
+                  <div className="mb-4 animate-in slide-in-from-top-2 duration-300">
+                    <textarea 
+                      placeholder="간단한 선택 사유를 적어주세요 (선택 사항)"
+                      value={reasons[candidate.userId] || ''}
+                      onChange={e => setReasons(prev => ({ ...prev, [candidate.userId]: e.target.value }))}
+                      className="w-full p-3 rounded-xl border border-pink-100 bg-pink-50/30 text-sm font-medium focus:ring-2 focus:ring-pink-100 outline-none resize-none placeholder:text-pink-300"
+                      rows={2}
+                    />
+                  </div>
+                )}
+
                 {/* 순위 선택 버튼 */}
-                <div className="flex gap-2">
-                  {([1, 2, 3] as const).map(p => {
+                <div className="flex gap-2 flex-wrap">
+                  {priorityList.map(p => {
                     const isThisRankSelected = choices[p] === candidate.userId;
                     const isRankTaken = !!choices[p] && choices[p] !== candidate.userId;
                     return (
                       <button
                         key={p}
-                        onClick={() => handleChoiceSelect(p, candidate.userId)}
-                        className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all ${
+                        onClick={() => handleChoiceSelect(p as 1 | 2 | 3, candidate.userId)}
+                        className={`flex-1 min-w-[70px] py-2.5 rounded-xl text-xs font-black transition-all ${
                           isThisRankSelected
                             ? 'bg-pink-500 text-white shadow-sm'
                             : isRankTaken

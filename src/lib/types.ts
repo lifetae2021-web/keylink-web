@@ -32,6 +32,14 @@ export interface Session {
   status: SessionStatus;
   votingUnlockedAt: Date | null;   // 투표 잠금 해제 시각
   
+  // v8.1.1: 호감도 투표 상세 설정
+  voteConfig?: {
+    maxSelection: number;          // 최대 선택 인원 (기본 3)
+    questionText: string;          // 유저에게 보여줄 질문
+    showReason: boolean;           // 선택 사유 입력 여부
+    resultVisibility: 'all' | 'mutual'; // 결과 공개 범위
+  };
+  
   // v6.6.0 추가 필드 (새 기수 등록 폼 연동)
   venue?: string;                  // 서면역 인근 카페
   venueAddress?: string;           // 상세 주소

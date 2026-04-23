@@ -2,7 +2,7 @@ import crypto from 'crypto';
 
 /**
  * Solapi v4 API Utility
- * v8.1.0 (Integrated SMS Support)
+ * v8.1.1 (Integrated SMS Support)
  */
 
 interface SendSMSParams {

@@ -83,7 +83,7 @@ export async function submitVote(
 }
 
 /**
- * 나를 선택한 사람들의 투표 목록 조회 (v8.1.0)
+ * 나를 선택한 사람들의 투표 목록 조회 (v8.1.1)
  * 성능상 기수의 모든 투표를 가져와 필터링합니다. (참여자 수가 소수이기에 효율적)
  */
 export async function getVotesReceivedByMe(

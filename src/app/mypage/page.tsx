@@ -73,7 +73,7 @@ export default function MyPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  // v8.1.0: 신청 현황 다중 상태 관리
+  // v8.1.1: 신청 현황 다중 상태 관리
   const [applications, setApplications] = useState<Application[]>([]);
   const [hasVoted, setHasVoted] = useState(false);
   
@@ -144,7 +144,7 @@ export default function MyPage() {
       } catch (e) { console.error(e); }
       finally { setLoading(false); }
 
-      // v8.1.0: 모든 신청서 실시간 구독 및 관련 세션 실시간 추적
+      // v8.1.1: 모든 신청서 실시간 구독 및 관련 세션 실시간 추적
       const unsubApps = subscribeMyApplications(currentUser.uid, (apps) => {
         setApplications(apps);
         
@@ -656,7 +656,7 @@ export default function MyPage() {
           )}
         </div>
 
-        {/* ─── v8.1.0: 신청 현황 상태 블록 (다중 카드 지원) ─── */}
+        {/* ─── v8.1.1: 신청 현황 상태 블록 (다중 카드 지원) ─── */}
         <ApplicationStatusSection
           applications={applications}
           sessionsMap={sessionsMap}
@@ -694,7 +694,7 @@ export default function MyPage() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// v8.1.0 ApplicationStatusSection — 다중 카드 렌더링 지원
+// v8.1.1 ApplicationStatusSection — 다중 카드 렌더링 지원
 // ─────────────────────────────────────────────────────────────────────────────
 interface StatusBlockProps {
   application: Application | null;
@@ -879,7 +879,7 @@ function ApplicationStatusBlock({ application, session, userId, hasVoted }: Stat
 
   // ── 참가 확정 (confirmed) ──
   if (application.status === 'confirmed') {
-    // v8.1.0: KST 기준 행사 당일 00:00부터 투표 활성화
+    // v8.1.1: KST 기준 행사 당일 00:00부터 투표 활성화
     const isEventDay = session ? (
       new Date().toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' }) === 
       session.eventDate.toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' })
@@ -921,10 +921,10 @@ function ApplicationStatusBlock({ application, session, userId, hasVoted }: Stat
             </div>
           )}
 
-          {/* v8.1.0: 나에게 도착한 호감 (발표 시 노출) */}
+          {/* v8.1.1: 나에게 도착한 호감 (발표 시 노출) */}
           {session?.status === 'completed' && (
             <ReceivedHeartsFeed 
-              sessionId={application.sessionId} 
+              session={session}
               userId={userId} 
             />
           )}
@@ -952,10 +952,9 @@ function ApplicationStatusBlock({ application, session, userId, hasVoted }: Stat
   );
 }
 
+// v8.1.1 ReceivedHeartsFeed — 나를 선택한 이성 정보 및 맞호감 표시
 // ─────────────────────────────────────────────────────────────────────────────
-// v8.1.0 ReceivedHeartsFeed — 나를 선택한 이성 정보 및 맞호감 표시
-// ─────────────────────────────────────────────────────────────────────────────
-function ReceivedHeartsFeed({ sessionId, userId }: { sessionId: string, userId: string }) {
+function ReceivedHeartsFeed({ session, userId }: { session: Session, userId: string }) {
   const [voters, setVoters] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [myVote, setMyVote] = useState<Vote | null>(null);
@@ -964,15 +963,15 @@ function ReceivedHeartsFeed({ sessionId, userId }: { sessionId: string, userId: 
     async function loadHearts() {
       try {
         const [received, mine] = await Promise.all([
-          getVotesReceivedByMe(sessionId, userId),
-          getMyVote(sessionId, userId)
+          getVotesReceivedByMe(session.id, userId),
+          getMyVote(session.id, userId)
         ]);
         
         setMyVote(mine);
 
         const profiles = await Promise.all(received.map(async (v) => {
           const userSnap = await getDoc(doc(db, 'users', v.userId));
-          return { id: v.userId, ...(userSnap.data() || {}) };
+          return { id: v.userId, voteData: v, ...(userSnap.data() || {}) };
         }));
 
         setVoters(profiles);
@@ -983,10 +982,17 @@ function ReceivedHeartsFeed({ sessionId, userId }: { sessionId: string, userId: 
       }
     }
     loadHearts();
-  }, [sessionId, userId]);
+  }, [session.id, userId]);
 
   if (loading) return <div style={{ padding: '20px', color: '#FF6F61', fontSize: '0.8rem', textAlign: 'center' }}>호감 데이터를 불러오는 중...</div>;
-  if (voters.length === 0) return (
+
+  // v8.1.1: 결과 공개 로직 필터링
+  const visibility = session.voteConfig?.resultVisibility || 'all';
+  const displayedVoters = visibility === 'mutual' 
+    ? voters.filter(v => myVote?.choices.some(c => c.targetUserId === v.id))
+    : voters;
+
+  if (displayedVoters.length === 0) return (
     <div style={{ marginTop: '24px', padding: '24px', background: '#F8FAFC', borderRadius: '18px', textAlign: 'center' }}>
       <p style={{ color: '#94A3B8', fontSize: '0.85rem', fontWeight: '600' }}>아쉽게도 이번 기수에는 나를 선택한 분이 없네요.</p>
       <p style={{ color: '#CBD5E1', fontSize: '0.75rem', marginTop: '4px' }}>다음 번에는 더 멋진 인연이 기다리고 있을 거예요!</p>
@@ -997,11 +1003,11 @@ function ReceivedHeartsFeed({ sessionId, userId }: { sessionId: string, userId: 
     <div style={{ marginTop: '24px', textAlign: 'left' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
         <Heart size={18} color="#FF6F61" fill="#FF6F61" />
-        <h3 style={{ fontSize: '0.95rem', fontWeight: '900', color: '#334155' }}>나에게 도착한 호감 <span style={{ color: '#FF6F61' }}>{voters.length}개</span></h3>
+        <h3 style={{ fontSize: '0.95rem', fontWeight: '900', color: '#334155' }}>나에게 도착한 호감 <span style={{ color: '#FF6F61' }}>{displayedVoters.length}개</span></h3>
       </div>
       
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        {voters.map(voter => {
+        {displayedVoters.map(voter => {
           const isMutual = myVote?.choices.some(c => c.targetUserId === voter.id);
           return (
             <div key={voter.id} style={{ display: 'flex', alignItems: 'center', gap: '14px', background: isMutual ? '#FFF5F4' : '#fff', padding: '12px 16px', borderRadius: '16px', border: isMutual ? '1.5px solid #FFDBE9' : '1.5px solid #F1F5F9', boxShadow: isMutual ? '0 4px 12px rgba(255,111,97,0.1)' : 'none' }}>
