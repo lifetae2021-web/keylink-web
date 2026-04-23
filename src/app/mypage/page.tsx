@@ -5,11 +5,15 @@ import { useRouter } from 'next/navigation';
 import { auth, db, storage } from '@/lib/firebase';
 import { compressImage } from '@/lib/utils';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { doc, getDoc, updateDoc, serverTimestamp, deleteField } from 'firebase/firestore';
+import { 
+  doc, getDoc, updateDoc, serverTimestamp, deleteField, 
+  collection, query, where, getDocs, orderBy 
+} from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import {
   LogOut, ArrowLeft, Camera, ChevronDown, ChevronUp, X, Check, Edit3, Package, Upload,
-  Clock, Banknote, CheckCircle2, XCircle, Vote, Lock, ShieldCheck, FileText
+  Clock, Banknote, CheckCircle2, XCircle, Vote, Lock, ShieldCheck, FileText, History,
+  ChevronRight
 } from 'lucide-react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
@@ -73,6 +77,11 @@ export default function MyPage() {
   const [application, setApplication] = useState<Application | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [hasVoted, setHasVoted] = useState(false);
+  
+  // v7.9.5: 내 신청 히스토리
+  const [history, setHistory] = useState<any[]>([]);
+  const [showAllHistory, setShowAllHistory] = useState(false);
+  const [sessionsMap, setSessionsMap] = useState<Record<string, Session>>({});
 
   // Edit Form State
   const [editForm, setEditForm] = useState<any>({
@@ -147,7 +156,36 @@ export default function MyPage() {
           return () => unsubSession();
         }
       });
-      return () => unsubApp();
+
+      // v7.9.5: 내 신청 내역 일시불 오프라인 패치 (실시간까지는 필요X)
+      const fetchHistory = async () => {
+        try {
+          const q = query(
+            collection(db, 'applications'), 
+            where('userId', '==', currentUser.uid), 
+            orderBy('appliedAt', 'desc')
+          );
+          const hSnap = await getDocs(q);
+          const apps = hSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          setHistory(apps);
+
+          // 세션 정보 캐싱 (제목 표시용)
+          const sessionIds = Array.from(new Set(apps.map((a: any) => a.sessionId)));
+          const newMap: any = { ...sessionsMap };
+          for (const sId of sessionIds) {
+            if (!newMap[sId]) {
+              const sSnap = await getDoc(doc(db, 'sessions', sId));
+              if (sSnap.exists()) newMap[sId] = { id: sSnap.id, ...sSnap.data() };
+            }
+          }
+          setSessionsMap(newMap);
+        } catch (e) {
+          console.error("Error fetching history:", e);
+        }
+      };
+      fetchHistory();
+
+      return () => { unsubApp(); };
     });
     return () => unsubscribe();
   }, [router]);
@@ -620,6 +658,14 @@ export default function MyPage() {
           hasVoted={hasVoted}
         />
 
+        {/* ─── v7.9.5: 내 신청 히스토리 ─── */}
+        <ApplicationHistoryBlock 
+          history={history} 
+          sessionsMap={sessionsMap}
+          showAll={showAllHistory}
+          setShowAll={setShowAllHistory}
+        />
+
         {/* ─── LOGOUT ─── */}
         <button onClick={async () => { await auth.signOut(); router.push('/'); }}
           style={{ width: '100%', padding: '18px', borderRadius: '100px', border: '1.5px solid #FFDBE9', background: 'transparent', color: '#FF6F61', fontWeight: '800', fontSize: '1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', transition: 'all 0.2s' }}
@@ -813,5 +859,87 @@ function ApplicationStatusBlock({ application, session, hasVoted }: StatusBlockP
         </Link>
       </div>
     </>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// v7.9.5 ApplicationHistoryBlock — 내 신청 내역 리스트
+// ─────────────────────────────────────────────────────────────────────────────
+function ApplicationHistoryBlock({ history, sessionsMap, showAll, setShowAll }: { 
+  history: any[], 
+  sessionsMap: Record<string, Session>,
+  showAll: boolean,
+  setShowAll: (v: boolean) => void 
+}) {
+  if (history.length === 0) return null;
+
+  const displayList = showAll ? history : history.slice(0, 5);
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'confirmed': return { text: '선발 확정', bg: '#10B981', color: '#fff' };
+      case 'selected': return { text: '입금 대기', bg: '#F59E0B', color: '#fff' };
+      case 'applied': return { text: '검토 중', bg: '#FDE047', color: '#92400E' };
+      case 'cancelled': return { text: '취소됨', bg: '#E5E7EB', color: '#9CA3AF' };
+      default: return { text: '미선발', bg: '#F3F4F6', color: '#9CA3AF' };
+    }
+  };
+
+  return (
+    <div style={{ background: '#FFFFFF', borderRadius: '24px', boxShadow: '0 10px 40px rgba(255,111,97,0.08)', border: '1px solid #FFE8E5', marginBottom: '20px', overflow: 'hidden' }}>
+      <div style={{ padding: '20px 24px', borderBottom: '1px solid #FFF0EE', display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <History size={18} color="#FF6F61" />
+        <span style={{ fontSize: '1rem', fontWeight: '900', color: '#111' }}>내 신청 히스토리</span>
+        <span style={{ marginLeft: 'auto', fontSize: '0.75rem', fontWeight: '700', color: '#AAA' }}>총 {history.length}건</span>
+      </div>
+      
+      <div style={{ padding: '8px 0' }}>
+        {displayList.map((app, i) => {
+          const session = sessionsMap[app.sessionId];
+          const sessionTitle = session ? `${session.region === 'busan' ? '부산' : '창원'} ${session.episodeNumber}기` : '알 수 없는 기수';
+          const appliedDate = app.appliedAt?.toDate ? app.appliedAt.toDate() : new Date(app.appliedAt);
+          const dateStr = appliedDate.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
+          const status = getStatusBadge(app.status);
+
+          return (
+            <Link 
+              key={app.id}
+              href={app.status === 'confirmed' ? '/matching/result/my' : `/events/${app.sessionId}`}
+              style={{ 
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', 
+                borderBottom: i === displayList.length - 1 ? 'none' : '1px solid #FFF9F8',
+                textDecoration: 'none', transition: 'background 0.2s'
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = '#FFFAFA'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+            >
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <span style={{ fontSize: '0.9rem', fontWeight: '800', color: '#334155' }}>{sessionTitle}</span>
+                <span style={{ fontSize: '0.75rem', color: '#94A3B8', fontWeight: '600' }}>신청일: {dateStr}</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{ 
+                  padding: '4px 10px', borderRadius: '100px', background: status.bg, 
+                  fontSize: '0.7rem', fontWeight: '800', color: status.color 
+                }}>{status.text}</span>
+                <ChevronRight size={14} color="#CBD5E1" />
+              </div>
+            </Link>
+          );
+        })}
+      </div>
+
+      {!showAll && history.length > 5 && (
+        <button 
+          onClick={() => setShowAll(true)}
+          style={{ 
+            width: '100%', padding: '14px', background: '#F8FAFC', border: 'none', borderTop: '1px solid #FFF0EE',
+            color: '#64748B', fontSize: '0.85rem', fontWeight: '700', cursor: 'pointer' 
+          }}
+        >
+          전체 신청 내역 더 보기 ({history.length - 5}개 더 있음)
+        </button>
+      )}
+    </div>
   );
 }
