@@ -31,7 +31,18 @@ export interface Session {
   region: 'busan' | 'changwon';    // 운영 지역 추가
   status: SessionStatus;
   votingUnlockedAt: Date | null;   // 투표 잠금 해제 시각
+  
+  // v6.6.0 추가 필드 (새 기수 등록 폼 연동)
+  venue?: string;                  // 서면역 인근 카페
+  venueAddress?: string;           // 상세 주소
+  price?: number;                  // 29000
+  originalPrice?: number;          // 39000 (할인 표시용)
+  targetMaleAge?: string;          // 94년생~01년생
+  targetFemaleAge?: string;        // 94년생~01년생
+  description?: string;
+  
   createdAt: Date;
+  updatedAt?: Date;
 }
 
 // ─────────────────────────────────────────────
