@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Calendar, MapPin, Users, Heart,
   Plus, Edit2, Trash2, Play, X,
@@ -31,16 +31,18 @@ export default function EventsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null); // v7.0.0: 수정 중인 문서 ID
+  const ageEndRef = useRef<HTMLInputElement>(null); // v7.5.2: 자동 포커스 이동용
   
   const initialFormData = {
     region: 'busan',
-    episodeNumber: '', // v7.5.1: 관리자가 직접 입력하도록 빈칸 유지
+    episodeNumber: '', 
     eventDate: '',
-    eventTime: '20:00', // v7.5.1: 오후 8시 기본값
+    eventTime: '20:00', 
     venue: '서면역 인근 프라이빗한 파티룸',
     venueAddress: '',
-    price: '29,000', // v7.5.1: 콤마 포함 포맷팅 적용
-    targetMaleAge: '94년생~01년생',
+    price: '29,000', 
+    ageStart: '94', // v7.5.2: 분리된 연령대 필드
+    ageEnd: '01',   // v7.5.2: 분리된 연령대 필드
     maxMale: '8',
     maxFemale: '8',
     status: 'open' as SessionStatus
@@ -167,6 +169,12 @@ export default function EventsPage() {
   // 3. 수정 모드 진입
   const openEditModal = (session: Session) => {
     setEditingId(session.id);
+    // v7.5.2: 기존 '90~96년생' 또는 '90년생~96년생' 문자열 파싱
+    const ageString = session.targetMaleAge || '94~01년생';
+    const ages = ageString.replace(/년생/g, '').split('~');
+    const ageStart = ages[0]?.trim() || '';
+    const ageEnd = ages[1]?.trim() || '';
+
     setFormData({
       region: session.region,
       episodeNumber: String(session.episodeNumber),
@@ -174,8 +182,9 @@ export default function EventsPage() {
       eventTime: format(session.eventDate, 'HH:mm'),
       venue: session.venue || '서면역 인근 프라이빗한 파티룸',
       venueAddress: session.venueAddress || '',
-      price: Number(session.price || 0).toLocaleString(), // v7.5.1: 수정 모드 로드 시 콤마 추가
-      targetMaleAge: session.targetMaleAge || '',
+      price: Number(session.price || 0).toLocaleString(), 
+      ageStart,
+      ageEnd,
       maxMale: String(session.maxMale),
       maxFemale: String(session.maxFemale),
       status: session.status
@@ -211,6 +220,8 @@ export default function EventsPage() {
 
     // v7.5.1: 콤마 제거 후 숫자로 변환
     const numericPrice = Number(formData.price.replace(/,/g, ''));
+    // v7.5.2: 연령대 결합
+    const combinedAge = `${formData.ageStart}~${formData.ageEnd}년생`;
 
     setIsSubmitting(true);
     try {
@@ -225,8 +236,8 @@ export default function EventsPage() {
         venueAddress: formData.venueAddress,
         price: numericPrice,
         originalPrice: numericPrice + 10000,
-        targetMaleAge: formData.targetMaleAge,
-        targetFemaleAge: formData.targetMaleAge, // 남성과 동일하게 설정
+        targetMaleAge: combinedAge,
+        targetFemaleAge: combinedAge, // 남성과 동일하게 설정
         maxMale: Number(formData.maxMale),
         maxFemale: Number(formData.maxFemale),
         status: formData.status,
@@ -705,16 +716,40 @@ export default function EventsPage() {
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
                       <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">남성 연령대</label>
-                      <span className="text-[10px] font-bold text-[#FF6F61] bg-[#FF6F61]/5 px-2 py-0.5 rounded-md italic">여성 동일 적용</span>
+                      <span className="text-[10px] font-bold text-[#FF6F61] bg-[#FF6F61]/5 px-2 py-0.5 rounded-md italic">자동 포커스 (여성 동일)</span>
                     </div>
-                    <input 
-                      type="text" 
-                      required
-                      placeholder="예: 94년생 ~ 01년생"
-                      value={formData.targetMaleAge} 
-                      onChange={e => setFormData({ ...formData, targetMaleAge: e.target.value })}
-                      className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-800 font-semibold focus:ring-2 focus:ring-[#FF6F61]/20 focus:border-[#FF6F61] outline-none transition-all"
-                    />
+                    <div className="flex items-center gap-2">
+                      <input 
+                        type="text" 
+                        required
+                        maxLength={2}
+                        placeholder="94"
+                        value={formData.ageStart} 
+                        onChange={e => {
+                          const val = e.target.value.replace(/[^0-9]/g, '');
+                          setFormData({ ...formData, ageStart: val });
+                          if (val.length === 2 && ageEndRef.current) {
+                            ageEndRef.current.focus();
+                          }
+                        }}
+                        className="w-16 h-11 text-center rounded-xl border border-slate-200 bg-white text-slate-800 font-bold focus:ring-2 focus:ring-[#FF6F61]/20 focus:border-[#FF6F61] outline-none transition-all"
+                      />
+                      <span className="text-slate-300 font-bold">~</span>
+                      <input 
+                        type="text" 
+                        required
+                        maxLength={2}
+                        ref={ageEndRef}
+                        placeholder="01"
+                        value={formData.ageEnd} 
+                        onChange={e => {
+                          const val = e.target.value.replace(/[^0-9]/g, '');
+                          setFormData({ ...formData, ageEnd: val });
+                        }}
+                        className="w-16 h-11 text-center rounded-xl border border-slate-200 bg-white text-slate-800 font-bold focus:ring-2 focus:ring-[#FF6F61]/20 focus:border-[#FF6F61] outline-none transition-all"
+                      />
+                      <span className="text-slate-400 text-sm font-bold ml-1">년생</span>
+                    </div>
                   </div>
                 </div>
               </div>
