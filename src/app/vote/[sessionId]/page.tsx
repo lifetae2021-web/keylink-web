@@ -9,7 +9,7 @@ import { subscribeSession } from '@/lib/firestore/sessions';
 import { getMyVote, submitVote } from '@/lib/firestore/votes';
 import { getMyLatestApplication } from '@/lib/firestore/applications';
 import { Session, Application, VoteChoice } from '@/lib/types';
-import { Heart, Lock, CheckCircle2, ArrowLeft, Star } from 'lucide-react';
+import { Heart, Lock, CheckCircle2, ArrowLeft, Star, User, Home, ShieldCheck, MessageSquare, ClipboardList, ChevronLeft } from 'lucide-react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 
@@ -27,15 +27,14 @@ export default function VotePage() {
   const router = useRouter();
   const sessionId = params.sessionId as string;
 
-  const [userId, setUserId] = useState<string | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [myApplication, setMyApplication] = useState<Application | null>(null);
-  const [candidates, setCandidates] = useState<Candidate[]>([]);
-  const [choices, setChoices] = useState<Record<number, string>>({}); // priority → userId
-  const [reasons, setReasons] = useState<Record<string, string>>({}); // userId → reason (v8.1.1)
-  const [hasVoted, setHasVoted] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  // v8.1.2: 네이버 폼 스타일 신규 상태
+  const [realName, setRealName] = useState('');
+  const [myAlias, setMyAlias] = useState('');
+  const [finalCheck, setFinalCheck] = useState(false);
+  const [feedback, setFeedback] = useState('');
+  const [nextEventOpt, setNextEventOpt] = useState(false); // "다음 인연 기대" 옵션
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
@@ -101,25 +100,36 @@ export default function VotePage() {
   };
 
   const handleSubmit = async () => {
-    if (Object.keys(choices).length < 1) {
-      toast.error('최소 1명 이상 선택해 주세요.');
+    if (!realName.trim()) { toast.error('실명을 입력해 주세요.'); return; }
+    if (!myAlias) { toast.error('본인의 호수를 선택해 주세요.'); return; }
+    if (Object.keys(choices).length === 0 && !nextEventOpt) {
+      toast.error('호감 가는 이성을 선택해 주세요.');
       return;
     }
+    if (!finalCheck) { toast.error('최종 라인업 확인 체크가 필요합니다.'); return; }
     if (!userId) return;
-    if (!confirm('투표를 제출하시겠습니까? 한 번 제출하면 수정할 수 없습니다.')) return;
+
+    if (!confirm('투표를 제출하시겠습니까?')) return;
 
     setSubmitting(true);
     try {
       const voteChoices: VoteChoice[] = Object.entries(choices).map(([p, uid]) => ({
         priority: Number(p) as 1 | 2 | 3,
         targetUserId: uid,
-        reason: reasons[uid] || '', // v8.1.1: 사유 포함
+        reason: reasons[uid] || '',
       }));
-      await submitVote(sessionId, userId, voteChoices);
+      
+      await submitVote(sessionId, userId, voteChoices, {
+        realName,
+        myAlias,
+        finalCheck,
+        feedback
+      });
+      
       setHasVoted(true);
       toast.success('🎉 투표가 완료되었습니다!');
     } catch (e: any) {
-      toast.error(e.message || '투표 제출 중 오류가 발생했습니다.');
+      toast.error(e.message || '오류 발생');
     } finally {
       setSubmitting(false);
     }
@@ -131,7 +141,7 @@ export default function VotePage() {
     </div>
   );
 
-  // 투표 활성화 로직: v7.9.9 행사 당일 체크 + v8.1.1 퀵 토글 상태 체크
+  // 투표 활성화 로직: v7.9.9 행사 당일 체크 + v8.1.2 퀵 토글 상태 체크
   const isEventDay = session ? (
     new Date().toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' }) === 
     session.eventDate.toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' })
@@ -155,7 +165,7 @@ export default function VotePage() {
     );
   }
 
-  // v8.1.1: 동적 설정값 추출
+  // v8.1.2: 동적 설정값 추출
   const maxLimit = session?.voteConfig?.maxSelection || 3;
   const questionText = session?.voteConfig?.questionText || '오늘 가장 호감 갔던 이성을 3명까지 골라주세요.';
   const priorityList = Array.from({ length: maxLimit }, (_, i) => i + 1);
@@ -179,150 +189,179 @@ export default function VotePage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FFFAF9]" style={{ paddingTop: '100px', paddingBottom: '120px' }}>
-      <div className="max-w-lg mx-auto px-4">
-
-        {/* 헤더 */}
-        <header className="text-center mb-12">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-[20px] bg-pink-50 mb-6">
-            <Heart size={32} className="text-pink-500" fill="currentColor" />
-          </div>
-          <h1 className="text-3xl font-black text-gray-900 mb-3">오늘의 인연 선택</h1>
-          <p className="text-gray-400 font-medium text-sm leading-relaxed whitespace-pre-wrap px-4">
-            {questionText}<br />
-            상대방도 나를 선택하면 매칭이 성사됩니다! 🌸
-          </p>
-        </header>
-
-        {/* 선택 현황 */}
-        <div className="flex gap-3 mb-8 justify-center flex-wrap px-4">
-          {priorityList.map(p => (
-            <div
-              key={p}
-              className={`flex-1 min-w-[80px] py-3 rounded-2xl text-center text-sm font-black transition-all ${
-                choices[p]
-                  ? 'bg-pink-500 text-white shadow-lg shadow-pink-200'
-                  : 'bg-white border-2 border-dashed border-gray-200 text-gray-300'
-              }`}
-            >
-              <Star size={14} className="inline mr-1" fill={choices[p] ? 'white' : 'none'} />
-              {p}순위
-              {choices[p] && (
-                <div className="text-xs mt-0.5 opacity-80 overflow-hidden text-ellipsis whitespace-nowrap px-2">
-                  {candidates.find(c => c.userId === choices[p])?.name || ''}
-                </div>
-              )}
-            </div>
-          ))}
+    <div className="min-h-screen bg-[#F0F2F5] pb-20">
+      {/* Naver Form Style Header */}
+      <div className="w-full bg-[#FF6F61] h-32 md:h-48 relative overflow-hidden flex items-center justify-center">
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-10 left-10 transform -rotate-12"><Heart size={80} fill="white" /></div>
+          <div className="absolute bottom-5 right-20 transform rotate-12"><Heart size={60} fill="white" /></div>
         </div>
+        <div className="text-white text-center z-10 px-4">
+          <div className="flex justify-center mb-2"><Heart size={32} fill="white" /></div>
+          <h1 className="text-xl md:text-2xl font-black tracking-tight underline decoration-pink-300 underline-offset-8 decoration-4">
+            {session?.region === 'busan' ? '부산' : '창원'} 키링크 {session?.episodeNumber}기 만족도 및 호감도 설문
+          </h1>
+        </div>
+      </div>
 
-        {/* 후보자 목록 */}
-        <div className="space-y-3 mb-10">
-          {candidates.length === 0 ? (
-            <div className="text-center py-12 text-gray-300 font-semibold">
-              이성 참여자 정보를 불러오는 중...
-            </div>
-          ) : candidates.map((candidate, index) => {
-            const selectedPriority = Object.entries(choices).find(([, uid]) => uid === candidate.userId)?.[0];
-            const isSelected = !!selectedPriority;
+      <div className="max-w-2xl mx-auto -mt-6 md:-mt-10 px-4 relative z-20">
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-8">
+          <div className="p-6 md:p-8 space-y-12">
+            
+            {/* 1. 실명 확인 */}
+            <section className="space-y-4">
+              <div className="flex items-start gap-2">
+                <span className="text-[#FF6F61] font-black text-lg">1.</span>
+                <label className="text-lg font-extrabold text-slate-800">실명을 적어주세요 <span className="text-[#FF6F61]">*</span></label>
+              </div>
+              <input 
+                type="text" 
+                value={realName}
+                onChange={e => setRealName(e.target.value)}
+                placeholder="본인의 성함을 입력해주세요"
+                className="w-full h-14 px-5 rounded-xl border-2 border-slate-100 focus:border-[#FF6F61] focus:ring-0 outline-none font-bold text-slate-700 transition-colors"
+              />
+            </section>
 
-            return (
-              <div
-                key={candidate.userId}
-                className={`rounded-2xl p-5 border-2 transition-all ${
-                  isSelected
-                    ? 'border-pink-300 bg-pink-50/50 shadow-md shadow-pink-100'
-                    : 'border-gray-100 bg-white hover:border-pink-100'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <div>
-                    <span className="font-black text-gray-800 text-base">
-                      No.{index + 1}
-                    </span>
-                    {isSelected && (
-                      <span className="ml-2 px-2.5 py-0.5 rounded-full bg-pink-500 text-white text-xs font-black">
-                        {selectedPriority}순위 ✓
-                      </span>
-                    )}
-                  </div>
-                </div>
+            {/* 2. 본인 호수 선택 */}
+            <section className="space-y-4">
+              <div className="flex items-start gap-2">
+                <span className="text-[#FF6F61] font-black text-lg">2.</span>
+                <label className="text-lg font-extrabold text-slate-800">본인의 호를 체크해주세요 <span className="text-[#FF6F61]">*</span></label>
+              </div>
+              <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+                {Array.from({ length: 12 }, (_, i) => i + 1).map(num => (
+                  <button 
+                    key={num}
+                    onClick={() => setMyAlias(`${myApplication?.gender === 'male' ? '키링남' : '키링녀'} ${num}호`)}
+                    className={`h-12 rounded-xl border-2 font-black text-sm transition-all ${
+                      myAlias.includes(`${num}호`)
+                        ? 'border-[#FF6F61] bg-[#FFF5F4] text-[#FF6F61]'
+                        : 'border-slate-50 bg-slate-50 text-slate-400 hover:border-slate-200'
+                    }`}
+                  >
+                    {num}호
+                  </button>
+                ))}
+              </div>
+            </section>
 
-                <div className="grid grid-cols-3 gap-3 mb-4">
-                  {[
-                    ['나이', `${candidate.age}세`],
-                    ['직업', candidate.job],
-                    ['거주지', candidate.residence],
-                  ].map(([label, value]) => (
-                    <div key={label} className="text-center">
-                      <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">{label}</p>
-                      <p className="text-sm font-bold text-gray-700">{value || '-'}</p>
+            {/* 3. 이성 선택 */}
+            <section className="space-y-4">
+              <div className="flex items-start gap-2">
+                <span className="text-[#FF6F61] font-black text-lg">3.</span>
+                <label className="text-lg font-extrabold text-slate-800">
+                  {questionText} <span className="text-[#FF6F61]">*</span>
+                </label>
+              </div>
+              
+              <div className="space-y-3">
+                {candidates.map((candidate, idx) => {
+                  const priority = Object.entries(choices).find(([, uid]) => uid === candidate.userId)?.[0];
+                  return (
+                    <div 
+                      key={candidate.userId} 
+                      onClick={() => {
+                        if (priority) {
+                          setChoices(prev => {
+                            const next = { ...prev };
+                            delete next[Number(priority)];
+                            return next;
+                          });
+                        } else if (Object.keys(choices).length < maxLimit) {
+                          const nextP = [1,2,3,4,5].find(p => !choices[p]);
+                          if (nextP) handleChoiceSelect(nextP as any, candidate.userId);
+                        }
+                      }}
+                      className={`group flex items-center gap-4 p-4 rounded-2xl border-2 cursor-pointer transition-all ${
+                        priority ? 'border-[#FF6F61] bg-[#FFF5F4]' : 'border-slate-50 bg-slate-50 hover:border-slate-200'
+                      }`}
+                    >
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-sm ${
+                        priority ? 'bg-[#FF6F61] text-white' : 'bg-slate-200 text-slate-500'
+                      }`}>
+                        {priority ? `${priority}위` : idx + 1}
+                      </div>
+                      <div className="flex-1">
+                        <p className={`font-black ${priority ? 'text-[#FF6F61]' : 'text-slate-700'}`}>{idx + 1}호 참여자</p>
+                        <p className="text-[0.7rem] font-bold text-slate-400">{candidate.age}세 · {candidate.job} · {candidate.residence}</p>
+                      </div>
+                      {priority && <CheckCircle2 size={20} className="text-[#FF6F61]" />}
                     </div>
-                  ))}
-                </div>
+                  );
+                })}
 
-                {/* v8.1.1: 선택 사유 입력 (관리자 활성 시) */}
-                {session?.voteConfig?.showReason && isSelected && (
-                  <div className="mb-4 animate-in slide-in-from-top-2 duration-300">
-                    <textarea 
-                      placeholder="간단한 선택 사유를 적어주세요 (선택 사항)"
-                      value={reasons[candidate.userId] || ''}
-                      onChange={e => setReasons(prev => ({ ...prev, [candidate.userId]: e.target.value }))}
-                      className="w-full p-3 rounded-xl border border-pink-100 bg-pink-50/30 text-sm font-medium focus:ring-2 focus:ring-pink-100 outline-none resize-none placeholder:text-pink-300"
-                      rows={2}
-                    />
+                {/* 다음 인연 기대 옵션 */}
+                <div 
+                  onClick={() => setNextEventOpt(!nextEventOpt)}
+                  className={`flex items-center gap-4 p-4 rounded-2xl border-2 cursor-pointer transition-all ${
+                    nextEventOpt ? 'border-[#FF6F61] bg-[#FFF5F4]' : 'border-slate-50 bg-slate-50 hover:border-slate-200'
+                  }`}
+                >
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center bg-slate-200 text-slate-500`}>
+                    <Heart size={16} fill={nextEventOpt ? '#FF6F61' : 'none'} className={nextEventOpt ? 'text-[#FF6F61]' : ''} />
                   </div>
-                )}
-
-                {/* 순위 선택 버튼 */}
-                <div className="flex gap-2 flex-wrap">
-                  {priorityList.map(p => {
-                    const isThisRankSelected = choices[p] === candidate.userId;
-                    const isRankTaken = !!choices[p] && choices[p] !== candidate.userId;
-                    return (
-                      <button
-                        key={p}
-                        onClick={() => handleChoiceSelect(p as 1 | 2 | 3, candidate.userId)}
-                        className={`flex-1 min-w-[70px] py-2.5 rounded-xl text-xs font-black transition-all ${
-                          isThisRankSelected
-                            ? 'bg-pink-500 text-white shadow-sm'
-                            : isRankTaken
-                            ? 'bg-gray-100 text-gray-300 cursor-not-allowed'
-                            : 'bg-gray-50 text-gray-500 hover:bg-pink-50 hover:text-pink-500'
-                        }`}
-                        disabled={isRankTaken && !isThisRankSelected}
-                      >
-                        {p}순위
-                        {isThisRankSelected && ' ✓'}
-                      </button>
-                    );
-                  })}
+                  <p className={`flex-1 font-black ${nextEventOpt ? 'text-[#FF6F61]' : 'text-slate-700'}`}>다음 새로운 인연을 기대할게요❤️</p>
+                  {nextEventOpt && <CheckCircle2 size={20} className="text-[#FF6F61]" />}
                 </div>
               </div>
-            );
-          })}
-        </div>
+            </section>
 
-        {/* 제출 버튼 (Fixed) */}
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-md border-t border-gray-100">
-          <div className="max-w-lg mx-auto">
-            <button
+            {/* 4. 최종 확인 */}
+            <section className="space-y-4">
+              <div className="flex items-start gap-2">
+                <span className="text-[#FF6F61] font-black text-lg">4.</span>
+                <label className="text-lg font-extrabold text-slate-800">최종 확인 <span className="text-[#FF6F61]">*</span></label>
+              </div>
+              <p className="text-sm font-bold text-slate-400 leading-relaxed pl-6">매칭 오류 방지를 위해 최종 라인업 및 기입하신 메모를 확인하셨나요?</p>
+              <label className="flex items-center gap-3 p-5 rounded-2xl bg-[#F8FAFC] border-2 border-slate-100 cursor-pointer transition-colors hover:border-slate-200">
+                <input 
+                  type="checkbox" 
+                  checked={finalCheck}
+                  onChange={e => setFinalCheck(e.target.checked)}
+                  className="w-5 h-5 accent-[#FF6F61]"
+                />
+                <span className="font-black text-slate-700 text-sm">네, 확인했습니다.</span>
+              </label>
+            </section>
+
+            {/* 5. 후기 작성 */}
+            <section className="space-y-4">
+              <div className="flex items-start gap-2">
+                <span className="text-[#FF6F61] font-black text-lg">5.</span>
+                <label className="text-lg font-extrabold text-slate-800">후기 (선택 사항)</label>
+              </div>
+              <textarea 
+                value={feedback}
+                onChange={e => setFeedback(e.target.value)}
+                placeholder="오늘 행사는 어떠셨나요? 소중한 후기를 들려주세요!"
+                className="w-full h-32 p-5 rounded-2xl border-2 border-slate-100 focus:border-[#FF6F61] focus:ring-0 outline-none font-bold text-slate-700 transition-colors resize-none"
+              />
+            </section>
+
+          </div>
+          
+          <div className="p-8 bg-[#FAFBFC] border-t border-slate-100">
+            <button 
               onClick={handleSubmit}
-              disabled={submitting || Object.keys(choices).length === 0}
-              className="w-full py-4 rounded-2xl font-black text-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{
-                background: Object.keys(choices).length > 0
-                  ? 'linear-gradient(135deg, #FF6F61, #FF9A9E)'
-                  : '#F3F4F6',
-                color: Object.keys(choices).length > 0 ? '#fff' : '#9CA3AF',
-                boxShadow: Object.keys(choices).length > 0 ? '0 8px 24px rgba(255,111,97,0.35)' : 'none',
-              }}
+              disabled={submitting}
+              className="w-full h-16 rounded-2xl font-black text-xl text-white shadow-xl shadow-pink-100 transition-all active:scale-[0.98] disabled:opacity-50"
+              style={{ background: 'linear-gradient(135deg, #FF6F61, #FF8A8A)' }}
             >
-              {submitting ? '제출 중...' : `${Object.keys(choices).length}명 선택 완료 — 투표 제출`}
+              {submitting ? '제출 중...' : '설문 제출하기'}
             </button>
+            <p className="mt-4 text-center text-[0.7rem] text-slate-400 font-bold">
+              제출된 데이터는 매칭 시스템 연산에만 활용되며 안전하게 보호됩니다.
+            </p>
           </div>
         </div>
-
+        
+        <button 
+          onClick={() => router.push('/mypage')}
+          className="flex items-center justify-center gap-2 w-full text-slate-400 font-bold text-sm hover:text-slate-600 transition-colors"
+        >
+          <ChevronLeft size={16} /> 마이페이지로 이동
+        </button>
       </div>
     </div>
   );
