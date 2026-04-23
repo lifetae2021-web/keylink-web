@@ -76,19 +76,22 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const message = `[키링크] 선발 축하 안내
+    const eventDate = sessionData.eventDate.toDate();
+    const monthDay = `${eventDate.getMonth() + 1}월 ${eventDate.getDate()}일`;
+    const dayOfWeek = ['일', '월', '화', '수', '목', '금', '토'][eventDate.getDay()];
+    
+    const hours = eventDate.getHours();
+    const minutes = eventDate.getMinutes();
+    const timeStr = `${hours >= 12 ? '오후' : '오전'} ${hours % 12 || 12}시${minutes > 0 ? ' ' + minutes + '분' : ''}`;
 
-안녕하세요, ${name}님!
-${sessionTitle} 참가자로 선발되신 것을 진심으로 축하드립니다. 🎉
+    const message = `안녕하세요 ! 키링크에 지원해주셔서 감사합니다☺️
+${name}님은 ${monthDay} (${dayOfWeek}) ${timeStr} 소개팅 날짜가 지정되었습니다
 
-성비와 조건을 고려하여 선정되셨습니다. 아래 계좌로 참가비 입금 부탁드립니다.
+아래 계좌번호로 60,000원 입금해주셔야 라인업에 확정등록되니 참고 부탁드립니다 :)
+3333359229548 카카오뱅크 태영훈(키링크) 입금 또는 참석가능 여부 알려주세요😭
+혹시나 입금이 늦을 것 같은 경우 말씀해주세요.
 
-■ 참가비: 35,000원
-■ 계좌: 카카오뱅크 3333-01-8290604 (박종현)
-■ 기한: 안내 후 12시간 이내
-
-입금 확인 후 확정 처리가 완료됩니다.
-감사합니다.`;
+좋은 인연 만날 수 있도록 키링크가 끝까지 책임질게요🥰`;
 
     let smsResult;
     try {
