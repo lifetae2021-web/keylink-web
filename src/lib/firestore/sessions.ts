@@ -96,8 +96,24 @@ export function subscribeAllSessions(
   const q = query(
     collection(db, COLLECTION)
   );
-  return onSnapshot(q, (snap) => {
-    const sessions = snap.docs.map((d) => fromDoc(d)).filter(Boolean) as Session[];
-    callback(sessions);
-  });
+  return onSnapshot(
+    q,
+    (snap) => {
+      const sessions = snap.docs.map((d) => fromDoc(d)).filter(Boolean) as Session[];
+      callback(sessions);
+    },
+    (error) => {
+      // 🚨 Firestore 보안 규칙 에러 감지
+      if (error.code === 'permission-denied') {
+        console.error(
+          '🚨 [Firestore] 비로그인 방문자의 sessions 컬렉션 읽기가 거부되었습니다.\n' +
+          '👉 Firebase 콘솔 > Firestore > 규칙 탭에서 아래 규칙을 적용하세요:\n\n' +
+          'match /sessions/{sessionId} {\n  allow read: if true;\n  allow write: if isAdmin();\n}'
+        );
+      } else {
+        console.error('[subscribeAllSessions] Error:', error.message);
+      }
+      callback([]); // 에러 시 빈 배열로 fallback
+    }
+  );
 }
