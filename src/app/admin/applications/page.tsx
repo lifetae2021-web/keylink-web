@@ -235,7 +235,7 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 style={{ fontSize: '1.25rem', fontWeight: 900, letterSpacing: '-0.02em', color: '#0F172A' }}>신청 관리</h2>
-          <p style={{ fontSize: '0.85rem', color: '#64748B', marginTop: 2 }}>참가 신청자들의 상세 정보를 심사하고 선발 여부를 결정합니다. <span className="text-[10px] font-bold text-[#3B82F6] ml-2">v7.8.9 Premium</span></p>
+          <p style={{ fontSize: '0.85rem', color: '#64748B', marginTop: 2 }}>참가 신청자들의 상세 정보를 심사하고 선발 여부를 결정합니다. <span className="text-[10px] font-bold text-[#3B82F6] ml-2">v7.9.0 Premium</span></p>
         </div>
         <div className="flex items-center gap-3">
           <div className="relative flex-1 md:flex-none group">
@@ -331,9 +331,9 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
               <col style={{ width: '80px' }} />
               <col style={{ width: '130px' }} />
               <col style={{ width: '130px' }} />
-              <col style={{ width: '120px' }} />
-              <col style={{ width: '80px' }} />
               <col style={{ width: '130px' }} />
+              <col style={{ width: '90px' }} />
+              <col style={{ width: 'minmax(140px, auto)' }} />
               <col style={{ width: '130px' }} />
               <col style={{ width: '100px' }} />
               <col style={{ width: '220px' }} />
@@ -432,12 +432,12 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
 
                       {/* 나이 */}
                       <td style={{ padding: '0 16px' }}>
-                        <p className="text-[0.85rem] font-bold text-slate-600">{user.birthDate ? `${new Date().getFullYear() - parseInt(user.birthDate.split('-')[0]) + 1}세` : '??'}</p>
+                        <p className="text-[0.9rem] font-extrabold text-slate-800">{user.birthDate ? `${user.birthDate.includes('-') ? user.birthDate.slice(2,4) : user.birthDate.slice(0,2)}년생` : '??'}</p>
                       </td>
 
                       {/* 거주지 */}
                       <td style={{ padding: '0 16px' }}>
-                        <p className="text-[0.85rem] font-medium text-slate-500">{user.location || user.residence || <span className="text-slate-300 font-normal">-</span>}</p>
+                        <p className="text-[0.85rem] font-bold text-slate-700">{user.residence || user.location || <span className="text-slate-300 font-normal">-</span>}</p>
                       </td>
 
                       {/* 연락처 */}

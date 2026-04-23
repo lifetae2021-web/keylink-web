@@ -183,7 +183,7 @@ export default function UsersPage() {
       u.email || '-',
       u.gender === 'male' ? '남성' : '여성',
       u.job || '-',
-      u.birthDate ? `${new Date().getFullYear() - parseInt(u.birthDate.split('-')[0]) + 1}세` : '-',
+      u.birthDate ? `${u.birthDate.includes('-') ? u.birthDate.slice(2,4) : u.birthDate.slice(0,2)}년생` : '-',
       STATUS_CFG[(u.status || 'pending') as keyof typeof STATUS_CFG].label,
       u.role || '일반회원',
       u.points || 0,
@@ -215,7 +215,7 @@ export default function UsersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0F172A' }}>회원 관리</h2>
-          <p style={{ fontSize: '0.8rem', color: '#64748B', marginTop: 2 }}>실시간 데이터 동기화 활성화됨 <span className="text-[10px] font-bold text-[#FF7E7E] ml-2">v7.8.9 Integrated Auth</span></p>
+          <p style={{ fontSize: '0.8rem', color: '#64748B', marginTop: 2 }}>실시간 데이터 동기화 활성화됨 <span className="text-[10px] font-bold text-[#FF7E7E] ml-2">v7.9.0 Integrated Auth</span></p>
         </div>
         <button
           onClick={downloadCSV}
@@ -398,8 +398,8 @@ export default function UsersPage() {
 
                       {/* 나이 */}
                       <td style={{ padding: '0 20px', verticalAlign: 'middle', textAlign: 'center' }}>
-                        <p style={{ fontSize: '0.82rem', fontWeight: 600, color: u.birthDate ? '#334155' : '#94A3B8', textAlign: 'center' }}>
-                          {u.birthDate ? `${new Date().getFullYear() - parseInt(u.birthDate.split('-')[0]) + 1}세` : <span style={{ color: '#94A3B8' }}>-</span>}
+                        <p style={{ fontSize: '0.88rem', fontWeight: 800, color: u.birthDate ? '#1E293B' : '#94A3B8', textAlign: 'center' }}>
+                          {u.birthDate ? `${u.birthDate.includes('-') ? u.birthDate.slice(2,4) : u.birthDate.slice(0,2)}년생` : <span style={{ color: '#94A3B8' }}>-</span>}
                         </p>
                       </td>
 

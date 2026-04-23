@@ -146,8 +146,9 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose }:
                       {user.gender === 'male' ? '남성' : '여성'}
                     </span>
                     <span className="text-slate-400">/</span>
-                    <span className="text-slate-700">{age}세 ({user.birthDate?.slice(0,4)}년생)</span>
+                    <span className="text-slate-700">{user.birthDate ? `${user.birthDate.includes('-') ? user.birthDate.slice(2,4) : user.birthDate.slice(0,2)}년생` : '??'}</span>
                   </div>
+                  <DetailRow label="거주지" value={user.residence || user.location} icon={MapPin} />
                 </div>
               </div>
 
@@ -158,7 +159,7 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose }:
                 <div className="bg-slate-50/50 border border-slate-100 rounded-[2rem] p-6 space-y-1">
                   <DetailRow label="연락처" value={user.phone} icon={Phone} />
                   <DetailRow label="인스타그램" value={user.instaId} icon={Camera} />
-                  <DetailRow label="거주 지역" value={user.residence || user.location} icon={MapPin} />
+                  <DetailRow label="거주지" value={user.residence || user.location} icon={MapPin} />
                 </div>
 
                 {/* 2. 신체 및 직업 정보 */}
@@ -172,6 +173,7 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose }:
                     <DetailRow label="몸무게" value={user.weight ? `${user.weight}kg` : null} icon={Weight} />
                   </div>
                   <DetailRow label="회사명/직무" value={user.workplace || user.jobRole || user.job} icon={Briefcase} />
+                  <DetailRow label="출생" value={user.birthDate ? `${user.birthDate.includes('-') ? user.birthDate.slice(2,4) : user.birthDate.slice(0,2)}년생` : null} icon={Calendar} />
                   
                   {/* v7.8.0 재직 증명 확인 섹션 */}
                   <div className="flex items-center justify-between py-4 border-b border-slate-50">

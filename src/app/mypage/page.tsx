@@ -23,15 +23,13 @@ const EMPTY = '미입력';
 // Calculate age from birthDate string e.g. "1994-05-30" or "940530"
 function calcAge(birthDate: string): string {
   if (!birthDate) return '-';
-  let year: number;
+  let year: string;
   if (birthDate.includes('-')) {
-    year = parseInt(birthDate.slice(0, 4));
+    year = birthDate.slice(2, 4);
   } else if (birthDate.length >= 6) {
-    const yy = parseInt(birthDate.slice(0, 2));
-    year = yy > 30 ? 1900 + yy : 2000 + yy;
+    year = birthDate.slice(0, 2);
   } else return '-';
-  const age = new Date().getFullYear() - year;
-  return `${year}년생 (${age}세)`;
+  return `${year}년생`;
 }
 
 // Simple label-value row used in both summary and detail
@@ -164,7 +162,7 @@ export default function MyPage() {
 
     // v5.1.0 추가 필수 항목 검사
     if (!editForm.phone) return toast.error('연락처를 입력해주세요.');
-    if (!editForm.residence) return toast.error('거주 지역을 선택해주세요.');
+    if (!editForm.residence) return toast.error('거주지를 입력해주세요.');
     if (!editForm.smoking) return toast.error('흡연 유무를 선택해주세요.');
     if (!editForm.drinking) return toast.error('음주 빈도를 선택해주세요.');
     if (!editForm.religion) return toast.error('종교를 선택해주세요.');
@@ -379,7 +377,7 @@ export default function MyPage() {
               </EditRow>
             </div>
 
-            <EditRow label="거주 지역" required>
+            <EditRow label="거주지" required>
               <input style={inputStyle} value={editForm.residence} onChange={e => setEditForm((p: any) => ({ ...p, residence: e.target.value }))} placeholder="ex. 부산 수영구" />
             </EditRow>
 
@@ -580,7 +578,7 @@ export default function MyPage() {
               <div style={{ marginTop: '8px' }}>
                 <InfoRow label="연락처" value={userData?.phone} />
                 <InfoRow label="인스타그램" value={userData?.instaId} />
-                <InfoRow label="거주 지역" value={userData?.residence} />
+                <InfoRow label="거주지" value={userData?.residence} />
                 <InfoRow label="회사명/직무" value={userData?.workplace} />
                 <InfoRow label="지인 회피" value={userData?.avoidAcquaintance} />
                 <InfoRow label="음주 빈도" value={userData?.drinking} />
