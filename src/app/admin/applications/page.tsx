@@ -24,6 +24,7 @@ import {
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import SMSPreviewModal from '@/components/admin/SMSPreviewModal';
+import { updateDoc } from 'firebase/firestore'; 
 
 const DEPOSIT_STATUS = {
   pending:   { label: '입금 대기', color: '#64748B', bg: '#F1F5F9' },
@@ -153,6 +154,13 @@ export default function ApplicationsPage() {
         } else {
           toast.success('선발 및 안내 문자 발송 완료');
         }
+      } else if (status === 'applied') {
+        const appRef = doc(db, 'applications', appId);
+        await updateDoc(appRef, {
+          status: 'applied',
+          updatedAt: Timestamp.now()
+        });
+        toast.success('검토 중 상태로 변경되었습니다.');
       } else if (status === 'held') {
         await holdApplicant(appId);
         toast.success('보류 처리 완료');
@@ -227,7 +235,7 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 style={{ fontSize: '1.25rem', fontWeight: 900, letterSpacing: '-0.02em', color: '#0F172A' }}>신청 관리</h2>
-          <p style={{ fontSize: '0.85rem', color: '#64748B', marginTop: 2 }}>참가 신청자들의 상세 정보를 심사하고 선발 여부를 결정합니다. <span className="text-[10px] font-bold text-[#3B82F6] ml-2">v7.7.2 Selection Advance++</span></p>
+          <p style={{ fontSize: '0.85rem', color: '#64748B', marginTop: 2 }}>참가 신청자들의 상세 정보를 심사하고 선발 여부를 결정합니다. <span className="text-[10px] font-bold text-[#3B82F6] ml-2">v7.7.4 Selection Advanced Flux</span></p>
         </div>
         <div className="flex items-center gap-3">
           <div className="relative flex-1 md:flex-none group">
@@ -433,10 +441,19 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                       </td>
 
                       {/* 8. 선발 관리 */}
-                      <td style={{ padding: '0 20px' }}>
+                       <td style={{ padding: '0 20px' }}>
                         <div className="flex items-center justify-end gap-1.5 transition-all">
-                          {app.status === 'applied' && (
+                          {(app.status === 'applied' || app.status === 'held') && (
                             <>
+                              {app.status === 'held' && (
+                                <button 
+                                  onClick={() => updateAppStatus(app, 'applied')} 
+                                  className="px-2.5 py-1.5 rounded-lg text-[0.7rem] font-black bg-amber-100 text-amber-700 border border-amber-200 hover:bg-amber-200 transition-all shadow-sm flex items-center gap-1 group/held"
+                                  title="검토 중으로 되돌리기"
+                                >
+                                  보류 중 <X size={12} className="opacity-0 group-hover/held:opacity-100 transition-opacity" />
+                                </button>
+                              )}
                               <button 
                                 onClick={() => {
                                   if (window.confirm('문자 발송 없이 입금 완료 처리하시겠습니까?')) {
@@ -448,23 +465,15 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                                 선발확정
                               </button>
                               <button onClick={() => handleOpenPreview(app)} className="px-3 py-1.5 rounded-xl text-[0.75rem] font-bold bg-[#FF7E7E]/10 text-[#FF7E7E] border border-[#FF7E7E]/20 hover:bg-[#FF7E7E] hover:text-white transition-all shadow-sm">선발</button>
-                              <button onClick={() => updateAppStatus(app, 'held')} className="px-3 py-1.5 rounded-xl text-[0.75rem] font-bold bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200 transition-all shadow-sm">보류</button>
+                              
+                              {app.status === 'applied' && (
+                                <button onClick={() => updateAppStatus(app, 'held')} className="px-3 py-1.5 rounded-xl text-[0.75rem] font-bold bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200 transition-all shadow-sm">보류</button>
+                              )}
                             </>
                           )}
+                          
                           {app.status === 'selected' && (
                             <button onClick={() => updateAppStatus(app, 'confirmed')} className="px-3 py-1.5 rounded-xl text-[0.75rem] font-bold bg-blue-500/10 text-blue-600 border border-blue-500/20 hover:bg-blue-500 hover:text-white transition-all shadow-sm">입금확정</button>
-                          )}
-                          {app.status === 'held' && (
-                            <div className="flex items-center gap-2">
-                              <span className="px-2.5 py-1.5 rounded-lg text-[0.7rem] font-black bg-amber-100 text-amber-700 border border-amber-200 shadow-sm">보류 중</span>
-                              <button 
-                                onClick={() => updateAppStatus(app, 'selected')} 
-                                className="px-2.5 py-1.5 rounded-lg text-[0.7rem] font-bold bg-white text-slate-400 border border-slate-200 hover:text-[#FF7E7E] hover:border-[#FF7E7E]/30 transition-all active:scale-95"
-                                title="선발로 전환"
-                              >
-                                선발전환
-                              </button>
-                            </div>
                           )}
                           
                           <button 
