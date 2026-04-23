@@ -389,35 +389,6 @@ export default function MyPage() {
               <textarea style={textAreaStyle} value={editForm.workplace} onChange={e => setEditForm((p: any) => ({ ...p, workplace: e.target.value, jobRole: e.target.value }))} placeholder={`ex. 수액병원, 간호사\n링크은행, 은행원`} />
             </EditRow>
 
-            {/* v7.8.0 재직 증명 업로드 섹션 */}
-            <EditRow label="재직 증명 (필수)" required>
-              <div style={{ background: '#F8FAFC', border: '1.5px solid #E2E8F0', borderRadius: '16px', padding: '20px', marginBottom: '16px' }}>
-                <p style={{ fontSize: '0.8rem', color: '#64748B', lineHeight: 1.6, marginBottom: '12px' }}>
-                  신뢰할 수 있는 모임을 위해 아래 서류 중 하나를 반드시 업로드해 주세요.<br/>
-                  (재직증명서, 급여명세서, 건강보험 자격득실, 사원증, 명함 등)
-                </p>
-                <p style={{ fontSize: '0.82rem', color: '#0F172A', fontWeight: '800', marginBottom: '16px' }}>
-                  <strong>"업로드하신 모든 서류는 철저히 암호화되어 보호되며, 관리자 확인 후 즉시 파기됩니다."</strong>
-                </p>
-                
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <button 
-                    onClick={() => verifyInputRef.current?.click()} 
-                    style={{ padding: '10px 20px', borderRadius: '10px', background: '#fff', border: '1.5px solid #CBD5E1', color: '#475569', fontSize: '0.85rem', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
-                  >
-                    <Upload size={16} /> 파일 선택
-                  </button>
-                  {verificationPreview ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#10B981', fontSize: '0.82rem', fontWeight: '800' }}>
-                      <CheckCircle2 size={16} /> 업로드 완료
-                    </div>
-                  ) : (
-                    <span style={{ fontSize: '0.82rem', color: '#94A3B8' }}>선택된 파일 없음</span>
-                  )}
-                </div>
-                <input ref={verifyInputRef} type="file" accept="image/*,.pdf" style={{ display: 'none' }} onChange={handleVerifyUpload} />
-              </div>
-            </EditRow>
 
             <EditRow label="겹치고 싶지 않은 지인 (선택)">
               <input style={inputStyle} value={editForm.avoidAcquaintance} onChange={e => setEditForm((p: any) => ({ ...p, avoidAcquaintance: e.target.value }))} placeholder="이름 또는 연락처" />
@@ -473,6 +444,36 @@ export default function MyPage() {
 
             <EditRow label="특이사항 / 키링크에게 바라는 점">
               <textarea style={textAreaStyle} value={editForm.etc} onChange={e => setEditForm((p: any) => ({ ...p, etc: e.target.value }))} placeholder="알러지 여부나 기타 요청사항" rows={2} />
+            </EditRow>
+
+            {/* v7.8.1 재직 증명 업로드 섹션 (최하단 이동) */}
+            <EditRow label="재직 증명 (필수)" required>
+              <div style={{ background: '#F8FAFC', border: '1.5px solid #E2E8F0', borderRadius: '16px', padding: '20px', marginBottom: '24px' }}>
+                <p style={{ fontSize: '0.8rem', color: '#64748B', lineHeight: 1.6, marginBottom: '12px' }}>
+                  신뢰할 수 있는 모임을 위해 아래 서류 중 하나를 반드시 업로드해 주세요.<br/>
+                  (재직증명서, 급여명세서, 건강보험 자격득실, 사원증, 명함 등)
+                </p>
+                <p style={{ fontSize: '0.82rem', color: '#0F172A', fontWeight: '800', marginBottom: '16px' }}>
+                  <strong>"업로드하신 모든 서류는 철저히 암호화되어 안전하게 보호됩니다."</strong>
+                </p>
+                
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <button 
+                    onClick={() => verifyInputRef.current?.click()} 
+                    style={{ padding: '10px 20px', borderRadius: '10px', background: '#fff', border: '1.5px solid #CBD5E1', color: '#475569', fontSize: '0.85rem', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+                  >
+                    <Upload size={16} /> 파일 선택
+                  </button>
+                  {verificationPreview ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#10B981', fontSize: '0.82rem', fontWeight: '800' }}>
+                      <CheckCircle2 size={16} /> 업로드 완료
+                    </div>
+                  ) : (
+                    <span style={{ fontSize: '0.82rem', color: '#94A3B8' }}>선택된 파일 없음</span>
+                  )}
+                </div>
+                <input ref={verifyInputRef} type="file" accept="image/*,.pdf" style={{ display: 'none' }} onChange={handleVerifyUpload} />
+              </div>
             </EditRow>
 
             <div style={{ display: 'flex', gap: '12px', marginTop: '16px', position: 'sticky', bottom: 0, background: '#fff', paddingTop: '20px', borderTop: '1px solid #FFF0EE' }}>
