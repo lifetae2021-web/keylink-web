@@ -9,7 +9,7 @@ import { doc, getDoc, updateDoc, serverTimestamp, deleteField } from 'firebase/f
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import {
   LogOut, ArrowLeft, Camera, ChevronDown, ChevronUp, X, Check, Edit3, Package, Upload,
-  Clock, Banknote, CheckCircle2, XCircle, Vote, Lock
+  Clock, Banknote, CheckCircle2, XCircle, Vote, Lock, ShieldCheck
 } from 'lucide-react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
