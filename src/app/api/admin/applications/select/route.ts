@@ -5,7 +5,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 
 /**
  * 선발 처리 및 알림톡 발송 API
- * v7.6.0
+ * v7.9.7: 트랜잭션 기반 인원 초과 방지(Hard Limit) 적용
  */
 
 export async function POST(req: NextRequest) {
@@ -30,21 +30,66 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '관리자 권한이 없습니다.' }, { status: 403 });
     }
 
-    // 2. 신청서 및 사용자/세션 정보 조회
-    const appDoc = await adminDb.doc(`applications/${applicationId}`).get();
-    if (!appDoc.exists) {
+    // 2. 신청서 정보 사전 조회 (트랜잭션 밖에서 세션 ID와 유저 ID 확보)
+    const initialAppSnap = await adminDb.doc(`applications/${applicationId}`).get();
+    if (!initialAppSnap.exists) {
       return NextResponse.json({ error: '신청서를 찾을 수 없습니다.' }, { status: 404 });
     }
 
-    const appData = appDoc.data()!;
-    const userId = appData.userId;
-    const sessionId = appData.sessionId;
+    const initialAppData = initialAppSnap.data()!;
+    const sessionId = initialAppData.sessionId;
+    const userId = initialAppData.userId;
+    const gender = initialAppData.gender;
 
-    // 이미 선발된 경우 중복 발송 방지
-    if (appData.status === 'selected') {
-      return NextResponse.json({ success: true, message: '이미 선발된 신청자입니다.' });
+    // 3. 트랜잭션을 통한 인원 체크 및 상태 업데이트
+    try {
+      await adminDb.runTransaction(async (transaction) => {
+        const appRef = adminDb.doc(`applications/${applicationId}`);
+        const sessionRef = adminDb.doc(`sessions/${sessionId}`);
+        
+        const [appSnap, sessionSnap] = await Promise.all([
+          transaction.get(appRef),
+          transaction.get(sessionRef)
+        ]);
+
+        if (!appSnap.exists || !sessionSnap.exists) {
+          throw new Error('데이터를 찾을 수 없습니다.');
+        }
+
+        const appData = appSnap.data()!;
+        const sessionData = sessionSnap.data()!;
+
+        // 이미 선발된 경우 중복 처리 방지
+        if (appData.status === 'selected' || appData.status === 'confirmed') {
+          return; // 성공으로 간주하거나 중단
+        }
+
+        // 현재 해당 기수의 해당 성별 선발/확정 인원 조회
+        const reservedQuery = adminDb.collection('applications')
+          .where('sessionId', '==', sessionId)
+          .where('gender', '==', gender)
+          .where('status', 'in', ['selected', 'confirmed']);
+        
+        const reservedSnap = await transaction.get(reservedQuery);
+        const currentCount = reservedSnap.size;
+        const maxCount = gender === 'male' ? (sessionData.maxMale || 8) : (sessionData.maxFemale || 8);
+
+        if (currentCount >= maxCount) {
+          throw new Error(`해당 성별의 모집 정원이 이미 충족되었습니다. (현재 ${currentCount}/${maxCount})`);
+        }
+
+        // 상태 업데이트
+        transaction.update(appRef, {
+          status: 'selected',
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+      });
+    } catch (txnError: any) {
+      console.error('Selection Transaction Failed:', txnError);
+      return NextResponse.json({ error: txnError.message || '인원 체크 중 오류가 발생했습니다.' }, { status: 400 });
     }
 
+    // 4. 사용자 정보 조회 및 알림 문자 발송 (트랜잭션 완료 후 진행)
     const [userDoc, sessionDoc] = await Promise.all([
       adminDb.doc(`users/${userId}`).get(),
       adminDb.doc(`sessions/${sessionId}`).get(),
@@ -54,18 +99,14 @@ export async function POST(req: NextRequest) {
     const sessionData = sessionDoc.data();
 
     if (!userData || !sessionData) {
-      return NextResponse.json({ error: '사용자 또는 세션 정보를 찾을 수 없습니다.' }, { status: 404 });
+      return NextResponse.json({ 
+        success: true, 
+        warning: '상태는 변경되었으나 사용자/세션 정보를 찾지 못해 문자를 발송하지 못했습니다.' 
+      });
     }
 
-    // 3. Firestore 상태 업데이트 (selected)
-    await adminDb.doc(`applications/${applicationId}`).update({
-      status: 'selected',
-      updatedAt: FieldValue.serverTimestamp(),
-    });
-
-    // 4. 알림 문자 발송
-    const name = userData.name || '참가자';
-    const phone = userData.phone || appData.phone;
+    const name = userData.name || initialAppData.name || '참가자';
+    const phone = userData.phone || initialAppData.phone;
 
     if (!phone) {
       return NextResponse.json({ 
@@ -96,7 +137,7 @@ export async function POST(req: NextRequest) {
     const message = customMessage || `안녕하세요 ! 키링크에 지원해주셔서 감사합니다☺️
 ${name}님은 ${formattedDate} ${formattedDay} ${formattedTime} 소개팅 날짜가 지정되었습니다
 
-아래 계좌번호로 ${ (appData.price || sessionData.price || 60000).toLocaleString('ko-KR') }원 입금해주셔야 라인업에 확정등록되니 참고 부탁드립니다 :)
+아래 계좌번호로 ${ (initialAppData.price || sessionData.price || 60000).toLocaleString('ko-KR') }원 입금해주셔야 라인업에 확정등록되니 참고 부탁드립니다 :)
 3333359229548 카카오뱅크 태영훈(키링크) 입금 또는 참석가능 여부 알려주세요😭
 혹시나 입금이 늦을 것 같은 경우 말씀해주세요.
 

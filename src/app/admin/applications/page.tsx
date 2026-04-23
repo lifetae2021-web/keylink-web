@@ -214,6 +214,17 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
   };
 
   const activeEvent = events.find(e => e.id === selectedEventId);
+  
+  // v7.9.7: 실시간 선발 현황 계산 (selected + confirmed)
+  const selectionStats = useMemo(() => {
+    if (selectedEventId === 'all') return { male: 0, female: 0 };
+    const male = applications.filter(a => a.gender === 'male' && (a.status === 'selected' || a.status === 'confirmed')).length;
+    const female = applications.filter(a => a.gender === 'female' && (a.status === 'selected' || a.status === 'confirmed')).length;
+    return { male, female };
+  }, [applications, selectedEventId]);
+
+  const isMaleFull = selectionStats.male >= (activeEvent?.maxMale || 8);
+  const isFemaleFull = selectionStats.female >= (activeEvent?.maxFemale || 8);
 
 
   const filtered = applications.filter(app => {
@@ -235,7 +246,7 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 style={{ fontSize: '1.25rem', fontWeight: 900, letterSpacing: '-0.02em', color: '#0F172A' }}>신청 관리</h2>
-          <p style={{ fontSize: '0.85rem', color: '#64748B', marginTop: 2 }}>참가 신청자들의 상세 정보를 심사하고 선발 여부를 결정합니다. <span className="text-[10px] font-bold text-[#3B82F6] ml-2">v7.9.6 Premium</span></p>
+          <p style={{ fontSize: '0.85rem', color: '#64748B', marginTop: 2 }}>참가 신청자들의 상세 정보를 심사하고 선발 여부를 결정합니다. <span className="text-[10px] font-bold text-[#3B82F6] ml-2">v7.9.7 Premium</span></p>
         </div>
         <div className="flex items-center gap-3">
           <div className="relative flex-1 md:flex-none group">
@@ -270,6 +281,12 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
             { label: '입금 대기',   value: applications.filter((a: any) => a.status === 'selected').length,              icon: CreditCard,  color: '#a78bfa' },
             { label: '참가 확정',   value: applications.filter((a: any) => a.status === 'confirmed').length,             icon: CheckCircle, color: '#4ade80' },
             { label: '정원 현황',  value: `${(activeEvent.currentMale||0)+(activeEvent.currentFemale||0)} / ${(activeEvent.maxMale||0)+(activeEvent.maxFemale||0)}`, icon: Calendar, color: '#facc15' },
+            { 
+              label: '선발 현황 (Reserved)', 
+              value: `남 ${selectionStats.male}/${activeEvent.maxMale} · 여 ${selectionStats.female}/${activeEvent.maxFemale}`, 
+              icon: ShieldCheck, 
+              color: '#3B82F6' 
+            },
           ].map((item, i) => (
             <div key={i} style={{ ...panel, padding: '16px 20px' }} className="flex items-center justify-between">
               <div>
@@ -368,11 +385,18 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                   const regionName = !event ? '-' : event.region === 'busan' ? '부산' : event.region === 'changwon' ? '창원' : event.region;
                   const eventDateLabel = event?.eventDate ? format(event.eventDate.toDate(), 'MM.dd (E)', { locale: ko }) : '';
 
+                  const isFull = (app.gender === 'male' && isMaleFull) || (app.gender === 'female' && isFemaleFull);
+                  const canSelect = app.status === 'applied' || app.status === 'held';
+
                   return (
                     <tr 
                       key={app.id} 
-                      style={{ borderBottom: '1px solid #f0f0f0', height: '88px' }} 
-                      className="hover:bg-slate-50 transition-colors group cursor-default"
+                      style={{ 
+                        borderBottom: '1px solid #f0f0f0', 
+                        height: '88px',
+                        background: (canSelect && isFull) ? '#F8FAFC' : 'transparent'
+                      }} 
+                      className={`transition-colors group cursor-default ${ (canSelect && isFull) ? 'opacity-75' : 'hover:bg-slate-50' }`}
                     >
                       {/* NO */}
                       <td style={{ padding: '0 16px', textAlign: 'center' }}>
@@ -465,15 +489,38 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                               )}
                               <button 
                                 onClick={() => {
+                                  if ((app.gender === 'male' && isMaleFull) || (app.gender === 'female' && isFemaleFull)) {
+                                    return toast.error(`해당 성별의 모집 정원이 이미 충족되었습니다. (최대 ${app.gender === 'male' ? activeEvent?.maxMale : activeEvent?.maxFemale}명)`);
+                                  }
                                   if (window.confirm('문자 발송 없이 입금 완료 처리하시겠습니까?')) {
                                     updateAppStatus(app, 'confirmed');
                                   }
                                 }} 
-                                className="px-3 py-1.5 rounded-xl text-[0.75rem] font-bold bg-[#FFD700]/10 text-[#B8860B] border border-[#FFD700]/30 hover:bg-[#FFD700] hover:text-white transition-all shadow-sm"
+                                disabled={(app.gender === 'male' && isMaleFull) || (app.gender === 'female' && isFemaleFull)}
+                                className={`px-3 py-1.5 rounded-xl text-[0.75rem] font-bold border transition-all shadow-sm ${
+                                  (app.gender === 'male' && isMaleFull) || (app.gender === 'female' && isFemaleFull)
+                                    ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
+                                    : 'bg-[#FFD700]/10 text-[#B8860B] border-[#FFD700]/30 hover:bg-[#FFD700] hover:text-white'
+                                }`}
                               >
                                 선발확정
                               </button>
-                              <button onClick={() => handleOpenPreview(app)} className="px-3 py-1.5 rounded-xl text-[0.75rem] font-bold bg-[#FF7E7E]/10 text-[#FF7E7E] border border-[#FF7E7E]/20 hover:bg-[#FF7E7E] hover:text-white transition-all shadow-sm">선발</button>
+                              <button 
+                                onClick={() => {
+                                  if ((app.gender === 'male' && isMaleFull) || (app.gender === 'female' && isFemaleFull)) {
+                                    return toast.error(`해당 성별의 모집 정원이 이미 충족되었습니다. (최대 ${app.gender === 'male' ? activeEvent?.maxMale : activeEvent?.maxFemale}명)`);
+                                  }
+                                  handleOpenPreview(app);
+                                }} 
+                                disabled={(app.gender === 'male' && isMaleFull) || (app.gender === 'female' && isFemaleFull)}
+                                className={`px-3 py-1.5 rounded-xl text-[0.75rem] font-bold border transition-all shadow-sm ${
+                                  (app.gender === 'male' && isMaleFull) || (app.gender === 'female' && isFemaleFull)
+                                    ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
+                                    : 'bg-[#FF7E7E]/10 text-[#FF7E7E] border-[#FF7E7E]/20 hover:bg-[#FF7E7E] hover:text-white'
+                                }`}
+                              >
+                                선발
+                              </button>
                               
                               {app.status === 'applied' && (
                                 <button onClick={() => updateAppStatus(app, 'held')} className="px-3 py-1.5 rounded-xl text-[0.75rem] font-bold bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200 transition-all shadow-sm">보류</button>
