@@ -37,7 +37,7 @@ export default function VotePage() {
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // v8.1.2: 네이버 폼 스타일 신규 상태
+  // v8.1.3: 네이버 폼 스타일 신규 상태
   const [realName, setRealName] = useState('');
   const [myAlias, setMyAlias] = useState('');
   const [finalCheck, setFinalCheck] = useState(false);
@@ -149,7 +149,7 @@ export default function VotePage() {
     </div>
   );
 
-  // 투표 활성화 로직: v7.9.9 행사 당일 체크 + v8.1.2 퀵 토글 상태 체크
+  // 투표 활성화 로직: v7.9.9 행사 당일 체크 + v8.1.3 퀵 토글 상태 체크
   const isEventDay = session ? (
     new Date().toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' }) === 
     session.eventDate.toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' })
@@ -173,9 +173,15 @@ export default function VotePage() {
     );
   }
 
-  // v8.1.2: 동적 설정값 추출
+  // v8.1.3: 동적 설정값 추출 (네이버 폼 커스텀 라벨 포함)
   const maxLimit = session?.voteConfig?.maxSelection || 3;
   const questionText = session?.voteConfig?.questionText || '오늘 가장 호감 갔던 이성을 3명까지 골라주세요.';
+  const q1Label = session?.voteConfig?.q1Label || '실명을 적어주세요';
+  const q2Label = session?.voteConfig?.q2Label || '본인의 호를 체크해주세요';
+  const q3Label = session?.voteConfig?.q3Label || '호감가는 이성 선택';
+  const q4Label = session?.voteConfig?.q4Label || '매칭 오류 방지를 위해 최종 라인업 및 메모를 확인하셨나요?';
+  const q5Label = session?.voteConfig?.q5Label || '후기';
+  
   const priorityList = Array.from({ length: maxLimit }, (_, i) => i + 1);
 
   // 이미 투표한 경우
@@ -220,7 +226,7 @@ export default function VotePage() {
             <section className="space-y-4">
               <div className="flex items-start gap-2">
                 <span className="text-[#FF6F61] font-black text-lg">1.</span>
-                <label className="text-lg font-extrabold text-slate-800">실명을 적어주세요 <span className="text-[#FF6F61]">*</span></label>
+                <label className="text-lg font-extrabold text-slate-800">{q1Label} <span className="text-[#FF6F61]">*</span></label>
               </div>
               <input 
                 type="text" 
@@ -235,7 +241,7 @@ export default function VotePage() {
             <section className="space-y-4">
               <div className="flex items-start gap-2">
                 <span className="text-[#FF6F61] font-black text-lg">2.</span>
-                <label className="text-lg font-extrabold text-slate-800">본인의 호를 체크해주세요 <span className="text-[#FF6F61]">*</span></label>
+                <label className="text-lg font-extrabold text-slate-800">{q2Label} <span className="text-[#FF6F61]">*</span></label>
               </div>
               <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
                 {Array.from({ length: 12 }, (_, i) => i + 1).map(num => (
@@ -259,7 +265,7 @@ export default function VotePage() {
               <div className="flex items-start gap-2">
                 <span className="text-[#FF6F61] font-black text-lg">3.</span>
                 <label className="text-lg font-extrabold text-slate-800">
-                  {questionText} <span className="text-[#FF6F61]">*</span>
+                  {q3Label} <span className="text-[#FF6F61]">*</span>
                 </label>
               </div>
               
@@ -319,9 +325,9 @@ export default function VotePage() {
             <section className="space-y-4">
               <div className="flex items-start gap-2">
                 <span className="text-[#FF6F61] font-black text-lg">4.</span>
-                <label className="text-lg font-extrabold text-slate-800">최종 확인 <span className="text-[#FF6F61]">*</span></label>
+                <label className="text-lg font-extrabold text-slate-800">{q4Label.split('\n')[0]} <span className="text-[#FF6F61]">*</span></label>
               </div>
-              <p className="text-sm font-bold text-slate-400 leading-relaxed pl-6">매칭 오류 방지를 위해 최종 라인업 및 기입하신 메모를 확인하셨나요?</p>
+              {q4Label.includes('\n') && <p className="text-sm font-bold text-slate-400 leading-relaxed pl-6 whitespace-pre-wrap">{q4Label.split('\n').slice(1).join('\n')}</p>}
               <label className="flex items-center gap-3 p-5 rounded-2xl bg-[#F8FAFC] border-2 border-slate-100 cursor-pointer transition-colors hover:border-slate-200">
                 <input 
                   type="checkbox" 
@@ -337,7 +343,7 @@ export default function VotePage() {
             <section className="space-y-4">
               <div className="flex items-start gap-2">
                 <span className="text-[#FF6F61] font-black text-lg">5.</span>
-                <label className="text-lg font-extrabold text-slate-800">후기 (선택 사항)</label>
+                <label className="text-lg font-extrabold text-slate-800">{q5Label}</label>
               </div>
               <textarea 
                 value={feedback}
