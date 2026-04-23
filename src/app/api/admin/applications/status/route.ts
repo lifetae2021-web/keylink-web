@@ -4,7 +4,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 
 /**
  * 신청 관리 상태 변경 API (Hard Limit 반영)
- * v7.9.9: 모든 상태 변경(확정, 취소, 복구)을 트랜잭션으로 처리하여 인원 초과 방지
+ * v8.0.2: 모든 상태 변경(확정, 취소, 복구)을 트랜잭션으로 처리하여 인원 초과 방지
  */
 
 export async function POST(req: NextRequest) {
