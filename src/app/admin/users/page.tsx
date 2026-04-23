@@ -215,7 +215,7 @@ export default function UsersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0F172A' }}>회원 관리</h2>
-          <p style={{ fontSize: '0.8rem', color: '#64748B', marginTop: 2 }}>실시간 데이터 동기화 활성화됨 <span className="text-[10px] font-bold text-[#FF7E7E] ml-2">v6.3.0 Premium</span></p>
+          <p style={{ fontSize: '0.8rem', color: '#64748B', marginTop: 2 }}>실시간 데이터 동기화 활성화됨 <span className="text-[10px] font-bold text-[#FF7E7E] ml-2">v7.8.2 Visual Admin Sync</span></p>
         </div>
         <button
           onClick={downloadCSV}
@@ -314,17 +314,18 @@ export default function UsersPage() {
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
               <colgroup>
-                <col style={{ width: '18%' }} />
-                <col style={{ width: '12%' }} />
-                <col style={{ width: '8%' }} />
-                <col style={{ width: '14%' }} />
-                <col style={{ width: '22%' }} />
-                <col style={{ width: '16%' }} />
-                <col style={{ width: '10%' }} />
+                <col style={{ width: '80px' }} />
+                <col style={{ width: '140px' }} />
+                <col style={{ width: '120px' }} />
+                <col style={{ width: '100px' }} />
+                <col style={{ width: '140px' }} />
+                <col style={{ width: '220px' }} />
+                <col style={{ width: '140px' }} />
+                <col style={{ width: '100px' }} />
               </colgroup>
               <thead>
                 <tr>
-                  {['회원정보', '직업', '나이', '상태 / 권한', '활동 지표', '관리', '가입일'].map((h, i) => {
+                  {['프로필', '이름', '직업', '나이', '상태 / 권한', '활동 지표', '관리', '가입일'].map((h, i) => {
                     const isSortable = h === '나이' || h === '가입일';
                     const sortKey = (h === '나이') ? 'age' : (h === '가입일' ? 'createdAt' : null);
                     const isActive = sortKey && sortConfig.key === sortKey;
@@ -335,32 +336,19 @@ export default function UsersPage() {
                         onClick={() => isSortable && toggleSort(sortKey as any)}
                         style={{
                           padding: '12px 20px',
-                          textAlign: (i === 5) ? 'right' : (i === 2 || i === 6 || i === 4 ? 'center' : 'left'),
+                          textAlign: (i === 6) ? 'right' : (i === 3 || i === 7 || i === 5 ? 'center' : 'left'),
                           fontSize: '0.75rem',
                           fontWeight: 700,
                           color: isActive ? '#FF7E7E' : '#64748B',
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.05em',
                           borderBottom: '1px solid #CBD5E1',
                           background: '#F8FAFC',
                           whiteSpace: 'nowrap',
                           cursor: isSortable ? 'pointer' : 'default',
-                          userSelect: 'none',
-                          overflow: 'hidden',
                         }}
                         className={isSortable ? 'hover:bg-slate-100 transition-colors' : ''}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', justifyContent: i === 5 ? 'flex-end' : (i === 2 || i === 6 || i === 4 ? 'center' : 'flex-start') }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', justifyContent: i === 6 ? 'flex-end' : (i === 3 || i === 7 || i === 5 ? 'center' : 'flex-start') }}>
                           {h}
-                          {isSortable && (
-                            <span style={{ opacity: isActive ? 1 : 0.3 }}>
-                              {isActive ? (
-                                sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />
-                              ) : (
-                                <ArrowUpDown size={10} />
-                              )}
-                            </span>
-                          )}
                         </div>
                       </th>
                     );
@@ -377,63 +365,27 @@ export default function UsersPage() {
                       style={{ borderBottom: '1px solid #E2E8F0', cursor: 'default', height: 60 }}
                       className="hover:bg-slate-50 transition-colors group h-[60px]"
                     >
-                      {/* 회원정보 */}
-                      <td style={{ padding: '0 20px', verticalAlign: 'middle' }}>
-                        <div className="flex items-center gap-3">
-                          <div
-                            onClick={() => setSelectedUserForProfile(u)}
-                            className="relative flex-shrink-0 flex items-center justify-center rounded-xl font-bold cursor-pointer hover:shadow-md transition-all overflow-hidden border border-slate-200"
-                            style={{
-                              width: 38, height: 38, fontSize: '0.85rem',
-                              background: u.gender === 'male' ? '#EFF6FF' : '#FFF1F2',
-                              color:      u.gender === 'male' ? '#3B82F6' : '#E11D48',
-                            }}
-                          >
-                            {/* 실제 프로필 이미지 - photoUrl 또는 photoURL 필드 지원 */}
-                            {(u.photoUrl || u.photoURL) ? (
-                              <img 
-                                src={u.photoUrl || u.photoURL} 
-                                alt={u.name}
-                                className="w-full h-full object-cover"
-                                onError={(e) => {
-                                  // 이미지 로드 실패 시 아바타로 폴백
-                                  const target = e.currentTarget as HTMLImageElement;
-                                  target.style.display = 'none';
-                                  const parent = target.parentElement;
-                                  if (parent) {
-                                    const span = document.createElement('span');
-                                    span.textContent = u.name ? u.name[0] : 'U';
-                                    parent.appendChild(span);
-                                  }
-                                }}
-                              />
-                            ) : (
-                              u.name ? u.name[0] : 'U'
-                            )}
-                            {u.status === 'verified' && (
-                              <span
-                                className="absolute flex items-center justify-center rounded-full z-10 shadow-sm"
-                                style={{ width: 14, height: 14, bottom: -2, right: -2, background: '#fff', border: '1px solid #E2E8F0' }}
-                              >
-                                <ShieldCheck size={10} style={{ color: '#10B981' }} />
-                              </span>
-                            )}
-                          </div>
-                          <div className="cursor-pointer group/name" onClick={() => setSelectedUserForProfile(u)}>
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-[0.88rem] font-bold text-slate-800 group-hover/name:text-[#FF7E7E] transition-colors">{u.name || '미입력'}</span>
-                              <span
-                                style={{
-                                  fontSize: '0.62rem', fontWeight: 800, padding: '1px 6px', borderRadius: 6,
-                                  background: u.gender === 'male' ? '#EFF6FF' : '#FFF1F2',
-                                  color:      u.gender === 'male' ? '#3B82F6' : '#E11D48',
-                                }}
-                              >
-                                {u.gender === 'male' ? 'M' : 'F'}
-                              </span>
-                            </div>
-                            <p style={{ fontSize: '0.75rem', color: '#94A3B8', marginTop: 1 }}>{u.email}</p>
-                          </div>
+                      {/* 1. 프로필 (v7.8.2) */}
+                      <td style={{ padding: '0 20px' }}>
+                        <div
+                          onClick={() => setSelectedUserForProfile(u)}
+                          className="w-10 h-10 rounded-full border-2 border-white shadow-sm flex items-center justify-center overflow-hidden bg-slate-100 shrink-0 cursor-pointer hover:scale-110 transition-transform"
+                        >
+                          {(u.photoUrl || u.photoURL || u.photos?.[0]) ? (
+                            <img src={u.photoUrl || u.photoURL || u.photos?.[0]} className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-xs font-bold text-slate-400">{u.name?.[0] || 'U'}</span>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* 2. 이름 */}
+                      <td style={{ padding: '0 20px' }}>
+                        <div className="flex flex-col cursor-pointer" onClick={() => setSelectedUserForProfile(u)}>
+                          <span className="text-[0.88rem] font-bold text-slate-800 hover:text-[#FF7E7E] transition-colors">{u.name || '미입력'}</span>
+                          <span className={`text-[10px] font-bold ${u.gender === 'male' ? 'text-blue-500' : 'text-rose-500'}`}>
+                            {u.gender === 'male' ? '남성' : '여성'}
+                          </span>
                         </div>
                       </td>
 

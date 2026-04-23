@@ -235,7 +235,7 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 style={{ fontSize: '1.25rem', fontWeight: 900, letterSpacing: '-0.02em', color: '#0F172A' }}>신청 관리</h2>
-          <p style={{ fontSize: '0.85rem', color: '#64748B', marginTop: 2 }}>참가 신청자들의 상세 정보를 심사하고 선발 여부를 결정합니다. <span className="text-[10px] font-bold text-[#3B82F6] ml-2">v7.8.1 Trust Refinement</span></p>
+          <p style={{ fontSize: '0.85rem', color: '#64748B', marginTop: 2 }}>참가 신청자들의 상세 정보를 심사하고 선발 여부를 결정합니다. <span className="text-[10px] font-bold text-[#3B82F6] ml-2">v7.8.2 Visual Admin Sync</span></p>
         </div>
         <div className="flex items-center gap-3">
           <div className="relative flex-1 md:flex-none group">
@@ -327,20 +327,21 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
         <div className="overflow-x-auto">
           <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
             <colgroup>
-              <col style={{ width: '160px' }} />
-              <col style={{ width: '160px' }} />
+              <col style={{ width: '80px' }} />
               <col style={{ width: '120px' }} />
-              <col style={{ width: '100px' }} />
+              <col style={{ width: '140px' }} />
+              <col style={{ width: '140px' }} />
+              <col style={{ width: '90px' }} />
+              <col style={{ width: '120px' }} />
               <col style={{ width: '110px' }} />
-              <col style={{ width: '130px' }} />
               <col style={{ width: '110px' }} />
-              <col style={{ width: '190px' }} />
+              <col style={{ width: '160px' }} />
             </colgroup>
             <thead>
               <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #CBD5E1' }}>
-                {['신청 기수 / 일시', '참가자', '직업', '거주지', '키 / 몸무게', '연락처', '상태/결제', '선발 관리'].map((h, i) => (
+                {['프로필', '이름', '직업', '신청 기수', '나이', '거주지', '연락처', '상태/결제', '선발 관리'].map((h, i) => (
                   <th key={h} style={{
-                    padding: '16px 20px', textAlign: i === 7 ? 'right' : 'left', fontSize: '0.75rem', fontWeight: 700, color: '#64748B',
+                    padding: '16px 20px', textAlign: i === 8 ? 'right' : 'left', fontSize: '0.75rem', fontWeight: 700, color: '#64748B',
                     textTransform: 'uppercase', letterSpacing: '0.05em'
                   }}>{h}</th>
                 ))}
@@ -380,50 +381,59 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                       style={{ borderBottom: '1px solid #E2E8F0', height: '76px' }} 
                       className="hover:bg-slate-50 transition-colors group cursor-default"
                     >
-                      {/* 1. 신청 기수 / 일시 */}
+                      {/* 1. 프로필 (v7.8.2) */}
                       <td style={{ padding: '0 20px' }}>
-                        <div className="flex flex-col gap-0.5">
-                          <p className="text-[0.82rem] font-black text-slate-800">{regionName} {event?.episodeNumber || '??'}기</p>
+                        <div 
+                          className="w-10 h-10 rounded-full border-2 border-white shadow-sm flex items-center justify-center overflow-hidden bg-slate-100 shrink-0 cursor-pointer hover:scale-110 transition-transform"
+                          onClick={() => { setSelectedUser(user); setIsModalOpen(true); }}
+                        >
+                          {user.photoUrl || user.photoURL || user.photos?.[0] ? (
+                            <img src={user.photoUrl || user.photoURL || user.photos?.[0]} className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-xs font-bold text-slate-400">{user.name?.[0] || 'U'}</span>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* 2. 이름 */}
+                      <td style={{ padding: '0 20px' }}>
+                        <div className="flex flex-col">
+                          <button 
+                            onClick={() => { setSelectedUser(user); setIsModalOpen(true); }}
+                            className="text-[0.88rem] font-black text-slate-800 hover:text-[#FF7E7E] transition-colors text-left"
+                          >
+                            {user.name || '미입력'}
+                          </button>
+                          <span className={`text-[10px] font-bold ${user.gender === 'male' ? 'text-blue-500' : 'text-rose-500'}`}>
+                            {user.gender === 'male' ? '남성' : '여성'}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* 3. 직업 */}
+                      <td style={{ padding: '0 20px' }}>
+                        <p className="text-[0.82rem] font-bold text-slate-700 truncate">{user.job || user.workplace?.split(',')[0] || <span className="text-slate-300 font-normal">-</span>}</p>
+                      </td>
+
+                      {/* 4. 신청 기수 */}
+                      <td style={{ padding: '0 20px' }}>
+                        <div className="flex flex-col">
+                          <p className="text-[0.82rem] font-black text-slate-800 tracking-tighter">{regionName} {event?.episodeNumber || '??'}기</p>
                           <p className="text-[10px] font-bold text-[#FF7E7E]">{eventDateLabel}</p>
                         </div>
                       </td>
 
-                      {/* 2. 참가자 */}
+                      {/* 5. 나이 */}
                       <td style={{ padding: '0 20px' }}>
-                        <div className="flex items-center gap-3">
-                          <button 
-                            onClick={() => { setSelectedUser(user); setIsModalOpen(true); }}
-                            className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden shrink-0 hover:shadow-md transition-all"
-                          >
-                            {user.photoUrl || user.photoURL ? <img src={user.photoUrl || user.photoURL} className="w-full h-full object-cover" /> : <span className="text-xl">👤</span>}
-                          </button>
-                          <div className="truncate">
-                            <button 
-                              onClick={() => { setSelectedUser(user); setIsModalOpen(true); }}
-                              className="text-[0.92rem] font-bold block text-slate-800 hover:text-[#FF7E7E] transition-colors"
-                            >
-                              {user.name || '미입력'}
-                            </button>
-                            <span className={`text-[10px] font-bold ${user.gender === 'male' ? 'text-blue-500' : 'text-rose-500'}`}>
-                              {user.gender === 'male' ? '남성' : '여성'} · {user.birthDate ? `${new Date().getFullYear() - parseInt(user.birthDate.split('-')[0]) + 1}세` : '??'}
-                            </span>
-                          </div>
-                        </div>
+                        <p className="text-[0.82rem] font-bold text-slate-600">{user.birthDate ? `${new Date().getFullYear() - parseInt(user.birthDate.split('-')[0]) + 1}세` : '??'}</p>
                       </td>
 
-                      <td style={{ padding: '0 20px' }}>
-                        <p className="text-[0.82rem] font-bold text-slate-700 truncate">{user.job || user.occupation || <span className="text-slate-300 font-normal">-</span>}</p>
-                      </td>
-
+                      {/* 6. 거주지 */}
                       <td style={{ padding: '0 20px' }}>
                         <p className="text-[0.82rem] font-medium text-slate-500">{user.location || user.residence || <span className="text-slate-300 font-normal">-</span>}</p>
                       </td>
 
-                      {/* 4. 키/몸무게 */}
-                      <td style={{ padding: '0 20px' }}>
-                        <p className="text-[0.82rem] font-semibold text-slate-600">{user.height ? `${user.height}cm` : '??'} / {user.weight ? `${user.weight}kg` : '??'}</p>
-                      </td>
-
+                      {/* 7. 연락처 */}
                       <td style={{ padding: '0 20px' }}>
                         <p className="text-[0.82rem] text-slate-600 font-bold tracking-tight">{user.phone || <span className="text-slate-300 font-normal">-</span>}</p>
                       </td>
