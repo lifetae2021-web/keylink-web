@@ -178,7 +178,7 @@ export default function EventDetailPage() {
       { key: 'weight', name: '체중' },
       { key: 'workplace', name: '회사명 / 직무' },
       { key: 'phone', name: '연락처' },
-      { key: 'residence', name: '거주 지역' },
+      { key: 'residence', name: '거주지' },
       { key: 'smoking', name: '흡연 유무' },
       { key: 'drinking', name: '음주 빈도' },
       { key: 'religion', name: '종교' },
@@ -575,7 +575,7 @@ export default function EventDetailPage() {
                         </div>
                       </div>
                       <div>
-                        <label className="kl-label">거주 지역 *</label>
+                        <label className="kl-label">거주지 *</label>
                         <input className="kl-input" placeholder="ex. 부산 수영구" value={form.residence} onChange={(e) => setForm(f => ({...f, residence: e.target.value}))} />
                       </div>
                     </div>

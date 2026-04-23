@@ -235,7 +235,7 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 style={{ fontSize: '1.25rem', fontWeight: 900, letterSpacing: '-0.02em', color: '#0F172A' }}>신청 관리</h2>
-          <p style={{ fontSize: '0.85rem', color: '#64748B', marginTop: 2 }}>참가 신청자들의 상세 정보를 심사하고 선발 여부를 결정합니다. <span className="text-[10px] font-bold text-[#3B82F6] ml-2">v7.9.0 Premium</span></p>
+          <p style={{ fontSize: '0.85rem', color: '#64748B', marginTop: 2 }}>참가 신청자들의 상세 정보를 심사하고 선발 여부를 결정합니다. <span className="text-[10px] font-bold text-[#3B82F6] ml-2">v7.9.2 Premium</span></p>
         </div>
         <div className="flex items-center gap-3">
           <div className="relative flex-1 md:flex-none group">
@@ -325,25 +325,14 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
       {/* Main Content Table (Light Premium Theme - Clean White) */}
       <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 16, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
         <div className="overflow-x-auto">
-          <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
-            <colgroup>
-              <col style={{ width: '60px' }} />
-              <col style={{ width: '80px' }} />
-              <col style={{ width: '130px' }} />
-              <col style={{ width: '130px' }} />
-              <col style={{ width: '130px' }} />
-              <col style={{ width: '90px' }} />
-              <col style={{ width: 'minmax(140px, auto)' }} />
-              <col style={{ width: '130px' }} />
-              <col style={{ width: '100px' }} />
-              <col style={{ width: '220px' }} />
-            </colgroup>
+          <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' }}>
+            {/* colgroup removed for table-layout: auto to work effectively */}
             <thead>
               <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
                 {['NO', '프로필', '이름', '직업', '신청 기수', '나이', '거주지', '연락처', '상태/결제', '선발 관리'].map((h, i) => (
                   <th key={h} style={{
-                    padding: '18px 16px', textAlign: i === 9 ? 'right' : i === 0 ? 'center' : 'left', fontSize: '0.75rem', fontWeight: 800, color: '#64748B',
-                    textTransform: 'uppercase', letterSpacing: '0.05em'
+                    padding: '18px 16px', textAlign: i === 9 ? 'right' : (i === 1 || i === 3 ? 'left' : 'center'), fontSize: '0.75rem', fontWeight: 800, color: '#64748B',
+                    textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap'
                   }}>{h}</th>
                 ))}
               </tr>
@@ -407,9 +396,9 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                         <div className="flex flex-col">
                           <button 
                             onClick={() => { setSelectedUser(user); setIsModalOpen(true); }}
-                            className="text-[0.95rem] font-black text-slate-800 hover:text-[#FF7E7E] transition-colors text-left"
+                            className="text-[0.95rem] font-black text-slate-800 hover:text-[#FF7E7E] transition-colors text-left whitespace-nowrap"
                           >
-                            {user.name || '미입력'}
+                            {user.name || app.name || '미입력'}
                           </button>
                           <span className={`text-[0.65rem] font-bold mt-1 ${user.gender === 'male' ? 'text-blue-500' : 'text-rose-500'}`}>
                             {user.gender === 'male' ? '남성' : '여성'}
@@ -423,9 +412,9 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                       </td>
 
                       {/* 기수 */}
-                      <td style={{ padding: '0 16px' }}>
-                        <div className="flex flex-col">
-                          <p className="text-[0.85rem] font-black text-slate-800 tracking-tighter">{regionName} {event?.episodeNumber || '??'}기</p>
+                      <td style={{ padding: '0 16px', textAlign: 'center' }}>
+                        <div className="flex flex-col items-center">
+                          <p className="text-[0.85rem] font-black text-slate-800 tracking-tighter whitespace-nowrap">{regionName} {event?.episodeNumber || '??'}기</p>
                           <p className="text-[0.65rem] font-bold text-[#FF7E7E] mt-1">{eventDateLabel}</p>
                         </div>
                       </td>
@@ -437,12 +426,12 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
 
                       {/* 거주지 */}
                       <td style={{ padding: '0 16px' }}>
-                        <p className="text-[0.85rem] font-bold text-slate-700">{user.residence || user.location || <span className="text-slate-300 font-normal">-</span>}</p>
+                        <p className="text-[0.85rem] font-bold text-slate-700 whitespace-nowrap">{app.residence || user.residence || user.location || <span className="text-slate-300 font-normal">-</span>}</p>
                       </td>
 
                       {/* 연락처 */}
-                      <td style={{ padding: '0 16px' }}>
-                        <p className="text-[0.85rem] text-slate-600 font-bold tracking-tight">{user.phone || <span className="text-slate-300 font-normal">-</span>}</p>
+                      <td style={{ padding: '0 16px', textAlign: 'center' }}>
+                        <p className="text-[0.85rem] text-slate-600 font-bold tracking-tight whitespace-nowrap">{user.phone || <span className="text-slate-300 font-normal">-</span>}</p>
                       </td>
 
                       {/* 상태/결제 */}

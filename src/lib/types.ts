@@ -62,7 +62,7 @@ export interface Application {
   age: number;
   gender: Gender;
   job: string;                 // workplace (회사명 / 직무)
-  residence: string;           // 거주 지역 (선택)
+  residence: string;           // 거주지 (선택)
   phone: string;               // 연락처 (필수)
   status: ApplicationStatus;
   paymentConfirmed: boolean;
