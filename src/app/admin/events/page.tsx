@@ -496,7 +496,7 @@ export default function EventsPage() {
               </button>
             </div>
             
-            <form onSubmit={handleCreateSession} className="p-6 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 120px)' }}>
+            <form onSubmit={handleSubmitSession} className="p-6 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 120px)' }}>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 {/* Region & Episode */}
