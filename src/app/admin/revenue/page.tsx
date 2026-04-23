@@ -249,7 +249,7 @@ export default function RevenueStatsPage() {
                 contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 40px rgba(0,0,0,0.1)', padding: '12px 16px' }}
                 itemStyle={{ fontWeight: 900, color: '#0F172A' }}
                 labelStyle={{ fontWeight: 800, color: '#64748B', marginBottom: '4px' }}
-                formatter={(val: number) => [`₩${val.toLocaleString()}`, '매출액']}
+                formatter={(val: any) => [`₩${Number(val || 0).toLocaleString()}`, '매출액']}
               />
               <Area 
                 type="monotone" 
