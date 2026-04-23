@@ -6,7 +6,7 @@ import { format } from 'date-fns';
 import { db } from '@/lib/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import toast from 'react-hot-toast';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface UserProfileModalProps {
   user: any;
