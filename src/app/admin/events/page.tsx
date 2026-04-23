@@ -41,8 +41,8 @@ export default function EventsPage() {
     venue: '서면역 인근 프라이빗한 파티룸',
     venueAddress: '',
     price: '29,000', 
-    ageStart: '94', // v7.5.2: 분리된 연령대 필드
-    ageEnd: '01',   // v7.5.2: 분리된 연령대 필드
+    ageStart: '', // v7.5.3: 빈칸으로 시작
+    ageEnd: '',   // v7.5.3: 빈칸으로 시작
     maxMale: '8',
     maxFemale: '8',
     status: 'open' as SessionStatus
@@ -716,7 +716,6 @@ export default function EventsPage() {
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
                       <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">남성 연령대</label>
-                      <span className="text-[10px] font-bold text-[#FF6F61] bg-[#FF6F61]/5 px-2 py-0.5 rounded-md italic">자동 포커스 (여성 동일)</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <input 
