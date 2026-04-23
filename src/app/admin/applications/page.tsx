@@ -227,15 +227,15 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 style={{ fontSize: '1.25rem', fontWeight: 900, letterSpacing: '-0.02em', color: '#0F172A' }}>신청 관리</h2>
-          <p style={{ fontSize: '0.85rem', color: '#64748B', marginTop: 2 }}>참가 신청자들의 상세 정보를 심사하고 선발 여부를 결정합니다. <span className="text-[10px] font-bold text-[#3B82F6] ml-2">v7.7.1 Selection Advance+</span></p>
+          <p style={{ fontSize: '0.85rem', color: '#64748B', marginTop: 2 }}>참가 신청자들의 상세 정보를 심사하고 선발 여부를 결정합니다. <span className="text-[10px] font-bold text-[#3B82F6] ml-2">v7.7.2 Selection Advance++</span></p>
         </div>
         <div className="flex items-center gap-3">
           <div className="relative flex-1 md:flex-none group">
             <select
               value={selectedEventId}
               onChange={(e) => setSelectedEventId(e.target.value)}
-              className="bg-white border-2 border-[#FFD2CE]/60 rounded-2xl px-5 pr-10 text-sm font-black text-slate-800 outline-none focus:border-[#FF7E7E]/60 transition-all cursor-pointer shadow-sm appearance-none"
-              style={{ minWidth: '220px', width: 'auto', height: '48px' }}
+              className="bg-white border-2 border-[#FFD2CE]/60 rounded-2xl px-5 pr-10 text-xs font-black text-slate-800 outline-none focus:border-[#FF7E7E]/60 transition-all cursor-pointer shadow-sm appearance-none"
+              style={{ minWidth: '180px', width: 'auto', height: '48px' }}
             >
               <option value="all">전체 기수 보기</option>
               {events.map(ev => (
@@ -455,7 +455,16 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                             <button onClick={() => updateAppStatus(app, 'confirmed')} className="px-3 py-1.5 rounded-xl text-[0.75rem] font-bold bg-blue-500/10 text-blue-600 border border-blue-500/20 hover:bg-blue-500 hover:text-white transition-all shadow-sm">입금확정</button>
                           )}
                           {app.status === 'held' && (
-                            <button onClick={() => updateAppStatus(app, 'selected')} className="px-3 py-1.5 rounded-xl text-[0.75rem] font-bold bg-[#FF7E7E] text-white transition-all shadow-md">선발전환</button>
+                            <div className="flex items-center gap-2">
+                              <span className="px-2.5 py-1.5 rounded-lg text-[0.7rem] font-black bg-amber-100 text-amber-700 border border-amber-200 shadow-sm">보류 중</span>
+                              <button 
+                                onClick={() => updateAppStatus(app, 'selected')} 
+                                className="px-2.5 py-1.5 rounded-lg text-[0.7rem] font-bold bg-white text-slate-400 border border-slate-200 hover:text-[#FF7E7E] hover:border-[#FF7E7E]/30 transition-all active:scale-95"
+                                title="선발로 전환"
+                              >
+                                선발전환
+                              </button>
+                            </div>
                           )}
                           
                           <button 
