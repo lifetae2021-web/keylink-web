@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
 
 /**
- * v6.5.3 - Secure Login Helper API
+ * v6.7.0 - Secure Login Helper API
  * Maps 'username' to 'email' using Firebase Admin SDK to bypass client-side Firestore security rules.
  * This prevents the 'permission-denied' error for unauthenticated users.
  */
@@ -31,8 +31,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ email: userData.email });
 
   } catch (error: any) {
-    console.error('Login Helper API Error:', error);
-    // DEBUG: Send exact error to client to bypass Vercel logs
-    return NextResponse.json({ error: `[서버오류 상세] ${error.message}` }, { status: 500 });
+    console.error('[Login API] Error:', error.message);
+    // v6.7.0: Generic error message (no raw server errors exposed to client)
+    return NextResponse.json({ error: '서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.' }, { status: 500 });
   }
 }

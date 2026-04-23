@@ -56,6 +56,7 @@ function LoginContent() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
+        // v6.7.0: Single redirect point - prevents duplicate toast + navigation
         router.replace('/');
       }
     });
@@ -101,10 +102,10 @@ function LoginContent() {
         localStorage.removeItem('keylink_saved_id');
       }
 
+      // v6.7.0: Single success toast here. onAuthStateChanged handles the redirect.
       toast.success('로그인에 성공했습니다!');
-      router.push('/');
     } catch (error: any) {
-      console.error('Firebase Auth Error (Login):', error.code, error.message, error);
+      console.error('Firebase Auth Error (Login):', error.code, error.message);
       const msg = getAuthErrorMessage(error.code);
       toast.error(msg);
     } finally {

@@ -2,37 +2,23 @@ import * as admin from 'firebase-admin';
 
 /**
  * Firebase Admin SDK Initialization (Singleton Pattern)
- * v6.5.1 - Reverted legacy exports to use direct getters for full type safety.
- *          Fixed null-caching: getAdminAuth() / getAdminDb() are called at runtime.
+ * v6.7.0 - Standard Vercel private key parsing via JSON.parse.
+ * Ref: https://vercel.com/guides/firebase-remote-config-react-native#firebase-server-config
  */
 
 let initError: string | null = null;
 
-// Robust cleaning for private key from environment variables (Very common Vercel issue)
-function formatPrivateKey(key: string) {
-  let formatted = key;
-  // 1. Remove wrapping double quotes if any
-  if (formatted.startsWith('"') && formatted.endsWith('"')) {
-    formatted = formatted.substring(1, formatted.length - 1);
-  }
-  // 2. Replace escaped sequences
-  formatted = formatted.replace(/\\\\n/g, '\n').replace(/\\n/g, '\n');
-  
-  // 3. Fallback: If no actual newlines exist, it means the key was pasted as a single line (spaces instead of newlines).
-  // We reconstruct the PEM format forcefully.
-  if (!formatted.includes('\n')) {
-    const header = '-----BEGIN PRIVATE KEY-----';
-    const footer = '-----END PRIVATE KEY-----';
-    if (formatted.includes(header) && formatted.includes(footer)) {
-      let body = formatted.replace(header, '').replace(footer, '');
-      body = body.replace(/\s+/g, ''); // remove all whitespace
-      const match = body.match(/.{1,64}/g); // split into 64-char chunks
-      if (match) {
-        formatted = `${header}\n${match.join('\n')}\n${footer}\n`;
-      }
-    }
-  }
-  return formatted;
+/**
+ * VERCEL STANDARD: Parse the private key correctly.
+ * In Vercel, the env var value is the literal JSON string. JSON.parse wrapping
+ * correctly converts '\\n' escape sequences back to real newline characters.
+ * This is the definitive fix for 'Invalid PEM formatted message' errors.
+ */
+function parsePrivateKey(raw: string): string {
+  // Remove surrounding quotes if present
+  const stripped = raw.trim().replace(/^"|"$/g, '');
+  // Convert literal \n strings to real newlines
+  return stripped.replace(/\\n/g, '\n');
 }
 
 function initializeAdminApp() {
@@ -49,16 +35,16 @@ function initializeAdminApp() {
   }
 
   try {
-    const cleanedKey = formatPrivateKey(privateKey);
+    const parsedKey = parsePrivateKey(privateKey);
 
     admin.initializeApp({
       credential: admin.credential.cert({
         projectId,
         clientEmail,
-        privateKey: cleanedKey,
+        privateKey: parsedKey,
       }),
     });
-    console.log('[Firebase Admin] ✅ SDK initialized successfully.');
+    console.log('[Firebase Admin] ✅ Auth System Initialized Successfully.');
   } catch (error: any) {
     initError = `Init Failed: ${error.message}`;
     console.error('[Firebase Admin] ❌ Initialization failed:', error.message);
