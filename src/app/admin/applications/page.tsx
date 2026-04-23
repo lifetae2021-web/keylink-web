@@ -65,8 +65,9 @@ export default function ApplicationsPage() {
     const unsub = onSnapshot(q, (snap) => {
       const fetchedEvents = snap.docs.map(d => ({ id: d.id, ...d.data() } as any));
       setEvents(fetchedEvents);
-      if (fetchedEvents.length > 0 && !selectedEventId) {
-        setSelectedEventId(fetchedEvents[0].id);
+      // v7.4.0: 기본값을 'all'로 설정하여 진입 시 전체 목록 노출 가능
+      if (!selectedEventId && fetchedEvents.length > 0) {
+        setSelectedEventId('all');
       }
       setIsLoading(false);
     }, (err) => {
@@ -82,11 +83,13 @@ export default function ApplicationsPage() {
     if (!selectedEventId) return;
 
     setIsDataLoading(true);
-    const q = query(
-      collection(db, 'applications'),
-      where('sessionId', '==', selectedEventId),
-      orderBy('appliedAt', 'desc')
-    );
+    const q = selectedEventId === 'all'
+      ? query(collection(db, 'applications'), orderBy('appliedAt', 'desc'))
+      : query(
+          collection(db, 'applications'),
+          where('sessionId', '==', selectedEventId),
+          orderBy('appliedAt', 'desc')
+        );
 
     const unsub = onSnapshot(q, async (snap) => {
       const apps = snap.docs.map(d => ({ id: d.id, ...d.data() } as any));
@@ -168,23 +171,27 @@ export default function ApplicationsPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 style={{ fontSize: '1.25rem', fontWeight: 900, letterSpacing: '-0.02em', color: '#0F172A' }}>기수별 신청 관리</h2>
-          <p style={{ fontSize: '0.85rem', color: '#64748B', marginTop: 2 }}>참가 신청자들의 상세 정보를 심사하고 선발 여부를 결정합니다. <span className="text-[10px] font-bold text-[#FF7E7E] ml-2">v6.4.0 Premium</span></p>
+          <p style={{ fontSize: '0.85rem', color: '#64748B', marginTop: 2 }}>참가 신청자들의 상세 정보를 심사하고 선발 여부를 결정합니다. <span className="text-[10px] font-bold text-[#FF7E7E] ml-2">v7.4.0 Smart Filter</span></p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="relative">
-            <Calendar size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+          <div className="relative flex-1 md:flex-none">
+            <Calendar size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
             <select
               value={selectedEventId}
               onChange={(e) => setSelectedEventId(e.target.value)}
-              className="kl-input pl-10 pr-10"
-              style={{ minWidth: '280px', height: '42px', fontSize: '0.9rem', fontWeight: '700' }}
+              className="kl-input pl-10 pr-8 bg-white border-slate-200 text-slate-700 hover:border-[#FF7E7E]/50 transition-colors"
+              style={{ minWidth: '180px', width: 'auto', height: '44px', fontSize: '0.88rem', fontWeight: '800', appearance: 'none', borderRadius: '12px' }}
             >
+              <option value="all">전체 기수 보기</option>
               {events.map(ev => (
                 <option key={ev.id} value={ev.id}>
                   {ev.region === 'busan' ? '부산' : ev.region === 'changwon' ? '창원' : (ev.region ?? '부산')} {ev.episodeNumber}기
                 </option>
               ))}
             </select>
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+              <ChevronRight size={14} className="rotate-90" />
+            </div>
           </div>
           <button className="flex items-center gap-2 rounded-lg transition-all hover:bg-slate-100" style={{ height: '42px', padding: '0 16px', fontSize: '0.85rem', background: '#fff', border: '1px solid #E2E8F0', color: '#64748B', fontWeight: 600 }}>
             <Download size={14} /> 엑셀 다운로드
