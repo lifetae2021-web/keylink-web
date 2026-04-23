@@ -10,7 +10,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 
 export async function POST(req: NextRequest) {
   try {
-    const { applicationId } = await req.json();
+    const { applicationId, customMessage } = await req.json();
 
     if (!applicationId) {
       return NextResponse.json({ error: '신청서 ID가 필요합니다.' }, { status: 400 });
@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
     const formattedDay = `(${getPart('weekday')})`;
     const formattedTime = `${getPart('hour')}:${getPart('minute')}`;
 
-    const message = `안녕하세요 ! 키링크에 지원해주셔서 감사합니다☺️
+    const message = customMessage || `안녕하세요 ! 키링크에 지원해주셔서 감사합니다☺️
 ${name}님은 ${formattedDate} ${formattedDay} ${formattedTime} 소개팅 날짜가 지정되었습니다
 
 아래 계좌번호로 ${ (appData.price || sessionData.price || 60000).toLocaleString('ko-KR') }원 입금해주셔야 라인업에 확정등록되니 참고 부탁드립니다 :)

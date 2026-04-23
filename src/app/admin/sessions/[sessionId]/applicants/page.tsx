@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
+import SMSPreviewModal from '@/components/admin/SMSPreviewModal';
 
 const STATUS_LABELS: Record<ApplicationStatus, string> = {
   applied: '검토 중',
@@ -53,6 +54,8 @@ export default function ApplicantsPage() {
   const [filterStatus, setFilterStatus] = useState<ApplicationStatus | 'all'>('all');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [previewModalOpen, setPreviewModalOpen] = useState(false);
+  const [previewData, setPreviewData] = useState<any>(null);
 
   // 관리자 인증 확인
   useEffect(() => {
@@ -105,7 +108,8 @@ export default function ApplicantsPage() {
   // 단일 상태 변경
   const handleAction = async (
     app: Application,
-    action: 'select' | 'confirm' | 'cancel' | 'restore'
+    action: 'select' | 'confirm' | 'cancel' | 'restore',
+    customMessage?: string
   ) => {
     setActionLoading(app.id);
     try {
@@ -117,7 +121,10 @@ export default function ApplicantsPage() {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
           },
-          body: JSON.stringify({ applicationId: app.id })
+          body: JSON.stringify({ 
+            applicationId: app.id,
+            customMessage: customMessage
+          })
         });
         
         const data = await res.json();
@@ -144,6 +151,35 @@ export default function ApplicantsPage() {
     } finally {
       setActionLoading(null);
     }
+  };
+
+  const handleOpenPreview = (app: Application) => {
+    if (!session) return toast.error('세션 정보를 불러오는 중입니다.');
+    
+    // 타임존 보정 로직 (KST 기준)
+    const eventTime = session.eventDate;
+    const formatter = new Intl.DateTimeFormat('ko-KR', {
+      timeZone: 'Asia/Seoul',
+      month: 'numeric', day: 'numeric', weekday: 'short',
+      hour: '2-digit', minute: '2-digit', hour12: false
+    });
+    const parts = formatter.formatToParts(eventTime);
+    const getPart = (t: string) => parts.find(p => p.type === t)?.value;
+    const fDate = `${getPart('month')}/${getPart('day')}`;
+    const fDay = `(${getPart('weekday')})`;
+    const fTime = `${getPart('hour')}:${getPart('minute')}`;
+
+    const defaultMsg = `안녕하세요 ! 키링크에 지원해주셔서 감사합니다☺️
+${app.name}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 지정되었습니다
+
+아래 계좌번호로 ${ (app.price || session.price || 60000).toLocaleString('ko-KR') }원 입금해주셔야 라인업에 확정등록되니 참고 부탁드립니다 :)
+3333359229548 카카오뱅크 태영훈(키링크) 입금 또는 참석가능 여부 알려주세요😭
+혹시나 입금이 늦을 것 같은 경우 말씀해주세요.
+
+좋은 인연 만날 수 있도록 키링크가 끝까지 책임질게요🥰`;
+
+    setPreviewData({ app, session, defaultMsg });
+    setPreviewModalOpen(true);
   };
 
   // 일괄 선발
@@ -347,13 +383,26 @@ export default function ApplicantsPage() {
                     <td className="p-4">
                       <div className="flex items-center gap-2">
                         {app.status === 'applied' && (
-                          <button
-                            onClick={() => handleAction(app, 'select')}
-                            disabled={actionLoading === app.id}
-                            className="px-3 py-1.5 rounded-lg text-xs font-bold bg-purple-600/20 text-purple-300 hover:bg-purple-600/40 transition-all disabled:opacity-50"
-                          >
-                            선발
-                          </button>
+                          <div className="flex items-center gap-2">
+                             <button
+                              onClick={() => {
+                                if (window.confirm('문자 발송 없이 입금 완료 처리하시겠습니까?')) {
+                                  handleAction(app, 'confirm');
+                                }
+                              }}
+                              disabled={actionLoading === app.id}
+                              className="px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-600/20 text-blue-300 hover:bg-blue-600/40 transition-all disabled:opacity-50"
+                            >
+                              선발확정
+                            </button>
+                            <button
+                              onClick={() => handleOpenPreview(app)}
+                              disabled={actionLoading === app.id}
+                              className="px-3 py-1.5 rounded-lg text-xs font-bold bg-purple-600/20 text-purple-300 hover:bg-purple-600/40 transition-all disabled:opacity-50"
+                            >
+                              선발
+                            </button>
+                          </div>
                         )}
                         {app.status === 'selected' && (
                           <button
@@ -410,8 +459,18 @@ export default function ApplicantsPage() {
             </div>
           </div>
         </div>
-
       </div>
+
+      <SMSPreviewModal
+        isOpen={previewModalOpen}
+        onClose={() => setPreviewModalOpen(false)}
+        onConfirm={async (msg) => {
+          if (previewData) await handleAction(previewData.app, 'select', msg);
+        }}
+        applicant={previewData?.app}
+        session={previewData?.session}
+        defaultMessage={previewData?.defaultMsg || ''}
+      />
     </div>
   );
 }

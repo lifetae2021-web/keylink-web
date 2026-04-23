@@ -23,6 +23,7 @@ import {
 } from '@/lib/admin/selection';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
+import SMSPreviewModal from '@/components/admin/SMSPreviewModal';
 
 const DEPOSIT_STATUS = {
   pending:   { label: '입금 대기', color: '#64748B', bg: '#F1F5F9' },
@@ -58,6 +59,8 @@ export default function ApplicationsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedUser, setSelectedUser] = useState<any | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [previewModalOpen, setPreviewModalOpen] = useState(false);
+  const [previewData, setPreviewData] = useState<any>(null);
 
   // 1. sessions 컬렉션 실시간 동기화
   useEffect(() => {
@@ -123,9 +126,10 @@ export default function ApplicationsPage() {
   }, [selectedEventId]);
 
   // status 변경 로직
-  const updateAppStatus = async (app: any, status: string) => {
+  const updateAppStatus = async (app: any, status: string, customMessage?: string) => {
     try {
       const { id: appId, sessionId, gender, status: prevStatus } = app;
+      const user = userMap[app.userId] || {};
       
       if (status === 'selected') {
         const token = await auth.currentUser?.getIdToken();
@@ -135,7 +139,10 @@ export default function ApplicationsPage() {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
           },
-          body: JSON.stringify({ applicationId: appId })
+          body: JSON.stringify({ 
+            applicationId: appId,
+            customMessage: customMessage
+          })
         });
         
         const data = await res.json();
@@ -167,6 +174,37 @@ export default function ApplicationsPage() {
     }
   };
 
+  const handleOpenPreview = (app: any) => {
+    const session = events.find(e => e.id === app.sessionId);
+    if (!session) return toast.error('세션 정보를 찾을 수 없습니다.');
+    const user = userMap[app.userId] || {};
+    
+    // 기본 메시지 템플릿 생성 (API 로직과 맞춤)
+    const eventTime = session.eventDate.toDate();
+    const formatter = new Intl.DateTimeFormat('ko-KR', {
+      timeZone: 'Asia/Seoul',
+      month: 'numeric', day: 'numeric', weekday: 'short',
+      hour: '2-digit', minute: '2-digit', hour12: false
+    });
+    const parts = formatter.formatToParts(eventTime);
+    const getPart = (t: string) => parts.find(p => p.type === t)?.value;
+    const fDate = `${getPart('month')}/${getPart('day')}`;
+    const fDay = `(${getPart('weekday')})`;
+    const fTime = `${getPart('hour')}:${getPart('minute')}`;
+
+    const defaultMsg = `안녕하세요 ! 키링크에 지원해주셔서 감사합니다☺️
+${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 지정되었습니다
+
+아래 계좌번호로 ${ (app.price || session.price || 60000).toLocaleString('ko-KR') }원 입금해주셔야 라인업에 확정등록되니 참고 부탁드립니다 :)
+3333359229548 카카오뱅크 태영훈(키링크) 입금 또는 참석가능 여부 알려주세요😭
+혹시나 입금이 늦을 것 같은 경우 말씀해주세요.
+
+좋은 인연 만날 수 있도록 키링크가 끝까지 책임질게요🥰`;
+
+    setPreviewData({ app, session, defaultMsg });
+    setPreviewModalOpen(true);
+  };
+
   const activeEvent = events.find(e => e.id === selectedEventId);
 
 
@@ -189,7 +227,7 @@ export default function ApplicationsPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 style={{ fontSize: '1.25rem', fontWeight: 900, letterSpacing: '-0.02em', color: '#0F172A' }}>기수별 신청 관리</h2>
-          <p style={{ fontSize: '0.85rem', color: '#64748B', marginTop: 2 }}>참가 신청자들의 상세 정보를 심사하고 선발 여부를 결정합니다. <span className="text-[10px] font-bold text-[#FF7E7E] ml-2">v7.6.0 Solapi Integration</span></p>
+          <p style={{ fontSize: '0.85rem', color: '#64748B', marginTop: 2 }}>참가 신청자들의 상세 정보를 심사하고 선발 여부를 결정합니다. <span className="text-[10px] font-bold text-[#3B82F6] ml-2">v7.7.0 Selection Advance</span></p>
         </div>
         <div className="flex items-center gap-3">
           <div className="relative flex-1 md:flex-none group">
@@ -395,7 +433,17 @@ export default function ApplicationsPage() {
                         <div className="flex items-center justify-end gap-1.5 transition-all">
                           {app.status === 'applied' && (
                             <>
-                              <button onClick={() => updateAppStatus(app, 'selected')} className="px-3 py-1.5 rounded-xl text-[0.75rem] font-bold bg-[#FF7E7E]/10 text-[#FF7E7E] border border-[#FF7E7E]/20 hover:bg-[#FF7E7E] hover:text-white transition-all shadow-sm">선발</button>
+                              <button 
+                                onClick={() => {
+                                  if (window.confirm('문자 발송 없이 입금 완료 처리하시겠습니까?')) {
+                                    updateAppStatus(app, 'confirmed');
+                                  }
+                                }} 
+                                className="px-3 py-1.5 rounded-xl text-[0.75rem] font-bold bg-blue-500/10 text-blue-600 border border-blue-500/20 hover:bg-blue-500 hover:text-white transition-all shadow-sm"
+                              >
+                                선발확정
+                              </button>
+                              <button onClick={() => handleOpenPreview(app)} className="px-3 py-1.5 rounded-xl text-[0.75rem] font-bold bg-[#FF7E7E]/10 text-[#FF7E7E] border border-[#FF7E7E]/20 hover:bg-[#FF7E7E] hover:text-white transition-all shadow-sm">선발</button>
                               <button onClick={() => updateAppStatus(app, 'held')} className="px-3 py-1.5 rounded-xl text-[0.75rem] font-bold bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200 transition-all shadow-sm">보류</button>
                             </>
                           )}
@@ -429,6 +477,16 @@ export default function ApplicationsPage() {
 
       {/* Modal Overlay */}
       <UserProfileModal user={selectedUser} isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); setSelectedUser(null); }} />
+      <SMSPreviewModal
+        isOpen={previewModalOpen}
+        onClose={() => setPreviewModalOpen(false)}
+        onConfirm={async (msg) => {
+          if (previewData) await updateAppStatus(previewData.app, 'selected', msg);
+        }}
+        applicant={previewData?.app}
+        session={previewData?.session}
+        defaultMessage={previewData?.defaultMsg || ''}
+      />
     </div>
   );
 }
