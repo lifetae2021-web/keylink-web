@@ -7,7 +7,7 @@ import { Menu, X, LogOut, User as UserIcon } from 'lucide-react';
 import { auth } from '@/lib/firebase';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
 import toast from 'react-hot-toast';
-// v7.9.8: Premium Navigation Bar
+// v7.9.9: Premium Navigation Bar
 
 // '진행 과정' is a special anchor link pointing to /#how-it-works
 const navLinks = [

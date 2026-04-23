@@ -1,6 +1,6 @@
 /**
  * Firestore 신청서(Applications) 컬렉션 쿼리 함수
- * v7.9.8 - 복합 인덱스 의존성 제거, 실시간 동기화 안정화
+ * v7.9.9 - 복합 인덱스 의존성 제거, 실시간 동기화 안정화
  */
 
 import {
@@ -140,7 +140,7 @@ export function subscribeMyApplication(
 
 /**
  * 사용자 마이페이지용 모든 신청서 실시간 구독 (onSnapshot)
- * v7.9.8 - 다중 '선발 확정' 카드 노출을 위해 전체 목록 반환
+ * v7.9.9 - 다중 '선발 확정' 카드 노출을 위해 전체 목록 반환
  */
 export function subscribeMyApplications(
   userId: string,

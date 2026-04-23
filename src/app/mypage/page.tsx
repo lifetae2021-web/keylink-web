@@ -73,7 +73,7 @@ export default function MyPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  // v7.9.8: 신청 현황 다중 상태 관리
+  // v7.9.9: 신청 현황 다중 상태 관리
   const [applications, setApplications] = useState<Application[]>([]);
   const [hasVoted, setHasVoted] = useState(false);
   
@@ -144,7 +144,7 @@ export default function MyPage() {
       } catch (e) { console.error(e); }
       finally { setLoading(false); }
 
-      // v7.9.8: 모든 신청서 실시간 구독 및 관련 세션 실시간 추적
+      // v7.9.9: 모든 신청서 실시간 구독 및 관련 세션 실시간 추적
       const unsubApps = subscribeMyApplications(currentUser.uid, (apps) => {
         setApplications(apps);
         
@@ -656,7 +656,7 @@ export default function MyPage() {
           )}
         </div>
 
-        {/* ─── v7.9.8: 신청 현황 상태 블록 (다중 카드 지원) ─── */}
+        {/* ─── v7.9.9: 신청 현황 상태 블록 (다중 카드 지원) ─── */}
         <ApplicationStatusSection
           applications={applications}
           sessionsMap={sessionsMap}
@@ -694,7 +694,7 @@ export default function MyPage() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// v7.9.8 ApplicationStatusSection — 다중 카드 렌더링 지원
+// v7.9.9 ApplicationStatusSection — 다중 카드 렌더링 지원
 // ─────────────────────────────────────────────────────────────────────────────
 interface StatusBlockProps {
   application: Application | null;
@@ -879,7 +879,13 @@ function ApplicationStatusBlock({ application, session, userId, hasVoted }: Stat
 
   // ── 참가 확정 (confirmed) ──
   if (application.status === 'confirmed') {
-    const isVotingActive = session?.status === 'voting';
+    // v7.9.9: KST 기준 행사 당일 00:00부터 투표 활성화
+    const isEventDay = session ? (
+      new Date().toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' }) === 
+      session.eventDate.toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' })
+    ) : false;
+
+    const isVotingActive = isEventDay || session?.status === 'voting';
     const canVote = isVotingActive && !hasVoted;
 
     return card(
@@ -907,7 +913,7 @@ function ApplicationStatusBlock({ application, session, userId, hasVoted }: Stat
             </div>
           ) : canVote ? (
             <Link href={`/vote/${application.sessionId}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '16px 36px', borderRadius: '100px', background: 'linear-gradient(135deg, #FF6F61, #FF9A9E)', color: '#fff', fontWeight: '800', fontSize: '0.95rem', textDecoration: 'none', boxShadow: '0 8px 20px rgba(255,111,97,0.3)' }}>
-              <Vote size={20} /> 지금 투표하기
+              <Vote size={20} /> 상대방 투표하러 가기
             </Link>
           ) : (
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '16px 28px', borderRadius: '14px', background: '#F3F4F6', color: '#9CA3AF', fontWeight: '700', fontSize: '0.85rem' }}>

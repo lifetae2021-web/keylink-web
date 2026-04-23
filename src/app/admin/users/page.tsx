@@ -215,7 +215,7 @@ export default function UsersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0F172A' }}>회원 관리</h2>
-          <p style={{ fontSize: '0.8rem', color: '#64748B', marginTop: 2 }}>실시간 데이터 동기화 활성화됨 <span className="text-[10px] font-bold text-[#FF7E7E] ml-2">v7.9.8 Integrated Auth</span></p>
+          <p style={{ fontSize: '0.8rem', color: '#64748B', marginTop: 2 }}>실시간 데이터 동기화 활성화됨 <span className="text-[10px] font-bold text-[#FF7E7E] ml-2">v7.9.9 Integrated Auth</span></p>
         </div>
         <button
           onClick={downloadCSV}
