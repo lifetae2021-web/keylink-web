@@ -8,7 +8,7 @@ import {
   Loader2, ListChecks, Phone, UserCheck
 } from 'lucide-react';
 import { auth, db } from '@/lib/firebase';
-import { collection, query, orderBy, onSnapshot, limit, addDoc, serverTimestamp, where } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, limit, addDoc, serverTimestamp, where, doc, getDoc } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import toast from 'react-hot-toast';
@@ -26,6 +26,7 @@ export default function EventsPage() {
   const [isMatching, setIsMatching] = useState(false);
   const [applicants, setApplicants] = useState<Application[]>([]); // v7.2.0
   const [applicantsLoading, setApplicantsLoading] = useState(false); // v7.2.0
+  const [userMap, setUserMap] = useState<Record<string, any>>({}); // v7.9.6: 유저 정보 조인용
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -81,7 +82,7 @@ export default function EventsPage() {
       collection(db, 'applications'),
       where('sessionId', '==', selectedId)
     );
-    const unsub = onSnapshot(q, (snap) => {
+    const unsub = onSnapshot(q, async (snap) => {
       const list = snap.docs.map(d => ({
         id: d.id,
         userId: d.data().userId,
@@ -109,7 +110,30 @@ export default function EventsPage() {
       list.sort((a, b) => a.appliedAt.getTime() - b.appliedAt.getTime());
       setApplicants(list);
       setApplicantsLoading(false);
-    }, () => setApplicantsLoading(false));
+
+      // v7.9.6: 유저 컬렉션에서 상세 정보(생년월일 등) 조인
+      const uids = Array.from(new Set(list.map(a => a.userId)));
+      const newUserMap = { ...userMap };
+      let updated = false;
+
+      for (const uid of uids) {
+        if (!newUserMap[uid]) {
+          try {
+            const uSnap = await getDoc(doc(db, 'users', uid));
+            if (uSnap.exists()) {
+              newUserMap[uid] = uSnap.data();
+              updated = true;
+            }
+          } catch (e) {
+            console.error("Error fetching user data:", e);
+          }
+        }
+      }
+      if (updated) setUserMap(newUserMap);
+    }, (err) => {
+      console.error(err);
+      setApplicantsLoading(false);
+    });
     return () => unsub();
   }, [selectedId]);
 
@@ -545,7 +569,20 @@ export default function EventsPage() {
                               <span className="flex items-center gap-1"><Phone size={11} />{app.phone || '-'}</span>
                             </td>
                             <td style={{ padding: '12px 16px', fontSize: '0.8rem', color: '#475569', fontWeight: 500 }}>
-                              {app.age ? `${app.age}년생` : '-'}
+                              {(() => {
+                                const user = userMap[app.userId];
+                                if (user?.birthDate) {
+                                  return `${user.birthDate.includes('-') ? user.birthDate.slice(2,4) : user.birthDate.slice(0,2)}년생`;
+                                }
+                                if (!app.age) return '-';
+                                const ageNum = Number(app.age);
+                                // 나이가 50 미만이면 실제 '나이'로 판단하고 2026년 기준 '출생연도'로 계산
+                                if (ageNum > 0 && ageNum < 50) {
+                                  const birthYear = 2026 - ageNum;
+                                  return `${String(birthYear).slice(-2)}년생`;
+                                }
+                                return `${String(app.age).padStart(2, '0')}년생`;
+                              })()}
                             </td>
                             <td style={{ padding: '12px 16px', fontSize: '0.8rem', color: '#475569', fontWeight: 500, maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {app.job || '-'}
