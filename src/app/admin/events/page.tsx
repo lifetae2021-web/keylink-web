@@ -405,7 +405,7 @@ export default function EventsPage() {
                 </tr>
               </thead>
               <tbody>
-                {matchingHistory.reduce((acc, r) => [...acc, r], []).map(r => (
+                {matchingHistory.map((r: any) => (
                   <tr key={r.id} className="hover:bg-slate-50 transition-colors border-b border-slate-100">
                     <td style={{ padding: '16px 28px', fontSize: '0.9rem', fontWeight: 800, color: '#1e293b' }}>{r.episode}기</td>
                     <td style={{ padding: '16px 28px', fontSize: '0.85rem', color: '#64748b', fontWeight: 500 }}>{r.date}</td>
