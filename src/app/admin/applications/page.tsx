@@ -9,7 +9,7 @@ import {
   Ticket
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { db } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 import UserProfileModal from '../users/UserProfileModal';
 import { 
   collection, getDocs, doc, query, where, orderBy, Timestamp, getDoc, onSnapshot 
