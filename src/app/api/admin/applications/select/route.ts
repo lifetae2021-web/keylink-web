@@ -74,12 +74,24 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 날짜 포맷팅 로직 (ex. 4/25 (토) 20:00)
+    // 날짜 포맷팅 로직 (한국 시간 KST 기준)
     const eventTime = sessionData.eventDate.toDate();
-    const formattedDate = `${eventTime.getMonth() + 1}/${eventTime.getDate()}`;
-    const days = ['일', '월', '화', '수', '목', '금', '토'];
-    const formattedDay = `(${days[eventTime.getDay()]})`;
-    const formattedTime = `${String(eventTime.getHours()).padStart(2, '0')}:${String(eventTime.getMinutes()).padStart(2, '0')}`;
+    const formatter = new Intl.DateTimeFormat('ko-KR', {
+      timeZone: 'Asia/Seoul',
+      month: 'numeric',
+      day: 'numeric',
+      weekday: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
+
+    const parts = formatter.formatToParts(eventTime);
+    const getPart = (type: string) => parts.find(p => p.type === type)?.value;
+
+    const formattedDate = `${getPart('month')}/${getPart('day')}`;
+    const formattedDay = `(${getPart('weekday')})`;
+    const formattedTime = `${getPart('hour')}:${getPart('minute')}`;
 
     const message = `안녕하세요 ! 키링크에 지원해주셔서 감사합니다☺️
 ${name}님은 ${formattedDate} ${formattedDay} ${formattedTime} 소개팅 날짜가 지정되었습니다
