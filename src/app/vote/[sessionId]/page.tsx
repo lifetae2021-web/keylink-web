@@ -27,6 +27,14 @@ export default function VotePage() {
   const router = useRouter();
   const sessionId = params.sessionId as string;
 
+  const [userId, setUserId] = useState<string | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [myApplication, setMyApplication] = useState<Application | null>(null);
+  const [candidates, setCandidates] = useState<Candidate[]>([]);
+  const [choices, setChoices] = useState<Record<number, string>>({}); // priority → userId
+  const [reasons, setReasons] = useState<Record<string, string>>({}); // userId → reason (v8.1.1)
+  const [hasVoted, setHasVoted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
 
   // v8.1.2: 네이버 폼 스타일 신규 상태
