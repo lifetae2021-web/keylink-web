@@ -48,17 +48,12 @@ export function EventsSection({ standalone = false }: { standalone?: boolean }) 
   // Firestore 실시간 구독
   useEffect(() => {
     const unsubscribe = subscribeAllSessions((sessions) => {
-      // DEBUG: v6.6.2 데이터 유입 확인
-      console.log("[v6.6.2] Fetched Raw Sessions:", sessions);
-
-      // open 또는 closed 상태 세션만 이벤트 카드로 표시
+      // open, closed, voting, matching 상태 세션을 카드에 표시 (v6.8.0)
       const displayable = sessions.filter(
-        (s) => s.status === 'open' || s.status === 'closed' || s.status === 'voting'
+        (s) => ['open', 'closed', 'voting', 'matching'].includes(s.status)
       );
       
       const mappedEvents = displayable.map(sessionToEvent);
-      console.log("[v6.6.2] Filtered & Mapped Events:", mappedEvents);
-      
       setLiveEvents(mappedEvents);
       setIsLoading(false);
     });
