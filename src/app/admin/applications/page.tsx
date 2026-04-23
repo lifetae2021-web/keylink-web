@@ -128,25 +128,42 @@ export default function ApplicationsPage() {
       const { id: appId, sessionId, gender, status: prevStatus } = app;
       
       if (status === 'selected') {
-        await selectApplicant(appId);
+        const token = await auth.currentUser?.getIdToken();
+        const res = await fetch('/api/admin/applications/select', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ applicationId: appId })
+        });
+        
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || '처리 중 오류가 발생했습니다.');
+        
+        if (data.warning) {
+          toast(data.warning, { icon: '⚠️', duration: 4000 });
+        } else {
+          toast.success('선발 및 안내 문자 발송 완료');
+        }
       } else if (status === 'held') {
         await holdApplicant(appId);
+        toast.success('보류 처리 완료');
       } else if (status === 'confirmed') {
         if (prevStatus === 'cancelled') {
           await restoreApplicant(appId, sessionId, gender);
         } else {
           await confirmPayment(appId, sessionId, gender);
         }
+        toast.success('참가 확정 완료');
       } else if (status === 'cancelled') {
         await cancelApplicant(appId, sessionId, gender, prevStatus === 'confirmed');
+        toast.success('취소 처리 완료');
       }
-
-      const labels: Record<string, string> = { selected: '선발', confirmed: '참가 확정', cancelled: '취소', held: '보류' };
-      toast.success(`${labels[status] || status} 처리 완료`);
       
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      toast.error('상태 업데이트에 실패했습니다.');
+      toast.error(e.message || '상태 업데이트에 실패했습니다.');
     }
   };
 

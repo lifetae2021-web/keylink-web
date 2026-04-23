@@ -110,8 +110,24 @@ export default function ApplicantsPage() {
     setActionLoading(app.id);
     try {
       if (action === 'select') {
-        await selectApplicant(app.id);
-        toast.success(`${app.name}님을 선발했습니다.`);
+        const token = await auth.currentUser?.getIdToken();
+        const res = await fetch('/api/admin/applications/select', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ applicationId: app.id })
+        });
+        
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || '처리 중 오류가 발생했습니다.');
+        
+        if (data.warning) {
+          toast(data.warning, { icon: '⚠️', duration: 4000 });
+        } else {
+          toast.success(`${app.name}님 선발 및 안내 문자 발송 완료`);
+        }
       } else if (action === 'confirm') {
         await confirmPayment(app.id, sessionId, app.gender);
         toast.success(`${app.name}님 입금 확인 완료!`);
