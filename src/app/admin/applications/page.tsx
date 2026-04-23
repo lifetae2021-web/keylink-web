@@ -172,16 +172,16 @@ export default function ApplicationsPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 style={{ fontSize: '1.25rem', fontWeight: 900, letterSpacing: '-0.02em', color: '#0F172A' }}>기수별 신청 관리</h2>
-          <p style={{ fontSize: '0.85rem', color: '#64748B', marginTop: 2 }}>참가 신청자들의 상세 정보를 심사하고 선발 여부를 결정합니다. <span className="text-[10px] font-bold text-[#FF7E7E] ml-2">v7.4.1 Fixed UI</span></p>
+          <p style={{ fontSize: '0.85rem', color: '#64748B', marginTop: 2 }}>참가 신청자들의 상세 정보를 심사하고 선발 여부를 결정합니다. <span className="text-[10px] font-bold text-[#FF7E7E] ml-2">v7.4.2 Perfect UI</span></p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="relative flex-1 md:flex-none">
-            <Calendar size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          <div className="relative flex-1 md:flex-none group">
+            <Calendar size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#FF7E7E] pointer-events-none" />
             <select
               value={selectedEventId}
               onChange={(e) => setSelectedEventId(e.target.value)}
-              className="kl-input pl-10 pr-10 bg-white border-slate-200 text-slate-700 hover:border-[#FF7E7E]/50 transition-all cursor-pointer shadow-sm"
-              style={{ minWidth: '220px', width: 'auto', height: '44px', fontSize: '0.88rem', fontWeight: '800', appearance: 'none', borderRadius: '12px' }}
+              className="bg-white border-2 border-[#FFD2CE]/30 rounded-2xl pl-11 pr-10 py-2.5 text-sm font-black text-slate-800 outline-none focus:border-[#FF7E7E]/50 transition-all cursor-pointer shadow-sm appearance-none"
+              style={{ minWidth: '240px', width: 'auto', height: '48px' }}
             >
               <option value="all">전체 기수 보기</option>
               {events.map(ev => (
@@ -190,7 +190,7 @@ export default function ApplicationsPage() {
                 </option>
               ))}
             </select>
-            <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 group-hover:text-[#FF7E7E] transition-colors">
               <ChevronRight size={14} className="rotate-90" />
             </div>
           </div>
@@ -248,14 +248,14 @@ export default function ApplicationsPage() {
           </button>
         </div>
 
-        <div className="relative w-full md:w-[320px]">
-          <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+        <div className="relative w-full md:w-[320px] group">
+          <Search size={16} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#FF7E7E] transition-colors" />
           <input
             type="text"
             placeholder="이름, 직업, 거주지로 검색..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-white border border-slate-200 rounded-2xl pl-11 pr-4 py-2.5 text-sm font-medium text-slate-800 outline-none focus:border-[#FF7E7E]/50 transition-colors shadow-inner"
+            className="w-full bg-white border-2 border-slate-100 rounded-2xl pl-14 pr-4 py-3 text-sm font-bold text-slate-800 outline-none focus:border-[#FF7E7E]/30 focus:bg-slate-50/30 transition-all shadow-inner"
           />
         </div>
       </div>
