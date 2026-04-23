@@ -67,9 +67,12 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose }:
     try {
       const newStatus = !user.isVerified;
       const userRef = doc(db, 'users', user.uid || user.id);
-      await updateDoc(userRef, { isVerified: newStatus });
-      setUser((prev: any) => ({ ...prev, isVerified: newStatus }));
-      toast.success(newStatus ? '재직 인증이 완료되었습니다.' : '인증이 취소되었습니다.');
+      const updateData: any = { isVerified: newStatus };
+      if (newStatus) updateData.status = 'verified'; // 승인 시 상태도 함께 변경
+      
+      await updateDoc(userRef, updateData);
+      setUser((prev: any) => ({ ...prev, ...updateData }));
+      toast.success(newStatus ? '재직 인증 및 승인이 완료되었습니다.' : '인증이 취소되었습니다.');
     } catch (error) {
       console.error(error);
       toast.error('상태 변경에 실패했습니다.');
