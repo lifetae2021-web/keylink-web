@@ -56,7 +56,7 @@ export default function EventDetailPage() {
     jobRole: '', workplace: '', avoidAcquaintance: '',
     idealType: '', nonIdealType: '',
     smoking: '', drinking: '', religion: '',
-    drink: '', etc: '',
+    drink: [] as string[], etc: '',
     agreeTerms: true, agreeRule: true, // Auto-checked on load
     maleOption: 'normal', // 'normal' | 'safe'
     verificationUrl: '',
@@ -81,7 +81,12 @@ export default function EventDetailPage() {
         if (userSnap.exists()) {
           const data = userSnap.data();
           setForm(prev => {
-            return { ...prev, ...data };
+            const d = data;
+            return { 
+              ...prev, 
+              ...d,
+              drink: Array.isArray(d.drink) ? d.drink : (d.drink ? [d.drink] : [])
+            };
           });
           
           // Consolidation migration for application form (v3.5.3)
@@ -609,7 +614,7 @@ export default function EventDetailPage() {
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                         {[
                           { key: 'smoking', label: '흡연 유무 *', options: ['비흡연', '전자담배', '연초'] },
-                          { key: 'drinking', label: '음주 빈도 *', options: ['안 마심', '가끔 (월 1~2회)', '즐겨 마시는 편'] },
+                          { key: 'drinking', label: '음주 빈도 *', options: ['안 마심', '가끔 (월 1~2회)', '주 1~2회', '즐겨 마시는 편'] },
                           { key: 'religion', label: '종교 *', options: ['무교', '기독교', '천주교', '불교', '기타'] }
                         ].map(radioGroup => (
                           <div key={radioGroup.key}>
@@ -645,7 +650,33 @@ export default function EventDetailPage() {
                         <strong>"업로드하신 모든 서류는 철저히 암호화되어 안전하게 보호됩니다."</strong>
                       </p>
                       
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div>
+                         <label className="kl-label">희망 음료 (중복 선택 가능)</label>
+                         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '10px' }}>
+                           {['아이스 아메리카노', '제로 콜라', '복숭아 아이스티', '얼그레이', '페퍼민트', '카라멜 블랙티', '물', '따뜻한 음료'].map(d => {
+                             const selected = (form.drink || []).includes(d);
+                             return (
+                               <button 
+                                 key={d} 
+                                 type="button"
+                                 onClick={() => {
+                                   const current = form.drink || [];
+                                   const next = selected ? current.filter((v: string) => v !== d) : [...current, d];
+                                   setForm((p: any) => ({ ...p, drink: next }));
+                                 }}
+                                 style={{ 
+                                   padding: '10px 16px', borderRadius: '12px', fontSize: '0.82rem', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s',
+                                   background: selected ? '#FF6F61' : '#fff', color: selected ? '#fff' : '#64748B', border: selected ? '2.5px solid #FF6F61' : '1.5px solid #E2E8F0'
+                                 }}
+                               >
+                                 {d}
+                               </button>
+                             );
+                           })}
+                         </div>
+                       </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '20px' }}>
                         <button 
                           type="button"
                           onClick={() => verifyInputRef.current?.click()} 

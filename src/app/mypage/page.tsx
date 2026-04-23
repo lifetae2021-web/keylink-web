@@ -121,7 +121,7 @@ export default function MyPage() {
             smoking: d.smoking || '',
             drinking: d.drinking || '',
             religion: d.religion || '',
-            drink: d.drink || '',
+            drink: Array.isArray(d.drink) ? d.drink : (d.drink ? [d.drink] : []),
             etc: d.etc || '',
             verificationUrl: d.verificationUrl || '',
           };
@@ -409,7 +409,7 @@ export default function MyPage() {
 
             <EditRow label="음주 빈도" required>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                {['안 마심', '가끔 (월 1~2회)', '즐겨 마시는 편'].map(opt => (
+                {['안 마심', '가끔 (월 1~2회)', '주 1~2회', '즐겨 마시는 편'].map(opt => (
                   <button key={opt} onClick={() => setEditForm((p: any) => ({ ...p, drinking: opt }))} style={{ padding: '10px 18px', borderRadius: '100px', border: editForm.drinking === opt ? '2px solid #FF6F61' : '1px solid #FFE8E5', background: editForm.drinking === opt ? '#FFF5F4' : '#fff', color: editForm.drinking === opt ? '#FF6F61' : '#AAA', fontWeight: '700', fontSize: '0.85rem', cursor: 'pointer' }}>
                     {opt}
                   </button>
@@ -427,13 +427,28 @@ export default function MyPage() {
               </div>
             </EditRow>
 
-            <EditRow label="행사 희망 음료">
-              <select style={inputStyle} value={editForm.drink} onChange={e => setEditForm((p: any) => ({ ...p, drink: e.target.value }))}>
-                <option value="">음료 선택</option>
-                {['아이스 아메리카노', '복숭아 아이스티', '얼그레이', '페퍼민트', '카라멜 블랙티', '물', '따뜻한 음료'].map(d => (
-                  <option key={d} value={d}>{d}</option>
-                ))}
-              </select>
+            <EditRow label="희망 음료 (중복 선택 가능)">
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {['아이스 아메리카노', '제로 콜라', '복숭아 아이스티', '얼그레이', '페퍼민트', '카라멜 블랙티', '물', '따뜻한 음료'].map(d => {
+                  const selected = (editForm.drink || []).includes(d);
+                  return (
+                    <button 
+                      key={d} 
+                      onClick={() => {
+                        const current = editForm.drink || [];
+                        const next = selected ? current.filter((v: string) => v !== d) : [...current, d];
+                        setEditForm((p: any) => ({ ...p, drink: next }));
+                      }}
+                      style={{ 
+                        padding: '10px 16px', borderRadius: '12px', fontSize: '0.82rem', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s',
+                        background: selected ? '#FF6F61' : '#fff', color: selected ? '#fff' : '#64748B', border: selected ? '1.5px solid #FF6F61' : '1.5px solid #E2E8F0'
+                      }}
+                    >
+                      {d}
+                    </button>
+                  );
+                })}
+              </div>
             </EditRow>
 
 

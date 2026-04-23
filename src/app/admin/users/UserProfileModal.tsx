@@ -213,7 +213,7 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose }:
                     <DetailRow label="음주 빈도" value={user.drinking} icon={Wine} />
                     <DetailRow label="흡연 여부" value={user.smoking} icon={Cigarette} />
                     <DetailRow label="종교" value={user.religion} icon={Info} />
-                    <DetailRow label="희망 음료" value={user.drink} icon={Coffee} />
+                    <DetailRow label="희망 음료" value={Array.isArray(user.drink) ? user.drink.join(', ') : user.drink} icon={Coffee} />
                   </div>
                 </div>
 
