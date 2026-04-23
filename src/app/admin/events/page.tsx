@@ -34,12 +34,12 @@ export default function EventsPage() {
   
   const initialFormData = {
     region: 'busan',
-    episodeNumber: '',
+    episodeNumber: '', // v7.5.1: 관리자가 직접 입력하도록 빈칸 유지
     eventDate: '',
-    eventTime: '15:00',
+    eventTime: '20:00', // v7.5.1: 오후 8시 기본값
     venue: '서면역 인근 프라이빗한 파티룸',
     venueAddress: '',
-    price: '29000',
+    price: '29,000', // v7.5.1: 콤마 포함 포맷팅 적용
     targetMaleAge: '94년생~01년생',
     maxMale: '8',
     maxFemale: '8',
@@ -174,7 +174,7 @@ export default function EventsPage() {
       eventTime: format(session.eventDate, 'HH:mm'),
       venue: session.venue || '서면역 인근 프라이빗한 파티룸',
       venueAddress: session.venueAddress || '',
-      price: String(session.price),
+      price: Number(session.price || 0).toLocaleString(), // v7.5.1: 수정 모드 로드 시 콤마 추가
       targetMaleAge: session.targetMaleAge || '',
       maxMale: String(session.maxMale),
       maxFemale: String(session.maxFemale),
@@ -209,6 +209,9 @@ export default function EventsPage() {
     const [h, m] = formData.eventTime.split(':');
     const combinedDate = new Date(Number(year), Number(month) - 1, Number(day), Number(h), Number(m));
 
+    // v7.5.1: 콤마 제거 후 숫자로 변환
+    const numericPrice = Number(formData.price.replace(/,/g, ''));
+
     setIsSubmitting(true);
     try {
       const { updateDoc, doc } = await import('firebase/firestore');
@@ -220,10 +223,10 @@ export default function EventsPage() {
         eventDate: combinedDate,
         venue: formData.venue,
         venueAddress: formData.venueAddress,
-        price: Number(formData.price),
-        originalPrice: Number(formData.price) + 10000,
+        price: numericPrice,
+        originalPrice: numericPrice + 10000,
         targetMaleAge: formData.targetMaleAge,
-        targetFemaleAge: formData.targetMaleAge, 
+        targetFemaleAge: formData.targetMaleAge, // 남성과 동일하게 설정
         maxMale: Number(formData.maxMale),
         maxFemale: Number(formData.maxFemale),
         status: formData.status,
@@ -684,10 +687,14 @@ export default function EventsPage() {
                   <div>
                     <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">참가비 (원)</label>
                     <input 
-                      type="number" 
+                      type="text" 
                       required
+                      placeholder="예: 29,000"
                       value={formData.price} 
-                      onChange={e => setFormData({ ...formData, price: e.target.value })}
+                      onChange={e => {
+                        const val = e.target.value.replace(/[^0-9]/g, '');
+                        setFormData({ ...formData, price: val ? Number(val).toLocaleString() : '' });
+                      }}
                       className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-800 font-semibold focus:ring-2 focus:ring-[#FF6F61]/20 focus:border-[#FF6F61] outline-none transition-all"
                     />
                   </div>
@@ -696,7 +703,10 @@ export default function EventsPage() {
                 {/* Target Age */}
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">타겟 남성 연령대</label>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">남성 연령대</label>
+                      <span className="text-[10px] font-bold text-[#FF6F61] bg-[#FF6F61]/5 px-2 py-0.5 rounded-md italic">여성 동일 적용</span>
+                    </div>
                     <input 
                       type="text" 
                       required
@@ -705,12 +715,6 @@ export default function EventsPage() {
                       onChange={e => setFormData({ ...formData, targetMaleAge: e.target.value })}
                       className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-800 font-semibold focus:ring-2 focus:ring-[#FF6F61]/20 focus:border-[#FF6F61] outline-none transition-all"
                     />
-                  </div>
-                  <div style={{ opacity: 0.5, pointerEvents: 'none' }}>
-                    <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">여성 연령대 (자동)</label>
-                    <div className="w-full h-11 px-4 flex items-center rounded-xl border border-slate-100 bg-slate-50 text-slate-400 font-semibold">
-                      남성 연령대와 동일하게 설정됨
-                    </div>
                   </div>
                 </div>
               </div>
