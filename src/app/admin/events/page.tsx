@@ -250,14 +250,24 @@ export default function EventsPage() {
         maxSelection: session.voteConfig.maxSelection || 3,
         questionText: session.voteConfig.questionText || '오늘 가장 호감 갔던 이성을 3명까지 골라주세요.',
         showReason: !!session.voteConfig.showReason,
-        resultVisibility: session.voteConfig.resultVisibility || 'all'
+        resultVisibility: session.voteConfig.resultVisibility || 'all',
+        q1Label: session.voteConfig.q1Label || '실명을 적어주세요',
+        q2Label: session.voteConfig.q2Label || '본인의 호를 체크해주세요',
+        q3Label: session.voteConfig.q3Label || '호감가는 이성 선택',
+        q4Label: session.voteConfig.q4Label || '매칭 오류 방지를 위해 최종 라인업 및 메모를 확인하셨나요?',
+        q5Label: session.voteConfig.q5Label || '후기',
       });
     } else {
       setConfigFormData({
         maxSelection: 3,
         questionText: '오늘 가장 호감 갔던 이성을 3명까지 골라주세요.',
         showReason: false,
-        resultVisibility: 'all'
+        resultVisibility: 'all',
+        q1Label: '실명을 적어주세요',
+        q2Label: '본인의 호를 체크해주세요',
+        q3Label: '호감가는 이성 선택',
+        q4Label: '매칭 오류 방지를 위해 최종 라인업 및 메모를 확인하셨나요?',
+        q5Label: '후기',
       });
     }
     setIsConfigModalOpen(true);
