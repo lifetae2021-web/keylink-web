@@ -176,8 +176,8 @@ export default function ApplicationsPage() {
             <select
               value={selectedEventId}
               onChange={(e) => setSelectedEventId(e.target.value)}
-              className="kl-input pl-9 pr-10"
-              style={{ minWidth: '180px', width: 'auto', height: '42px', fontSize: '0.88rem' }}
+              className="kl-input pl-10 pr-10"
+              style={{ minWidth: '280px', height: '42px', fontSize: '0.9rem', fontWeight: '700' }}
             >
               {events.map(ev => (
                 <option key={ev.id} value={ev.id}>
