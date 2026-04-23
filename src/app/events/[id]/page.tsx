@@ -701,7 +701,6 @@ export default function EventDetailPage() {
                           }
                         }} 
                       />
-                    </div>
                   </div>
 
                   <div className="kl-card" style={{ padding: '24px' }}>
