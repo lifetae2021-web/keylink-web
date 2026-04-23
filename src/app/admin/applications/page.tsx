@@ -235,7 +235,7 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 style={{ fontSize: '1.25rem', fontWeight: 900, letterSpacing: '-0.02em', color: '#0F172A' }}>신청 관리</h2>
-          <p style={{ fontSize: '0.85rem', color: '#64748B', marginTop: 2 }}>참가 신청자들의 상세 정보를 심사하고 선발 여부를 결정합니다. <span className="text-[10px] font-bold text-[#3B82F6] ml-2">v7.8.8 Premium</span></p>
+          <p style={{ fontSize: '0.85rem', color: '#64748B', marginTop: 2 }}>참가 신청자들의 상세 정보를 심사하고 선발 여부를 결정합니다. <span className="text-[10px] font-bold text-[#3B82F6] ml-2">v7.8.9 Premium</span></p>
         </div>
         <div className="flex items-center gap-3">
           <div className="relative flex-1 md:flex-none group">
@@ -322,8 +322,8 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
         </div>
       </div>
 
-      {/* Main Content Table (Dark Premium Theme) */}
-      <div style={{ background: '#111827', border: '1px solid #1E293B', borderRadius: 16, overflow: 'hidden', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}>
+      {/* Main Content Table (Light Premium Theme - Clean White) */}
+      <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 16, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
         <div className="overflow-x-auto">
           <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
             <colgroup>
@@ -339,10 +339,10 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
               <col style={{ width: '220px' }} />
             </colgroup>
             <thead>
-              <tr style={{ background: '#0F172A', borderBottom: '1px solid #1E293B' }}>
+              <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
                 {['NO', '프로필', '이름', '직업', '신청 기수', '나이', '거주지', '연락처', '상태/결제', '선발 관리'].map((h, i) => (
                   <th key={h} style={{
-                    padding: '18px 16px', textAlign: i === 9 ? 'right' : i === 0 ? 'center' : 'left', fontSize: '0.75rem', fontWeight: 800, color: '#94A3B8',
+                    padding: '18px 16px', textAlign: i === 9 ? 'right' : i === 0 ? 'center' : 'left', fontSize: '0.75rem', fontWeight: 800, color: '#64748B',
                     textTransform: 'uppercase', letterSpacing: '0.05em'
                   }}>{h}</th>
                 ))}
@@ -351,18 +351,18 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
             <tbody>
               {isDataLoading ? (
                 [1,2,3,4,5,6,7,8].map(i => (
-                  <tr key={i} style={{ borderBottom: '1px solid #1E293B', height: '88px' }}>
-                    <td colSpan={10} style={{ padding: '0 20px' }}><Skeleton className="h-10 w-full opacity-20" /></td>
+                  <tr key={i} style={{ borderBottom: '1px solid #F1F5F9', height: '88px' }}>
+                    <td colSpan={10} style={{ padding: '0 20px' }}><Skeleton className="h-10 w-full" /></td>
                   </tr>
                 ))
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={10} style={{ padding: '100px 20px', textAlign: 'center', color: '#64748B' }}>
+                  <td colSpan={10} style={{ padding: '100px 20px', textAlign: 'center', color: '#555' }}>
                     <div className="flex flex-col items-center gap-4">
-                      <FileText size={48} className="opacity-20 text-white" />
-                      <p style={{ fontSize: '0.9rem', color: '#94A3B8' }}>검색 결과와 일치하는 신청 내역이 없습니다.</p>
+                      <FileText size={48} className="opacity-10 text-slate-400" />
+                      <p style={{ fontSize: '0.9rem', color: '#64748B' }}>검색 결과와 일치하는 신청 내역이 없습니다.</p>
                       {(filterGender !== 'all' || filterUnselectedOnly || searchQuery) && (
-                        <button onClick={() => { setFilterGender('all'); setFilterUnselectedOnly(false); setSearchQuery(''); }} className="text-[#FFD700] text-xs font-bold underline">필터 초기화</button>
+                        <button onClick={() => { setFilterGender('all'); setFilterUnselectedOnly(false); setSearchQuery(''); }} className="text-[#FF6F61] text-xs font-bold underline">필터 초기화</button>
                       )}
                     </div>
                   </td>
@@ -379,19 +379,19 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                   return (
                     <tr 
                       key={app.id} 
-                      style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', height: '88px' }} 
-                      className="hover:bg-[#1E293B]/60 transition-colors group cursor-default"
+                      style={{ borderBottom: '1px solid #f0f0f0', height: '88px' }} 
+                      className="hover:bg-slate-50 transition-colors group cursor-default"
                     >
                       {/* NO */}
                       <td style={{ padding: '0 16px', textAlign: 'center' }}>
-                        <span className="text-[#64748B] font-black text-[0.8rem]">{filtered.length - index}</span>
+                        <span className="text-slate-400 font-bold text-[0.8rem]">{filtered.length - index}</span>
                       </td>
 
                       {/* 프로필 */}
                       <td style={{ padding: '0 16px' }}>
                         <div 
-                          className="w-12 h-12 rounded-full border-2 border-[#D4AF37] shadow-sm flex items-center justify-center overflow-hidden bg-slate-800 shrink-0 cursor-pointer hover:scale-110 transition-transform"
-                          style={{ boxShadow: '0 0 10px rgba(212, 175, 55, 0.4)' }}
+                          className="w-12 h-12 rounded-full border-2 border-[#D4AF37] shadow-sm flex items-center justify-center overflow-hidden bg-slate-100 shrink-0 cursor-pointer hover:scale-110 transition-transform"
+                          style={{ boxShadow: '0 0 10px rgba(212, 175, 55, 0.2)' }}
                           onClick={() => { setSelectedUser(user); setIsModalOpen(true); }}
                         >
                           {user.photoUrl || user.photoURL || user.photos?.[0] ? (
@@ -407,11 +407,11 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                         <div className="flex flex-col">
                           <button 
                             onClick={() => { setSelectedUser(user); setIsModalOpen(true); }}
-                            className="text-[0.95rem] font-bold text-white hover:text-[#D4AF37] transition-colors text-left"
+                            className="text-[0.95rem] font-black text-slate-800 hover:text-[#FF7E7E] transition-colors text-left"
                           >
                             {user.name || '미입력'}
                           </button>
-                          <span className={`text-[0.65rem] font-bold mt-1 ${user.gender === 'male' ? 'text-blue-400' : 'text-pink-400'}`}>
+                          <span className={`text-[0.65rem] font-bold mt-1 ${user.gender === 'male' ? 'text-blue-500' : 'text-rose-500'}`}>
                             {user.gender === 'male' ? '남성' : '여성'}
                           </span>
                         </div>
@@ -419,40 +419,40 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
 
                       {/* 직업 */}
                       <td style={{ padding: '0 16px' }}>
-                        <p className="text-[0.85rem] font-bold text-[#E2E8F0] truncate">{user.job || user.workplace?.split(',')[0] || <span className="text-slate-600 font-normal">-</span>}</p>
+                        <p className="text-[0.85rem] font-bold text-slate-700 truncate">{user.job || user.workplace?.split(',')[0] || <span className="text-slate-300 font-normal">-</span>}</p>
                       </td>
 
                       {/* 기수 */}
                       <td style={{ padding: '0 16px' }}>
                         <div className="flex flex-col">
-                          <p className="text-[0.85rem] font-bold text-[#E2E8F0] tracking-tighter">{regionName} {event?.episodeNumber || '??'}기</p>
-                          <p className="text-[0.65rem] font-bold text-[#D4AF37]/80 mt-1">{eventDateLabel}</p>
+                          <p className="text-[0.85rem] font-black text-slate-800 tracking-tighter">{regionName} {event?.episodeNumber || '??'}기</p>
+                          <p className="text-[0.65rem] font-bold text-[#FF7E7E] mt-1">{eventDateLabel}</p>
                         </div>
                       </td>
 
                       {/* 나이 */}
                       <td style={{ padding: '0 16px' }}>
-                        <p className="text-[0.85rem] font-bold text-[#CBD5E1]">{user.birthDate ? `${new Date().getFullYear() - parseInt(user.birthDate.split('-')[0]) + 1}세` : '??'}</p>
+                        <p className="text-[0.85rem] font-bold text-slate-600">{user.birthDate ? `${new Date().getFullYear() - parseInt(user.birthDate.split('-')[0]) + 1}세` : '??'}</p>
                       </td>
 
                       {/* 거주지 */}
                       <td style={{ padding: '0 16px' }}>
-                        <p className="text-[0.85rem] font-medium text-[#94A3B8]">{user.location || user.residence || <span className="text-slate-600 font-normal">-</span>}</p>
+                        <p className="text-[0.85rem] font-medium text-slate-500">{user.location || user.residence || <span className="text-slate-300 font-normal">-</span>}</p>
                       </td>
 
                       {/* 연락처 */}
                       <td style={{ padding: '0 16px' }}>
-                        <p className="text-[0.85rem] text-[#CBD5E1] font-bold tracking-tight">{user.phone || <span className="text-slate-600 font-normal">-</span>}</p>
+                        <p className="text-[0.85rem] text-slate-600 font-bold tracking-tight">{user.phone || <span className="text-slate-300 font-normal">-</span>}</p>
                       </td>
 
                       {/* 상태/결제 */}
                       <td style={{ padding: '0 16px' }}>
                         <div className="flex flex-col gap-1.5">
-                          <span style={{ fontSize: '0.62rem', fontWeight: 800, padding: '3px 8px', borderRadius: 6, width: 'fit-content', background: aStatus.bg, color: aStatus.color, boxShadow: '0 1px 2px rgba(0,0,0,0.2)' }}>{aStatus.label}</span>
+                          <span style={{ fontSize: '0.62rem', fontWeight: 800, padding: '3px 8px', borderRadius: 6, width: 'fit-content', background: aStatus.bg, color: aStatus.color, boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>{aStatus.label}</span>
                           {app.paymentConfirmed ? (
-                            <span className="text-[10px] text-blue-400 font-black flex items-center gap-1"><CheckCircle size={10}/> 입금완료</span>
+                            <span className="text-[10px] text-blue-500 font-black flex items-center gap-1"><CheckCircle size={10}/> 입금완료</span>
                           ) : (
-                            <span className="text-[10px] text-slate-500 font-bold flex items-center gap-1"><Loader2 size={10} className="animate-spin" /> 입금대기</span>
+                            <span className="text-[10px] text-slate-300 font-bold flex items-center gap-1"><Loader2 size={10} className="animate-spin" /> 입금대기</span>
                           )}
                         </div>
                       </td>
@@ -465,7 +465,7 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                               {app.status === 'held' && (
                                 <button 
                                   onClick={() => updateAppStatus(app, 'applied')} 
-                                  className="px-2.5 py-1.5 rounded-lg text-[0.7rem] font-black bg-amber-900/30 text-amber-400 border border-amber-900/50 hover:bg-amber-900/50 transition-all shadow-sm flex items-center gap-1 group/held"
+                                  className="px-2.5 py-1.5 rounded-lg text-[0.7rem] font-black bg-amber-100 text-amber-700 border border-amber-200 hover:bg-amber-200 transition-all shadow-sm flex items-center gap-1 group/held"
                                   title="검토 중으로 되돌리기"
                                 >
                                   보류 중 <X size={12} className="opacity-0 group-hover/held:opacity-100 transition-opacity" />
@@ -477,20 +477,20 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                                     updateAppStatus(app, 'confirmed');
                                   }
                                 }} 
-                                className="px-3 py-1.5 rounded-xl text-[0.75rem] font-bold bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/30 hover:bg-[#D4AF37] hover:text-[#111827] transition-all shadow-sm"
+                                className="px-3 py-1.5 rounded-xl text-[0.75rem] font-bold bg-[#FFD700]/10 text-[#B8860B] border border-[#FFD700]/30 hover:bg-[#FFD700] hover:text-white transition-all shadow-sm"
                               >
                                 선발확정
                               </button>
                               <button onClick={() => handleOpenPreview(app)} className="px-3 py-1.5 rounded-xl text-[0.75rem] font-bold bg-[#FF7E7E]/10 text-[#FF7E7E] border border-[#FF7E7E]/20 hover:bg-[#FF7E7E] hover:text-white transition-all shadow-sm">선발</button>
                               
                               {app.status === 'applied' && (
-                                <button onClick={() => updateAppStatus(app, 'held')} className="px-3 py-1.5 rounded-xl text-[0.75rem] font-bold bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700 hover:text-white transition-all shadow-sm">보류</button>
+                                <button onClick={() => updateAppStatus(app, 'held')} className="px-3 py-1.5 rounded-xl text-[0.75rem] font-bold bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200 transition-all shadow-sm">보류</button>
                               )}
                             </>
                           )}
                           
                           {app.status === 'selected' && (
-                            <button onClick={() => updateAppStatus(app, 'confirmed')} className="px-3 py-1.5 rounded-xl text-[0.75rem] font-bold bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/30 hover:bg-[#D4AF37] hover:text-[#111827] transition-all shadow-sm">입금확정</button>
+                            <button onClick={() => updateAppStatus(app, 'confirmed')} className="px-3 py-1.5 rounded-xl text-[0.75rem] font-bold bg-[#FFD700]/10 text-[#B8860B] border border-[#FFD700]/30 hover:bg-[#FFD700] hover:text-white transition-all shadow-sm">입금확정</button>
                           )}
                           
                           <button 
@@ -499,7 +499,7 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                                 updateAppStatus(app, app.status === 'cancelled' ? 'confirmed' : 'cancelled');
                               }
                             }} 
-                            className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${app.status === 'cancelled' ? 'bg-emerald-900/30 text-emerald-400 border border-emerald-900/50 shadow-sm' : 'bg-slate-800 text-slate-500 opacity-0 group-hover:opacity-100 border border-slate-700 hover:bg-rose-500 hover:text-white hover:border-rose-500 shadow-sm'}`}
+                            className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${app.status === 'cancelled' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100 shadow-sm' : 'bg-rose-50 text-rose-400 opacity-0 group-hover:opacity-100 border border-rose-100 hover:bg-rose-500 hover:text-white shadow-sm'}`}
                           >
                             {app.status === 'cancelled' ? <span className="text-[0.7rem] font-bold">복구</span> : <XCircle size={18} />}
                           </button>
