@@ -22,7 +22,7 @@ function LoginContent() {
   const [showPassword, setShowPassword] = useState(false);
   const [userId, setUserId] = useState('');
   const [password, setPassword] = useState('');
-  const [rememberId, setRememberId] = useState(false);
+  const [rememberId, setRememberId] = useState(true); // v7.1.3: 기본값 true로 설정
   const [autoLogin, setAutoLogin] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -43,12 +43,11 @@ function LoginContent() {
     }
   }, [searchParams]);
 
-  // Load saved ID on mount
+  // Load saved ID on mount (Checkbox remains true by default)
   useEffect(() => {
     const savedId = localStorage.getItem('keylink_saved_id');
     if (savedId) {
       setUserId(savedId);
-      setRememberId(true);
     }
   }, []);
 
