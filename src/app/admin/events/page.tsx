@@ -30,16 +30,16 @@ export default function EventsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     region: 'busan',
-    episodeNumber: '',
+    episodeNumber: '', // v6.9.0: 완전히 비워둠
     eventDate: '',
     eventTime: '15:00',
-    venue: '',
+    venue: '서면역 인근 프라이빗한 파티룸', // v6.9.0: 기본 선택값
     venueAddress: '',
     price: '29000',
     targetMaleAge: '94년생~01년생',
-    targetFemaleAge: '94년생~01년생',
-    maxMale: '10',
-    maxFemale: '10',
+    // targetFemaleAge 제거됨 (v6.9.0 운영방침)
+    maxMale: '8', // v6.9.0: 기본 정원 8명
+    maxFemale: '8', // v6.9.0: 기본 정원 8명
     status: 'open' as SessionStatus
   });
 
@@ -142,7 +142,8 @@ export default function EventsPage() {
         price: Number(formData.price),
         originalPrice: Number(formData.price) + 10000,
         targetMaleAge: formData.targetMaleAge,
-        targetFemaleAge: formData.targetFemaleAge,
+        // targetFemaleAge는 targetMaleAge와 동일하게 저장하거나 생략 (v6.9.0)
+        targetFemaleAge: formData.targetMaleAge, 
         maxMale: Number(formData.maxMale),
         maxFemale: Number(formData.maxFemale),
         currentMale: 0,
@@ -160,8 +161,7 @@ export default function EventsPage() {
       setFormData(prev => ({
         ...prev,
         episodeNumber: String(Number(prev.episodeNumber) + 1),
-        venue: '',
-        venueAddress: ''
+        // venue는 유지 (기본 설정)
       }));
     } catch (err: any) {
       console.error(err);
@@ -491,15 +491,16 @@ export default function EventsPage() {
                 {/* Venue */}
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">장소 명칭</label>
-                    <input 
-                      type="text" 
-                      required
-                      placeholder="예: 서면역 인근 프라이빗 룸"
+                    <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">장소</label>
+                    <select 
                       value={formData.venue} 
                       onChange={e => setFormData({ ...formData, venue: e.target.value })}
                       className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-800 font-semibold focus:ring-2 focus:ring-[#FF6F61]/20 focus:border-[#FF6F61] outline-none transition-all"
-                    />
+                    >
+                      <option value="서면역 인근 프라이빗한 파티룸">서면역 인근 프라이빗한 파티룸</option>
+                      <option value="상남동 프라이빗한 파티룸 (창원)">상남동 프라이빗한 파티룸 (창원)</option>
+                      <option value="추가 장소 필요시 입력">추가 장소 필요시 입력...</option>
+                    </select>
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">참가비 (원)</label>
@@ -516,7 +517,7 @@ export default function EventsPage() {
                 {/* Target Age */}
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">남성 연령대</label>
+                    <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">타겟 남성 연령대</label>
                     <input 
                       type="text" 
                       required
@@ -526,16 +527,11 @@ export default function EventsPage() {
                       className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-800 font-semibold focus:ring-2 focus:ring-[#FF6F61]/20 focus:border-[#FF6F61] outline-none transition-all"
                     />
                   </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">여성 연령대</label>
-                    <input 
-                      type="text" 
-                      required
-                      placeholder="예: 94년생 ~ 01년생"
-                      value={formData.targetFemaleAge} 
-                      onChange={e => setFormData({ ...formData, targetFemaleAge: e.target.value })}
-                      className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-800 font-semibold focus:ring-2 focus:ring-[#FF6F61]/20 focus:border-[#FF6F61] outline-none transition-all"
-                    />
+                  <div style={{ opacity: 0.5, pointerEvents: 'none' }}>
+                    <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">여성 연령대 (자동)</label>
+                    <div className="w-full h-11 px-4 flex items-center rounded-xl border border-slate-100 bg-slate-50 text-slate-400 font-semibold">
+                      남성 연령대와 동일하게 설정됨
+                    </div>
                   </div>
                 </div>
               </div>
