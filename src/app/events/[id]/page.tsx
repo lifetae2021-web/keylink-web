@@ -59,7 +59,12 @@ export default function EventDetailPage() {
     drink: '', etc: '',
     agreeTerms: true, agreeRule: true, // Auto-checked on load
     maleOption: 'normal', // 'normal' | 'safe'
+    verificationUrl: '',
   });
+
+  const [verificationFile, setVerificationFile] = useState<File | null>(null);
+  const [verificationPreview, setVerificationPreview] = useState<string>('');
+  const verifyInputRef = useRef<HTMLInputElement>(null);
 
   // Photo upload state: up to 5 photos (consolidated v3.5.3)
   const [photos, setPhotos] = useState<any[]>([]);
@@ -86,6 +91,9 @@ export default function EventDetailPage() {
           const merged = savedPhotos.length > 0 ? savedPhotos : [...legacyFace, ...legacyBody].slice(0, 5);
           setPhotos(merged);
 
+          // v7.8.0: 재직 증명 미리보기 설정
+          setVerificationPreview(data.verificationUrl || '');
+          
           toast.success('기존 프로필 정보를 불러왔습니다. 수정이 필요한 부분만 고쳐주세요.', {
             icon: 'ℹ️',
             duration: 4000,
@@ -180,6 +188,11 @@ export default function EventDetailPage() {
       return;
     }
 
+    if (!verificationFile && !form.verificationUrl) {
+      toast.error('재직 증명 서류를 업로드해 주세요.');
+      return;
+    }
+
     if (!currentUser) {
       toast.error('로그인이 필요합니다.');
       return;
@@ -214,6 +227,15 @@ export default function EventDetailPage() {
         })
       );
 
+      // v7.8.0: 재직 증명 서류 업로드
+      let finalVerificationUrl = form.verificationUrl;
+      if (verificationFile) {
+        const fileExt = verificationFile.name.split('.').pop();
+        const verifyRef = ref(storage, `verification_proofs/${currentUser.uid}/${Date.now()}.${fileExt}`);
+        await uploadString(verifyRef, verificationPreview, 'data_url');
+        finalVerificationUrl = await getDownloadURL(verifyRef);
+      }
+
       // 3. users 콜렉션 업데이트 (프로필 동기화)
       const userRef = doc(db, 'users', currentUser.uid);
       await setDoc(userRef, {
@@ -233,6 +255,7 @@ export default function EventDetailPage() {
         drinking: form.drinking,
         religion: form.religion,
         photos: uploadedUrls,
+        verificationUrl: finalVerificationUrl,
         profilePhotos: deleteField(),
         facePhotos: deleteField(),
         bodyPhotos: deleteField(),
@@ -572,6 +595,55 @@ export default function EventDetailPage() {
                       <div>
                         <label className="kl-label">겹치고 싶지 않은 지인 (선택)</label>
                         <input className="kl-input" placeholder="이름 또는 연락처를 쉼표로 구분하여 입력" value={form.avoidAcquaintance} onChange={(e) => setForm(f => ({...f, avoidAcquaintance: e.target.value}))} />
+                      </div>
+                      
+                      {/* v7.8.0 재직 증명 섹션 */}
+                      <div style={{ marginTop: '12px' }}>
+                        <label className="kl-label" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          재직 증명 (필수) <span style={{ color: '#FF6F61' }}>*</span>
+                        </label>
+                        <div style={{ background: 'var(--color-surface-2)', border: '1.5px solid var(--color-border)', borderRadius: '14px', padding: '20px' }}>
+                          <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', lineHeight: 1.6, marginBottom: '12px' }}>
+                            신뢰할 수 있는 모임을 위해 아래 서류 중 하나를 반드시 업로드해 주세요.<br/>
+                            (재직증명서, 급여명세서, 건강보험 자격득실, 사원증, 명함 등)
+                          </p>
+                          <p style={{ fontSize: '0.82rem', color: '#1A1A1A', fontWeight: '800', marginBottom: '16px' }}>
+                            <strong>"업로드하신 모든 서류는 철저히 암호화되어 보호되며, 관리자 확인 후 즉시 파기됩니다."</strong>
+                          </p>
+                          
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <button 
+                              type="button"
+                              onClick={() => verifyInputRef.current?.click()} 
+                              style={{ padding: '10px 20px', borderRadius: '10px', background: '#fff', border: '1.5px solid #CBD5E1', color: '#475569', fontSize: '0.85rem', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+                            >
+                              <Upload size={16} /> 서류 선택
+                            </button>
+                            {verificationPreview ? (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#10B981', fontSize: '0.82rem', fontWeight: '800' }}>
+                                <CheckCircle size={16} /> 업로드 완료
+                              </div>
+                            ) : (
+                              <span style={{ fontSize: '0.82rem', color: '#94A3B8' }}>선택된 파일 없음</span>
+                            )}
+                          </div>
+                          <input 
+                            ref={verifyInputRef} 
+                            type="file" 
+                            accept="image/*,.pdf" 
+                            style={{ display: 'none' }} 
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                if (file.size > 5 * 1024 * 1024) return toast.error('파일 크기는 5MB 이하여야 합니다.');
+                                setVerificationFile(file);
+                                const reader = new FileReader();
+                                reader.onload = (ev) => setVerificationPreview(ev.target?.result as string);
+                                reader.readAsDataURL(file);
+                              }
+                            }} 
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>

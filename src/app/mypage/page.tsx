@@ -81,14 +81,18 @@ export default function MyPage() {
     name: '', gender: '', phone: '', instaId: '', birthDate: '', height: '', weight: '',
     residence: '', workplace: '', jobRole: '', avoidAcquaintance: '',
     idealType: '', nonIdealType: '', smoking: '', drinking: '', religion: '',
-    drink: '', etc: '',
+    drink: '', etc: '', verificationUrl: '',
   });
+
+  const [verificationFile, setVerificationFile] = useState<File | null>(null);
+  const [verificationPreview, setVerificationPreview] = useState<string>('');
 
   // Photo states in modal (File or URL)
   const [photos, setPhotos] = useState<any[]>([]);
   
   const photoInputRef = useRef<HTMLInputElement>(null);
   const mainPhotoInputRef = useRef<HTMLInputElement>(null);
+  const verifyInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -119,8 +123,10 @@ export default function MyPage() {
             religion: d.religion || '',
             drink: d.drink || '',
             etc: d.etc || '',
+            verificationUrl: d.verificationUrl || '',
           };
           setEditForm(initialForm);
+          setVerificationPreview(d.verificationUrl || '');
           
           const savedPhotos = d.photos || d.profilePhotos || [];
           const legacyFace = d.facePhotos || [];
@@ -149,6 +155,11 @@ export default function MyPage() {
 
   const handleSave = async () => {
     if (!editForm.workplace) return toast.error('회사명 / 직무를 입력해주세요.');
+    
+    // v7.8.0: 재직 증명 필수 검사
+    if (!verificationFile && !editForm.verificationUrl) {
+      return toast.error('재직 증명 서류를 업로드해 주세요.');
+    }
 
     // v5.1.0 추가 필수 항목 검사
     if (!editForm.phone) return toast.error('연락처를 입력해주세요.');
@@ -170,6 +181,15 @@ export default function MyPage() {
           return photo; // Existing URL
         })
       );
+      
+      // v7.8.0: 재직 증명 서류 업로드
+      let finalVerificationUrl = editForm.verificationUrl;
+      if (verificationFile) {
+        const fileExt = verificationFile.name.split('.').pop();
+        const verifyRef = ref(storage, `verification_proofs/${user!.uid}/${Date.now()}.${fileExt}`);
+        const uploadTask = await uploadString(verifyRef, verificationPreview, 'data_url');
+        finalVerificationUrl = await getDownloadURL(verifyRef);
+      }
 
       // Sanitize editForm to ensure no undefined values are sent to Firestore
       const sanitizedForm = Object.keys(editForm).reduce((acc: any, key) => {
@@ -180,6 +200,8 @@ export default function MyPage() {
       const updateData = {
         ...sanitizedForm,
         photos: uploadedUrls,
+        verificationUrl: finalVerificationUrl,
+        isVerified: userData?.isVerified ?? false,
         // Explicitly clear legacy fields to prevent schema conflicts (v3.5.1 Cleanup)
         profilePhotos: deleteField(),
         facePhotos: deleteField(),
@@ -240,6 +262,20 @@ export default function MyPage() {
       reader.readAsDataURL(file);
     });
     e.target.value = '';
+  };
+
+  const handleVerifyUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    if (file.size > 5 * 1024 * 1024) return toast.error('파일 크기는 5MB 이하여야 합니다.');
+    
+    setVerificationFile(file);
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setVerificationPreview(ev.target?.result as string);
+    };
+    reader.readAsDataURL(file);
   };
 
   if (loading) return (
@@ -353,6 +389,36 @@ export default function MyPage() {
               <textarea style={textAreaStyle} value={editForm.workplace} onChange={e => setEditForm((p: any) => ({ ...p, workplace: e.target.value, jobRole: e.target.value }))} placeholder={`ex. 수액병원, 간호사\n링크은행, 은행원`} />
             </EditRow>
 
+            {/* v7.8.0 재직 증명 업로드 섹션 */}
+            <EditRow label="재직 증명 (필수)" required>
+              <div style={{ background: '#F8FAFC', border: '1.5px solid #E2E8F0', borderRadius: '16px', padding: '20px', marginBottom: '16px' }}>
+                <p style={{ fontSize: '0.8rem', color: '#64748B', lineHeight: 1.6, marginBottom: '12px' }}>
+                  신뢰할 수 있는 모임을 위해 아래 서류 중 하나를 반드시 업로드해 주세요.<br/>
+                  (재직증명서, 급여명세서, 건강보험 자격득실, 사원증, 명함 등)
+                </p>
+                <p style={{ fontSize: '0.82rem', color: '#0F172A', fontWeight: '800', marginBottom: '16px' }}>
+                  <strong>"업로드하신 모든 서류는 철저히 암호화되어 보호되며, 관리자 확인 후 즉시 파기됩니다."</strong>
+                </p>
+                
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <button 
+                    onClick={() => verifyInputRef.current?.click()} 
+                    style={{ padding: '10px 20px', borderRadius: '10px', background: '#fff', border: '1.5px solid #CBD5E1', color: '#475569', fontSize: '0.85rem', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+                  >
+                    <Upload size={16} /> 파일 선택
+                  </button>
+                  {verificationPreview ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#10B981', fontSize: '0.82rem', fontWeight: '800' }}>
+                      <CheckCircle2 size={16} /> 업로드 완료
+                    </div>
+                  ) : (
+                    <span style={{ fontSize: '0.82rem', color: '#94A3B8' }}>선택된 파일 없음</span>
+                  )}
+                </div>
+                <input ref={verifyInputRef} type="file" accept="image/*,.pdf" style={{ display: 'none' }} onChange={handleVerifyUpload} />
+              </div>
+            </EditRow>
+
             <EditRow label="겹치고 싶지 않은 지인 (선택)">
               <input style={inputStyle} value={editForm.avoidAcquaintance} onChange={e => setEditForm((p: any) => ({ ...p, avoidAcquaintance: e.target.value }))} placeholder="이름 또는 연락처" />
             </EditRow>
@@ -456,6 +522,18 @@ export default function MyPage() {
             <InfoRow label="출생연도" value={userData?.birthDate ? calcAge(userData.birthDate) : null} />
             <InfoRow label="성별" value={genderLabel !== '-' ? (userData?.gender === 'male' ? '남성 (M)' : '여성 (F)') : null} />
             <InfoRow label="키 / 몸무게" value={physique} />
+            <div style={{ display: 'flex', borderBottom: '1px solid #FFF0EE', padding: '14px 0', gap: '12px', alignItems: 'center' }}>
+              <span style={{ minWidth: '90px', fontSize: '0.85rem', color: '#AAA', fontWeight: '600', flexShrink: 0 }}>인증 상태</span>
+              {userData?.isVerified ? (
+                <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#10B981', fontSize: '0.85rem', fontWeight: '800', background: '#ECFDF5', padding: '4px 10px', borderRadius: '100px' }}>
+                  <ShieldCheck size={14} fill="#10B981" color="#fff" /> 인증 완료
+                </span>
+              ) : (
+                <span style={{ color: '#F59E0B', fontSize: '0.85rem', fontWeight: '800', background: '#FFFBEB', padding: '4px 10px', borderRadius: '100px' }}>
+                  승인 대기 중
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Accordion Toggle */}

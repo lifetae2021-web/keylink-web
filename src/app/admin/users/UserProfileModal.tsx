@@ -3,6 +3,10 @@
 import { X, User, ShieldCheck, Phone, Camera, MapPin, Briefcase, Users2, Wine, Cigarette, Info, Coffee, Heart, HeartOff, Mail, Calendar, Ruler, Weight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
+import { db } from '@/lib/firebase';
+import { doc, updateDoc } from 'firebase/firestore';
+import toast from 'react-hot-toast';
+import { useState } from 'react';
 
 interface UserProfileModalProps {
   user: any;
@@ -44,8 +48,35 @@ const TextBox = ({ label, value, icon: Icon, color }: { label: string; value?: s
   );
 };
 
-export default function UserProfileModal({ user, isOpen, onClose }: UserProfileModalProps) {
+export default function UserProfileModal({ user: initialUser, isOpen, onClose }: UserProfileModalProps) {
+  const [user, setUser] = useState(initialUser);
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  // Sync state with props when modal opens or user changes
+  useEffect(() => {
+    if (initialUser) {
+      setUser(initialUser);
+    }
+  }, [initialUser, isOpen]);
+
   if (!user) return null;
+
+  const handleToggleVerify = async () => {
+    if (isUpdating) return;
+    setIsUpdating(true);
+    try {
+      const newStatus = !user.isVerified;
+      const userRef = doc(db, 'users', user.uid || user.id);
+      await updateDoc(userRef, { isVerified: newStatus });
+      setUser((prev: any) => ({ ...prev, isVerified: newStatus }));
+      toast.success(newStatus ? '재직 인증이 완료되었습니다.' : '인증이 취소되었습니다.');
+    } catch (error) {
+      console.error(error);
+      toast.error('상태 변경에 실패했습니다.');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   const age = user.birthDate
     ? new Date().getFullYear() - parseInt(user.birthDate.split('-')[0]) + 1
@@ -101,7 +132,7 @@ export default function UserProfileModal({ user, isOpen, onClose }: UserProfileM
                 <div className="absolute bottom-6 left-8 right-6">
                   <div className="flex items-center gap-3 mb-2">
                     <h3 className="text-3xl font-black text-slate-900 tracking-tight">{user.name || '이름 없음'}</h3>
-                    {user.status === 'verified' && (
+                    {user.isVerified && (
                       <span className="inline-flex items-center gap-1 bg-emerald-500 text-white rounded-full px-2.5 py-0.5 text-[10px] font-bold shadow-sm">
                         <ShieldCheck size={11} fill="white" /> 인증 완료
                       </span>
@@ -138,6 +169,37 @@ export default function UserProfileModal({ user, isOpen, onClose }: UserProfileM
                     <DetailRow label="몸무게" value={user.weight ? `${user.weight}kg` : null} icon={Weight} />
                   </div>
                   <DetailRow label="회사명/직무" value={user.workplace || user.jobRole || user.job} icon={Briefcase} />
+                  
+                  {/* v7.8.0 재직 증명 확인 섹션 */}
+                  <div className="flex items-center justify-between py-4 border-b border-slate-50">
+                    <div className="flex items-center">
+                      <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
+                        <ShieldCheck size={18} className="text-blue-500" />
+                      </div>
+                      <div className="ml-4">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">재직 인증 서류</p>
+                        {user.verificationUrl ? (
+                          <a href={user.verificationUrl} target="_blank" rel="noreferrer" className="text-[0.85rem] font-black text-blue-600 hover:underline flex items-center gap-1">
+                            서류 확인하기 <Mail size={12} />
+                          </a>
+                        ) : (
+                          <p className="text-[0.85rem] font-bold text-slate-300 italic">미업로드</p>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleToggleVerify}
+                      disabled={isUpdating}
+                      className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
+                        user.isVerified 
+                          ? 'bg-rose-50 text-rose-500 hover:bg-rose-100' 
+                          : 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-md shadow-emerald-200'
+                      }`}
+                    >
+                      {isUpdating ? '처리 중...' : user.isVerified ? '인증 취소' : '인증 승인'}
+                    </button>
+                  </div>
+
                   <DetailRow label="지인 회피" value={user.avoidAcquaintance} icon={Users2} />
                 </div>
 
