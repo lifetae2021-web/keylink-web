@@ -9,7 +9,7 @@ import { doc, getDoc, updateDoc, serverTimestamp, deleteField } from 'firebase/f
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import {
   LogOut, ArrowLeft, Camera, ChevronDown, ChevronUp, X, Check, Edit3, Package, Upload,
-  Clock, Banknote, CheckCircle2, XCircle, Vote, Lock, ShieldCheck
+  Clock, Banknote, CheckCircle2, XCircle, Vote, Lock, ShieldCheck, FileText
 } from 'lucide-react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
@@ -81,18 +81,19 @@ export default function MyPage() {
     name: '', gender: '', phone: '', instaId: '', birthDate: '', height: '', weight: '',
     residence: '', workplace: '', jobRole: '', avoidAcquaintance: '',
     idealType: '', nonIdealType: '', smoking: '', drinking: '', religion: '',
-    drink: '', etc: '', verificationUrl: '',
+    drink: '', etc: '', employmentProof: '',
   });
 
   const [verificationFile, setVerificationFile] = useState<File | null>(null);
   const [verificationPreview, setVerificationPreview] = useState<string>('');
+  const [verificationFileName, setVerificationFileName] = useState<string>('');
+  const verifyInputRef = useRef<HTMLInputElement>(null);
 
   // Photo states in modal (File or URL)
   const [photos, setPhotos] = useState<any[]>([]);
   
   const photoInputRef = useRef<HTMLInputElement>(null);
   const mainPhotoInputRef = useRef<HTMLInputElement>(null);
-  const verifyInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -123,10 +124,10 @@ export default function MyPage() {
             religion: d.religion || '',
             drink: Array.isArray(d.drink) ? d.drink : (d.drink ? [d.drink] : []),
             etc: d.etc || '',
-            verificationUrl: d.verificationUrl || '',
+            employmentProof: d.employmentProof || d.verificationUrl || '',
           };
           setEditForm(initialForm);
-          setVerificationPreview(d.verificationUrl || '');
+          setVerificationPreview(initialForm.employmentProof || '');
           
           const savedPhotos = d.photos || d.profilePhotos || [];
           const legacyFace = d.facePhotos || [];
@@ -156,8 +157,8 @@ export default function MyPage() {
   const handleSave = async () => {
     if (!editForm.workplace) return toast.error('회사명 / 직무를 입력해주세요.');
     
-    // v7.8.0: 재직 증명 필수 검사
-    if (!verificationFile && !editForm.verificationUrl) {
+    // v7.8.5: 재직 증명 필수 검사 (employmentProof 필드명 표준화)
+    if (!verificationFile && !editForm.employmentProof) {
       return toast.error('재직 증명 서류를 업로드해 주세요.');
     }
 
@@ -182,8 +183,8 @@ export default function MyPage() {
         })
       );
       
-      // v7.8.0: 재직 증명 서류 업로드
-      let finalVerificationUrl = editForm.verificationUrl;
+      // v7.8.5: 재직 증명 서류 업로드
+      let finalVerificationUrl = editForm.employmentProof;
       if (verificationFile) {
         const fileExt = verificationFile.name.split('.').pop();
         const verifyRef = ref(storage, `verification_proofs/${user!.uid}/${Date.now()}.${fileExt}`);
@@ -200,7 +201,7 @@ export default function MyPage() {
       const updateData = {
         ...sanitizedForm,
         photos: uploadedUrls,
-        verificationUrl: finalVerificationUrl,
+        employmentProof: finalVerificationUrl,
         isVerified: userData?.isVerified ?? false,
         // Explicitly clear legacy fields to prevent schema conflicts (v3.5.1 Cleanup)
         profilePhotos: deleteField(),
@@ -209,6 +210,7 @@ export default function MyPage() {
         fullBodyPhotos: deleteField(),
         facePhoto: deleteField(),
         bodyPhoto: deleteField(),
+        verificationUrl: deleteField(),
         updatedAt: serverTimestamp()
       };
       
@@ -271,6 +273,7 @@ export default function MyPage() {
     if (file.size > 5 * 1024 * 1024) return toast.error('파일 크기는 5MB 이하여야 합니다.');
     
     setVerificationFile(file);
+    setVerificationFileName(file.name);
     const reader = new FileReader();
     reader.onload = (ev) => {
       setVerificationPreview(ev.target?.result as string);
@@ -456,35 +459,52 @@ export default function MyPage() {
               <textarea style={textAreaStyle} value={editForm.etc} onChange={e => setEditForm((p: any) => ({ ...p, etc: e.target.value }))} placeholder="알러지 여부나 기타 요청사항" rows={2} />
             </EditRow>
 
-            {/* v7.8.1 재직 증명 업로드 섹션 (최하단 이동) */}
-            <EditRow label="재직 증명 (필수)" required>
-              <div style={{ background: '#F8FAFC', border: '1.5px solid #E2E8F0', borderRadius: '16px', padding: '20px', marginBottom: '24px' }}>
-                <p style={{ fontSize: '0.8rem', color: '#64748B', lineHeight: 1.6, marginBottom: '12px' }}>
-                  신뢰할 수 있는 모임을 위해 아래 서류 중 하나를 반드시 업로드해 주세요.<br/>
-                  (재직증명서, 급여명세서, 건강보험 자격득실, 사원증, 명함 등)
-                </p>
-                <p style={{ fontSize: '0.82rem', color: '#0F172A', fontWeight: '800', marginBottom: '16px' }}>
-                  <strong>"업로드하신 모든 서류는 철저히 암호화되어 안전하게 보호됩니다."</strong>
-                </p>
-                
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <button 
-                    onClick={() => verifyInputRef.current?.click()} 
-                    style={{ padding: '10px 20px', borderRadius: '10px', background: '#fff', border: '1.5px solid #CBD5E1', color: '#475569', fontSize: '0.85rem', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
-                  >
-                    <Upload size={16} /> 파일 선택
-                  </button>
-                  {verificationPreview ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#10B981', fontSize: '0.82rem', fontWeight: '800' }}>
-                      <CheckCircle2 size={16} /> 업로드 완료
-                    </div>
-                  ) : (
-                    <span style={{ fontSize: '0.82rem', color: '#94A3B8' }}>선택된 파일 없음</span>
-                  )}
-                </div>
-                <input ref={verifyInputRef} type="file" accept="image/*,.pdf" style={{ display: 'none' }} onChange={handleVerifyUpload} />
-              </div>
-            </EditRow>
+             {/* v7.8.5 재직 증명 업로드 섹션 (미리보기 강화) */}
+             <EditRow label="재직 증명 (필수)" required>
+               <div style={{ background: '#F8FAFC', border: '1.5px solid #E2E8F0', borderRadius: '16px', padding: '20px', marginBottom: '24px' }}>
+                 <p style={{ fontSize: '0.8rem', color: '#64748B', lineHeight: 1.6, marginBottom: '16px' }}>
+                   신뢰할 수 있는 모임을 위해 서류(재직증명서, 급여명세서, 건강보험 등) 중 하나를 반드시 업로드해 주세요.
+                 </p>
+                 
+                 {/* 미리보기 영역 */}
+                 {(verificationPreview || editForm.employmentProof) && (
+                   <div style={{ marginBottom: '16px', padding: '12px', background: '#fff', borderRadius: '12px', border: '1px solid #FFE8E5', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                     {verificationPreview.startsWith('data:image') || editForm.employmentProof ? (
+                       <div style={{ width: '60px', height: '60px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #eee' }}>
+                         <img src={verificationPreview || editForm.employmentProof} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                       </div>
+                     ) : (
+                       <div style={{ width: '60px', height: '60px', borderRadius: '8px', background: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                         <FileText size={24} className="text-slate-400" />
+                       </div>
+                     )}
+                     <div style={{ flex: 1 }}>
+                       <p style={{ fontSize: '0.8rem', fontWeight: '700', color: '#334155' }}>{verificationFileName || '등록된 증빙 서류'}</p>
+                       <p style={{ fontSize: '0.7rem', color: '#10B981', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
+                         <CheckCircle2 size={12} /> {verificationFile ? '업로드 준비 완료' : '인증 대기 중'}
+                       </p>
+                     </div>
+                     <button onClick={() => { setVerificationFile(null); setVerificationPreview(''); setEditForm((p:any)=>({...p, employmentProof:''})); }} style={{ padding: '8px', color: '#94A3B8', background: 'none', border: 'none', cursor: 'pointer' }}>
+                       <X size={18} />
+                     </button>
+                   </div>
+                 )}
+
+                 <p style={{ fontSize: '0.82rem', color: '#0F172A', fontWeight: '800', marginBottom: '16px' }}>
+                   <strong>"업로드하신 모든 서류는 철저히 암호화되어 안전하게 보호됩니다."</strong>
+                 </p>
+                 
+                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                   <button 
+                     onClick={() => verifyInputRef.current?.click()} 
+                     style={{ padding: '10px 20px', borderRadius: '10px', background: '#fff', border: '1.5px solid #CBD5E1', color: '#475569', fontSize: '0.85rem', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+                   >
+                     <Upload size={16} /> 파일 변경
+                   </button>
+                 </div>
+                 <input ref={verifyInputRef} type="file" accept="image/*,.pdf" style={{ display: 'none' }} onChange={handleVerifyUpload} />
+               </div>
+             </EditRow>
 
             <div style={{ display: 'flex', gap: '12px', marginTop: '16px', position: 'sticky', bottom: 0, background: '#fff', paddingTop: '20px', borderTop: '1px solid #FFF0EE' }}>
               <button onClick={() => setIsEditing(false)} disabled={isSaving} style={{ flex: 1, padding: '18px', borderRadius: '100px', border: '1.5px solid #FFDBE9', background: 'transparent', color: '#FF6F61', fontWeight: '700', cursor: 'pointer', fontSize: '1rem' }}>취소</button>

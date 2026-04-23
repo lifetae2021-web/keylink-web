@@ -4,7 +4,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   Calendar, MapPin, Users, ArrowLeft, AlertCircle,
-  CheckCircle, Clock, Shield, Camera, X, CreditCard, ChevronRight, Upload, ShieldCheck
+  CheckCircle, Clock, Shield, Camera, X, CreditCard, ChevronRight, Upload, ShieldCheck, FileText
 } from 'lucide-react';
 import { getSession } from '@/lib/firestore/sessions';
 import { Session } from '@/lib/types';
@@ -14,7 +14,7 @@ import toast from 'react-hot-toast';
 import { auth, db, storage } from '@/lib/firebase';
 import { compressImage } from '@/lib/utils';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { doc, getDoc, setDoc, deleteField, addDoc, collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, deleteField, addDoc, collection, query, where, getDocs, Timestamp, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 
 export default function EventDetailPage() {
@@ -59,11 +59,12 @@ export default function EventDetailPage() {
     drink: [] as string[], etc: '',
     agreeTerms: true, agreeRule: true, // Auto-checked on load
     maleOption: 'normal', // 'normal' | 'safe'
-    verificationUrl: '',
+    employmentProof: '',
   });
 
   const [verificationFile, setVerificationFile] = useState<File | null>(null);
   const [verificationPreview, setVerificationPreview] = useState<string>('');
+  const [verificationFileName, setVerificationFileName] = useState<string>('');
   const verifyInputRef = useRef<HTMLInputElement>(null);
 
   // Photo upload state: up to 5 photos (consolidated v3.5.3)
@@ -96,8 +97,9 @@ export default function EventDetailPage() {
           const merged = savedPhotos.length > 0 ? savedPhotos : [...legacyFace, ...legacyBody].slice(0, 5);
           setPhotos(merged);
 
-          // v7.8.0: 재직 증명 미리보기 설정
-          setVerificationPreview(data.verificationUrl || '');
+          // v7.8.5: 재직 증명 미리보기 설정 (employmentProof 표준화)
+          const proofUrl = data.employmentProof || data.verificationUrl || '';
+          setVerificationPreview(proofUrl);
           
           toast.success('기존 프로필 정보를 불러왔습니다. 수정이 필요한 부분만 고쳐주세요.', {
             icon: 'ℹ️',
@@ -193,7 +195,7 @@ export default function EventDetailPage() {
       return;
     }
 
-    if (!verificationFile && !form.verificationUrl) {
+    if (!verificationFile && !form.employmentProof) {
       toast.error('재직 증명 서류를 업로드해 주세요.');
       return;
     }
@@ -232,8 +234,8 @@ export default function EventDetailPage() {
         })
       );
 
-      // v7.8.0: 재직 증명 서류 업로드
-      let finalVerificationUrl = form.verificationUrl;
+      // v7.8.5: 재직 증명 서류 업로드
+      let finalVerificationUrl = form.employmentProof;
       if (verificationFile) {
         const fileExt = verificationFile.name.split('.').pop();
         const verifyRef = ref(storage, `verification_proofs/${currentUser.uid}/${Date.now()}.${fileExt}`);
@@ -259,11 +261,11 @@ export default function EventDetailPage() {
         smoking: form.smoking,
         drinking: form.drinking,
         religion: form.religion,
+        drink: form.drink,
         photos: uploadedUrls,
-        verificationUrl: finalVerificationUrl,
-        profilePhotos: deleteField(),
-        facePhotos: deleteField(),
-        bodyPhotos: deleteField(),
+        employmentProof: finalVerificationUrl,
+        verificationUrl: deleteField(),
+        updatedAt: serverTimestamp()
       }, { merge: true });
 
       // 4. applications 콜렉션에 신규 신청서 저장 (v5.0.0 핵심 연결)
@@ -635,7 +637,60 @@ export default function EventDetailPage() {
                     </div>
                   </div>
 
-                  {/* v7.8.1 재직 증명 섹션 (최하단 이동) */}
+                      {/* v7.8.5 재직 증명 업로드 섹션 (미리보기 강화) */}
+                      <div className="kl-card" style={{ padding: '24px' }}>
+                        <h3 style={{ fontSize: '1rem', fontWeight: '800', color: '#111', marginBottom: '16px', borderBottom: '1px solid var(--color-border)', paddingBottom: '12px' }}>재직 증명 (필수)</h3>
+                        <p style={{ fontSize: '0.8rem', color: '#64748B', lineHeight: 1.6, marginBottom: '16px' }}>
+                          신뢰할 수 있는 모임을 위해 서류(재직증명서, 급여명세서, 건강보험 등) 중 하나를 반드시 업로드해 주세요.
+                        </p>
+
+                        {/* 미리보기 영역 */}
+                        {(verificationPreview || form.employmentProof) && (
+                          <div style={{ marginBottom: '16px', padding: '12px', background: '#fff', borderRadius: '12px', border: '1px solid #FFE8E5', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            {verificationPreview.startsWith('data:image') || form.employmentProof ? (
+                              <div style={{ width: '60px', height: '60px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #eee' }}>
+                                <img src={verificationPreview || form.employmentProof} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              </div>
+                            ) : (
+                              <div style={{ width: '60px', height: '60px', borderRadius: '8px', background: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <FileText size={24} className="text-slate-400" />
+                              </div>
+                            )}
+                            <div style={{ flex: 1 }}>
+                              <p style={{ fontSize: '0.8rem', fontWeight: '700', color: '#334155' }}>{verificationFileName || '등록된 증빙 서류'}</p>
+                              <p style={{ fontSize: '0.7rem', color: '#10B981', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
+                                <CheckCircle2 size={12} /> {verificationFile ? '업로드 준비 완료' : '기존 서류 확인됨'}
+                              </p>
+                            </div>
+                            <button type="button" onClick={() => { setVerificationFile(null); setVerificationPreview(''); setForm(f=>({...f, employmentProof:''})); }} style={{ padding: '8px', color: '#94A3B8', background: 'none', border: 'none', cursor: 'pointer' }}>
+                              <X size={18} />
+                            </button>
+                          </div>
+                        )}
+                        
+                        <p style={{ fontSize: '0.82rem', color: '#0F172A', fontWeight: '800', marginBottom: '16px' }}>
+                          <strong>"업로드하신 모든 서류는 철저히 암호화되어 안전하게 보호됩니다."</strong>
+                        </p>
+                        
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '20px' }}>
+                          <button 
+                            type="button"
+                            onClick={() => verifyInputRef.current?.click()} 
+                            style={{ padding: '10px 20px', borderRadius: '100px', background: '#fff', border: '1.5px solid #FFDBE9', color: '#FF6F61', fontSize: '0.85rem', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+                          >
+                            <Upload size={16} /> 파일 선택
+                          </button>
+                        </div>
+                        <input ref={verifyInputRef} type="file" accept="image/*,.pdf" style={{ display: 'none' }} onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          setVerificationFile(file);
+                          setVerificationFileName(file.name);
+                          const reader = new FileReader();
+                          reader.onload = (ev) => setVerificationPreview(ev.target?.result as string);
+                          reader.readAsDataURL(file);
+                        }} />
+                      </div>
                   <div className="kl-card" style={{ padding: '24px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px', borderBottom: '1px solid var(--color-border)', paddingBottom: '12px' }}>
                       <ShieldCheck size={18} color="#10B981" />

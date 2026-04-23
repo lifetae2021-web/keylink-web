@@ -1,6 +1,6 @@
 'use client';
 
-import { X, User, ShieldCheck, Phone, Camera, MapPin, Briefcase, Users2, Wine, Cigarette, Info, Coffee, Heart, HeartOff, Mail, Calendar, Ruler, Weight } from 'lucide-react';
+import { X, User, ShieldCheck, Phone, Camera, MapPin, Briefcase, Users2, Wine, Cigarette, Info, Coffee, Heart, HeartOff, Mail, Calendar, Ruler, Weight, ExternalLink } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 import { db } from '@/lib/firebase';
@@ -178,9 +178,9 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose }:
                       </div>
                       <div className="ml-4">
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">재직 인증 서류</p>
-                        {user.verificationUrl ? (
-                          <a href={user.verificationUrl} target="_blank" rel="noreferrer" className="text-[0.85rem] font-black text-blue-600 hover:underline flex items-center gap-1">
-                            서류 확인하기 <Mail size={12} />
+                        {(user.employmentProof || user.verificationUrl) ? (
+                          <a href={user.employmentProof || user.verificationUrl} target="_blank" rel="noreferrer" className="text-[0.85rem] font-black text-blue-600 hover:underline flex items-center gap-1">
+                            서류 확인하기 <ExternalLink size={12} />
                           </a>
                         ) : (
                           <p className="text-[0.85rem] font-bold text-slate-300 italic">미업로드</p>
