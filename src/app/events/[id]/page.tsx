@@ -568,12 +568,7 @@ export default function EventDetailPage() {
                       </div>
                       <div>
                         <label className="kl-label">거주 지역 *</label>
-                        <select className="kl-input" value={form.residence} onChange={(e) => setForm(f => ({...f, residence: e.target.value}))}>
-                          <option value="">지역을 선택해주세요</option>
-                          {['부산진구', '해운대구', '수영구', '연제구', '동래구', '남구', '금정구', '사하구', '강서구', '북구', '사상구', '기타'].map(r => (
-                            <option key={r} value={r}>{r}</option>
-                          ))}
-                        </select>
+                        <input className="kl-input" placeholder="ex. 부산 수영구" value={form.residence} onChange={(e) => setForm(f => ({...f, residence: e.target.value}))} />
                       </div>
                     </div>
                   </div>

@@ -377,12 +377,7 @@ export default function MyPage() {
             </div>
 
             <EditRow label="거주 지역" required>
-              <select style={inputStyle} value={editForm.residence} onChange={e => setEditForm((p: any) => ({ ...p, residence: e.target.value }))}>
-                <option value="">지역 선택</option>
-                {['부산진구', '해운대구', '수영구', '연제구', '동래구', '남구', '금정구', '사하구', '강서구', '북구', '사상구', '기타'].map(r => (
-                  <option key={r} value={r}>{r}</option>
-                ))}
-              </select>
+              <input style={inputStyle} value={editForm.residence} onChange={e => setEditForm((p: any) => ({ ...p, residence: e.target.value }))} placeholder="ex. 부산 수영구" />
             </EditRow>
 
             <EditRow label="회사명 / 직무" required>
