@@ -28,20 +28,23 @@ export default function EventsPage() {
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formData, setFormData] = useState({
+  const [editingId, setEditingId] = useState<string | null>(null); // v7.0.0: 수정 중인 문서 ID
+  
+  const initialFormData = {
     region: 'busan',
-    episodeNumber: '', // v6.9.0: 완전히 비워둠
+    episodeNumber: '',
     eventDate: '',
     eventTime: '15:00',
-    venue: '서면역 인근 프라이빗한 파티룸', // v6.9.0: 기본 선택값
+    venue: '서면역 인근 프라이빗한 파티룸',
     venueAddress: '',
     price: '29000',
     targetMaleAge: '94년생~01년생',
-    // targetFemaleAge 제거됨 (v6.9.0 운영방침)
-    maxMale: '8', // v6.9.0: 기본 정원 8명
-    maxFemale: '8', // v6.9.0: 기본 정원 8명
+    maxMale: '8',
+    maxFemale: '8',
     status: 'open' as SessionStatus
-  });
+  };
+
+  const [formData, setFormData] = useState(initialFormData);
 
   // 1. 실시간 데이터 구독 (기수 목록)
   useEffect(() => {
@@ -119,7 +122,41 @@ export default function EventsPage() {
     }
   };
 
-  const handleCreateSession = async (e: React.FormEvent) => {
+  // 3. 수정 모드 진입
+  const openEditModal = (session: Session) => {
+    setEditingId(session.id);
+    setFormData({
+      region: session.region,
+      episodeNumber: String(session.episodeNumber),
+      eventDate: format(session.eventDate, 'yyyy-MM-dd'),
+      eventTime: format(session.eventDate, 'HH:mm'),
+      venue: session.venue,
+      venueAddress: session.venueAddress || '',
+      price: String(session.price),
+      targetMaleAge: session.targetMaleAge || '',
+      maxMale: String(session.maxMale),
+      maxFemale: String(session.maxFemale),
+      status: session.status
+    });
+    setIsModalOpen(true);
+  };
+
+  // 4. 삭제 처리
+  const handleDeleteSession = async (id: string, name: string) => {
+    if (!window.confirm(`[${name}] 정말 이 기수를 삭제하시겠습니까? 삭제 후에는 복구할 수 없습니다.`)) return;
+
+    try {
+      const { deleteDoc, doc } = await import('firebase/firestore');
+      await deleteDoc(doc(db, 'sessions', id));
+      toast.success('기수가 삭제되었습니다.');
+      if (selectedId === id) setSelectedId(null);
+    } catch (err) {
+      toast.error('삭제 중 오류 발생');
+    }
+  };
+
+  // 5. 서버에 저장/수정 실행
+  const handleSubmitSession = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.episodeNumber || !formData.eventDate || !formData.venue) {
       toast.error('필수 항목을 모두 입력해 주세요.');
@@ -132,7 +169,9 @@ export default function EventsPage() {
 
     setIsSubmitting(true);
     try {
-      await addDoc(collection(db, 'sessions'), {
+      const { updateDoc, doc } = await import('firebase/firestore');
+      
+      const payload = {
         region: formData.region,
         episodeNumber: Number(formData.episodeNumber),
         title: `${formData.region === 'busan' ? '부산' : '창원'} 로테이션 소개팅 ${formData.episodeNumber}기`,
@@ -142,30 +181,35 @@ export default function EventsPage() {
         price: Number(formData.price),
         originalPrice: Number(formData.price) + 10000,
         targetMaleAge: formData.targetMaleAge,
-        // targetFemaleAge는 targetMaleAge와 동일하게 저장하거나 생략 (v6.9.0)
         targetFemaleAge: formData.targetMaleAge, 
         maxMale: Number(formData.maxMale),
         maxFemale: Number(formData.maxFemale),
-        currentMale: 0,
-        currentFemale: 0,
         status: formData.status,
-        votingUnlockedAt: null,
-        createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
-      });
+      };
+
+      if (editingId) {
+        // v7.0.0: 수정(Update) 로직
+        await updateDoc(doc(db, 'sessions', editingId), payload);
+        toast.success('기수 정보가 수정되었습니다.');
+      } else {
+        // v7.0.0: 신규 등록 로직
+        await addDoc(collection(db, 'sessions'), {
+          ...payload,
+          currentMale: 0,
+          currentFemale: 0,
+          votingUnlockedAt: null,
+          createdAt: serverTimestamp()
+        });
+        toast.success('새 기수가 등록되었습니다.');
+      }
       
-      toast.success('새 기수가 성공적으로 등록되었습니다.');
       setIsModalOpen(false);
-      
-      // Auto-increment episode number for natural workflow
-      setFormData(prev => ({
-        ...prev,
-        episodeNumber: String(Number(prev.episodeNumber) + 1),
-        // venue는 유지 (기본 설정)
-      }));
+      setEditingId(null);
+      setFormData(initialFormData);
     } catch (err: any) {
       console.error(err);
-      toast.error('등록 중 오류가 발생했습니다.');
+      toast.error('저장 중 오류가 발생했습니다.');
     } finally {
       setIsSubmitting(false);
     }
@@ -192,7 +236,11 @@ export default function EventsPage() {
           <p className="text-slate-500" style={{ fontSize: '0.85rem', marginTop: 4 }}>기수별 행사 현황과 매칭 알고리즘을 관리합니다.</p>
         </div>
         <button
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => {
+            setEditingId(null);
+            setFormData(initialFormData);
+            setIsModalOpen(true);
+          }}
           className="flex items-center gap-2 rounded-lg transition-transform hover:scale-105"
           style={{ padding: '10px 18px', fontSize: '0.85rem', fontWeight: 600, background: '#FF6F61', color: '#fff', boxShadow: '0 4px 12px rgba(255,111,97,0.2)' }}
         >
@@ -290,10 +338,16 @@ export default function EventsPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <button className="flex items-center gap-1.5 rounded-lg transition-colors px-4 py-2 bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-100">
+                    <button 
+                      onClick={() => openEditModal(active)}
+                      className="flex items-center gap-1.5 rounded-lg transition-colors px-4 py-2 bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-100"
+                    >
                       <Edit2 size={14} /> 수정
                     </button>
-                    <button className="flex items-center gap-1.5 rounded-lg transition-colors px-4 py-2 bg-rose-50 border border-rose-100 text-xs font-semibold text-rose-600 hover:bg-rose-100">
+                    <button 
+                      onClick={() => handleDeleteSession(active.id, `${active.region === 'busan' ? '부산' : '창원'} ${active.episodeNumber}기`)}
+                      className="flex items-center gap-1.5 rounded-lg transition-colors px-4 py-2 bg-rose-50 border border-rose-100 text-xs font-semibold text-rose-600 hover:bg-rose-100"
+                    >
                       <Trash2 size={14} /> 삭제
                     </button>
                   </div>
@@ -427,8 +481,17 @@ export default function EventsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-              <h3 className="text-lg font-bold text-slate-800">새 기수 등록 시스템</h3>
-              <button onClick={() => setIsModalOpen(false)} className="p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-50 transition-colors">
+              <h3 className="text-lg font-bold text-slate-800">
+                {editingId ? '기수 정보 수정' : '새 기수 등록 시스템'}
+              </h3>
+              <button 
+                onClick={() => {
+                  setIsModalOpen(false);
+                  setEditingId(null);
+                  setFormData(initialFormData);
+                }} 
+                className="p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-50 transition-colors"
+              >
                 <X size={20} />
               </button>
             </div>
