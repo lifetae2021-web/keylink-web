@@ -61,7 +61,8 @@ export default function ApplicationsPage() {
 
   // 1. sessions 컬렉션 실시간 동기화
   useEffect(() => {
-    const q = query(collection(db, 'sessions'), orderBy('eventDate', 'desc'));
+    // v7.4.1: episodeNumber 기준 내림차순 정렬 (최신 기수가 맨 위로)
+    const q = query(collection(db, 'sessions'), orderBy('episodeNumber', 'desc'));
     const unsub = onSnapshot(q, (snap) => {
       const fetchedEvents = snap.docs.map(d => ({ id: d.id, ...d.data() } as any));
       setEvents(fetchedEvents);
@@ -171,7 +172,7 @@ export default function ApplicationsPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 style={{ fontSize: '1.25rem', fontWeight: 900, letterSpacing: '-0.02em', color: '#0F172A' }}>기수별 신청 관리</h2>
-          <p style={{ fontSize: '0.85rem', color: '#64748B', marginTop: 2 }}>참가 신청자들의 상세 정보를 심사하고 선발 여부를 결정합니다. <span className="text-[10px] font-bold text-[#FF7E7E] ml-2">v7.4.0 Smart Filter</span></p>
+          <p style={{ fontSize: '0.85rem', color: '#64748B', marginTop: 2 }}>참가 신청자들의 상세 정보를 심사하고 선발 여부를 결정합니다. <span className="text-[10px] font-bold text-[#FF7E7E] ml-2">v7.4.1 Fixed UI</span></p>
         </div>
         <div className="flex items-center gap-3">
           <div className="relative flex-1 md:flex-none">
@@ -179,21 +180,21 @@ export default function ApplicationsPage() {
             <select
               value={selectedEventId}
               onChange={(e) => setSelectedEventId(e.target.value)}
-              className="kl-input pl-10 pr-8 bg-white border-slate-200 text-slate-700 hover:border-[#FF7E7E]/50 transition-colors"
-              style={{ minWidth: '180px', width: 'auto', height: '44px', fontSize: '0.88rem', fontWeight: '800', appearance: 'none', borderRadius: '12px' }}
+              className="kl-input pl-10 pr-10 bg-white border-slate-200 text-slate-700 hover:border-[#FF7E7E]/50 transition-all cursor-pointer shadow-sm"
+              style={{ minWidth: '220px', width: 'auto', height: '44px', fontSize: '0.88rem', fontWeight: '800', appearance: 'none', borderRadius: '12px' }}
             >
               <option value="all">전체 기수 보기</option>
               {events.map(ev => (
                 <option key={ev.id} value={ev.id}>
-                  {ev.region === 'busan' ? '부산' : ev.region === 'changwon' ? '창원' : (ev.region ?? '부산')} {ev.episodeNumber}기
+                  {ev.region === 'busan' ? '부산' : ev.region === 'changwon' ? '창원' : (ev.region ?? '부산')} {ev.episodeNumber}기 [{(ev.status === 'open' || ev.status === 'recruiting') ? '모집중' : '마감'}]
                 </option>
               ))}
             </select>
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+            <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
               <ChevronRight size={14} className="rotate-90" />
             </div>
           </div>
-          <button className="flex items-center gap-2 rounded-lg transition-all hover:bg-slate-100" style={{ height: '42px', padding: '0 16px', fontSize: '0.85rem', background: '#fff', border: '1px solid #E2E8F0', color: '#64748B', fontWeight: 600 }}>
+          <button className="flex items-center gap-2 rounded-lg transition-all hover:bg-slate-100" style={{ height: '44px', padding: '0 16px', fontSize: '0.85rem', background: '#fff', border: '1px solid #E2E8F0', color: '#64748B', fontWeight: 600 }}>
             <Download size={14} /> 엑셀 다운로드
           </button>
         </div>
