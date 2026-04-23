@@ -130,7 +130,7 @@ export default function EventsPage() {
       episodeNumber: String(session.episodeNumber),
       eventDate: format(session.eventDate, 'yyyy-MM-dd'),
       eventTime: format(session.eventDate, 'HH:mm'),
-      venue: session.venue,
+      venue: session.venue || '서면역 인근 프라이빗한 파티룸',
       venueAddress: session.venueAddress || '',
       price: String(session.price),
       targetMaleAge: session.targetMaleAge || '',
