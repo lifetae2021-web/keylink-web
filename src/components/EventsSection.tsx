@@ -60,11 +60,15 @@ export function EventsSection({ standalone = false }: { standalone?: boolean }) 
     return () => unsubscribe();
   }, []);
 
+  // 카드 리스트용 필터링 (날짜 + 지역)
   const filtered = liveEvents.filter((e) => {
     const dateMatch = selectedDate ? isSameDay(e.date, selectedDate) : true;
     const regionMatch = e.region === selectedRegion;
     return dateMatch && regionMatch;
   });
+
+  // 달력용 필터링 (지역만 유지, 날짜 필터 제거하여 상시 노출)
+  const calendarEvents = liveEvents.filter(e => e.region === selectedRegion);
 
   return (
     <div style={{ paddingTop: standalone ? '90px' : '60px', paddingBottom: standalone ? '0' : '40px', minHeight: standalone ? '100vh' : 'auto' }}>
@@ -107,7 +111,7 @@ export function EventsSection({ standalone = false }: { standalone?: boolean }) 
 
       {/* Calendar View */}
       <section className="kl-calendar-wrapper">
-        <EventCalendar events={filtered} onDateSelect={setSelectedDate} selectedDate={selectedDate} />
+        <EventCalendar events={calendarEvents} onDateSelect={setSelectedDate} selectedDate={selectedDate} />
       </section>
 
       {/* Events Grid */}
