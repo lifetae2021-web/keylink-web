@@ -176,12 +176,11 @@ export default function ApplicationsPage() {
         </div>
         <div className="flex items-center gap-3">
           <div className="relative flex-1 md:flex-none group">
-            <Calendar size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#FF7E7E] pointer-events-none" />
             <select
               value={selectedEventId}
               onChange={(e) => setSelectedEventId(e.target.value)}
-              className="bg-white border-2 border-[#FFD2CE]/30 rounded-2xl pl-11 pr-10 py-2.5 text-sm font-black text-slate-800 outline-none focus:border-[#FF7E7E]/50 transition-all cursor-pointer shadow-sm appearance-none"
-              style={{ minWidth: '240px', width: 'auto', height: '48px' }}
+              className="bg-white border-2 border-[#FFD2CE]/60 rounded-2xl px-5 pr-10 text-sm font-black text-slate-800 outline-none focus:border-[#FF7E7E]/60 transition-all cursor-pointer shadow-sm appearance-none"
+              style={{ minWidth: '220px', width: 'auto', height: '48px' }}
             >
               <option value="all">전체 기수 보기</option>
               {events.map(ev => (
@@ -190,7 +189,7 @@ export default function ApplicationsPage() {
                 </option>
               ))}
             </select>
-            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 group-hover:text-[#FF7E7E] transition-colors">
+            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-[#FF7E7E]/60 group-hover:text-[#FF7E7E] transition-colors">
               <ChevronRight size={14} className="rotate-90" />
             </div>
           </div>
