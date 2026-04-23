@@ -20,27 +20,37 @@ import { Session, SessionStatus } from '@/lib/types';
 
 const COLLECTION = 'sessions';
 
-// Firestore 문서 → Session 타입 변환
+// Firestore 문서 → Session 타입 변환 (v6.6.2: 방어적 파싱 강화)
 function fromDoc(snap: DocumentSnapshot): Session | null {
   if (!snap.exists()) return null;
   const d = snap.data()!;
-  return {
-    id: snap.id,
-    episodeNumber: d.episodeNumber,
-    title: d.title,
-    eventDate: (d.eventDate as Timestamp).toDate(),
-    location: d.location,
-    maxMale: d.maxMale,
-    maxFemale: d.maxFemale,
-    currentMale: d.currentMale ?? 0,
-    currentFemale: d.currentFemale ?? 0,
-    region: (d.region || 'busan') as 'busan' | 'changwon',
-    status: d.status as SessionStatus,
-    votingUnlockedAt: d.votingUnlockedAt
-      ? (d.votingUnlockedAt as Timestamp).toDate()
-      : null,
-    createdAt: (d.createdAt as Timestamp).toDate(),
-  };
+  try {
+    return {
+      id: snap.id,
+      episodeNumber: d.episodeNumber ?? 0,
+      title: d.title ?? '',
+      eventDate: d.eventDate?.toDate?.() ?? new Date(),
+      location: d.location ?? d.venue ?? '',
+      venue: d.venue ?? d.location ?? '',
+      venueAddress: d.venueAddress ?? '',
+      price: d.price ?? 29000,
+      originalPrice: d.originalPrice ?? 39000,
+      targetMaleAge: d.targetMaleAge ?? '',
+      targetFemaleAge: d.targetFemaleAge ?? '',
+      maxMale: d.maxMale ?? 0,
+      maxFemale: d.maxFemale ?? 0,
+      currentMale: d.currentMale ?? 0,
+      currentFemale: d.currentFemale ?? 0,
+      region: (d.region ?? 'busan') as 'busan' | 'changwon',
+      status: d.status as SessionStatus,
+      votingUnlockedAt: d.votingUnlockedAt?.toDate?.() ?? null,
+      createdAt: d.createdAt?.toDate?.() ?? new Date(),
+      updatedAt: d.updatedAt?.toDate?.() ?? new Date(),
+    };
+  } catch (err) {
+    console.error('[fromDoc] Error parsing session document:', snap.id, err);
+    return null;
+  }
 }
 
 /** 특정 기수 단건 조회 */

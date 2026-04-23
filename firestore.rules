@@ -31,9 +31,10 @@ service cloud.firestore {
     // sessions (기수) 컬렉션
     // ─────────────────────────────────────
     match /sessions/{sessionId} {
-      // 모든 로그인 사용자: 읽기 가능 (신청 페이지에서 기수 정보 조회)
-      allow read: if isSignedIn();
-      // 관리자만 쓰기 가능
+      // ✅ v6.6.2: 비로그인 방문자도 읽기 가능 (홈페이지 신청 페이지 공개 노출)
+      // 기수 목록은 공개 정보이므로 인증 불필요
+      allow read: if true;
+      // 관리자만 쓰기 가능 (기수 등록, 수정, 삭제)
       allow write: if isAdmin();
     }
 
