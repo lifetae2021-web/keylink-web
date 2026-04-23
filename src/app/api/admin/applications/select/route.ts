@@ -65,8 +65,6 @@ export async function POST(req: NextRequest) {
 
     // 4. 알림 문자 발송
     const name = userData.name || '참가자';
-    const regionLabel = sessionData.region === 'busan' ? '부산' : sessionData.region === 'changwon' ? '창원' : '부산';
-    const sessionTitle = `${regionLabel} ${sessionData.episodeNumber}기`;
     const phone = userData.phone || appData.phone;
 
     if (!phone) {
@@ -76,16 +74,15 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const eventDate = sessionData.eventDate.toDate();
-    const monthDay = `${eventDate.getMonth() + 1}월 ${eventDate.getDate()}일`;
-    const dayOfWeek = ['일', '월', '화', '수', '목', '금', '토'][eventDate.getDay()];
-    
-    const hours = eventDate.getHours();
-    const minutes = eventDate.getMinutes();
-    const timeStr = `${hours >= 12 ? '오후' : '오전'} ${hours % 12 || 12}시${minutes > 0 ? ' ' + minutes + '분' : ''}`;
+    // 날짜 포맷팅 로직 (ex. 4/25 (토) 20:00)
+    const eventTime = sessionData.eventDate.toDate();
+    const formattedDate = `${eventTime.getMonth() + 1}/${eventTime.getDate()}`;
+    const days = ['일', '월', '화', '수', '목', '금', '토'];
+    const formattedDay = `(${days[eventTime.getDay()]})`;
+    const formattedTime = `${String(eventTime.getHours()).padStart(2, '0')}:${String(eventTime.getMinutes()).padStart(2, '0')}`;
 
     const message = `안녕하세요 ! 키링크에 지원해주셔서 감사합니다☺️
-${name}님은 ${monthDay} (${dayOfWeek}) ${timeStr} 소개팅 날짜가 지정되었습니다
+${name}님은 ${formattedDate} ${formattedDay} ${formattedTime} 소개팅 날짜가 지정되었습니다
 
 아래 계좌번호로 60,000원 입금해주셔야 라인업에 확정등록되니 참고 부탁드립니다 :)
 3333359229548 카카오뱅크 태영훈(키링크) 입금 또는 참석가능 여부 알려주세요😭
