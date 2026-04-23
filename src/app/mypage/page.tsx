@@ -582,7 +582,16 @@ function ApplicationStatusBlock({ application, session, hasVoted }: StatusBlockP
     );
   }
 
-  const sessionTitle = application.sessionId || '해당 기수';
+  // v7.2.0: ID 대신 실제 기수 명칭 표시
+  const sessionTitle = session
+    ? `${session.region === 'busan' ? '부산' : '창원'} ${session.episodeNumber}기`
+    : application.sessionId || '해당 기수';
+  
+  const sessionDateStr = session
+    ? `${session.eventDate.getMonth() + 1}월 ${session.eventDate.getDate()}일 ${String(session.eventDate.getHours()).padStart(2,'0')}:${String(session.eventDate.getMinutes()).padStart(2,'0')}`
+    : null;
+
+  const sessionVenue = session?.venue || null;
 
   // ── 검토 중 (applied) ──
   if (application.status === 'applied') {
@@ -597,6 +606,12 @@ function ApplicationStatusBlock({ application, session, hasVoted }: StatusBlockP
           <p style={{ color: '#9CA3AF', fontWeight: '600', fontSize: '0.85rem', lineHeight: 1.6 }}>
             운영진이 성비 및 조건을 검토하고 있습니다.<br />선발 결과는 개별 안내될 예정입니다.
           </p>
+          {(sessionDateStr || sessionVenue) && (
+            <div style={{ marginTop: '20px', background: '#FFFBEB', borderRadius: '14px', padding: '14px 18px', textAlign: 'left', border: '1px solid #FCD34D' }}>
+              {sessionDateStr && <p style={{ fontSize: '0.82rem', color: '#92400E', fontWeight: '700', marginBottom: '4px' }}>📅 {sessionDateStr}</p>}
+              {sessionVenue && <p style={{ fontSize: '0.82rem', color: '#92400E', fontWeight: '700' }}>📍 {sessionVenue}</p>}
+            </div>
+          )}
         </div>
       </>
     );
@@ -646,9 +661,15 @@ function ApplicationStatusBlock({ application, session, hasVoted }: StatusBlockP
             <CheckCircle2 size={32} color="#10B981" />
           </div>
           <p style={{ color: '#065F46', fontWeight: '900', fontSize: '1.05rem', marginBottom: '8px' }}>참가가 확정되었습니다!</p>
-          <p style={{ color: '#9CA3AF', fontWeight: '600', fontSize: '0.85rem', marginBottom: '28px', lineHeight: 1.6 }}>
+          <p style={{ color: '#9CA3AF', fontWeight: '600', fontSize: '0.85rem', marginBottom: '16px', lineHeight: 1.6 }}>
             행사 당일 멋진 만남이 기다리고 있습니다. 🌸
           </p>
+          {(sessionDateStr || sessionVenue) && (
+            <div style={{ marginBottom: '20px', background: '#F0FDF4', borderRadius: '14px', padding: '14px 18px', textAlign: 'left', border: '1px solid #86EFAC' }}>
+              {sessionDateStr && <p style={{ fontSize: '0.85rem', color: '#065F46', fontWeight: '800', marginBottom: '4px' }}>📅 {sessionDateStr}</p>}
+              {sessionVenue && <p style={{ fontSize: '0.85rem', color: '#065F46', fontWeight: '800' }}>📍 {sessionVenue}</p>}
+            </div>
+          )}
 
           {/* 투표 버튼 영역 */}
           {hasVoted ? (

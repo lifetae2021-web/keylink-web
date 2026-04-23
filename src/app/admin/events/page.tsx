@@ -5,14 +5,14 @@ import {
   Calendar, MapPin, Users, Heart,
   Plus, Edit2, Trash2, Play, X,
   CheckCircle, Clock, RefreshCw, ChevronRight, Zap, BarChart3,
-  Loader2
+  Loader2, ListChecks, Phone, UserCheck
 } from 'lucide-react';
 import { auth, db } from '@/lib/firebase';
-import { collection, query, orderBy, onSnapshot, limit, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, limit, addDoc, serverTimestamp, where } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import toast from 'react-hot-toast';
-import { Session, SessionStatus, MatchingResult } from '@/lib/types';
+import { Session, SessionStatus, MatchingResult, Application } from '@/lib/types';
 import Link from 'next/link';
 
 // v6.6.0 Premium Light Theme Panel
@@ -24,6 +24,8 @@ export default function EventsPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isMatching, setIsMatching] = useState(false);
+  const [applicants, setApplicants] = useState<Application[]>([]); // v7.2.0
+  const [applicantsLoading, setApplicantsLoading] = useState(false); // v7.2.0
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -68,6 +70,46 @@ export default function EventsPage() {
     return () => unsub();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // v7.2.0: 선택된 기수의 신청자 명단 실시간 구독
+  useEffect(() => {
+    if (!selectedId) { setApplicants([]); return; }
+    setApplicantsLoading(true);
+    const q = query(
+      collection(db, 'applications'),
+      where('sessionId', '==', selectedId)
+    );
+    const unsub = onSnapshot(q, (snap) => {
+      const list = snap.docs.map(d => ({
+        id: d.id,
+        userId: d.data().userId,
+        sessionId: d.data().sessionId,
+        name: d.data().name,
+        age: d.data().age,
+        gender: d.data().gender,
+        job: d.data().job,
+        phone: d.data().phone ?? '',
+        residence: d.data().residence,
+        status: d.data().status,
+        paymentConfirmed: d.data().paymentConfirmed ?? false,
+        appliedAt: d.data().appliedAt?.toDate() ?? new Date(),
+        updatedAt: d.data().updatedAt?.toDate() ?? new Date(),
+        instaId: d.data().instaId,
+        smoking: d.data().smoking,
+        drinking: d.data().drinking,
+        religion: d.data().religion,
+        drink: d.data().drink,
+        idealType: d.data().idealType,
+        nonIdealType: d.data().nonIdealType,
+        avoidAcquaintance: d.data().avoidAcquaintance,
+        etc: d.data().etc,
+      } as Application));
+      list.sort((a, b) => a.appliedAt.getTime() - b.appliedAt.getTime());
+      setApplicants(list);
+      setApplicantsLoading(false);
+    }, () => setApplicantsLoading(false));
+    return () => unsub();
+  }, [selectedId]);
 
   // 2. 매칭 히스토리 로드 (간이 통계용)
   useEffect(() => {
@@ -433,6 +475,80 @@ export default function EventsPage() {
           ) : (
             <div className="flex h-[300px] items-center justify-center" style={panel}>
               <p className="text-slate-400 font-medium">기수를 선택해 주세요.</p>
+            </div>
+          )}
+
+          {/* v7.2.0: Applicant List Panel */}
+          {active && (
+            <div style={{ ...panel, overflow: 'hidden' }}>
+              <div className="flex items-center justify-between px-7 py-5" style={{ borderBottom: '1px solid #f1f5f9', background: '#f8fafc' }}>
+                <h3 className="flex items-center gap-2 text-slate-800" style={{ fontSize: '0.95rem', fontWeight: 800 }}>
+                  <ListChecks size={16} style={{ color: '#FF6F61' }} />
+                  신청자 명단
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, padding: '2px 10px', borderRadius: 20, background: '#FFF5F4', color: '#FF6F61', marginLeft: 4 }}>
+                    총 {applicants.length}명 ({applicants.filter(a => a.gender === 'male').length}남 / {applicants.filter(a => a.gender === 'female').length}여)
+                  </span>
+                </h3>
+                {applicantsLoading && <Loader2 className="animate-spin text-slate-400" size={16} />}
+              </div>
+
+              {applicants.length === 0 ? (
+                <div className="py-12 text-center text-slate-400 font-medium text-sm">
+                  {applicantsLoading ? '불러오는 중...' : '신청자가 없습니다.'}
+                </div>
+              ) : (
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ background: '#f8fafc' }}>
+                        {['#', '이름', '성별', '연락처', '나이', '직업', '거주지', '상태'].map((h) => (
+                          <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '1px solid #e2e8f0', whiteSpace: 'nowrap' }}>
+                            {h}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {applicants.map((app, idx) => {
+                        const isMale = app.gender === 'male';
+                        const statusMap: Record<string, { label: string; bg: string; color: string }> = {
+                          applied:   { label: '검토 중',   bg: '#FFFBEB', color: '#92400E' },
+                          selected:  { label: '입금 대기', bg: '#F5F3FF', color: '#5B21B6' },
+                          confirmed: { label: '참가 확정', bg: '#ECFDF5', color: '#065F46' },
+                          cancelled: { label: '취소',      bg: '#F1F5F9', color: '#64748b' },
+                        };
+                        const badge = statusMap[app.status] ?? { label: app.status, bg: '#F1F5F9', color: '#64748b' };
+                        return (
+                          <tr key={app.id} style={{ borderBottom: '1px solid #f1f5f9', background: isMale ? 'rgba(59,130,246,0.02)' : 'rgba(236,72,153,0.02)' }}>
+                            <td style={{ padding: '12px 16px', fontSize: '0.8rem', color: '#94a3b8', fontWeight: 600 }}>{idx + 1}</td>
+                            <td style={{ padding: '12px 16px', fontSize: '0.9rem', fontWeight: 800, color: '#1e293b', whiteSpace: 'nowrap' }}>{app.name || '-'}</td>
+                            <td style={{ padding: '12px 16px' }}>
+                              <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: '0.72rem', fontWeight: 700, background: isMale ? '#EFF6FF' : '#FDF2F8', color: isMale ? '#1D4ED8' : '#BE185D' }}>
+                                {isMale ? '남' : '여'}
+                              </span>
+                            </td>
+                            <td style={{ padding: '12px 16px', fontSize: '0.8rem', color: '#475569', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                              <span className="flex items-center gap-1"><Phone size={11} />{app.phone || '-'}</span>
+                            </td>
+                            <td style={{ padding: '12px 16px', fontSize: '0.8rem', color: '#475569', fontWeight: 500 }}>
+                              {app.age ? `${app.age}년생` : '-'}
+                            </td>
+                            <td style={{ padding: '12px 16px', fontSize: '0.8rem', color: '#475569', fontWeight: 500, maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {app.job || '-'}
+                            </td>
+                            <td style={{ padding: '12px 16px', fontSize: '0.8rem', color: '#475569', fontWeight: 500 }}>{app.residence || '-'}</td>
+                            <td style={{ padding: '12px 16px' }}>
+                              <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.72rem', fontWeight: 700, background: badge.bg, color: badge.color, whiteSpace: 'nowrap' }}>
+                                {badge.label}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
 
