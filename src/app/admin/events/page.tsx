@@ -165,6 +165,18 @@ export default function EventsPage() {
     };
   }, [sessions]);
 
+  // v8.1.0: 투표 폼 상태 퀵 토글
+  const toggleVotingForm = async (newStatus: SessionStatus) => {
+    if (!selectedId) return;
+    try {
+      const { updateDoc, doc } = await import('firebase/firestore');
+      await updateDoc(doc(db, 'sessions', selectedId), { status: newStatus });
+      toast.success(`투표 폼이 ${newStatus === 'voting' ? '[열림]' : '[닫힘]'} 상태로 변경되었습니다.`);
+    } catch (e) {
+      toast.error('상태 변경 중 오류 발생');
+    }
+  };
+
   const runMatching = async () => {
     if (!selectedId) return;
     const user = auth.currentUser;
@@ -472,26 +484,57 @@ export default function EventsPage() {
                 <h3 className="flex items-center gap-2 mb-6" style={{ fontSize: '1rem', fontWeight: 800, color: '#1e293b' }}>
                   <Zap size={18} style={{ color: '#FF6F61' }} /> 매칭 알고리즘 가동 시스템
                 </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                
+                {/* v8.1.0: 3컬럼 레이아웃 개편 */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                  {/* 신규: 호감도 매칭 폼 제어 */}
+                  <div className="flex flex-col gap-3 rounded-xl border border-indigo-100 p-5 bg-indigo-50/30">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-indigo-100">
+                        <Heart size={18} className="text-indigo-600" fill={active.status === 'voting' ? 'currentColor' : 'none'} />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-extrabold text-indigo-900">호감도 매칭 폼</p>
+                        <p className="text-[0.7rem] font-bold text-indigo-500 mt-0.5">상태: {active.status === 'voting' ? '열림 (Live)' : '닫힘 (Hidden)'}</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 mt-2">
+                      <button 
+                        onClick={() => toggleVotingForm(active.status === 'voting' ? 'closed' : 'voting')}
+                        className={`flex-1 h-9 rounded-lg text-[0.75rem] font-black transition-all ${active.status === 'voting' ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'bg-white border border-indigo-200 text-indigo-600 hover:bg-indigo-50'}`}
+                      >
+                        {active.status === 'voting' ? '폼 닫기' : '폼 열기'}
+                      </button>
+                      <button 
+                        onClick={() => toast.success('항목 설정 모달 준비 중...')}
+                        className="w-9 h-9 flex items-center justify-center rounded-lg bg-white border border-indigo-200 text-indigo-400 hover:text-indigo-600 transition-colors"
+                      >
+                        <ListChecks size={14} />
+                      </button>
+                    </div>
+                  </div>
+
                   <div className="flex items-center gap-4 rounded-xl" style={{ padding: '16px 20px', background: '#fefce8', border: '1px solid #fef08a' }}>
                     <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style={{ background: '#fef08a' }}>
                       <Users size={18} style={{ color: '#ca8a04' }} />
                     </div>
                     <div>
                       <p style={{ fontSize: '0.9rem', fontWeight: 800, color: '#ca8a04' }}>참가자 현황 검증</p>
-                      <p style={{ fontSize: '0.75rem', color: '#a16207', marginTop: 2, fontWeight: 500 }}>총 {(active.currentMale || 0) + (active.currentFemale || 0)}명 투표 진행 완결 여부 확인</p>
+                      <p style={{ fontSize: '0.75rem', color: '#a16207', marginTop: 2, fontWeight: 500 }}>총 {(active.currentMale || 0) + (active.currentFemale || 0)}명 참여 확인</p>
                     </div>
                   </div>
+
                   <div className="flex items-center gap-4 rounded-xl" style={{ padding: '16px 20px', background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
                     <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style={{ background: '#bbf7d0' }}>
                       <CheckCircle size={18} style={{ color: '#16a34a' }} />
                     </div>
                     <div>
                       <p style={{ fontSize: '0.9rem', fontWeight: 800, color: '#16a34a' }}>연산 클러스터 연결</p>
-                      <p style={{ fontSize: '0.75rem', color: '#15803d', marginTop: 2, fontWeight: 500 }}>서버 API 안정적 연결됨</p>
+                      <p style={{ fontSize: '0.75rem', color: '#15803d', marginTop: 2, fontWeight: 500 }}>API 정상 통합됨</p>
                     </div>
                   </div>
                 </div>
+
                 <div className="flex flex-col sm:flex-row gap-4">
                   <button
                     onClick={runMatching}
