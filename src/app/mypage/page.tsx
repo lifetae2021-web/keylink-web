@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
-import { subscribeMyApplication } from '@/lib/firestore/applications';
+import { subscribeMyApplication, subscribeMyApplications } from '@/lib/firestore/applications';
 import { subscribeSession } from '@/lib/firestore/sessions';
 import { getMyVote } from '@/lib/firestore/votes';
 import { Application, Session } from '@/lib/types';
@@ -73,9 +73,8 @@ export default function MyPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  // v4.5.0: 신청 현황 상태 관리
-  const [application, setApplication] = useState<Application | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
+  // v7.9.8: 신청 현황 다중 상태 관리
+  const [applications, setApplications] = useState<Application[]>([]);
   const [hasVoted, setHasVoted] = useState(false);
   
   // v7.9.5: 내 신청 히스토리
@@ -145,16 +144,23 @@ export default function MyPage() {
       } catch (e) { console.error(e); }
       finally { setLoading(false); }
 
-      // v4.5.0: 신청서 실시간 구독
-      const unsubApp = subscribeMyApplication(currentUser.uid, async (app) => {
-        setApplication(app);
-        if (app?.sessionId) {
-          const unsubSession = subscribeSession(app.sessionId, (s) => setSession(s));
-          // 투표 여부 확인
-          const vote = await getMyVote(app.sessionId, currentUser.uid);
-          setHasVoted(!!vote);
-          return () => unsubSession();
-        }
+      // v7.9.8: 모든 신청서 실시간 구독 및 관련 세션 실시간 추적
+      const unsubApps = subscribeMyApplications(currentUser.uid, (apps) => {
+        setApplications(apps);
+        
+        // 각 신청서의 세션 정보 실시간 구독 (필요한 경우에만)
+        apps.forEach(async (app) => {
+          if (!sessionsMap[app.sessionId]) {
+            subscribeSession(app.sessionId, (s) => {
+              if (s) setSessionsMap(prev => ({ ...prev, [app.sessionId]: s }));
+            });
+          }
+          // 투표 여부 확인 (최초 1회 또는 상태 변경 시)
+          if (app.status === 'confirmed') {
+            const vote = await getMyVote(app.sessionId, currentUser.uid);
+            if (vote) setHasVoted(true); // 간단하게 하나라도 했는지 체크 (성능상 최적화 가능)
+          }
+        });
       });
 
       // v7.9.5: 내 신청 내역 일시불 오프라인 패치 (실시간까지는 필요X)
@@ -185,7 +191,7 @@ export default function MyPage() {
       };
       fetchHistory();
 
-      return () => { unsubApp(); };
+      return () => { unsubApps(); };
     });
     return () => unsubscribe();
   }, [router]);
@@ -650,12 +656,11 @@ export default function MyPage() {
           )}
         </div>
 
-        {/* ─── v4.5.0: 신청 현황 상태 블록 ─── */}
-        <ApplicationStatusBlock
-          application={application}
-          session={session}
+        {/* ─── v7.9.8: 신청 현황 상태 블록 (다중 카드 지원) ─── */}
+        <ApplicationStatusSection
+          applications={applications}
+          sessionsMap={sessionsMap}
           userId={user?.uid || ''}
-          hasVoted={hasVoted}
         />
 
         {/* ─── v7.9.5: 내 신청 히스토리 ─── */}
@@ -689,7 +694,7 @@ export default function MyPage() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// v4.5.0 ApplicationStatusBlock — 신청 현황 상태별 UI
+// v7.9.8 ApplicationStatusSection — 다중 카드 렌더링 지원
 // ─────────────────────────────────────────────────────────────────────────────
 interface StatusBlockProps {
   application: Application | null;
@@ -698,12 +703,83 @@ interface StatusBlockProps {
   hasVoted: boolean;
 }
 
-function ApplicationStatusBlock({ application, session, hasVoted }: StatusBlockProps) {
+function ApplicationStatusSection({ applications, sessionsMap, userId }: { applications: Application[], sessionsMap: Record<string, Session>, userId: string }) {
+  const [votedMap, setVotedMap] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    applications.forEach(async (app) => {
+      if (app.status === 'confirmed' && votedMap[app.sessionId] === undefined) {
+        const vote = await getMyVote(app.sessionId, userId);
+        setVotedMap(prev => ({ ...prev, [app.sessionId]: !!vote }));
+      }
+    });
+  }, [applications, userId]);
+
+  if (applications.length === 0) {
+    return (
+      <div style={{ background: '#FFFFFF', borderRadius: '24px', boxShadow: '0 10px 40px rgba(255,111,97,0.08)', border: '1px solid #FFE8E5', marginBottom: '20px', overflow: 'hidden' }}>
+        <div style={{ padding: '20px 24px', borderBottom: '1px solid #FFF0EE', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Package size={20} color="#FF6F61" />
+            <span style={{ fontSize: '1.05rem', fontWeight: '900', color: '#111' }}>참여 신청 현황</span>
+          </div>
+          <span style={{ padding: '5px 14px', borderRadius: '100px', background: '#DDD', fontSize: '0.75rem', fontWeight: '800', color: '#fff' }}>신청 없음</span>
+        </div>
+        <div style={{ padding: '40px 24px', textAlign: 'center' }}>
+          <Package size={32} color="#FFDBE9" style={{ marginBottom: '14px' }} />
+          <p style={{ color: '#CCC', fontWeight: '700', fontSize: '0.9rem', marginBottom: '20px' }}>신청 내역이 없습니다.</p>
+          <Link href="/events" style={{ display: 'inline-block', padding: '14px 32px', borderRadius: '100px', background: 'linear-gradient(135deg, #FF6F61, #FF9A9E)', color: '#fff', fontWeight: '800', fontSize: '0.9rem', textDecoration: 'none' }}>
+            새로운 기수 신청하기 →
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // 1. 선발 확정(confirmed) 항목들을 날짜순으로 정렬
+  const confirmedApps = applications
+    .filter(a => a.status === 'confirmed')
+    .sort((a, b) => {
+      const dateA = sessionsMap[a.sessionId]?.eventDate?.getTime() || 0;
+      const dateB = sessionsMap[b.sessionId]?.eventDate?.getTime() || 0;
+      return dateA - dateB;
+    });
+
+  // 2. 만약 확정된 항목이 있다면 확정 카드를 전부 출력
+  if (confirmedApps.length > 0) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', marginBottom: '32px' }}>
+        {confirmedApps.map(app => (
+          <ApplicationStatusBlock
+            key={app.id}
+            application={app}
+            session={sessionsMap[app.sessionId]}
+            userId={userId}
+            hasVoted={votedMap[app.sessionId] || false}
+          />
+        ))}
+      </div>
+    );
+  }
+
+  // 3. 확정 항목이 없다면 가장 최근 상태(applied, selected 등) 하나를 출력
+  const latestApp = applications[0]; // subscribeMyApplications에서 updatedAt 기준 내림차순 정렬됨
+  return (
+    <ApplicationStatusBlock
+      application={latestApp}
+      session={sessionsMap[latestApp.sessionId]}
+      userId={userId}
+      hasVoted={votedMap[latestApp.sessionId] || false}
+    />
+  );
+}
+
+function ApplicationStatusBlock({ application, session, userId, hasVoted }: StatusBlockProps) {
   const card = (content: React.ReactNode) => (
     <div style={{
       background: '#FFFFFF', borderRadius: '24px',
       boxShadow: '0 10px 40px rgba(255,111,97,0.08)',
-      border: '1px solid #FFE8E5', marginBottom: '20px', overflow: 'hidden'
+      border: '1px solid #FFE8E5', overflow: 'hidden'
     }}>
       {content}
     </div>

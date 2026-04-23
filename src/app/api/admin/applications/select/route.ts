@@ -5,7 +5,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 
 /**
  * 선발 처리 및 알림톡 발송 API
- * v7.9.7: 트랜잭션 기반 인원 초과 방지(Hard Limit) 및 카운터 동기화
+ * v7.9.8: 트랜잭션 기반 인원 초과 방지(Hard Limit) 및 카운터 동기화
  */
 
 export async function POST(req: NextRequest) {

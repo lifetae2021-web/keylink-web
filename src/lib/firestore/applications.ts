@@ -1,6 +1,6 @@
 /**
  * Firestore 신청서(Applications) 컬렉션 쿼리 함수
- * v7.9.7 - 복합 인덱스 의존성 제거, 실시간 동기화 안정화
+ * v7.9.8 - 복합 인덱스 의존성 제거, 실시간 동기화 안정화
  */
 
 import {
@@ -133,6 +133,41 @@ export function subscribeMyApplication(
     },
     (err) => {
       console.error('[subscribeMyApplication] Firestore 오류:', err);
+      if (onError) onError(err);
+    }
+  );
+}
+
+/**
+ * 사용자 마이페이지용 모든 신청서 실시간 구독 (onSnapshot)
+ * v7.9.8 - 다중 '선발 확정' 카드 노출을 위해 전체 목록 반환
+ */
+export function subscribeMyApplications(
+  userId: string,
+  callback: (applications: Application[]) => void,
+  onError?: (error: any) => void
+) {
+  const q = query(
+    collection(db, COLLECTION),
+    where('userId', '==', userId)
+  );
+
+  return onSnapshot(
+    q,
+    (snap) => {
+      if (snap.empty) {
+        callback([]);
+        return;
+      }
+      const docs = snap.docs
+        .map((d) => fromDoc(d))
+        .filter(Boolean) as Application[];
+      // 기본적으로 업데이트 순 정렬
+      docs.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+      callback(docs);
+    },
+    (err) => {
+      console.error('[subscribeMyApplications] Firestore 오류:', err);
       if (onError) onError(err);
     }
   );
