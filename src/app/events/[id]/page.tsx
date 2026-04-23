@@ -668,69 +668,6 @@ export default function EventDetailPage() {
                             </button>
                           </div>
                         )}
-                        
-                        <p style={{ fontSize: '0.82rem', color: '#0F172A', fontWeight: '800', marginBottom: '16px' }}>
-                          <strong>"업로드하신 모든 서류는 철저히 암호화되어 안전하게 보호됩니다."</strong>
-                        </p>
-                        
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '20px' }}>
-                          <button 
-                            type="button"
-                            onClick={() => verifyInputRef.current?.click()} 
-                            style={{ padding: '10px 20px', borderRadius: '100px', background: '#fff', border: '1.5px solid #FFDBE9', color: '#FF6F61', fontSize: '0.85rem', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
-                          >
-                            <Upload size={16} /> 파일 선택
-                          </button>
-                        </div>
-                        <input ref={verifyInputRef} type="file" accept="image/*,.pdf" style={{ display: 'none' }} onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          setVerificationFile(file);
-                          setVerificationFileName(file.name);
-                          const reader = new FileReader();
-                          reader.onload = (ev) => setVerificationPreview(ev.target?.result as string);
-                          reader.readAsDataURL(file);
-                        }} />
-                      </div>
-                  <div className="kl-card" style={{ padding: '24px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px', borderBottom: '1px solid var(--color-border)', paddingBottom: '12px' }}>
-                      <ShieldCheck size={18} color="#10B981" />
-                      <span style={{ fontSize: '1rem', fontWeight: '800', color: '#111' }}>재직 증명 (필수)</span>
-                    </div>
-                    <div style={{ background: 'var(--color-surface-2)', border: '1.5px solid var(--color-border)', borderRadius: '14px', padding: '20px' }}>
-                      <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', lineHeight: 1.6, marginBottom: '12px' }}>
-                        신뢰할 수 있는 모임을 위해 아래 서류 중 하나를 반드시 업로드해 주세요.<br/>
-                        (재직증명서, 급여명세서, 건강보험 자격득실, 사원증, 명함 등)
-                      </p>
-                      <p style={{ fontSize: '0.82rem', color: '#1A1A1A', fontWeight: '800', marginBottom: '16px' }}>
-                        <strong>"업로드하신 모든 서류는 철저히 암호화되어 안전하게 보호됩니다."</strong>
-                      </p>
-                      
-                      <div>
-                         <label className="kl-label">희망 음료 (중복 선택 가능)</label>
-                         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '10px' }}>
-                           {['아이스 아메리카노', '제로 콜라', '복숭아 아이스티', '얼그레이', '페퍼민트', '카라멜 블랙티', '물', '따뜻한 음료'].map(d => {
-                             const selected = (form.drink || []).includes(d);
-                             return (
-                               <button 
-                                 key={d} 
-                                 type="button"
-                                 onClick={() => {
-                                   const current = form.drink || [];
-                                   const next = selected ? current.filter((v: string) => v !== d) : [...current, d];
-                                   setForm((p: any) => ({ ...p, drink: next }));
-                                 }}
-                                 style={{ 
-                                   padding: '10px 16px', borderRadius: '12px', fontSize: '0.82rem', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s',
-                                   background: selected ? '#FF6F61' : '#fff', color: selected ? '#fff' : '#64748B', border: selected ? '2.5px solid #FF6F61' : '1.5px solid #E2E8F0'
-                                 }}
-                               >
-                                 {d}
-                               </button>
-                             );
-                           })}
-                         </div>
-                       </div>
 
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '20px' }}>
                         <button 
@@ -769,15 +706,29 @@ export default function EventDetailPage() {
 
                   <div className="kl-card" style={{ padding: '24px' }}>
                     <h3 style={{ fontSize: '1rem', fontWeight: '800', color: '#111', marginBottom: '16px', borderBottom: '1px solid var(--color-border)', paddingBottom: '12px' }}>행사 간식 및 본인 인증</h3>
-                    <div style={{ marginBottom: '24px' }}>
-                      <label className="kl-label">행사 희망 음료 선택</label>
-                      <select className="kl-input" value={form.drink} onChange={(e) => setForm(f => ({...f, drink: e.target.value}))}>
-                        <option value="">음료를 선택해주세요</option>
-                        {['아이스 아메리카노', '복숭아 아이스티', '얼그레이', '페퍼민트', '카라멜 블랙티', '물', '따뜻한 음료'].map(d => (
-                          <option key={d} value={d}>{d}</option>
-                        ))}
-                      </select>
-                    </div>
+                      <label className="kl-label">희망 음료 (중복 선택 가능)</label>
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '10px' }}>
+                        {['아이스 아메리카노', '제로 콜라', '복숭아 아이스티', '얼그레이', '페퍼민트', '카라멜 블랙티', '물', '따뜻한 음료'].map(d => {
+                          const selected = (form.drink || []).includes(d);
+                          return (
+                            <button 
+                              key={d} 
+                              type="button"
+                              onClick={() => {
+                                const current = form.drink || [];
+                                const next = selected ? current.filter((v: string) => v !== d) : [...current, d];
+                                setForm((p: any) => ({ ...p, drink: next }));
+                              }}
+                              style={{ 
+                                padding: '10px 16px', borderRadius: '12px', fontSize: '0.82rem', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s',
+                                background: selected ? '#FF6F61' : '#fff', color: selected ? '#fff' : '#64748B', border: selected ? '2.5px solid #FF6F61' : '1.5px solid #E2E8F0'
+                              }}
+                            >
+                              {d}
+                            </button>
+                          );
+                        })}
+                      </div>
                     <div>
                       <label className="kl-label" style={{ marginBottom: '12px' }}>본인 사진 업로드 ({photos.length}/5) *</label>
                       <div style={{ background: '#FFFDFD', border: '1.5px dashed #FFDBE9', borderRadius: '16px', padding: '24px', marginBottom: '16px' }}>
