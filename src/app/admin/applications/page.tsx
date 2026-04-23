@@ -177,11 +177,11 @@ export default function ApplicationsPage() {
               value={selectedEventId}
               onChange={(e) => setSelectedEventId(e.target.value)}
               className="kl-input pl-9 pr-10"
-              style={{ width: '240px', height: '42px', fontSize: '0.88rem' }}
+              style={{ minWidth: '180px', width: 'auto', height: '42px', fontSize: '0.88rem' }}
             >
               {events.map(ev => (
                 <option key={ev.id} value={ev.id}>
-                  {ev.episodeNumber}기 — {ev.title || ev.id}
+                  {ev.region === 'busan' ? '부산' : ev.region === 'changwon' ? '창원' : (ev.region ?? '부산')} {ev.episodeNumber}기
                 </option>
               ))}
             </select>
