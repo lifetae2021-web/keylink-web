@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Search, CheckCircle, XCircle, Eye,
   Download, ShieldCheck, ChevronLeft, ChevronRight, Loader2,
@@ -394,9 +394,9 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                       style={{ 
                         borderBottom: '1px solid #f0f0f0', 
                         height: '88px',
-                        background: (canSelect && isFull) ? '#F8FAFC' : 'transparent'
+                        background: (canSelect && isFull) ? '#FFF1F2' : 'transparent'
                       }} 
-                      className={`transition-colors group cursor-default ${ (canSelect && isFull) ? 'opacity-75' : 'hover:bg-slate-50' }`}
+                      className={`transition-colors group cursor-default ${ (canSelect && isFull) ? 'opacity-85' : 'hover:bg-slate-50' }`}
                     >
                       {/* NO */}
                       <td style={{ padding: '0 16px', textAlign: 'center' }}>
@@ -427,8 +427,11 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                           >
                             {user.name || app.name || '미입력'}
                           </button>
-                          <span className={`text-[0.65rem] font-bold mt-1 ${user.gender === 'male' ? 'text-blue-500' : 'text-rose-500'}`}>
+                          <span className={`text-[0.65rem] font-bold mt-1 ${user.gender === 'male' ? 'text-blue-500' : 'text-rose-500'} flex items-center gap-1.5`}>
                             {user.gender === 'male' ? '남성' : '여성'}
+                            {isFull && canSelect && (
+                              <span className="bg-rose-500 text-white px-1.5 py-0.5 rounded-md text-[9px] font-black animate-pulse">정원 마감</span>
+                            )}
                           </span>
                         </div>
                       </td>

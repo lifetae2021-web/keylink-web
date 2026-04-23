@@ -1,22 +1,28 @@
-/**
- * 관리자 전용 신청서 상태 변경 함수
- * v4.4.0
- */
-
-import {
-  doc,
-  updateDoc,
-  Timestamp,
-  writeBatch,
-  increment,
-} from 'firebase/firestore';
+import { auth } from '@/lib/firebase';
+import { doc, updateDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 const APPLICATIONS = 'applications';
-const SESSIONS = 'sessions';
 
-/** 단일 신청자 선발 (status: 'selected') */
+async function callStatusApi(applicationId: string, status: string) {
+  const token = await auth.currentUser?.getIdToken();
+  const res = await fetch('/api/admin/applications/status', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({ applicationId, status })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || '처리 중 오류가 발생했습니다.');
+  return data;
+}
+
+/** 단일 신청자 선발 (status: 'selected') - SMS 발송이 수반되므로 기존 API 사용 권장 */
 export async function selectApplicant(applicationId: string): Promise<void> {
+  // 선발(selected)의 경우 SMS 발송 로직이 있는 /api/admin/applications/select를 
+  // 사용하는 것이 일반적이므로, 여기서는 단순 상태 변경만 필요한 경우에 사용
   await updateDoc(doc(db, APPLICATIONS, applicationId), {
     status: 'selected',
     updatedAt: Timestamp.now(),
@@ -37,26 +43,11 @@ export async function confirmPayment(
   sessionId: string,
   gender: 'male' | 'female'
 ): Promise<void> {
-  const batch = writeBatch(db);
-  const counterField = gender === 'male' ? 'currentMale' : 'currentFemale';
-
-  batch.update(doc(db, APPLICATIONS, applicationId), {
-    status: 'confirmed',
-    paymentConfirmed: true,
-    updatedAt: Timestamp.now(),
-  });
-
-  batch.update(doc(db, SESSIONS, sessionId), {
-    [counterField]: increment(1),
-    updatedAt: Timestamp.now(),
-  });
-
-  await batch.commit();
+  await callStatusApi(applicationId, 'confirmed');
 }
 
 /** 
  * 신청 취소 처리 (status: 'cancelled')
- * 만약 이전 상태가 'confirmed'였다면 세션 카운트를 -1 합니다.
  */
 export async function cancelApplicant(
   applicationId: string, 
@@ -64,63 +55,16 @@ export async function cancelApplicant(
   gender: 'male' | 'female',
   wasConfirmed: boolean = false
 ): Promise<void> {
-  const batch = writeBatch(db);
-  
-  batch.update(doc(db, APPLICATIONS, applicationId), {
-    status: 'cancelled',
-    updatedAt: Timestamp.now(),
-  });
-
-  if (wasConfirmed) {
-    const counterField = gender === 'male' ? 'currentMale' : 'currentFemale';
-    batch.update(doc(db, SESSIONS, sessionId), {
-      [counterField]: increment(-1),
-      updatedAt: Timestamp.now(),
-    });
-  }
-
-  await batch.commit();
+  await callStatusApi(applicationId, 'cancelled');
 }
 
 /**
  * 취소된 신청자 복구 (status: 'confirmed')
- * 세션 카운트를 다시 +1 합니다.
  */
 export async function restoreApplicant(
   applicationId: string,
   sessionId: string,
   gender: 'male' | 'female'
 ): Promise<void> {
-  const batch = writeBatch(db);
-  const counterField = gender === 'male' ? 'currentMale' : 'currentFemale';
-
-  batch.update(doc(db, APPLICATIONS, applicationId), {
-    status: 'confirmed',
-    paymentConfirmed: true, // 복구 시 결제 확인 상태도 함께 복구
-    isPaid: true,           // 레거시 필드 대응
-    isCancelled: false,     // 혹시 모를 취소 플러그 초기화
-    updatedAt: Timestamp.now(),
-  });
-
-  batch.update(doc(db, SESSIONS, sessionId), {
-    [counterField]: increment(1),
-    updatedAt: Timestamp.now(),
-  });
-
-  await batch.commit();
-}
-
-/** 일괄 선발 처리 */
-export async function bulkSelectApplicants(
-  applicationIds: string[]
-): Promise<void> {
-  const batch = writeBatch(db);
-  const now = Timestamp.now();
-  applicationIds.forEach((id) => {
-    batch.update(doc(db, APPLICATIONS, id), {
-      status: 'selected',
-      updatedAt: now,
-    });
-  });
-  await batch.commit();
+  await callStatusApi(applicationId, 'confirmed');
 }

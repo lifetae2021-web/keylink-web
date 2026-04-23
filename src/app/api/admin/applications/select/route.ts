@@ -5,7 +5,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 
 /**
  * 선발 처리 및 알림톡 발송 API
- * v7.9.7: 트랜잭션 기반 인원 초과 방지(Hard Limit) 적용
+ * v7.9.7: 트랜잭션 기반 인원 초과 방지(Hard Limit) 및 카운터 동기화
  */
 
 export async function POST(req: NextRequest) {
@@ -78,9 +78,15 @@ export async function POST(req: NextRequest) {
           throw new Error(`해당 성별의 모집 정원이 이미 충족되었습니다. (현재 ${currentCount}/${maxCount})`);
         }
 
-        // 상태 업데이트
+        // 상태 업데이트 및 카운터 증가
         transaction.update(appRef, {
           status: 'selected',
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+
+        const counterField = gender === 'male' ? 'currentMale' : 'currentFemale';
+        transaction.update(sessionRef, {
+          [counterField]: FieldValue.increment(1),
           updatedAt: FieldValue.serverTimestamp(),
         });
       });
