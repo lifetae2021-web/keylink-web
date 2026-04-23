@@ -262,7 +262,9 @@ export default function EventDetailPage() {
         paymentConfirmed: false,
         appliedAt: now,
         updatedAt: now,
-        // v5.1.0 추가 필드 동합 (관리자/매칭용 스냅샷)
+        // v5.1.0 추가 필드 통합 (관리자/매칭용 스냅샷)
+        price: finalPrice,
+        maleOption: form.gender === 'male' ? form.maleOption : null,
         instaId: form.instaId || '',
         smoking: form.smoking || '',
         drinking: form.drinking || '',

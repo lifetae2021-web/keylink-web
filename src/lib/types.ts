@@ -70,6 +70,8 @@ export interface Application {
   updatedAt: Date;
   
   // 추가 프로필 정보 (v5.1.0 데이터 연동 강화)
+  price?: number;
+  maleOption?: string;
   instaId?: string;
   mbti?: string;
   smoking?: string;
