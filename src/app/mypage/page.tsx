@@ -12,15 +12,15 @@ import {
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import {
   LogOut, ArrowLeft, Camera, ChevronDown, ChevronUp, X, Check, Edit3, Package, Upload,
-  Clock, Banknote, CheckCircle2, XCircle, Vote, Lock, ShieldCheck, FileText, History,
-  ChevronRight
+  Clock, Banknote, CheckCircle2, XCircle, Vote as VoteIcon, Lock, ShieldCheck, FileText, History,
+  ChevronRight, Heart
 } from 'lucide-react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { subscribeMyApplication, subscribeMyApplications } from '@/lib/firestore/applications';
 import { subscribeSession } from '@/lib/firestore/sessions';
 import { getMyVote, getVotesReceivedByMe } from '@/lib/firestore/votes';
-import { Application, Session } from '@/lib/types';
+import { Application, Session, Vote } from '@/lib/types';
 
 const EMPTY = '미입력';
 
@@ -913,7 +913,7 @@ function ApplicationStatusBlock({ application, session, userId, hasVoted }: Stat
             </div>
           ) : canVote ? (
             <Link href={`/vote/${application.sessionId}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '16px 36px', borderRadius: '100px', background: 'linear-gradient(135deg, #FF6F61, #FF9A9E)', color: '#fff', fontWeight: '800', fontSize: '0.95rem', textDecoration: 'none', boxShadow: '0 8px 20px rgba(255,111,97,0.3)' }}>
-              <Vote size={20} /> 상대방 투표하러 가기
+              <VoteIcon size={20} /> 상대방 투표하러 가기
             </Link>
           ) : (
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '16px 28px', borderRadius: '14px', background: '#F3F4F6', color: '#9CA3AF', fontWeight: '700', fontSize: '0.85rem' }}>
