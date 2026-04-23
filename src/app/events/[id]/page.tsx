@@ -4,7 +4,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   Calendar, MapPin, Users, ArrowLeft, AlertCircle,
-  CheckCircle, Clock, Shield, Camera, X, CreditCard, ChevronRight, Upload
+  CheckCircle, Clock, Shield, Camera, X, CreditCard, ChevronRight, Upload, ShieldCheck
 } from 'lucide-react';
 import { getSession } from '@/lib/firestore/sessions';
 import { Session } from '@/lib/types';
