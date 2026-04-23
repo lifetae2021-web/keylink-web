@@ -7,7 +7,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
 import { auth, db } from '@/lib/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 function RegisterForm() {
   const router = useRouter();
@@ -123,15 +123,25 @@ function RegisterForm() {
     if (!form.username) return toast.error('아이디를 입력해주세요.');
     
     try {
-      const q = query(collection(db, 'users'), where('username', '==', form.username));
-      const querySnapshot = await getDocs(q);
-      
-      if (!querySnapshot.empty) {
-        setIdChecked(false);
-        toast.error('이미 사용 중인 아이디입니다.');
-      } else {
+      // v7.3.3: Admin SDK API를 통해 쿼리 (비로그인 클라이언트 Firestore 직접 접근 제거)
+      const res = await fetch('/api/auth/check-id', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: form.username }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        toast.error(data.error || '중복확인 중 오류가 발생했습니다.');
+        return;
+      }
+
+      if (data.available) {
         setIdChecked(true);
-        toast.success('사용 가능한 아이디입니다.');
+        toast.success(data.message || '사용 가능한 아이디입니다.');
+      } else {
+        setIdChecked(false);
+        toast.error(data.message || '이미 사용 중인 아이디입니다.');
       }
     } catch (error) {
       console.error('ID check error:', error);

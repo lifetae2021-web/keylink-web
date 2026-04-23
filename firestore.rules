@@ -23,8 +23,11 @@ service cloud.firestore {
     // ─────────────────────────────────────
     match /users/{userId} {
       allow read: if isUser(userId) || isAdmin();
-      // 사용자는 본인 문서를 수정할 수 있지만, role 필드는 관리자만 수정 가능해야 함
-      allow write: if isAdmin() || (isUser(userId) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']));
+      // v7.3.3: 신규 가입(create) 허용 - 본인 UID로 생성하되, role은 반드시 'user'여야 함
+      allow create: if isUser(userId) && request.resource.data.role == 'user';
+      // 기존 문서 수정: 본인 수정 가능하되 role 필드 변경 불가 (관리자만 role 변경 가능)
+      allow update: if isAdmin() || (isUser(userId) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']));
+      allow delete: if isAdmin();
     }
 
     // ─────────────────────────────────────

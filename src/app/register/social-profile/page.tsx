@@ -123,6 +123,7 @@ export default function SocialProfilePage() {
         gender: form.gender,
         phone: form.phone,
         birthDate: form.birthDate,
+        role: 'user', // v7.3.3: Firestore Rules allow create 조건 충족
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         socialLogin: true,
