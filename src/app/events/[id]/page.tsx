@@ -706,6 +706,7 @@ export default function EventDetailPage() {
 
                   <div className="kl-card" style={{ padding: '24px' }}>
                     <h3 style={{ fontSize: '1rem', fontWeight: '800', color: '#111', marginBottom: '16px', borderBottom: '1px solid var(--color-border)', paddingBottom: '12px' }}>행사 간식 및 본인 인증</h3>
+                    <div style={{ marginBottom: '24px' }}>
                       <label className="kl-label">희망 음료 (중복 선택 가능)</label>
                       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '10px' }}>
                         {['아이스 아메리카노', '제로 콜라', '복숭아 아이스티', '얼그레이', '페퍼민트', '카라멜 블랙티', '물', '따뜻한 음료'].map(d => {
@@ -729,6 +730,7 @@ export default function EventDetailPage() {
                           );
                         })}
                       </div>
+                    </div>
                     <div>
                       <label className="kl-label" style={{ marginBottom: '12px' }}>본인 사진 업로드 ({photos.length}/5) *</label>
                       <div style={{ background: '#FFFDFD', border: '1.5px dashed #FFDBE9', borderRadius: '16px', padding: '24px', marginBottom: '16px' }}>
