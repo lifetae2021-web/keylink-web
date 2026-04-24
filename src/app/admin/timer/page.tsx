@@ -178,9 +178,6 @@ export default function AdminTimerPage() {
     // silent beep to unlock
     playTone(100, 'sine', 0.1, 0.01);
 
-    const confirmation = window.confirm(selectedSessionId ? '타이머를 시작하고 참여자 화면과 동기화하시겠습니까?' : '선택된 기수가 없습니다. 로컬 테스트 모드로 타이머만 시작할까요?');
-    if (!confirmation) return;
-
     const now = Date.now();
     setEventStartMs(now);
     setCurrentElapsedMs(0);
@@ -203,7 +200,6 @@ export default function AdminTimerPage() {
   };
 
   const handleStop = async () => {
-    if (!window.confirm('타이머를 초기화/중지하시겠습니까? 참여자 화면도 멈춥니다.')) return;
     setEventStartMs(null);
     setCurrentElapsedMs(0);
     setIsLive(false);
@@ -305,7 +301,7 @@ export default function AdminTimerPage() {
         <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex-1">
           <div className="flex items-center gap-2 mb-6">
             <Settings size={20} className="text-slate-400" />
-            <h2 className="text-lg font-black text-slate-800">엔진 파라미터 <span className="text-[10px] font-bold text-blue-500 ml-1">v8.3.6 Premium</span></h2>
+            <h2 className="text-lg font-black text-slate-800">엔진 파라미터 <span className="text-[10px] font-bold text-blue-500 ml-1">v8.3.7 Premium</span></h2>
           </div>
 
           <div className="space-y-5">
@@ -424,22 +420,22 @@ export default function AdminTimerPage() {
           </div>
         </div>
 
-        {/* 뷰 토글 버튼 */}
-        <div className="flex justify-center -my-2 relative z-20">
+        {/* 뷰 토글 버튼 (더 크게, 인스턴트 스왑용) */}
+        <div className="flex justify-center -my-3 relative z-20">
           <button 
             onClick={() => setViewMode(v => v === 'schedule' ? 'map' : 'schedule')}
-            className="flex items-center gap-2 px-10 py-4 bg-white border-2 border-slate-200 rounded-full shadow-lg hover:border-[#FF6F61] hover:text-[#FF6F61] transition-all font-black text-lg active:scale-95"
+            className="flex items-center gap-3 px-12 py-5 bg-white border-2 border-slate-900 rounded-full shadow-[0_8px_0_0_rgba(15,23,42,1)] hover:shadow-none hover:translate-y-1 transition-all font-black text-xl active:scale-95 text-slate-900"
           >
-            {viewMode === 'schedule' ? <RefreshCw size={20} /> : <Clock size={20} />}
-            {viewMode === 'schedule' ? '로테이션 배치표 보기' : '전체 라이브 스케줄 보기'}
+            {viewMode === 'schedule' ? <RefreshCw size={24} /> : <Clock size={24} />}
+            {viewMode === 'schedule' ? '로테이션 배치표 즉시 전환' : '시간표 트래커 즉시 전환'}
           </button>
         </div>
 
-        {/* 듀얼 뷰 콘텐츠 (애니메이션 적용) */}
-        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm flex-1 flex flex-col min-h-[500px]" style={bgStyle}>
+        {/* 듀얼 뷰 콘텐츠 (애니메이션 제거, 꽉 찬 레이아웃) */}
+        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm flex-1 flex flex-col min-h-[600px]" style={bgStyle}>
           
           {viewMode === 'schedule' ? (
-            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 flex flex-col h-full">
+            <div className="flex flex-col h-full w-full">
               <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
                 <h3 className="font-black text-slate-800 flex items-center gap-2"><Clock size={18} className="text-blue-500"/> 라이브 타임 트래커 (Live Tracker)</h3>
               </div>
@@ -472,7 +468,7 @@ export default function AdminTimerPage() {
               </div>
             </div>
           ) : (
-            <div className="animate-in fade-in slide-in-from-top-4 duration-500 flex flex-col h-full">
+            <div className="flex flex-col h-full w-full">
               <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
                 <h3 className="font-black text-slate-800 flex items-center gap-2"><RefreshCw size={18} className="text-[#FF6F61]"/> 스마트 로테이션 맵 (Full Map)</h3>
                 <span className="text-xs font-bold text-slate-400">여성 고정 / 남성 +1 테이블 이동</span>
