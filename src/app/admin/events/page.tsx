@@ -611,6 +611,8 @@ export default function EventsPage() {
                         <span className="flex items-center gap-1"><Calendar size={11} />{format(active.eventDate, 'MM. dd (E) HH:mm', { locale: ko })}</span>
                         <span className="text-slate-200">|</span>
                         <span className="flex items-center gap-1"><MapPin size={11} />{active.venue || '서면역 인근'}</span>
+                        <span className="text-slate-200">|</span>
+                        <span className="flex items-center gap-1 text-[#FF6F61] font-semibold">{(active.price || 29000).toLocaleString()}원</span>
                       </div>
                     </div>
                   </div>
