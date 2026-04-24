@@ -51,7 +51,7 @@ export default function EventsPage() {
 
   const [formData, setFormData] = useState(initialFormData);
   
-  // v8.1.3: 투표 설정 모달 상태
+  // v8.1.4: 투표 설정 모달 상태
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const [isConfigSaving, setIsConfigSaving] = useState(false);
   const [configFormData, setConfigFormData] = useState({
@@ -180,7 +180,7 @@ export default function EventsPage() {
     };
   }, [sessions]);
 
-  // v8.1.3: 투표 폼 상태 퀵 토글
+  // v8.1.4: 투표 폼 상태 퀵 토글
   const toggleVotingForm = async (newStatus: SessionStatus) => {
     if (!selectedId) return;
     try {
@@ -243,7 +243,7 @@ export default function EventsPage() {
     setIsModalOpen(true);
   };
 
-  // v8.1.3: 투표 설정 모달 열기
+  // v8.1.4: 투표 설정 모달 열기
   const openConfigModal = (session: Session) => {
     if (session.voteConfig) {
       setConfigFormData({
@@ -547,7 +547,7 @@ export default function EventsPage() {
                   <Zap size={18} style={{ color: '#FF6F61' }} /> 매칭 알고리즘 가동 시스템
                 </h3>
                 
-                {/* v8.1.3: 3컬럼 레이아웃 개편 */}
+                {/* v8.1.4: 3컬럼 레이아웃 개편 */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                   {/* 신규: 호감도 매칭 폼 제어 */}
                   <div className="flex flex-col gap-3 rounded-xl border border-indigo-100 p-5 bg-indigo-50/30">
@@ -748,7 +748,7 @@ export default function EventsPage() {
         </div>
       </div>
 
-      {/* v8.1.3: 호감도 신청폼 세부 설정 모달 */}
+      {/* v8.1.4: 호감도 신청폼 세부 설정 모달 */}
       {isConfigModalOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">

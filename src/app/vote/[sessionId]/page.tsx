@@ -20,6 +20,7 @@ interface Candidate {
   job: string;
   residence: string;
   gender: 'male' | 'female';
+  photos?: string[]; // v8.1.4
 }
 
 export default function VotePage() {
@@ -37,7 +38,7 @@ export default function VotePage() {
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // v8.1.3: 네이버 폼 스타일 신규 상태
+  // v8.1.4: 네이버 폼 스타일 신규 상태
   const [realName, setRealName] = useState('');
   const [myAlias, setMyAlias] = useState('');
   const [finalCheck, setFinalCheck] = useState(false);
@@ -74,7 +75,10 @@ export default function VotePage() {
       const candidateList: Candidate[] = [];
       for (const d of snap.docs) {
         const appData = d.data();
-        // users 컬렉션에서 프로필 추가 정보 가져오기
+        // users 컬렉션에서 프로필 추가 정보(사진 등) 가져오기
+        const userSnap = await getDoc(doc(db, 'users', appData.userId));
+        const userData = userSnap.data();
+        
         candidateList.push({
           userId: appData.userId,
           name: appData.name,
@@ -82,6 +86,7 @@ export default function VotePage() {
           job: appData.job,
           residence: appData.residence,
           gender: appData.gender,
+          photos: userData?.photos || [],
         });
       }
       setCandidates(candidateList);
@@ -108,13 +113,13 @@ export default function VotePage() {
   };
 
   const handleSubmit = async () => {
-    if (!realName.trim()) { toast.error('실명을 입력해 주세요.'); return; }
-    if (!myAlias) { toast.error('본인의 호수를 선택해 주세요.'); return; }
+    if (!realName.trim()) { toast.error('실명을 적어주세요.'); return; }
+    if (!myAlias) { toast.error('모든 필수 항목을 입력해 주세요 (본인 호수 선택)'); return; }
     if (Object.keys(choices).length === 0 && !nextEventOpt) {
-      toast.error('호감 가는 이성을 선택해 주세요.');
+      toast.error('모든 필수 항목을 입력해 주세요 (이성 선택)');
       return;
     }
-    if (!finalCheck) { toast.error('최종 라인업 확인 체크가 필요합니다.'); return; }
+    if (!finalCheck) { toast.error('최종 확인 체크가 필요합니다.'); return; }
     if (!userId) return;
 
     if (!confirm('투표를 제출하시겠습니까?')) return;
@@ -149,7 +154,7 @@ export default function VotePage() {
     </div>
   );
 
-  // 투표 활성화 로직: v7.9.9 행사 당일 체크 + v8.1.3 퀵 토글 상태 체크
+  // 투표 활성화 로직: v7.9.9 행사 당일 체크 + v8.1.4 퀵 토글 상태 체크
   const isEventDay = session ? (
     new Date().toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' }) === 
     session.eventDate.toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' })
@@ -173,7 +178,7 @@ export default function VotePage() {
     );
   }
 
-  // v8.1.3: 동적 설정값 추출 (네이버 폼 커스텀 라벨 포함)
+  // v8.1.4: 동적 설정값 추출 (네이버 폼 커스텀 라벨 포함)
   const maxLimit = session?.voteConfig?.maxSelection || 3;
   const questionText = session?.voteConfig?.questionText || '오늘 가장 호감 갔던 이성을 3명까지 골라주세요.';
   const q1Label = session?.voteConfig?.q1Label || '실명을 적어주세요';
@@ -218,7 +223,7 @@ export default function VotePage() {
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto -mt-6 md:-mt-10 px-4 relative z-20">
+      <div className="max-w-[600px] mx-auto -mt-6 md:-mt-10 px-4 relative z-20">
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-8">
           <div className="p-6 md:p-8 space-y-12">
             
@@ -243,8 +248,8 @@ export default function VotePage() {
                 <span className="text-[#FF6F61] font-black text-lg">2.</span>
                 <label className="text-lg font-extrabold text-slate-800">{q2Label} <span className="text-[#FF6F61]">*</span></label>
               </div>
-              <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
-                {Array.from({ length: 12 }, (_, i) => i + 1).map(num => (
+              <div className="grid grid-cols-4 gap-2">
+                {Array.from({ length: 8 }, (_, i) => i + 1).map(num => (
                   <button 
                     key={num}
                     onClick={() => setMyAlias(`${myApplication?.gender === 'male' ? '키링남' : '키링녀'} ${num}호`)}
@@ -272,6 +277,8 @@ export default function VotePage() {
               <div className="space-y-3">
                 {candidates.map((candidate, idx) => {
                   const priority = Object.entries(choices).find(([, uid]) => uid === candidate.userId)?.[0];
+                  const label = candidate.gender === 'male' ? '키링남' : '키링녀';
+                  
                   return (
                     <div 
                       key={candidate.userId} 
@@ -291,13 +298,20 @@ export default function VotePage() {
                         priority ? 'border-[#FF6F61] bg-[#FFF5F4]' : 'border-slate-50 bg-slate-50 hover:border-slate-200'
                       }`}
                     >
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-sm ${
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-sm shrink-0 ${
                         priority ? 'bg-[#FF6F61] text-white' : 'bg-slate-200 text-slate-500'
                       }`}>
                         {priority ? `${priority}위` : idx + 1}
                       </div>
-                      <div className="flex-1">
-                        <p className={`font-black ${priority ? 'text-[#FF6F61]' : 'text-slate-700'}`}>{idx + 1}호 참여자</p>
+
+                      {candidate.photos && candidate.photos[0] && (
+                        <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 border border-slate-100">
+                          <img src={candidate.photos[0]} alt="" className="w-full h-full object-cover" />
+                        </div>
+                      )}
+
+                      <div className="flex-1 text-left">
+                        <p className={`font-black ${priority ? 'text-[#FF6F61]' : 'text-slate-700'}`}>{label} {idx + 1}호</p>
                         <p className="text-[0.7rem] font-bold text-slate-400">{candidate.age}세 · {candidate.job} · {candidate.residence}</p>
                       </div>
                       {priority && <CheckCircle2 size={20} className="text-[#FF6F61]" />}
@@ -312,10 +326,10 @@ export default function VotePage() {
                     nextEventOpt ? 'border-[#FF6F61] bg-[#FFF5F4]' : 'border-slate-50 bg-slate-50 hover:border-slate-200'
                   }`}
                 >
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center bg-slate-200 text-slate-500`}>
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center bg-slate-200 text-slate-500 shrink-0`}>
                     <Heart size={16} fill={nextEventOpt ? '#FF6F61' : 'none'} className={nextEventOpt ? 'text-[#FF6F61]' : ''} />
                   </div>
-                  <p className={`flex-1 font-black ${nextEventOpt ? 'text-[#FF6F61]' : 'text-slate-700'}`}>다음 새로운 인연을 기대할게요❤️</p>
+                  <p className={`flex-1 text-left font-black ${nextEventOpt ? 'text-[#FF6F61]' : 'text-slate-700'}`}>다음 새로운 인연을 기대할게요❤️</p>
                   {nextEventOpt && <CheckCircle2 size={20} className="text-[#FF6F61]" />}
                 </div>
               </div>
@@ -327,7 +341,7 @@ export default function VotePage() {
                 <span className="text-[#FF6F61] font-black text-lg">4.</span>
                 <label className="text-lg font-extrabold text-slate-800">{q4Label.split('\n')[0]} <span className="text-[#FF6F61]">*</span></label>
               </div>
-              {q4Label.includes('\n') && <p className="text-sm font-bold text-slate-400 leading-relaxed pl-6 whitespace-pre-wrap">{q4Label.split('\n').slice(1).join('\n')}</p>}
+              {q4Label.includes('\n') && <p className="text-sm font-bold text-slate-400 leading-relaxed pl-6 whitespace-pre-wrap text-left">{q4Label.split('\n').slice(1).join('\n')}</p>}
               <label className="flex items-center gap-3 p-5 rounded-2xl bg-[#F8FAFC] border-2 border-slate-100 cursor-pointer transition-colors hover:border-slate-200">
                 <input 
                   type="checkbox" 

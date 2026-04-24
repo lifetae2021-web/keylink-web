@@ -73,7 +73,7 @@ export default function MyPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  // v8.1.3: 신청 현황 다중 상태 관리
+  // v8.1.4: 신청 현황 다중 상태 관리
   const [applications, setApplications] = useState<Application[]>([]);
   const [hasVoted, setHasVoted] = useState(false);
   
@@ -144,7 +144,7 @@ export default function MyPage() {
       } catch (e) { console.error(e); }
       finally { setLoading(false); }
 
-      // v8.1.3: 모든 신청서 실시간 구독 및 관련 세션 실시간 추적
+      // v8.1.4: 모든 신청서 실시간 구독 및 관련 세션 실시간 추적
       const unsubApps = subscribeMyApplications(currentUser.uid, (apps) => {
         setApplications(apps);
         
@@ -656,7 +656,7 @@ export default function MyPage() {
           )}
         </div>
 
-        {/* ─── v8.1.3: 신청 현황 상태 블록 (다중 카드 지원) ─── */}
+        {/* ─── v8.1.4: 신청 현황 상태 블록 (다중 카드 지원) ─── */}
         <ApplicationStatusSection
           applications={applications}
           sessionsMap={sessionsMap}
@@ -694,7 +694,7 @@ export default function MyPage() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// v8.1.3 ApplicationStatusSection — 다중 카드 렌더링 지원
+// v8.1.4 ApplicationStatusSection — 다중 카드 렌더링 지원
 // ─────────────────────────────────────────────────────────────────────────────
 interface StatusBlockProps {
   application: Application | null;
@@ -879,7 +879,7 @@ function ApplicationStatusBlock({ application, session, userId, hasVoted }: Stat
 
   // ── 참가 확정 (confirmed) ──
   if (application.status === 'confirmed') {
-    // v8.1.3: KST 기준 행사 당일 00:00부터 투표 활성화
+    // v8.1.4: KST 기준 행사 당일 00:00부터 투표 활성화
     const isEventDay = session ? (
       new Date().toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' }) === 
       session.eventDate.toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' })
@@ -921,7 +921,7 @@ function ApplicationStatusBlock({ application, session, userId, hasVoted }: Stat
             </div>
           )}
 
-          {/* v8.1.3: 나에게 도착한 호감 (발표 시 노출) */}
+          {/* v8.1.4: 나에게 도착한 호감 (발표 시 노출) */}
           {session?.status === 'completed' && (
             <ReceivedHeartsFeed 
               session={session}
@@ -952,7 +952,7 @@ function ApplicationStatusBlock({ application, session, userId, hasVoted }: Stat
   );
 }
 
-// v8.1.3 ReceivedHeartsFeed — 나를 선택한 이성 정보 및 맞호감 표시
+// v8.1.4 ReceivedHeartsFeed — 나를 선택한 이성 정보 및 맞호감 표시
 // ─────────────────────────────────────────────────────────────────────────────
 function ReceivedHeartsFeed({ session, userId }: { session: Session, userId: string }) {
   const [voters, setVoters] = useState<any[]>([]);
@@ -986,7 +986,7 @@ function ReceivedHeartsFeed({ session, userId }: { session: Session, userId: str
 
   if (loading) return <div style={{ padding: '20px', color: '#FF6F61', fontSize: '0.8rem', textAlign: 'center' }}>호감 데이터를 불러오는 중...</div>;
 
-  // v8.1.3: 결과 공개 로직 필터링
+  // v8.1.4: 결과 공개 로직 필터링
   const visibility = session.voteConfig?.resultVisibility || 'all';
   const displayedVoters = visibility === 'mutual' 
     ? voters.filter(v => myVote?.choices.some(c => c.targetUserId === v.id))
