@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
   Search, CheckCircle, XCircle, Eye,
-  Download, ShieldCheck, ChevronLeft, ChevronRight, Loader2,
+  Download, ShieldCheck, ChevronLeft, ChevronRight, ChevronDown, Loader2,
   FileText, Users, CreditCard, Filter, Calendar, MapPin,
   X, Phone, Briefcase, Ruler, Smile, Cigarette, Beer, Camera, Info, 
   Ticket, Edit3
@@ -251,24 +251,39 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
     setPreviewModalOpen(true);
   };
 
-  // v8.4.1: 더비 계정 직업 보정 로직
+  // v8.4.2: 더미 계정 직업 보정 로직 (전체 스캔 & 직접 업데이트)
   const handleFixDummyJobs = async () => {
-    const dummyJobs = ['회사원', '대기업', '공기업', '공무원', '초등교사', '승무원', '교육직', '기술직', '군무원'];
+    const dummyJobs = ['대기업', '공기업', '공무원', '초등교사', '승무원', '전문직', 'IT 개발자', '회사원', '교육직', '기술직', '군무원'];
     let count = 0;
     try {
-      const uids = Object.keys(userMap);
-      for (const uid of uids) {
-        const user = userMap[uid];
-        if (user.name?.includes('더미') && (!user.job || user.job === '-')) {
+      const usersSnap = await getDocs(collection(db, 'users'));
+      const newUserMap = { ...userMap };
+      const promises: Promise<void>[] = [];
+
+      usersSnap.forEach(docSnap => {
+        const user = docSnap.data();
+        if (user.name?.includes('더미') && (!user.job || user.job === '-' || user.job.trim() === '')) {
           const randomJob = dummyJobs[Math.floor(Math.random() * dummyJobs.length)];
-          const userRef = doc(db, 'users', uid);
-          await updateDoc(userRef, { job: randomJob });
+          const userRef = doc(db, 'users', docSnap.id);
+          promises.push(updateDoc(userRef, { job: randomJob }));
           count++;
+          
+          if (newUserMap[docSnap.id]) {
+            newUserMap[docSnap.id] = { ...newUserMap[docSnap.id], job: randomJob };
+          }
         }
+      });
+
+      await Promise.all(promises);
+
+      if (count > 0) {
+        setUserMap(newUserMap); // 실시간 리렌더링 유발
+        toast.success(`총 ${count}명의 더미 계정 직업이 보정되었습니다.`);
+      } else {
+        toast('보정할 더미 계정이 없습니다.');
       }
-      if (count > 0) toast.success(`${count}개의 더미 계정 직업이 보정되었습니다.`);
-      else toast('보정할 더미 계정이 없습니다.');
     } catch (e) {
+      console.error(e);
       toast.error('더미 데이터 보정 중 오류가 발생했습니다.');
     }
   };
@@ -368,7 +383,7 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 style={{ fontSize: '1.25rem', fontWeight: 900, letterSpacing: '-0.02em', color: '#0F172A' }}>신청 관리</h2>
-          <p style={{ fontSize: '0.85rem', color: '#64748B', marginTop: 2 }}>참가 신청자들의 상세 정보를 심사하고 선발 여부를 결정합니다. <span className="text-[10px] font-bold text-[#3B82F6] ml-2">v8.4.1 Premium</span></p>
+          <p style={{ fontSize: '0.85rem', color: '#64748B', marginTop: 2 }}>참가 신청자들의 상세 정보를 심사하고 선발 여부를 결정합니다. <span className="text-[10px] font-bold text-[#3B82F6] ml-2">v8.4.2 Premium</span></p>
         </div>
         <div className="flex items-center gap-3">
           <div className="relative flex-1 md:flex-none group">
@@ -504,48 +519,66 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
       )}
 
       {/* Main Content Table (Light Premium Theme - Clean White) */}
-      <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 16, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-        <div className="overflow-x-auto">
+      <div className="mx-auto w-full" style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 16, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+        <div className="overflow-auto max-h-[75vh]">
           <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' }}>
-            {/* colgroup removed for table-layout: auto to work effectively */}
-            <thead>
-              <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
+            <thead className="sticky top-0 z-20 shadow-sm" style={{ background: '#F8FAFC' }}>
+              <tr style={{ borderBottom: '1px solid #E2E8F0' }}>
                 {/* NO */}
-                <th style={{ padding: '18px 10px', textAlign: 'center', fontSize: '0.75rem', fontWeight: 800, color: sortConfig.field === 'appliedAt' ? '#FF6F61' : '#64748B', textTransform: 'uppercase', cursor: 'pointer' }} onClick={() => setSortConfig({ field: 'appliedAt', direction: sortConfig.direction === 'asc' ? 'desc' : 'asc' })}>
-                  <div className="flex items-center justify-center gap-1">NO {sortConfig.field === 'appliedAt' && (sortConfig.direction === 'asc' ? '↑' : '↓')}</div>
+                <th style={{ padding: '18px 10px', textAlign: 'center', fontSize: '0.75rem', fontWeight: 800, color: sortConfig.field === 'appliedAt' ? '#FF6F61' : '#64748B', textTransform: 'uppercase' }}>
+                  <div className="flex flex-col items-center justify-center gap-1">
+                    <div onClick={() => setSortConfig({ field: 'appliedAt', direction: sortConfig.direction === 'asc' ? 'desc' : 'asc' })} className="cursor-pointer flex items-center justify-center gap-1">
+                      NO <span style={{ color: sortConfig.field === 'appliedAt' ? '#FF6F61' : '#CBD5E1' }}>{sortConfig.field === 'appliedAt' && sortConfig.direction === 'asc' ? '↑' : '↓'}</span>
+                    </div>
+                  </div>
                 </th>
                 <th style={{ padding: '18px 10px', textAlign: 'center', fontSize: '0.75rem', fontWeight: 800, color: '#64748B' }}>프로필</th>
                 <th style={{ padding: '18px 10px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 800, color: '#64748B' }}>이름</th>
                 <th style={{ padding: '18px 10px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 800, color: '#64748B' }}>직업</th>
                 <th style={{ padding: '18px 10px', textAlign: 'center', fontSize: '0.75rem', fontWeight: 800, color: selectedEventId !== 'all' ? '#3B82F6' : '#64748B' }}>
-                  <div className="flex flex-col items-center gap-1">
-                    신청 기수
-                    <select value={selectedEventId} onChange={e => setSelectedEventId(e.target.value)} className="text-[10px] font-black border-none bg-transparent outline-none text-slate-400 focus:text-blue-500">
-                      <option value="all">전체</option>
-                      {events.map(ev => <option key={ev.id} value={ev.id}>{ev.region?.slice(0,2)} {ev.episodeNumber}기</option>)}
-                    </select>
+                  <div className="flex flex-col items-center justify-center gap-1">
+                    <div onClick={() => setSortConfig({ field: 'sessionId', direction: sortConfig.direction === 'asc' ? 'desc' : 'asc' })} className="cursor-pointer flex items-center justify-center gap-1">
+                      신청 기수 <span style={{ color: sortConfig.field === 'sessionId' ? '#FF6F61' : '#CBD5E1' }}>{sortConfig.field === 'sessionId' && sortConfig.direction === 'asc' ? '↑' : '↓'}</span>
+                    </div>
+                    <div className="relative group/filter flex items-center justify-center">
+                      <select value={selectedEventId} onChange={e => setSelectedEventId(e.target.value)} className="appearance-none text-[10px] font-black border-none bg-transparent outline-none cursor-pointer pl-1 pr-3" style={{ color: selectedEventId !== 'all' ? '#3B82F6' : '#94A3B8' }}>
+                        <option value="all">전체</option>
+                        {events.map(ev => <option key={ev.id} value={ev.id}>{ev.region?.slice(0,2)} {ev.episodeNumber}기</option>)}
+                      </select>
+                      <ChevronDown size={10} className="absolute right-0 pointer-events-none" style={{ color: selectedEventId !== 'all' ? '#3B82F6' : '#94A3B8' }} />
+                    </div>
                   </div>
                 </th>
                 <th style={{ padding: '18px 10px', textAlign: 'center', fontSize: '0.75rem', fontWeight: 800, color: ageFilter !== 'all' ? '#FF6F61' : '#64748B' }}>
-                  <div className="flex flex-col items-center gap-1">
-                    <span onClick={() => setSortConfig({ field: 'age', direction: sortConfig.direction === 'asc' ? 'desc' : 'asc' })} className="cursor-pointer">나이 {sortConfig.field === 'age' && (sortConfig.direction === 'asc' ? '↑' : '↓')}</span>
-                    <select value={ageFilter} onChange={e => setAgeFilter(e.target.value)} className="text-[10px] font-black border-none bg-transparent outline-none text-slate-400 focus:text-rose-500">
-                      <option value="all">전체</option>
-                      <option value="90s">90년대생</option>
-                      <option value="80s">80년대생</option>
-                      <option value="00s">00년대생</option>
-                    </select>
+                  <div className="flex flex-col items-center justify-center gap-1">
+                    <div onClick={() => setSortConfig({ field: 'age', direction: sortConfig.direction === 'asc' ? 'desc' : 'asc' })} className="cursor-pointer flex items-center justify-center gap-1">
+                      나이 <span style={{ color: sortConfig.field === 'age' ? '#FF6F61' : '#CBD5E1' }}>{sortConfig.field === 'age' && sortConfig.direction === 'asc' ? '↑' : '↓'}</span>
+                    </div>
+                    <div className="relative group/filter flex items-center justify-center">
+                      <select value={ageFilter} onChange={e => setAgeFilter(e.target.value)} className="appearance-none text-[10px] font-black border-none bg-transparent outline-none cursor-pointer pl-1 pr-3" style={{ color: ageFilter !== 'all' ? '#FF6F61' : '#94A3B8' }}>
+                        <option value="all">전체</option>
+                        <option value="90s">90년대생</option>
+                        <option value="80s">80년대생</option>
+                        <option value="00s">00년대생</option>
+                      </select>
+                      <ChevronDown size={10} className="absolute right-0 pointer-events-none" style={{ color: ageFilter !== 'all' ? '#FF6F61' : '#94A3B8' }} />
+                    </div>
                   </div>
                 </th>
                 <th style={{ padding: '18px 10px', textAlign: 'center', fontSize: '0.75rem', fontWeight: 800, color: '#64748B' }}>거주지</th>
                 <th style={{ padding: '18px 10px', textAlign: 'center', fontSize: '0.75rem', fontWeight: 800, color: '#64748B' }}>연락처</th>
                 <th style={{ padding: '18px 10px', textAlign: 'center', fontSize: '0.75rem', fontWeight: 800, color: statusFilter !== 'all' ? '#FF6F61' : '#64748B' }}>
-                  <div className="flex flex-col items-center gap-1">
-                    상태
-                    <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="text-[10px] font-black border-none bg-transparent outline-none text-slate-400 focus:text-rose-500">
-                      <option value="all">전체</option>
-                      {Object.keys(APP_STATUS).map(k => <option key={k} value={k}>{APP_STATUS[k].label}</option>)}
-                    </select>
+                  <div className="flex flex-col items-center justify-center gap-1">
+                    <div onClick={() => setSortConfig({ field: 'status', direction: sortConfig.direction === 'asc' ? 'desc' : 'asc' })} className="cursor-pointer flex items-center justify-center gap-1">
+                      상태 <span style={{ color: sortConfig.field === 'status' ? '#FF6F61' : '#CBD5E1' }}>{sortConfig.field === 'status' && sortConfig.direction === 'asc' ? '↑' : '↓'}</span>
+                    </div>
+                    <div className="relative group/filter flex items-center justify-center">
+                      <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="appearance-none text-[10px] font-black border-none bg-transparent outline-none cursor-pointer pl-1 pr-3" style={{ color: statusFilter !== 'all' ? '#FF6F61' : '#94A3B8' }}>
+                        <option value="all">전체</option>
+                        {Object.keys(APP_STATUS).map(k => <option key={k} value={k}>{APP_STATUS[k].label}</option>)}
+                      </select>
+                      <ChevronDown size={10} className="absolute right-0 pointer-events-none" style={{ color: statusFilter !== 'all' ? '#FF6F61' : '#94A3B8' }} />
+                    </div>
                   </div>
                 </th>
                 <th style={{ padding: '18px 16px', textAlign: 'right', fontSize: '0.75rem', fontWeight: 800, color: '#64748B' }}>선발 관리</th>
