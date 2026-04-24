@@ -144,9 +144,9 @@ export default function ApplicantsPage() {
     selected: applications.filter(a => a.status === 'selected').length,
     confirmed: applications.filter(a => a.status === 'confirmed').length,
     cancelled: applications.filter(a => a.status === 'cancelled').length,
-    // v8.1.7: 정원 계산은 'selected'(입금대기) + 'confirmed'(참가확정) 모두 포함
-    maleConfirmed: applications.filter(a => (a.status === 'confirmed' || a.status === 'selected') && a.gender === 'male').length,
-    femaleConfirmed: applications.filter(a => (a.status === 'confirmed' || a.status === 'selected') && a.gender === 'female').length,
+    // v8.1.7: 'confirmed' 상태만 정원에 포함 (selected = 입금 대기, 자리 미확정)
+    maleConfirmed: applications.filter(a => a.status === 'confirmed' && a.gender === 'male').length,
+    femaleConfirmed: applications.filter(a => a.status === 'confirmed' && a.gender === 'female').length,
   };
 
   // 단일 상태 변경

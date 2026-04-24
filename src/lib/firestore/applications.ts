@@ -34,8 +34,8 @@ function fromDoc(snap: DocumentSnapshot): Application | null {
     phone: d.phone ?? '',
     status: d.status as ApplicationStatus,
     paymentConfirmed: d.paymentConfirmed ?? false,
-    appliedAt: (d.appliedAt as Timestamp).toDate(),
-    updatedAt: (d.updatedAt as Timestamp).toDate(),
+    appliedAt: d.appliedAt instanceof Timestamp ? d.appliedAt.toDate() : (d.appliedAt?.toDate?.() ?? new Date()),
+    updatedAt: d.updatedAt instanceof Timestamp ? d.updatedAt.toDate() : (d.updatedAt?.toDate?.() ?? new Date()),
     // v5.1.0 데이터 연동 강화
     instaId: d.instaId,
     smoking: d.smoking,
@@ -74,13 +74,16 @@ export async function getMyLatestApplication(
 export async function getApplicationsBySession(
   sessionId: string
 ): Promise<Application[]> {
+  // v8.1.7: orderBy 제거 — appliedAt 필드가 없는 문서가 조용히 누락되는 현상 방지
+  // 정렬은 클라이언트에서 처리
   const q = query(
     collection(db, COLLECTION),
-    where('sessionId', '==', sessionId),
-    orderBy('appliedAt', 'asc')
+    where('sessionId', '==', sessionId)
   );
   const snap = await getDocs(q);
-  return snap.docs.map((d) => fromDoc(d)).filter(Boolean) as Application[];
+  const result = snap.docs.map((d) => fromDoc(d)).filter(Boolean) as Application[];
+  result.sort((a, b) => a.appliedAt.getTime() - b.appliedAt.getTime());
+  return result;
 }
 
 /** 특정 기수 + 상태 필터 (관리자용) */
