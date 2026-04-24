@@ -64,8 +64,14 @@ export default function ApplicationsPage() {
   const [previewData, setPreviewData] = useState<any>(null);
 
   // v8.3.8: 직업 검토 프로세스용 로컬 상태
+  // v8.3.8: 직업 검토 프로세스용 로컬 상태
   const [editingJobId, setEditingJobId] = useState<string | null>(null);
   const [tempJobValue, setTempJobValue] = useState<string>('');
+
+  // v8.4.1: 필터링 및 정렬 상태
+  const [sortConfig, setSortConfig] = useState<{ field: string; direction: 'asc' | 'desc' }>({ field: 'appliedAt', direction: 'desc' });
+  const [ageFilter, setAgeFilter] = useState<string>('all'); // all, 90s, 80s, 00s
+  const [statusFilter, setStatusFilter] = useState<string>('all');
 
   // 1. sessions 컬렉션 실시간 동기화
   useEffect(() => {
@@ -245,6 +251,28 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
     setPreviewModalOpen(true);
   };
 
+  // v8.4.1: 더비 계정 직업 보정 로직
+  const handleFixDummyJobs = async () => {
+    const dummyJobs = ['회사원', '대기업', '공기업', '공무원', '초등교사', '승무원', '교육직', '기술직', '군무원'];
+    let count = 0;
+    try {
+      const uids = Object.keys(userMap);
+      for (const uid of uids) {
+        const user = userMap[uid];
+        if (user.name?.includes('더미') && (!user.job || user.job === '-')) {
+          const randomJob = dummyJobs[Math.floor(Math.random() * dummyJobs.length)];
+          const userRef = doc(db, 'users', uid);
+          await updateDoc(userRef, { job: randomJob });
+          count++;
+        }
+      }
+      if (count > 0) toast.success(`${count}개의 더미 계정 직업이 보정되었습니다.`);
+      else toast.info('보정할 더미 계정이 없습니다.');
+    } catch (e) {
+      toast.error('더미 데이터 보정 중 오류가 발생했습니다.');
+    }
+  };
+
   const activeEvent = events.find(e => e.id === selectedEventId);
   
   // v8.1.7: 실시간 선발 현황 계산 (selected + confirmed)
@@ -283,17 +311,55 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
     return ids;
   }, [applications, activeEvent, selectedEventId]);
 
-  const filtered = applications.filter(app => {
-    const user = userMap[app.userId] || {};
-    const matchesSearch = 
-      (user.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (user.workplace || user.job || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (user.residence || user.location || '').toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesGender = filterGender === 'all' || app.gender === filterGender;
-    const matchesUnselected = !filterUnselectedOnly || app.status === 'applied';
-    
-    return matchesSearch && matchesGender && matchesUnselected;
-  });
+  const filtered = useMemo(() => {
+    let result = applications.filter(app => {
+      const user = userMap[app.userId] || {};
+      const matchesSearch = 
+        (user.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (user.workplace || user.job || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (user.residence || user.location || '').toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesGender = filterGender === 'all' || app.gender === filterGender;
+      const matchesUnselected = !filterUnselectedOnly || app.status === 'applied';
+      
+      // v8.4.1: 나이 대별 필터링
+      let matchesAge = true;
+      if (ageFilter !== 'all') {
+        const birthYear = user.birthDate ? parseInt(user.birthDate.includes('-') ? user.birthDate.slice(0,4) : (user.birthDate.length === 6 ? '19'+user.birthDate.slice(0,2) : user.birthDate.slice(0,4))) : 0;
+        if (ageFilter === '90s') matchesAge = birthYear >= 1990 && birthYear <= 1999;
+        else if (ageFilter === '80s') matchesAge = birthYear >= 1980 && birthYear <= 1989;
+        else if (ageFilter === '00s') matchesAge = birthYear >= 2000 && birthYear <= 2009;
+      }
+
+      // v8.4.1: 상태 필터링
+      const matchesStatus = statusFilter === 'all' || app.status === statusFilter;
+
+      return matchesSearch && matchesGender && matchesUnselected && matchesAge && matchesStatus;
+    });
+
+    // v8.4.1: 정렬 로직
+    result.sort((a, b) => {
+      let aVal: any, bVal: any;
+      if (sortConfig.field === 'no') return 0; // Handled by index in display
+      if (sortConfig.field === 'age') {
+        const userA = userMap[a.userId] || {};
+        const userB = userMap[b.userId] || {};
+        aVal = userA.birthDate || '0';
+        bVal = userB.birthDate || '0';
+      } else if (sortConfig.field === 'appliedAt') {
+        aVal = a.appliedAt?.toMillis?.() || a.appliedAt || 0;
+        bVal = b.appliedAt?.toMillis?.() || b.appliedAt || 0;
+      } else {
+        aVal = a[sortConfig.field] || '';
+        bVal = b[sortConfig.field] || '';
+      }
+
+      if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    return result;
+  }, [applications, userMap, searchQuery, filterGender, filterUnselectedOnly, ageFilter, statusFilter, sortConfig]);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-400 pb-20">
@@ -302,7 +368,7 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 style={{ fontSize: '1.25rem', fontWeight: 900, letterSpacing: '-0.02em', color: '#0F172A' }}>신청 관리</h2>
-          <p style={{ fontSize: '0.85rem', color: '#64748B', marginTop: 2 }}>참가 신청자들의 상세 정보를 심사하고 선발 여부를 결정합니다. <span className="text-[10px] font-bold text-[#3B82F6] ml-2">v8.3.8 Premium</span></p>
+          <p style={{ fontSize: '0.85rem', color: '#64748B', marginTop: 2 }}>참가 신청자들의 상세 정보를 심사하고 선발 여부를 결정합니다. <span className="text-[10px] font-bold text-[#3B82F6] ml-2">v8.4.1 Premium</span></p>
         </div>
         <div className="flex items-center gap-3">
           <div className="relative flex-1 md:flex-none group">
@@ -323,6 +389,11 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
               <ChevronRight size={14} className="rotate-90" />
             </div>
           </div>
+          <button 
+            onClick={handleFixDummyJobs}
+            className="flex items-center gap-2 rounded-2xl transition-all hover:bg-orange-50" style={{ height: '48px', padding: '0 15px', fontSize: '0.75rem', background: '#fff', border: '1px solid #fed7aa', color: '#ea580c', fontWeight: 800 }}>
+            <Briefcase size={14} /> 더미 직업 보정
+          </button>
           <button className="flex items-center gap-2 rounded-2xl transition-all hover:bg-slate-100" style={{ height: '48px', padding: '0 20px', fontSize: '0.85rem', background: '#fff', border: '1px solid #E2E8F0', color: '#64748B', fontWeight: 800 }}>
             <Download size={14} className="text-[#64748B]" /> 엑셀 다운로드
           </button>
@@ -439,12 +510,45 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
             {/* colgroup removed for table-layout: auto to work effectively */}
             <thead>
               <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
-                {['NO', '프로필', '이름', '직업', '신청 기수', '나이', '거주지', '연락처', '상태/결제', '선발 관리'].map((h, i) => (
-                  <th key={h} style={{
-                    padding: '18px 16px', textAlign: i === 9 ? 'right' : (i === 1 || i === 3 ? 'left' : 'center'), fontSize: '0.75rem', fontWeight: 800, color: '#64748B',
-                    textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap'
-                  }}>{h}</th>
-                ))}
+                {/* NO */}
+                <th style={{ padding: '18px 10px', textAlign: 'center', fontSize: '0.75rem', fontWeight: 800, color: sortConfig.field === 'appliedAt' ? '#FF6F61' : '#64748B', textTransform: 'uppercase', cursor: 'pointer' }} onClick={() => setSortConfig({ field: 'appliedAt', direction: sortConfig.direction === 'asc' ? 'desc' : 'asc' })}>
+                  <div className="flex items-center justify-center gap-1">NO {sortConfig.field === 'appliedAt' && (sortConfig.direction === 'asc' ? '↑' : '↓')}</div>
+                </th>
+                <th style={{ padding: '18px 10px', textAlign: 'center', fontSize: '0.75rem', fontWeight: 800, color: '#64748B' }}>프로필</th>
+                <th style={{ padding: '18px 10px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 800, color: '#64748B' }}>이름</th>
+                <th style={{ padding: '18px 10px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 800, color: '#64748B' }}>직업</th>
+                <th style={{ padding: '18px 10px', textAlign: 'center', fontSize: '0.75rem', fontWeight: 800, color: selectedEventId !== 'all' ? '#3B82F6' : '#64748B' }}>
+                  <div className="flex flex-col items-center gap-1">
+                    신청 기수
+                    <select value={selectedEventId} onChange={e => setSelectedEventId(e.target.value)} className="text-[10px] font-black border-none bg-transparent outline-none text-slate-400 focus:text-blue-500">
+                      <option value="all">전체</option>
+                      {events.map(ev => <option key={ev.id} value={ev.id}>{ev.region?.slice(0,2)} {ev.episodeNumber}기</option>)}
+                    </select>
+                  </div>
+                </th>
+                <th style={{ padding: '18px 10px', textAlign: 'center', fontSize: '0.75rem', fontWeight: 800, color: ageFilter !== 'all' ? '#FF6F61' : '#64748B' }}>
+                  <div className="flex flex-col items-center gap-1">
+                    <span onClick={() => setSortConfig({ field: 'age', direction: sortConfig.direction === 'asc' ? 'desc' : 'asc' })} className="cursor-pointer">나이 {sortConfig.field === 'age' && (sortConfig.direction === 'asc' ? '↑' : '↓')}</span>
+                    <select value={ageFilter} onChange={e => setAgeFilter(e.target.value)} className="text-[10px] font-black border-none bg-transparent outline-none text-slate-400 focus:text-rose-500">
+                      <option value="all">전체</option>
+                      <option value="90s">90년대생</option>
+                      <option value="80s">80년대생</option>
+                      <option value="00s">00년대생</option>
+                    </select>
+                  </div>
+                </th>
+                <th style={{ padding: '18px 10px', textAlign: 'center', fontSize: '0.75rem', fontWeight: 800, color: '#64748B' }}>거주지</th>
+                <th style={{ padding: '18px 10px', textAlign: 'center', fontSize: '0.75rem', fontWeight: 800, color: '#64748B' }}>연락처</th>
+                <th style={{ padding: '18px 10px', textAlign: 'center', fontSize: '0.75rem', fontWeight: 800, color: statusFilter !== 'all' ? '#FF6F61' : '#64748B' }}>
+                  <div className="flex flex-col items-center gap-1">
+                    상태
+                    <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="text-[10px] font-black border-none bg-transparent outline-none text-slate-400 focus:text-rose-500">
+                      <option value="all">전체</option>
+                      {Object.keys(APP_STATUS).map(k => <option key={k} value={k}>{APP_STATUS[k].label}</option>)}
+                    </select>
+                  </div>
+                </th>
+                <th style={{ padding: '18px 16px', textAlign: 'right', fontSize: '0.75rem', fontWeight: 800, color: '#64748B' }}>선발 관리</th>
               </tr>
             </thead>
             <tbody>
