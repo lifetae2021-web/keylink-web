@@ -39,7 +39,7 @@ export interface Session {
     showReason: boolean;           // 선택 사유 입력 여부
     resultVisibility: 'all' | 'mutual'; // 결과 공개 범위
     
-    // v8.1.5: 네이버 폼 스타일 질문 커스터마이징
+    // v8.1.6: 네이버 폼 스타일 질문 커스터마이징
     q1Label?: string;              // 실명 확인 문구
     q2Label?: string;              // 본인 호수 선택 문구
     q3Label?: string;              // 이성 선택 메인 질문
@@ -106,7 +106,7 @@ export interface VoteChoice {
   priority: 1 | 2 | 3;
   targetUserId: string;
   targetUserName?: string; // 표시 전용 (선택적)
-  reason?: string;         // v8.1.5 사유 추가
+  reason?: string;         // v8.1.6 사유 추가
 }
 
 export interface Vote {
@@ -115,11 +115,11 @@ export interface Vote {
   sessionId: string;
   choices: VoteChoice[];     // 1~3순위
   
-  // v8.1.5: 네이버 폼 스타일 대응 신규 필드
+  // v8.1.6: 네이버 폼 스타일 대응 신규 필드
   realName?: string;         // 실명 확인
   myAlias?: string;          // 본인 호수 (ex. 키링남 1호)
   finalCheck?: boolean;      // 매칭 라인업 최종 확인 여부
-  disclosureMode?: 'public' | 'anonymous'; // 공개 모드 (v8.1.5)
+  disclosureMode?: 'public' | 'anonymous'; // 공개 모드 (v8.1.6)
   feedback?: string;         // 후기 (선택 사항)
   
   submittedAt: Date;

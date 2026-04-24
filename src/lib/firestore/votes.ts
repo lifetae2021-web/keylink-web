@@ -35,7 +35,7 @@ function fromDoc(snap: DocumentSnapshot): Vote | null {
     realName: d.realName,
     myAlias: d.myAlias,
     finalCheck: d.finalCheck,
-    disclosureMode: d.disclosureMode || 'public', // v8.1.5
+    disclosureMode: d.disclosureMode || 'public', // v8.1.6
     feedback: d.feedback,
     submittedAt: (d.submittedAt as Timestamp).toDate(),
   };
@@ -61,7 +61,7 @@ export async function getAllVotesBySession(sessionId: string): Promise<Vote[]> {
 }
 
 /**
- * 투표 제출 (v8.1.5: 네이버 폼 스타일 필드 추가)
+ * 투표 제출 (v8.1.6: 네이버 폼 스타일 필드 추가)
  */
 export async function submitVote(
   sessionId: string,
@@ -71,7 +71,7 @@ export async function submitVote(
     realName?: string;
     myAlias?: string;
     finalCheck?: boolean;
-    disclosureMode?: 'public' | 'anonymous'; // v8.1.5
+    disclosureMode?: 'public' | 'anonymous'; // v8.1.6
     feedback?: string;
   }
 ): Promise<void> {
@@ -83,7 +83,7 @@ export async function submitVote(
   }
 
   // choices가 비어있어도 "다음 새로운 인연을 기대할게요" 옵션 등으로 제출 가능하게 완화 (관리자 설정에 따름)
-  // v8.1.5에서는 최소 1명 선택 필수 해제 가능성 고려 (단, 현재 로직은 0이면 에러 던질 수 있음)
+  // v8.1.6에서는 최소 1명 선택 필수 해제 가능성 고려 (단, 현재 로직은 0이면 에러 던질 수 있음)
 
   await setDoc(doc(db, COLLECTION, voteId), {
     userId,
@@ -92,14 +92,14 @@ export async function submitVote(
     realName: extra?.realName || '',
     myAlias: extra?.myAlias || '',
     finalCheck: extra?.finalCheck || false,
-    disclosureMode: extra?.disclosureMode || 'public', // v8.1.5
+    disclosureMode: extra?.disclosureMode || 'public', // v8.1.6
     feedback: extra?.feedback || '',
     submittedAt: Timestamp.now(),
   });
 }
 
 /**
- * 나를 선택한 사람들의 투표 목록 조회 (v8.1.5)
+ * 나를 선택한 사람들의 투표 목록 조회 (v8.1.6)
  * 성능상 기수의 모든 투표를 가져와 필터링합니다. (참여자 수가 소수이기에 효율적)
  */
 export async function getVotesReceivedByMe(

@@ -75,7 +75,7 @@ export async function bulkSelectApplicants(
 ): Promise<void> {
   // TODO: 일괄 처리 시에도 하드 리미트 적용이 필요한 경우 
   // 반복문을 돌며 개별 API를 호출하거나, 일괄 처리를 위한 전용 API를 생성해야 합니다.
-  // v8.1.5 현재는 빌드 오류 방지를 위해 기존 로직 유지
+  // v8.1.6 현재는 빌드 오류 방지를 위해 기존 로직 유지
   const { writeBatch, doc, Timestamp } = await import('firebase/firestore');
   const batch = writeBatch(db);
   const now = Timestamp.now();

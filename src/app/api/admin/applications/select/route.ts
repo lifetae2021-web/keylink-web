@@ -5,7 +5,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 
 /**
  * 선발 처리 및 알림톡 발송 API
- * v8.1.5: 트랜잭션 기반 인원 초과 방지(Hard Limit) 및 카운터 동기화
+ * v8.1.6: 트랜잭션 기반 인원 초과 방지(Hard Limit) 및 카운터 동기화
  */
 
 export async function POST(req: NextRequest) {
@@ -64,18 +64,12 @@ export async function POST(req: NextRequest) {
           return; // 성공으로 간주하거나 중단
         }
 
-        // 현재 해당 기수의 해당 성별 선발/확정 인원 조회
-        const reservedQuery = adminDb.collection('applications')
-          .where('sessionId', '==', sessionId)
-          .where('gender', '==', gender)
-          .where('status', 'in', ['selected', 'confirmed']);
-        
-        const reservedSnap = await transaction.get(reservedQuery);
-        const currentCount = reservedSnap.size;
+        // v8.1.6: 쿼리(get query)는 트랜잭션 내에서 지원되지 않으므로 세션 카운터를 활용
+        const currentCount = gender === 'male' ? (sessionData.currentMale || 0) : (sessionData.currentFemale || 0);
         const maxCount = gender === 'male' ? (sessionData.maxMale || 8) : (sessionData.maxFemale || 8);
 
         if (currentCount >= maxCount) {
-          throw new Error(`해당 성별의 모집 정원이 이미 충족되었습니다. (현재 ${currentCount}/${maxCount})`);
+          throw new Error(`해당 성별의 모집 정원이 이미 충족되었습니다. (현재 ${currentCount}/${maxCount}명)`);
         }
 
         // 상태 업데이트 및 카운터 증가

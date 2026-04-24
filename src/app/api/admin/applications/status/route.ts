@@ -4,7 +4,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 
 /**
  * 신청 관리 상태 변경 API (Hard Limit 반영)
- * v8.1.5: 모든 상태 변경(확정, 취소, 복구)을 트랜잭션으로 처리하여 인원 초과 방지
+ * v8.1.6: 모든 상태 변경(확정, 취소, 복구)을 트랜잭션으로 처리하여 인원 초과 방지
  */
 
 export async function POST(req: NextRequest) {
@@ -51,18 +51,12 @@ export async function POST(req: NextRequest) {
       const isDecreasing = (status === 'cancelled' && (prevStatus === 'selected' || prevStatus === 'confirmed'));
 
       if (isIncreasing) {
-        // 현재 인원 체크 (selected + confirmed)
-        const reservedQuery = adminDb.collection('applications')
-          .where('sessionId', '==', sessionId)
-          .where('gender', '==', gender)
-          .where('status', 'in', ['selected', 'confirmed']);
-        
-        const reservedSnap = await transaction.get(reservedQuery);
-        const currentCount = reservedSnap.size;
+        // v8.1.6: 쿼리(get query)는 트랜잭션 내에서 지원되지 않으므로 세션 카운터를 활용
+        const currentCount = gender === 'male' ? (sessionData.currentMale || 0) : (sessionData.currentFemale || 0);
         const maxCount = gender === 'male' ? (sessionData.maxMale || 8) : (sessionData.maxFemale || 8);
 
         if (currentCount >= maxCount) {
-          throw new Error(`해당 성별의 모집 정원이 이미 충족되었습니다. (현재 ${currentCount}/${maxCount})`);
+          throw new Error(`해당 성별의 모집 정원이 이미 충족되었습니다. (현재 ${currentCount}/${maxCount}명)`);
         }
       }
 
