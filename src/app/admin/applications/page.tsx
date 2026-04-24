@@ -68,10 +68,10 @@ export default function ApplicationsPage() {
   const [editingJobId, setEditingJobId] = useState<string | null>(null);
   const [tempJobValue, setTempJobValue] = useState<string>('');
 
-  // v8.4.1: 필터링 및 정렬 상태
+  // v8.4.3: 초기 필터링 상태 (전체 옵션 제거)
   const [sortConfig, setSortConfig] = useState<{ field: string; direction: 'asc' | 'desc' }>({ field: 'appliedAt', direction: 'desc' });
-  const [ageFilter, setAgeFilter] = useState<string>('all'); // all, 90s, 80s, 00s
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [ageFilter, setAgeFilter] = useState<string>('90s'); 
+  const [statusFilter, setStatusFilter] = useState<string>('applied');
 
   // 1. sessions 컬렉션 실시간 동기화
   useEffect(() => {
@@ -80,9 +80,9 @@ export default function ApplicationsPage() {
     const unsub = onSnapshot(q, (snap) => {
       const fetchedEvents = snap.docs.map(d => ({ id: d.id, ...d.data() } as any));
       setEvents(fetchedEvents);
-      // v7.4.0: 기본값을 'all'로 설정하여 진입 시 전체 목록 노출 가능
+      // v8.4.3: 기본값을 첫 번째 기수로 설정 (전체 기수 보기 제거 대응)
       if (!selectedEventId && fetchedEvents.length > 0) {
-        setSelectedEventId('all');
+        setSelectedEventId(fetchedEvents[0].id);
       }
       setIsLoading(false);
     }, (err) => {
@@ -251,40 +251,59 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
     setPreviewModalOpen(true);
   };
 
-  // v8.4.2: 더미 계정 직업 보정 로직 (전체 스캔 & 직접 업데이트)
+  // v8.4.3: 더미 계정 직업 보정 로직 (유저 & 신청 정보 모두 업데이트)
   const handleFixDummyJobs = async () => {
     const dummyJobs = ['대기업', '공기업', '공무원', '초등교사', '승무원', '전문직', 'IT 개발자', '회사원', '교육직', '기술직', '군무원'];
     let count = 0;
     try {
+      // 1. 유저 데이터 전체 스캔
       const usersSnap = await getDocs(collection(db, 'users'));
       const newUserMap = { ...userMap };
-      const promises: Promise<void>[] = [];
+      const userUpdatePromises: Promise<void>[] = [];
+      const updatedUserIds = new Set<string>();
 
       usersSnap.forEach(docSnap => {
         const user = docSnap.data();
+        // '더미' 포함 혹은 직업이 비어있는 경우
         if (user.name?.includes('더미') && (!user.job || user.job === '-' || user.job.trim() === '')) {
           const randomJob = dummyJobs[Math.floor(Math.random() * dummyJobs.length)];
           const userRef = doc(db, 'users', docSnap.id);
-          promises.push(updateDoc(userRef, { job: randomJob }));
+          userUpdatePromises.push(updateDoc(userRef, { job: randomJob }));
+          updatedUserIds.add(docSnap.id);
           count++;
           
-          if (newUserMap[docSnap.id]) {
-            newUserMap[docSnap.id] = { ...newUserMap[docSnap.id], job: randomJob };
-          }
+          newUserMap[docSnap.id] = { ...user, job: randomJob };
         }
       });
 
-      await Promise.all(promises);
+      await Promise.all(userUpdatePromises);
+
+      // 2. 신청 정보(applications)의 displayJob 도 함께 업데이트하여 즉각 반영 보장
+      if (updatedUserIds.size > 0) {
+        const appUpdatePromises: Promise<void>[] = [];
+        const applicationsToUpdate = applications.filter(app => updatedUserIds.has(app.userId));
+        
+        for (const app of applicationsToUpdate) {
+          const randomJob = newUserMap[app.userId].job;
+          const appRef = doc(db, 'applications', app.id);
+          appUpdatePromises.push(updateDoc(appRef, { 
+            displayJob: randomJob,
+            isJobReviewed: true,
+            updatedAt: Timestamp.now()
+          }));
+        }
+        await Promise.all(appUpdatePromises);
+      }
 
       if (count > 0) {
-        setUserMap(newUserMap); // 실시간 리렌더링 유발
-        toast.success(`총 ${count}명의 더미 계정 직업이 보정되었습니다.`);
+        setUserMap(newUserMap);
+        toast.success(`총 ${count}명의 더미 계정 정보를 보격적으로 보정했습니다.`);
       } else {
-        toast('보정할 더미 계정이 없습니다.');
+        toast('보정할 대상이 없습니다.');
       }
     } catch (e) {
       console.error(e);
-      toast.error('더미 데이터 보정 중 오류가 발생했습니다.');
+      toast.error('보정 중 오류가 발생했습니다.');
     }
   };
 
@@ -383,7 +402,7 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 style={{ fontSize: '1.25rem', fontWeight: 900, letterSpacing: '-0.02em', color: '#0F172A' }}>신청 관리</h2>
-          <p style={{ fontSize: '0.85rem', color: '#64748B', marginTop: 2 }}>참가 신청자들의 상세 정보를 심사하고 선발 여부를 결정합니다. <span className="text-[10px] font-bold text-[#3B82F6] ml-2">v8.4.2 Premium</span></p>
+          <p style={{ fontSize: '0.85rem', color: '#64748B', marginTop: 2 }}>참가 신청자들의 상세 정보를 심사하고 선발 여부를 결정합니다. <span className="text-[10px] font-bold text-[#3B82F6] ml-2">v8.4.3 Premium</span></p>
         </div>
         <div className="flex items-center gap-3">
           <div className="relative flex-1 md:flex-none group">
@@ -393,7 +412,6 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
               className="bg-white border-2 border-[#FFD2CE]/60 rounded-2xl pr-10 text-xs font-black text-slate-800 outline-none focus:border-[#FF7E7E]/60 transition-all cursor-pointer shadow-sm appearance-none"
               style={{ minWidth: '180px', width: 'auto', height: '48px', paddingLeft: '16px' }}
             >
-              <option value="all">전체 기수 보기</option>
               {events.map(ev => (
                 <option key={ev.id} value={ev.id}>
                   {ev.region === 'busan' ? '부산' : ev.region === 'changwon' ? '창원' : (ev.region ?? '부산')} {ev.episodeNumber}기 [{(ev.status === 'open' || ev.status === 'recruiting') ? '모집중' : '마감'}]
@@ -542,7 +560,6 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                     </div>
                     <div className="relative group/filter flex items-center justify-center">
                       <select value={selectedEventId} onChange={e => setSelectedEventId(e.target.value)} className="appearance-none text-[10px] font-black border-none bg-transparent outline-none cursor-pointer pl-1 pr-3" style={{ color: selectedEventId !== 'all' ? '#3B82F6' : '#94A3B8' }}>
-                        <option value="all">전체</option>
                         {events.map(ev => <option key={ev.id} value={ev.id}>{ev.region?.slice(0,2)} {ev.episodeNumber}기</option>)}
                       </select>
                       <ChevronDown size={10} className="absolute right-0 pointer-events-none" style={{ color: selectedEventId !== 'all' ? '#3B82F6' : '#94A3B8' }} />
@@ -556,7 +573,6 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                     </div>
                     <div className="relative group/filter flex items-center justify-center">
                       <select value={ageFilter} onChange={e => setAgeFilter(e.target.value)} className="appearance-none text-[10px] font-black border-none bg-transparent outline-none cursor-pointer pl-1 pr-3" style={{ color: ageFilter !== 'all' ? '#FF6F61' : '#94A3B8' }}>
-                        <option value="all">전체</option>
                         <option value="90s">90년대생</option>
                         <option value="80s">80년대생</option>
                         <option value="00s">00년대생</option>
@@ -574,7 +590,6 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                     </div>
                     <div className="relative group/filter flex items-center justify-center">
                       <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="appearance-none text-[10px] font-black border-none bg-transparent outline-none cursor-pointer pl-1 pr-3" style={{ color: statusFilter !== 'all' ? '#FF6F61' : '#94A3B8' }}>
-                        <option value="all">전체</option>
                         {Object.keys(APP_STATUS).map(k => <option key={k} value={k}>{APP_STATUS[k].label}</option>)}
                       </select>
                       <ChevronDown size={10} className="absolute right-0 pointer-events-none" style={{ color: statusFilter !== 'all' ? '#FF6F61' : '#94A3B8' }} />
