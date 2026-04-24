@@ -483,7 +483,7 @@ export default function AdminTimerPage() {
                   <thead className="sticky top-0 bg-white z-20 shadow-sm font-black text-xs text-slate-500">
                     <tr>
                       <th className="p-4 bg-slate-100 border-b border-slate-200 min-w-[100px]">회차</th>
-                      {Array.from({length: totalTables}).map((_, i) => (
+                      {Array.from({length: Number(totalTables) || 0}).map((_, i) => (
                         <th key={i} className="p-4 bg-rose-50/80 border-b border-r border-slate-200">
                           <div className="text-rose-600 font-black text-lg">T{i+1}</div>
                         </th>
@@ -498,7 +498,7 @@ export default function AdminTimerPage() {
                           <td className={`p-5 border-b border-slate-200 font-black ${isCur ? 'text-orange-600' : 'text-slate-500'}`}>
                             {b.roundNum}회차
                           </td>
-                          {Array.from({length: totalTables}).map((_, tIdx) => {
+                          {Array.from({length: Number(totalTables) || 0}).map((_, tIdx) => {
                               const table = tIdx + 1;
                               const maleId = getMaleForTable(table, b.roundNum!);
                               return (
