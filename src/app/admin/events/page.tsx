@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import {
-  Calendar, MapPin, Users, Heart,
+  Calendar, MapPin, Users, Heart, Banknote,
   Plus, Edit2, Trash2, Play, X,
   CheckCircle, Clock, RefreshCw, ChevronRight, Zap, BarChart3,
   Loader2, ListChecks, Phone, UserCheck
@@ -612,7 +612,7 @@ export default function EventsPage() {
                         <span className="text-slate-200">|</span>
                         <span className="flex items-center gap-1 text-slate-700"><MapPin size={11} />{active.venue || '서면역 인근'}</span>
                         <span className="text-slate-200">|</span>
-                        <span className="flex items-center gap-1 text-[#FF6F61] font-semibold">{(active.price || 29000).toLocaleString()}원</span>
+                        <span className="flex items-center gap-1 text-[#FF6F61] font-semibold"><Banknote size={11} />{(active.price || 29000).toLocaleString()}원</span>
                       </div>
                     </div>
                   </div>
