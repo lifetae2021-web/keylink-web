@@ -66,7 +66,7 @@ export default function EventsPage() {
     q5Label: '후기',
   });
 
-  // v8.1.9: 기수 목록 사이드바 실시간 집계를 위한 전역 구독 (성능 최적화: confirmed, selected만 필터링)
+  // v8.2.0: 기수 목록 사이드바 실시간 집계를 위한 전역 구독 (성능 최적화: confirmed, selected만 필터링)
   const [globalCounts, setGlobalCounts] = useState<Record<string, { male: number, female: number }>>({});
 
   useEffect(() => {
@@ -195,7 +195,7 @@ export default function EventsPage() {
 
   const stats = useMemo(() => {
     const openCount = sessions.filter(s => s.status === 'open').length;
-    // v8.1.9: 모든 기수의 실시간 집계 인원을 합산하여 표시 (Global Sync)
+    // v8.2.0: 모든 기수의 실시간 집계 인원을 합산하여 표시 (Global Sync)
     const totalParticipants = Object.values(globalCounts).reduce((sum, c) => sum + c.male + c.female, 0);
     return {
       total: sessions.length,
@@ -205,15 +205,44 @@ export default function EventsPage() {
     };
   }, [sessions, globalCounts]);
 
-  // v8.1.7: 투표 폼 상태 퀵 토글
-  const toggleVotingForm = async (newStatus: SessionStatus) => {
-    if (!selectedId) return;
-    try {
-      const { updateDoc, doc } = await import('firebase/firestore');
-      await updateDoc(doc(db, 'sessions', selectedId), { status: newStatus });
-      toast.success(`투표 폼이 ${newStatus === 'voting' ? '[열림]' : '[닫힘]'} 상태로 변경되었습니다.`);
     } catch (e) {
       toast.error('상태 변경 중 오류 발생');
+    }
+  };
+
+  // v8.2.0: 참가 명단 (확정자만) 필터링 및 초과 인원 색출
+  const participants = useMemo(() => applicants.filter(a => a.status === 'confirmed'), [applicants]);
+  
+  const overQuotaAppIds = useMemo(() => {
+    const overIds = new Set<string>();
+    if (!active) return overIds;
+
+    const maleConfirmed = participants.filter(a => a.gender === 'male')
+      .sort((a, b) => a.appliedAt.getTime() - b.appliedAt.getTime());
+    const femaleConfirmed = participants.filter(a => a.gender === 'female')
+      .sort((a, b) => a.appliedAt.getTime() - b.appliedAt.getTime());
+
+    if (maleConfirmed.length > active.maxMale) {
+      maleConfirmed.slice(active.maxMale).forEach(a => overIds.add(a.id));
+    }
+    if (femaleConfirmed.length > active.maxFemale) {
+      femaleConfirmed.slice(active.maxFemale).forEach(a => overIds.add(a.id));
+    }
+    return overIds;
+  }, [participants, active]);
+
+  // v8.2.0: 선발 취소 (보류/검토 중으로 원복)
+  const handleCancelSelection = async (app: Application) => {
+    if (!window.confirm(`[${app.name}] 님의 선발을 취소하고 '검토 중' 상태로 변경하시겠습니까?`)) return;
+    try {
+      const { updateDoc, doc } = await import('firebase/firestore');
+      await updateDoc(doc(db, 'applications', app.id), {
+        status: 'applied',
+        updatedAt: serverTimestamp()
+      });
+      toast.success('선발이 취소되었습니다.');
+    } catch (e) {
+      toast.error('오류가 발생했습니다.');
     }
   };
 
@@ -402,7 +431,7 @@ export default function EventsPage() {
     );
   }
 
-  // v8.1.9: globalCounts에서 실시간 집계 데이터 추출 (선발확정 + 입금대기 포함)
+  // v8.2.0: globalCounts에서 실시간 집계 데이터 추출 (선발확정 + 입금대기 포함)
   const liveStats = globalCounts[selectedId || ''] || { male: 0, female: 0 };
   const liveConfirmedMale = liveStats.male;
   const liveConfirmedFemale = liveStats.female;
@@ -455,13 +484,13 @@ export default function EventsPage() {
           </p>
           <div className="space-y-2 max-h-[800px] overflow-y-auto pr-2 custom-scrollbar">
             {sessions.map(ev => {
-              // v8.1.9: 전역 applicants 데이터 기반 실시간 집계 (선발 + 확정 합산)
+              // v8.2.0: 전역 applicants 데이터 기반 실시간 집계 (선발 + 확정 합산)
               const live = globalCounts[ev.id] || { male: 0, female: 0 };
               const total = live.male + live.female;
               const maxT = ev.maxMale + ev.maxFemale;
               const pct = maxT > 0 ? Math.min(100, Math.round((total / maxT) * 100)) : 0;
               const sel = selectedId === ev.id;
-              const isOver = total > maxT; // v8.1.9 정원 초과 여부
+              const isOver = total > maxT; // v8.2.0 정원 초과 여부
               return (
                 <button
                   key={ev.id}
@@ -659,9 +688,9 @@ export default function EventsPage() {
               <div className="flex items-center justify-between px-7 py-5" style={{ borderBottom: '1px solid #f1f5f9', background: '#f8fafc' }}>
                 <h3 className="flex items-center gap-2 text-slate-800" style={{ fontSize: '0.95rem', fontWeight: 800 }}>
                   <ListChecks size={16} style={{ color: '#FF6F61' }} />
-                  신청자 명단
+                  참가 명단
                   <span style={{ fontSize: '0.75rem', fontWeight: 700, padding: '2px 10px', borderRadius: 20, background: '#FFF5F4', color: '#FF6F61', marginLeft: 4 }}>
-                    총 {applicants.length}명 ({applicants.filter(a => a.gender === 'male').length}남 / {applicants.filter(a => a.gender === 'female').length}여)
+                    총 {participants.length}명 ({participants.filter(a => a.gender === 'male').length}남 / {participants.filter(a => a.gender === 'female').length}여)
                   </span>
                 </h3>
                 {applicantsLoading && <Loader2 className="animate-spin text-slate-400" size={16} />}
@@ -676,16 +705,17 @@ export default function EventsPage() {
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr style={{ background: '#f8fafc' }}>
-                        {['#', '이름', '성별', '연락처', '나이', '직업', '거주지', '상태'].map((h) => (
-                          <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '1px solid #e2e8f0', whiteSpace: 'nowrap' }}>
+                        {['#', '이름', '성별', '연락처', '나이', '직업', '거주지', '상태', '관리'].map((h) => (
+                          <th key={h} style={{ padding: '10px 16px', textAlign: h === '관리' ? 'right' : 'left', fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '1px solid #e2e8f0', whiteSpace: 'nowrap' }}>
                             {h}
                           </th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
-                      {applicants.map((app, idx) => {
+                      {participants.map((app, idx) => {
                         const isMale = app.gender === 'male';
+                        const isOverQuota = overQuotaAppIds.has(app.id); // v8.2.0
                         const statusMap: Record<string, { label: string; bg: string; color: string }> = {
                           applied:   { label: '검토 중',   bg: '#FFFBEB', color: '#92400E' },
                           selected:  { label: '입금 대기', bg: '#F5F3FF', color: '#5B21B6' },
@@ -694,7 +724,15 @@ export default function EventsPage() {
                         };
                         const badge = statusMap[app.status] ?? { label: app.status, bg: '#F1F5F9', color: '#64748b' };
                         return (
-                          <tr key={app.id} style={{ borderBottom: '1px solid #f1f5f9', background: isMale ? 'rgba(59,130,246,0.02)' : 'rgba(236,72,153,0.02)' }}>
+                          <tr 
+                            key={app.id} 
+                            style={{ 
+                              borderBottom: '1px solid #f1f5f9', 
+                              // v8.2.0: 정원 초과 인원은 붉은색 배경 적용
+                              background: isOverQuota ? '#FFE4E6' : (isMale ? 'rgba(59,130,246,0.02)' : 'rgba(236,72,153,0.02)') 
+                            }}
+                            className={isOverQuota ? 'animate-pulse' : ''}
+                          >
                             <td style={{ padding: '12px 16px', fontSize: '0.8rem', color: '#94a3b8', fontWeight: 600 }}>{idx + 1}</td>
                             <td style={{ padding: '12px 16px', fontSize: '0.9rem', fontWeight: 800, color: '#1e293b', whiteSpace: 'nowrap' }}>{app.name || '-'}</td>
                             <td style={{ padding: '12px 16px' }}>
@@ -729,6 +767,15 @@ export default function EventsPage() {
                               <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.72rem', fontWeight: 700, background: badge.bg, color: badge.color, whiteSpace: 'nowrap' }}>
                                 {badge.label}
                               </span>
+                            </td>
+                            {/* v8.2.0: 선발 취소 버튼 추가 */}
+                            <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                              <button 
+                                onClick={() => handleCancelSelection(app)}
+                                className="px-2.5 py-1 rounded-lg text-[0.65rem] font-black bg-white border border-slate-200 text-slate-500 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all shadow-sm"
+                              >
+                                {isOverQuota ? '🔴 선발 취소' : '선발 취소'}
+                              </button>
                             </td>
                           </tr>
                         );
