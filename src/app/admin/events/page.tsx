@@ -52,6 +52,7 @@ export default function EventsPage() {
   const [formData, setFormData] = useState(initialFormData);
   
   // v8.1.7: 투표 설정 모달 상태
+  const [isMigrating, setIsMigrating] = useState(false);
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const [isConfigSaving, setIsConfigSaving] = useState(false);
   const [configFormData, setConfigFormData] = useState({
@@ -145,6 +146,7 @@ export default function EventsPage() {
         nonIdealType: d.data().nonIdealType,
         avoidAcquaintance: d.data().avoidAcquaintance,
         etc: d.data().etc,
+        slotNumber: d.data().slotNumber ?? null,
       } as Application));
       list.sort((a, b) => a.appliedAt.getTime() - b.appliedAt.getTime());
       setApplicants(list);
@@ -217,8 +219,9 @@ export default function EventsPage() {
     }
   };
 
-  // v8.2.3: 참가 명단 (확정자만) 필터링 및 초과 인원 색출
+  // v8.5.4: 참가 확정자 / 대기자 분리
   const participants = useMemo(() => applicants.filter(a => a.status === 'confirmed'), [applicants]);
+  const waitlisted = useMemo(() => applicants.filter(a => a.status === 'waitlisted'), [applicants]);
   
   const overQuotaAppIds = useMemo(() => {
     const overIds = new Set<string>();
@@ -238,18 +241,40 @@ export default function EventsPage() {
     return overIds;
   }, [participants, active]);
 
-  // v8.2.3: 선발 취소 (보류/검토 중으로 원복)
+  // v8.5.4: 선발 취소 - status API 경유 (대기자 자동 승격 포함)
   const handleCancelSelection = async (app: Application) => {
     if (!window.confirm(`[${app.name}] 님의 선발을 취소하고 '검토 중' 상태로 변경하시겠습니까?`)) return;
     try {
-      const { updateDoc, doc } = await import('firebase/firestore');
-      await updateDoc(doc(db, 'applications', app.id), {
-        status: 'applied',
-        updatedAt: serverTimestamp()
+      const token = await auth.currentUser?.getIdToken();
+      const res = await fetch('/api/admin/applications/status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ applicationId: app.id, status: 'applied' }),
       });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
       toast.success('선발이 취소되었습니다.');
-    } catch (e) {
-      toast.error('오류가 발생했습니다.');
+    } catch (e: any) {
+      toast.error(e.message || '오류가 발생했습니다.');
+    }
+  };
+
+  const runSlotMigration = async () => {
+    if (!window.confirm('기존 확정 참가자 전체에게 호수를 일괄 배정합니다. 계속할까요?')) return;
+    setIsMigrating(true);
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      const res = await fetch('/api/admin/migrate/slot-numbers', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      toast.success(`호수 배정 완료: ${data.migrated}명 업데이트됨`);
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setIsMigrating(false);
     }
   };
 
@@ -690,10 +715,11 @@ export default function EventsPage() {
             </div>
           )}
 
-          {/* v7.2.0: Applicant List Panel */}
+          {/* 참가 명단 - 남/여 분리 */}
           {active && (
-            <div style={{ ...panel, overflow: 'hidden' }}>
-              <div className="flex items-center justify-between px-7 py-5" style={{ borderBottom: '1px solid #f1f5f9', background: '#f8fafc' }}>
+            <div className="space-y-4">
+              {/* 헤더 */}
+              <div className="flex items-center justify-between" style={{ paddingLeft: 4 }}>
                 <h3 className="flex items-center gap-2 text-slate-800" style={{ fontSize: '0.95rem', fontWeight: 800 }}>
                   <ListChecks size={16} style={{ color: '#FF6F61' }} />
                   참가 명단
@@ -701,97 +727,245 @@ export default function EventsPage() {
                     총 {participants.length}명 ({participants.filter(a => a.gender === 'male').length}남 / {participants.filter(a => a.gender === 'female').length}여)
                   </span>
                 </h3>
-                {applicantsLoading && <Loader2 className="animate-spin text-slate-400" size={16} />}
+                <div className="flex items-center gap-2">
+                  {applicantsLoading && <Loader2 className="animate-spin text-slate-400" size={16} />}
+                  <button
+                    onClick={runSlotMigration}
+                    disabled={isMigrating}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-200 bg-white text-slate-500 hover:bg-amber-50 hover:text-amber-600 hover:border-amber-200 transition-all"
+                  >
+                    {isMigrating ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+                    호수 일괄 배정
+                  </button>
+                </div>
               </div>
 
               {applicants.length === 0 ? (
-                <div className="py-12 text-center text-slate-400 font-medium text-sm">
+                <div className="py-12 text-center text-slate-400 font-medium text-sm" style={panel}>
                   {applicantsLoading ? '불러오는 중...' : '신청자가 없습니다.'}
                 </div>
               ) : (
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead>
-                      <tr style={{ background: '#f8fafc' }}>
-                        {['#', '이름', '성별', '연락처', '나이', '직업', '거주지', '상태', '관리'].map((h) => (
-                          <th key={h} style={{ padding: '10px 16px', textAlign: h === '관리' ? 'right' : 'left', fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '1px solid #e2e8f0', whiteSpace: 'nowrap' }}>
-                            {h}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {participants.map((app, idx) => {
-                        const isMale = app.gender === 'male';
-                        const isOverQuota = overQuotaAppIds.has(app.id); // v8.2.0
-                        const statusMap: Record<string, { label: string; bg: string; color: string }> = {
-                          applied:   { label: '검토 중',   bg: '#FFFBEB', color: '#92400E' },
-                          selected:  { label: '입금 대기', bg: '#F5F3FF', color: '#5B21B6' },
-                          confirmed: { label: '참가 확정', bg: '#ECFDF5', color: '#065F46' },
-                          cancelled: { label: '취소',      bg: '#F1F5F9', color: '#64748b' },
-                        };
-                        const badge = statusMap[app.status] ?? { label: app.status, bg: '#F1F5F9', color: '#64748b' };
-                        return (
-                          <tr 
-                            key={app.id} 
-                            style={{ 
-                              borderBottom: '1px solid #f1f5f9', 
-                              // v8.2.0: 정원 초과 인원은 붉은색 배경 적용
-                              background: isOverQuota ? '#FFE4E6' : (isMale ? 'rgba(59,130,246,0.02)' : 'rgba(236,72,153,0.02)') 
-                            }}
-                            className={isOverQuota ? 'animate-pulse' : ''}
-                          >
-                            <td style={{ padding: '12px 16px', fontSize: '0.8rem', color: '#94a3b8', fontWeight: 600 }}>{idx + 1}</td>
-                            <td style={{ padding: '12px 16px', fontSize: '0.9rem', fontWeight: 800, color: '#1e293b', whiteSpace: 'nowrap' }}>{app.name || '-'}</td>
-                            <td style={{ padding: '12px 16px' }}>
-                              <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: '0.72rem', fontWeight: 700, background: isMale ? '#EFF6FF' : '#FDF2F8', color: isMale ? '#1D4ED8' : '#BE185D' }}>
-                                {isMale ? '남' : '여'}
-                              </span>
-                            </td>
-                            <td style={{ padding: '12px 16px', fontSize: '0.8rem', color: '#475569', fontWeight: 500, whiteSpace: 'nowrap' }}>
-                              <span className="flex items-center gap-1"><Phone size={11} />{app.phone || '-'}</span>
-                            </td>
-                            <td style={{ padding: '12px 16px', fontSize: '0.8rem', color: '#475569', fontWeight: 500 }}>
-                              {(() => {
-                                const user = userMap[app.userId];
-                                if (user?.birthDate) {
-                                  return `${user.birthDate.includes('-') ? user.birthDate.slice(2,4) : user.birthDate.slice(0,2)}년생`;
-                                }
-                                if (!app.age) return '-';
-                                const ageNum = Number(app.age);
-                                // 나이가 50 미만이면 실제 '나이'로 판단하고 2026년 기준 '출생연도'로 계산
-                                if (ageNum > 0 && ageNum < 50) {
-                                  const birthYear = 2026 - ageNum;
-                                  return `${String(birthYear).slice(-2)}년생`;
-                                }
-                                return `${String(app.age).padStart(2, '0')}년생`;
-                              })()}
-                            </td>
-                            <td style={{ padding: '12px 16px', fontSize: '0.8rem', color: '#475569', fontWeight: 500, maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {app.job || '-'}
-                            </td>
-                            <td style={{ padding: '12px 16px', fontSize: '0.8rem', color: '#475569', fontWeight: 500 }}>{app.residence || '-'}</td>
-                            <td style={{ padding: '12px 16px' }}>
-                              <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.72rem', fontWeight: 700, background: badge.bg, color: badge.color, whiteSpace: 'nowrap' }}>
-                                {badge.label}
-                              </span>
-                            </td>
-                            {/* v8.2.0: 선발 취소 버튼 추가 */}
-                            <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                              <button 
-                                onClick={() => handleCancelSelection(app)}
-                                className="px-2.5 py-1 rounded-lg text-[0.65rem] font-black bg-white border border-slate-200 text-slate-500 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all shadow-sm"
-                              >
-                                {isOverQuota ? '🔴 선발 취소' : '선발 취소'}
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                <>
+                  {(['male', 'female'] as const).map(gender => {
+                    const genderList = participants.filter(a => a.gender === gender);
+                    const isMaleSection = gender === 'male';
+                    return (
+                      <div key={gender} style={{ ...panel, overflow: 'hidden' }}>
+                        <div className="flex items-center gap-2 px-6 py-4" style={{ borderBottom: '1px solid #f1f5f9', background: isMaleSection ? '#eff6ff' : '#fdf2f8' }}>
+                          <span style={{ fontSize: '0.85rem', fontWeight: 800, color: isMaleSection ? '#1d4ed8' : '#be185d' }}>
+                            {isMaleSection ? '👨 남성' : '👩 여성'} 참가자
+                          </span>
+                          <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '2px 8px', borderRadius: 12, background: isMaleSection ? '#dbeafe' : '#fce7f3', color: isMaleSection ? '#1d4ed8' : '#be185d' }}>
+                            {genderList.length}명
+                          </span>
+                        </div>
+                        {(() => {
+                          const maxSlots = isMaleSection ? (active?.maxMale ?? 0) : (active?.maxFemale ?? 0);
+                          const slots = Array.from({ length: maxSlots }, (_, i) => {
+                            const slotNum = i + 1;
+                            const app = genderList.find(a => a.slotNumber === slotNum);
+                            return { slotNum, app };
+                          });
+                          // slotNumber 없는 confirmed 참가자 (마이그레이션 전 데이터)
+                          const unassigned = genderList.filter(a => !a.slotNumber);
+                          return (
+                          <div style={{ overflowX: 'auto' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                              <thead>
+                                <tr style={{ background: '#f8fafc' }}>
+                                  {['호수', '이름', '연락처', '나이', '직업', '거주지', '상태', '관리'].map(h => (
+                                    <th key={h} style={{ padding: '10px 16px', textAlign: h === '관리' ? 'right' : 'left', fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '1px solid #e2e8f0', whiteSpace: 'nowrap' }}>
+                                      {h}
+                                    </th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {slots.map(({ slotNum, app }) => {
+                                  if (!app) {
+                                    return (
+                                      <tr key={`empty-${slotNum}`} style={{ borderBottom: '1px solid #f1f5f9', background: '#fafafa' }}>
+                                        <td style={{ padding: '12px 16px', fontSize: '0.8rem', color: isMaleSection ? '#3b82f6' : '#ec4899', fontWeight: 700 }}>{slotNum}호</td>
+                                        <td colSpan={7} style={{ padding: '12px 16px', fontSize: '0.8rem', color: '#cbd5e1', fontWeight: 500 }}>미정</td>
+                                      </tr>
+                                    );
+                                  }
+                                  const isOverQuota = overQuotaAppIds.has(app.id);
+                                  const statusMap: Record<string, { label: string; bg: string; color: string }> = {
+                                    applied:   { label: '검토 중',   bg: '#FFFBEB', color: '#92400E' },
+                                    selected:  { label: '입금 대기', bg: '#F5F3FF', color: '#5B21B6' },
+                                    confirmed: { label: '참가 확정', bg: '#ECFDF5', color: '#065F46' },
+                                    cancelled: { label: '취소',      bg: '#F1F5F9', color: '#64748b' },
+                                  };
+                                  const badge = statusMap[app.status] ?? { label: app.status, bg: '#F1F5F9', color: '#64748b' };
+                                  return (
+                                    <tr
+                                      key={app.id}
+                                      style={{ borderBottom: '1px solid #f1f5f9', background: isOverQuota ? '#FFE4E6' : 'transparent' }}
+                                      className={isOverQuota ? 'animate-pulse' : ''}
+                                    >
+                                      <td style={{ padding: '12px 16px', fontSize: '0.8rem', color: isMaleSection ? '#3b82f6' : '#ec4899', fontWeight: 700 }}>{slotNum}호</td>
+                                      <td style={{ padding: '12px 16px', fontSize: '0.9rem', fontWeight: 800, color: '#1e293b', whiteSpace: 'nowrap' }}>{app.name || '-'}</td>
+                                      <td style={{ padding: '12px 16px', fontSize: '0.8rem', color: '#475569', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                                        <span className="flex items-center gap-1"><Phone size={11} />{app.phone || '-'}</span>
+                                      </td>
+                                      <td style={{ padding: '12px 16px', fontSize: '0.8rem', color: '#475569', fontWeight: 500 }}>
+                                        {(() => {
+                                          const user = userMap[app.userId];
+                                          if (user?.birthDate) {
+                                            return `${user.birthDate.includes('-') ? user.birthDate.slice(2,4) : user.birthDate.slice(0,2)}년생`;
+                                          }
+                                          if (!app.age) return '-';
+                                          const ageNum = Number(app.age);
+                                          if (ageNum > 0 && ageNum < 50) {
+                                            const birthYear = 2026 - ageNum;
+                                            return `${String(birthYear).slice(-2)}년생`;
+                                          }
+                                          return `${String(app.age).padStart(2, '0')}년생`;
+                                        })()}
+                                      </td>
+                                      <td style={{ padding: '12px 16px', fontSize: '0.8rem', color: '#475569', fontWeight: 500, maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                        {app.job || '-'}
+                                      </td>
+                                      <td style={{ padding: '12px 16px', fontSize: '0.8rem', color: '#475569', fontWeight: 500 }}>{app.residence || '-'}</td>
+                                      <td style={{ padding: '12px 16px' }}>
+                                        <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.72rem', fontWeight: 700, background: badge.bg, color: badge.color, whiteSpace: 'nowrap' }}>
+                                          {badge.label}
+                                        </span>
+                                      </td>
+                                      <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                                        <button
+                                          onClick={() => handleCancelSelection(app)}
+                                          className="px-2.5 py-1 rounded-lg text-[0.65rem] font-black bg-white border border-slate-200 text-slate-500 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all shadow-sm"
+                                        >
+                                          {isOverQuota ? '🔴 선발 취소' : '선발 취소'}
+                                        </button>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                                {unassigned.map((app, idx) => {
+                                  const isOverQuota = overQuotaAppIds.has(app.id);
+                                  const statusMap: Record<string, { label: string; bg: string; color: string }> = {
+                                    applied:   { label: '검토 중',   bg: '#FFFBEB', color: '#92400E' },
+                                    selected:  { label: '입금 대기', bg: '#F5F3FF', color: '#5B21B6' },
+                                    confirmed: { label: '참가 확정', bg: '#ECFDF5', color: '#065F46' },
+                                    cancelled: { label: '취소',      bg: '#F1F5F9', color: '#64748b' },
+                                  };
+                                  const badge = statusMap[app.status] ?? { label: app.status, bg: '#F1F5F9', color: '#64748b' };
+                                  return (
+                                    <tr key={app.id} style={{ borderBottom: '1px solid #f1f5f9', background: isOverQuota ? '#FFE4E6' : '#fffdf5' }} className={isOverQuota ? 'animate-pulse' : ''}>
+                                      <td style={{ padding: '12px 16px', fontSize: '0.8rem', color: '#f59e0b', fontWeight: 700 }}>미배정</td>
+                                      <td style={{ padding: '12px 16px', fontSize: '0.9rem', fontWeight: 800, color: '#1e293b', whiteSpace: 'nowrap' }}>{app.name || '-'}</td>
+                                      <td style={{ padding: '12px 16px', fontSize: '0.8rem', color: '#475569', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                                        <span className="flex items-center gap-1"><Phone size={11} />{app.phone || '-'}</span>
+                                      </td>
+                                      <td style={{ padding: '12px 16px', fontSize: '0.8rem', color: '#475569', fontWeight: 500 }}>
+                                        {(() => {
+                                          const user = userMap[app.userId];
+                                          if (user?.birthDate) return `${user.birthDate.includes('-') ? user.birthDate.slice(2,4) : user.birthDate.slice(0,2)}년생`;
+                                          if (!app.age) return '-';
+                                          const ageNum = Number(app.age);
+                                          if (ageNum > 0 && ageNum < 50) return `${String(2026 - ageNum).slice(-2)}년생`;
+                                          return `${String(app.age).padStart(2, '0')}년생`;
+                                        })()}
+                                      </td>
+                                      <td style={{ padding: '12px 16px', fontSize: '0.8rem', color: '#475569', fontWeight: 500, maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{app.job || '-'}</td>
+                                      <td style={{ padding: '12px 16px', fontSize: '0.8rem', color: '#475569', fontWeight: 500 }}>{app.residence || '-'}</td>
+                                      <td style={{ padding: '12px 16px' }}>
+                                        <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.72rem', fontWeight: 700, background: badge.bg, color: badge.color, whiteSpace: 'nowrap' }}>{badge.label}</span>
+                                      </td>
+                                      <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                                        <button onClick={() => handleCancelSelection(app)} className="px-2.5 py-1 rounded-lg text-[0.65rem] font-black bg-white border border-slate-200 text-slate-500 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all shadow-sm">
+                                          선발 취소
+                                        </button>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                          );
+                        })()}
+
+                      </div>
+                    );
+                  })}
+                </>
               )}
+            </div>
+          )}
+
+          {/* 대기자 명단 */}
+          {active && waitlisted.length > 0 && (
+            <div className="space-y-4">
+              <div style={{ paddingLeft: 4 }}>
+                <h3 className="flex items-center gap-2" style={{ fontSize: '0.95rem', fontWeight: 800, color: '#b45309' }}>
+                  ⏳ 대기자 명단
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, padding: '2px 10px', borderRadius: 20, background: '#fef3c7', color: '#b45309', marginLeft: 4 }}>
+                    총 {waitlisted.length}명 ({waitlisted.filter(a => a.gender === 'male').length}남 / {waitlisted.filter(a => a.gender === 'female').length}여)
+                  </span>
+                </h3>
+              </div>
+              {(['male', 'female'] as const).map(gender => {
+                const genderWaitlist = waitlisted.filter(a => a.gender === gender).sort((a, b) => a.appliedAt.getTime() - b.appliedAt.getTime());
+                if (genderWaitlist.length === 0) return null;
+                const isMaleSection = gender === 'male';
+                return (
+                  <div key={gender} style={{ ...panel, overflow: 'hidden' }}>
+                    <div className="flex items-center gap-2 px-6 py-4" style={{ borderBottom: '1px solid #f1f5f9', background: '#fffbeb' }}>
+                      <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#b45309' }}>
+                        {isMaleSection ? '👨 남성' : '👩 여성'} 대기자
+                      </span>
+                      <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '2px 8px', borderRadius: 12, background: '#fef3c7', color: '#b45309' }}>
+                        {genderWaitlist.length}명
+                      </span>
+                    </div>
+                    <div style={{ overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead>
+                          <tr style={{ background: '#f8fafc' }}>
+                            {['순서', '이름', '연락처', '나이', '직업', '거주지', '관리'].map(h => (
+                              <th key={h} style={{ padding: '10px 16px', textAlign: h === '관리' ? 'right' : 'left', fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '1px solid #e2e8f0', whiteSpace: 'nowrap' }}>
+                                {h}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {genderWaitlist.map((app, idx) => (
+                            <tr key={app.id} style={{ borderBottom: '1px solid #f1f5f9', background: '#fffdf0' }}>
+                              <td style={{ padding: '12px 16px', fontSize: '0.8rem', color: '#b45309', fontWeight: 700 }}>대기 {idx + 1}번</td>
+                              <td style={{ padding: '12px 16px', fontSize: '0.9rem', fontWeight: 800, color: '#1e293b', whiteSpace: 'nowrap' }}>{app.name || '-'}</td>
+                              <td style={{ padding: '12px 16px', fontSize: '0.8rem', color: '#475569', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                                <span className="flex items-center gap-1"><Phone size={11} />{app.phone || '-'}</span>
+                              </td>
+                              <td style={{ padding: '12px 16px', fontSize: '0.8rem', color: '#475569', fontWeight: 500 }}>
+                                {(() => {
+                                  const user = userMap[app.userId];
+                                  if (user?.birthDate) return `${user.birthDate.includes('-') ? user.birthDate.slice(2,4) : user.birthDate.slice(0,2)}년생`;
+                                  if (!app.age) return '-';
+                                  const ageNum = Number(app.age);
+                                  if (ageNum > 0 && ageNum < 50) return `${String(2026 - ageNum).slice(-2)}년생`;
+                                  return `${String(app.age).padStart(2, '0')}년생`;
+                                })()}
+                              </td>
+                              <td style={{ padding: '12px 16px', fontSize: '0.8rem', color: '#475569', fontWeight: 500, maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{app.job || '-'}</td>
+                              <td style={{ padding: '12px 16px', fontSize: '0.8rem', color: '#475569', fontWeight: 500 }}>{app.residence || '-'}</td>
+                              <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                                <button onClick={() => handleCancelSelection(app)} className="px-2.5 py-1 rounded-lg text-[0.65rem] font-black bg-white border border-slate-200 text-slate-500 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all shadow-sm">
+                                  취소
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
 
