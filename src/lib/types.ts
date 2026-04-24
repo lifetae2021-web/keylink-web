@@ -107,7 +107,6 @@ export interface Application {
   idealType?: string;
   nonIdealType?: string;
   avoidAcquaintance?: string;
-  avoidAcquaintance?: string;
   etc?: string;
 
   // v8.3.8: 직업 검토 프로세스용 필드
