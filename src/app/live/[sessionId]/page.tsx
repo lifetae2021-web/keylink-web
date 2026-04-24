@@ -53,9 +53,9 @@ export default function LiveTimerPage() {
     if (!timerConfig) return [];
     const list: RelativeBlock[] = [];
     let currentMs = 0;
-    const tr = timerConfig.totalRounds || 16;
-    const tt = timerConfig.talkTime || 12;
-    const cr = timerConfig.cakeRound || 5;
+    const tr = timerConfig.totalRounds || 8;
+    const tt = timerConfig.talkTime || 15;
+    const cr = timerConfig.cakeRound || 4;
 
     for (let i = 1; i <= tr; i++) {
        if (i === cr && i > 1) {
@@ -64,7 +64,7 @@ export default function LiveTimerPage() {
          currentMs = bEnd;
        }
        let endMs = currentMs + tt * 60000;
-       list.push({ id: `round_${i}`, type: 'talk', roundNum: i, label: `${i}회차`, startMs: currentMs, endMs: endMs, durationMs: tt * 60000 });
+       list.push({ id: `round_${i}`, type: 'talk', roundNum: i, label: `${i}회차 ${i === cr ? '🍰(대화 + 케익 대접)' : ''}`, startMs: currentMs, endMs: endMs, durationMs: tt * 60000 });
        currentMs = endMs;
     }
     return list;

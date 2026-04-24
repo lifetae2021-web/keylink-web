@@ -22,10 +22,10 @@ export default function AdminTimerPage() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string>('');
 
-  const [totalRounds, setTotalRounds] = useState(16);
-  const [talkTime, setTalkTime] = useState(12); // minutes
-  const [cakeRound, setCakeRound] = useState(5);
-  const [totalTables, setTotalTables] = useState(16);
+  const [totalRounds, setTotalRounds] = useState(8);
+  const [talkTime, setTalkTime] = useState(15); // minutes
+  const [cakeRound, setCakeRound] = useState(4);
+  const [totalTables, setTotalTables] = useState(8);
   
   const [customMaleId, setCustomMaleId] = useState<number | ''>('');
   const [customTableId, setCustomTableId] = useState<number | ''>('');
@@ -65,10 +65,10 @@ export default function AdminTimerPage() {
     setSelectedSessionId(id);
     const session = list.find(s => s.id === id);
     if (session?.timerConfig) {
-      setTotalRounds(session.timerConfig.totalRounds || 16);
-      setTalkTime(session.timerConfig.talkTime || 12);
-      setCakeRound(session.timerConfig.cakeRound || 5);
-      setTotalTables(session.timerConfig.totalTables || 16);
+      setTotalRounds(session.timerConfig.totalRounds || 8);
+      setTalkTime(session.timerConfig.talkTime || 15);
+      setCakeRound(session.timerConfig.cakeRound || 4);
+      setTotalTables(session.timerConfig.totalTables || 8);
       if (session.timerConfig.startMs) {
         setEventStartMs(session.timerConfig.startMs);
         setIsLive(true);
@@ -108,7 +108,7 @@ export default function AdminTimerPage() {
         currentMs = bEnd;
       }
       let tEnd = currentMs + talkTime * 60000;
-      list.push({ id: `round_${i}`, type: 'talk', roundNum: i, label: `${i}회차 ${i === cakeRound ? '🍰(케익)' : ''}`, startMs: currentMs, endMs: tEnd, durationMs: talkTime * 60000 });
+      list.push({ id: `round_${i}`, type: 'talk', roundNum: i, label: `${i}회차 ${i === cakeRound ? '🍰(대화 + 케익 대접)' : ''}`, startMs: currentMs, endMs: tEnd, durationMs: talkTime * 60000 });
       currentMs = tEnd;
     }
     return list;
@@ -285,29 +285,29 @@ export default function AdminTimerPage() {
         <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex-1">
           <div className="flex items-center gap-2 mb-6">
             <Settings size={20} className="text-slate-400" />
-            <h2 className="text-lg font-black text-slate-800">엔진 파라미터 <span className="text-[10px] font-bold text-blue-500 ml-1">v8.2.4 Premium</span></h2>
+            <h2 className="text-lg font-black text-slate-800">엔진 파라미터 <span className="text-[10px] font-bold text-blue-500 ml-1">v8.3.1 Premium</span></h2>
           </div>
 
           <div className="space-y-5">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-slate-500 mb-1.5 border-l-2 border-[#FF6F61] pl-2">총 회차 (Rounds)</label>
-                <input type="number" value={totalRounds} onChange={e => setTotalRounds(Number(e.target.value))} className="w-full h-10 px-3 rounded-lg border border-slate-300 font-bold bg-slate-50" disabled={isLive} />
+                <label className="block text-xs font-bold text-slate-500 mb-1.5 border-l-2 border-[#FF6F61] pl-2">총 회차</label>
+                <input type="number" value={totalRounds} onChange={e => setTotalRounds(Number(e.target.value))} className="w-full h-10 px-3 rounded-lg border border-slate-300 font-bold bg-slate-50 text-sm" disabled={isLive} />
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-500 mb-1.5 border-l-2 border-[#FF6F61] pl-2">총 1:1 테이블 수 (Max)</label>
-                <input type="number" value={totalTables} onChange={e => setTotalTables(Number(e.target.value))} className="w-full h-10 px-3 rounded-lg border border-slate-300 font-bold bg-slate-50" disabled={isLive}/>
+                <label className="block text-xs font-bold text-slate-500 mb-1.5 border-l-2 border-[#FF6F61] pl-2">총 테이블 수</label>
+                <input type="number" value={totalTables} onChange={e => setTotalTables(Number(e.target.value))} className="w-full h-10 px-3 rounded-lg border border-slate-300 font-bold bg-slate-50 text-sm" disabled={isLive}/>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-slate-500 mb-1.5 border-l-2 border-[#FF6F61] pl-2">회차당 시간 (분)</label>
-                <input type="number" value={talkTime} onChange={e => setTalkTime(Number(e.target.value))} className="w-full h-10 px-3 rounded-lg border border-slate-300 font-bold bg-slate-50" disabled={isLive}/>
+                <label className="block text-xs font-bold text-slate-500 mb-1.5 border-l-2 border-[#FF6F61] pl-2">대화 시간 (분)</label>
+                <input type="number" value={talkTime} onChange={e => setTalkTime(Number(e.target.value))} className="w-full h-10 px-3 rounded-lg border border-slate-300 font-bold bg-slate-50 text-sm" disabled={isLive}/>
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-500 mb-1.5 border-l-2 border-purple-500 pl-2">케익 투입 회차</label>
-                <input type="number" value={cakeRound} onChange={e => setCakeRound(Number(e.target.value))} className="w-full h-10 px-3 rounded-lg border border-slate-300 font-bold bg-slate-50" disabled={isLive}/>
+                <label className="block text-xs font-bold text-slate-500 mb-1.5 border-l-2 border-purple-500 pl-2">케익 회차</label>
+                <input type="number" value={cakeRound} onChange={e => setCakeRound(Number(e.target.value))} className="w-full h-10 px-3 rounded-lg border border-slate-300 font-bold bg-slate-50 text-sm" disabled={isLive}/>
                 <p className="text-[10px] text-slate-400 mt-1 font-semibold">* 해당 회차 직전 5분 휴식 블록 자동 삽입됨.</p>
               </div>
             </div>
@@ -338,10 +338,10 @@ export default function AdminTimerPage() {
       <div className="w-full lg:w-2/3 flex flex-col gap-6">
         
         {/* 라이브 타이머 헤더 */}
-        <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm relative overflow-hidden flex items-center justify-between">
+        <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm relative overflow-hidden flex flex-col items-center justify-center text-center">
           <div className="absolute top-0 right-0 w-64 h-64 bg-rose-50 rounded-full blur-3xl -mr-20 -mt-20 opacity-50 z-0 pointer-events-none" />
           
-          <div className="relative z-10">
+          <div className="relative z-10 w-full mb-6">
             {isFinished ? (
               <div>
                 <p className="text-[#FF6F61] font-black text-xl mb-1">🎉 모든 일정이 종료되었습니다!</p>
@@ -367,8 +367,8 @@ export default function AdminTimerPage() {
             )}
           </div>
 
-          <div className="relative z-10 flex flex-col items-end gap-3">
-             <div className="bg-slate-900 text-white rounded-2xl px-6 py-4 font-mono text-5xl font-black shadow-inner shadow-black/20 flex items-center justify-center min-w-[200px]">
+          <div className="relative z-10 flex flex-col items-center gap-3 w-full">
+             <div className="bg-slate-900 text-white rounded-2xl px-6 py-4 font-mono text-6xl md:text-7xl font-black shadow-inner shadow-black/20 flex items-center justify-center min-w-[240px]">
                {formatMinSec(remainingInBlockMs)}
              </div>
              
