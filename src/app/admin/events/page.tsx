@@ -807,123 +807,88 @@ export default function EventsPage() {
                           });
                           // slotNumber 없는 confirmed 참가자 (마이그레이션 전 데이터)
                           const unassigned = genderList.filter(a => !a.slotNumber);
+                          const statusMap: Record<string, { label: string; cls: string }> = {
+                            applied:   { label: '검토 중',   cls: 'bg-amber-50 text-amber-800' },
+                            selected:  { label: '입금 대기', cls: 'bg-violet-50 text-violet-800' },
+                            confirmed: { label: '참가 확정', cls: 'bg-emerald-50 text-emerald-700' },
+                            cancelled: { label: '취소',      cls: 'bg-slate-100 text-slate-400' },
+                          };
+                          const getBirthYear = (app: Application) => {
+                            const user = userMap[app.userId];
+                            if (user?.birthDate) return `${user.birthDate.includes('-') ? user.birthDate.slice(2,4) : user.birthDate.slice(0,2)}년생`;
+                            if (!app.age) return '-';
+                            const n = Number(app.age);
+                            if (n > 0 && n < 50) return `${String(2026 - n).slice(-2)}년생`;
+                            return `${String(app.age).padStart(2, '0')}년생`;
+                          };
                           return (
-                          <div style={{ overflowX: 'auto' }}>
-                            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                              <thead>
-                                <tr style={{ background: '#f8fafc' }}>
-                                  {['호수', '이름', '연락처', '나이', '직업', '거주지', '상태', '관리'].map(h => (
-                                    <th key={h} style={{ padding: '10px 16px', textAlign: h === '관리' ? 'right' : 'left', fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '1px solid #e2e8f0', whiteSpace: 'nowrap' }}>
-                                      {h}
-                                    </th>
-                                  ))}
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {slots.map(({ slotNum, app }) => {
-                                  if (!app) {
-                                    return (
-                                      <tr key={`empty-${slotNum}`} style={{ borderBottom: '1px solid #f1f5f9', background: '#fafafa' }}>
-                                        <td style={{ padding: '12px 16px', fontSize: '0.8rem', color: isMaleSection ? '#3b82f6' : '#ec4899', fontWeight: 700 }}>{slotNum}호</td>
-                                        <td colSpan={7} style={{ padding: '12px 16px', fontSize: '0.8rem', color: '#cbd5e1', fontWeight: 500 }}>미정</td>
-                                      </tr>
-                                    );
-                                  }
-                                  const isOverQuota = overQuotaAppIds.has(app.id);
-                                  const statusMap: Record<string, { label: string; bg: string; color: string }> = {
-                                    applied:   { label: '검토 중',   bg: '#FFFBEB', color: '#92400E' },
-                                    selected:  { label: '입금 대기', bg: '#F5F3FF', color: '#5B21B6' },
-                                    confirmed: { label: '참가 확정', bg: '#ECFDF5', color: '#065F46' },
-                                    cancelled: { label: '취소',      bg: '#F1F5F9', color: '#64748b' },
-                                  };
-                                  const badge = statusMap[app.status] ?? { label: app.status, bg: '#F1F5F9', color: '#64748b' };
-                                  return (
-                                    <tr
-                                      key={app.id}
-                                      style={{ borderBottom: '1px solid #f1f5f9', background: isOverQuota ? '#FFE4E6' : 'transparent' }}
-                                      className={isOverQuota ? 'animate-pulse' : ''}
-                                    >
-                                      <td style={{ padding: '12px 16px', fontSize: '0.8rem', color: isMaleSection ? '#3b82f6' : '#ec4899', fontWeight: 700 }}>{slotNum}호</td>
-                                      <td style={{ padding: '12px 16px', fontSize: '0.9rem', fontWeight: 800, color: '#1e293b', whiteSpace: 'nowrap' }}>{app.name || '-'}</td>
-                                      <td style={{ padding: '12px 16px', fontSize: '0.8rem', color: '#475569', fontWeight: 500, whiteSpace: 'nowrap' }}>
-                                        <span className="flex items-center gap-1"><Phone size={11} />{app.phone || '-'}</span>
-                                      </td>
-                                      <td style={{ padding: '12px 16px', fontSize: '0.8rem', color: '#475569', fontWeight: 500 }}>
-                                        {(() => {
-                                          const user = userMap[app.userId];
-                                          if (user?.birthDate) {
-                                            return `${user.birthDate.includes('-') ? user.birthDate.slice(2,4) : user.birthDate.slice(0,2)}년생`;
-                                          }
-                                          if (!app.age) return '-';
-                                          const ageNum = Number(app.age);
-                                          if (ageNum > 0 && ageNum < 50) {
-                                            const birthYear = 2026 - ageNum;
-                                            return `${String(birthYear).slice(-2)}년생`;
-                                          }
-                                          return `${String(app.age).padStart(2, '0')}년생`;
-                                        })()}
-                                      </td>
-                                      <td style={{ padding: '12px 16px', fontSize: '0.8rem', color: '#475569', fontWeight: 500, maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                        {app.job || '-'}
-                                      </td>
-                                      <td style={{ padding: '12px 16px', fontSize: '0.8rem', color: '#475569', fontWeight: 500 }}>{app.residence || '-'}</td>
-                                      <td style={{ padding: '12px 16px' }}>
-                                        <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.72rem', fontWeight: 700, background: badge.bg, color: badge.color, whiteSpace: 'nowrap' }}>
-                                          {badge.label}
-                                        </span>
-                                      </td>
-                                      <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                                        <button
-                                          onClick={() => handleCancelSelection(app)}
-                                          className="px-2.5 py-1 rounded-lg text-[0.65rem] font-black bg-white border border-slate-200 text-slate-500 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all shadow-sm"
-                                        >
-                                          {isOverQuota ? '🔴 선발 취소' : '선발 취소'}
-                                        </button>
-                                      </td>
-                                    </tr>
-                                  );
-                                })}
-                                {unassigned.map((app, idx) => {
-                                  const isOverQuota = overQuotaAppIds.has(app.id);
-                                  const statusMap: Record<string, { label: string; bg: string; color: string }> = {
-                                    applied:   { label: '검토 중',   bg: '#FFFBEB', color: '#92400E' },
-                                    selected:  { label: '입금 대기', bg: '#F5F3FF', color: '#5B21B6' },
-                                    confirmed: { label: '참가 확정', bg: '#ECFDF5', color: '#065F46' },
-                                    cancelled: { label: '취소',      bg: '#F1F5F9', color: '#64748b' },
-                                  };
-                                  const badge = statusMap[app.status] ?? { label: app.status, bg: '#F1F5F9', color: '#64748b' };
-                                  return (
-                                    <tr key={app.id} style={{ borderBottom: '1px solid #f1f5f9', background: isOverQuota ? '#FFE4E6' : '#fffdf5' }} className={isOverQuota ? 'animate-pulse' : ''}>
-                                      <td style={{ padding: '12px 16px', fontSize: '0.8rem', color: '#f59e0b', fontWeight: 700 }}>미배정</td>
-                                      <td style={{ padding: '12px 16px', fontSize: '0.9rem', fontWeight: 800, color: '#1e293b', whiteSpace: 'nowrap' }}>{app.name || '-'}</td>
-                                      <td style={{ padding: '12px 16px', fontSize: '0.8rem', color: '#475569', fontWeight: 500, whiteSpace: 'nowrap' }}>
-                                        <span className="flex items-center gap-1"><Phone size={11} />{app.phone || '-'}</span>
-                                      </td>
-                                      <td style={{ padding: '12px 16px', fontSize: '0.8rem', color: '#475569', fontWeight: 500 }}>
-                                        {(() => {
-                                          const user = userMap[app.userId];
-                                          if (user?.birthDate) return `${user.birthDate.includes('-') ? user.birthDate.slice(2,4) : user.birthDate.slice(0,2)}년생`;
-                                          if (!app.age) return '-';
-                                          const ageNum = Number(app.age);
-                                          if (ageNum > 0 && ageNum < 50) return `${String(2026 - ageNum).slice(-2)}년생`;
-                                          return `${String(app.age).padStart(2, '0')}년생`;
-                                        })()}
-                                      </td>
-                                      <td style={{ padding: '12px 16px', fontSize: '0.8rem', color: '#475569', fontWeight: 500, maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{app.job || '-'}</td>
-                                      <td style={{ padding: '12px 16px', fontSize: '0.8rem', color: '#475569', fontWeight: 500 }}>{app.residence || '-'}</td>
-                                      <td style={{ padding: '12px 16px' }}>
-                                        <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.72rem', fontWeight: 700, background: badge.bg, color: badge.color, whiteSpace: 'nowrap' }}>{badge.label}</span>
-                                      </td>
-                                      <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                                        <button onClick={() => handleCancelSelection(app)} className="px-2.5 py-1 rounded-lg text-[0.65rem] font-black bg-white border border-slate-200 text-slate-500 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all shadow-sm">
-                                          선발 취소
-                                        </button>
-                                      </td>
-                                    </tr>
-                                  );
-                                })}
-                              </tbody>
-                            </table>
+                          <div className="divide-y divide-slate-100">
+                            {slots.map(({ slotNum, app }) => {
+                              if (!app) return (
+                                <div key={`empty-${slotNum}`} className="flex items-center gap-3 px-5 py-3 bg-slate-50/60">
+                                  <span className={`text-xs font-black w-8 shrink-0 ${isMaleSection ? 'text-blue-400' : 'text-pink-400'}`}>{slotNum}호</span>
+                                  <span className="text-xs text-slate-300 font-medium">미정</span>
+                                </div>
+                              );
+                              const isOverQuota = overQuotaAppIds.has(app.id);
+                              const badge = statusMap[app.status] ?? { label: app.status, cls: 'bg-slate-100 text-slate-400' };
+                              return (
+                                <div key={app.id} className={`flex items-center gap-3 px-5 py-3.5 hover:bg-slate-50 transition-colors ${isOverQuota ? 'bg-red-50 animate-pulse' : ''}`}>
+                                  <span className={`text-xs font-black w-8 shrink-0 ${isMaleSection ? 'text-blue-500' : 'text-pink-500'}`}>{slotNum}호</span>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 mb-0.5">
+                                      <span className="text-sm font-bold text-slate-800">{app.name || '-'}</span>
+                                      <span className={`text-[0.65rem] font-bold px-2 py-0.5 rounded-full ${badge.cls}`}>{badge.label}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-[0.72rem] text-slate-400 font-medium flex-wrap">
+                                      <span className="flex items-center gap-0.5"><Phone size={10} />{app.phone || '-'}</span>
+                                      <span>·</span>
+                                      <span>{getBirthYear(app)}</span>
+                                      <span>·</span>
+                                      <span className="truncate max-w-[80px]">{app.job || '-'}</span>
+                                      <span>·</span>
+                                      <span>{app.residence || '-'}</span>
+                                    </div>
+                                  </div>
+                                  <button
+                                    onClick={() => handleCancelSelection(app)}
+                                    className="shrink-0 px-2.5 py-1 rounded-lg text-[0.65rem] font-black bg-white border border-slate-200 text-slate-400 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all"
+                                  >
+                                    {isOverQuota ? '🔴 취소' : '취소'}
+                                  </button>
+                                </div>
+                              );
+                            })}
+                            {unassigned.map((app) => {
+                              const isOverQuota = overQuotaAppIds.has(app.id);
+                              const badge = statusMap[app.status] ?? { label: app.status, cls: 'bg-slate-100 text-slate-400' };
+                              return (
+                                <div key={app.id} className={`flex items-center gap-3 px-5 py-3.5 hover:bg-slate-50 transition-colors ${isOverQuota ? 'bg-red-50 animate-pulse' : 'bg-amber-50/40'}`}>
+                                  <span className="text-xs font-black w-8 shrink-0 text-amber-500">미배정</span>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 mb-0.5">
+                                      <span className="text-sm font-bold text-slate-800">{app.name || '-'}</span>
+                                      <span className={`text-[0.65rem] font-bold px-2 py-0.5 rounded-full ${badge.cls}`}>{badge.label}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-[0.72rem] text-slate-400 font-medium flex-wrap">
+                                      <span className="flex items-center gap-0.5"><Phone size={10} />{app.phone || '-'}</span>
+                                      <span>·</span>
+                                      <span>{getBirthYear(app)}</span>
+                                      <span>·</span>
+                                      <span className="truncate max-w-[80px]">{app.job || '-'}</span>
+                                      <span>·</span>
+                                      <span>{app.residence || '-'}</span>
+                                    </div>
+                                  </div>
+                                  <button
+                                    onClick={() => handleCancelSelection(app)}
+                                    className="shrink-0 px-2.5 py-1 rounded-lg text-[0.65rem] font-black bg-white border border-slate-200 text-slate-400 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all"
+                                  >
+                                    취소
+                                  </button>
+                                </div>
+                              );
+                            })}
                           </div>
                           );
                         })()}
