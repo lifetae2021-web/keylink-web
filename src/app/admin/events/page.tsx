@@ -927,46 +927,39 @@ export default function EventsPage() {
                         {genderWaitlist.length}명
                       </span>
                     </div>
-                    <div style={{ overflowX: 'auto' }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                        <thead>
-                          <tr style={{ background: '#f8fafc' }}>
-                            {['순서', '이름', '연락처', '나이', '직업', '거주지', '관리'].map(h => (
-                              <th key={h} style={{ padding: '10px 16px', textAlign: h === '관리' ? 'right' : 'left', fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '1px solid #e2e8f0', whiteSpace: 'nowrap' }}>
-                                {h}
-                              </th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {genderWaitlist.map((app, idx) => (
-                            <tr key={app.id} style={{ borderBottom: '1px solid #f1f5f9', background: '#fffdf0' }}>
-                              <td style={{ padding: '12px 16px', fontSize: '0.8rem', color: '#b45309', fontWeight: 700 }}>대기 {idx + 1}번</td>
-                              <td style={{ padding: '12px 16px', fontSize: '0.9rem', fontWeight: 800, color: '#1e293b', whiteSpace: 'nowrap' }}>{app.name || '-'}</td>
-                              <td style={{ padding: '12px 16px', fontSize: '0.8rem', color: '#475569', fontWeight: 500, whiteSpace: 'nowrap' }}>
-                                <span className="flex items-center gap-1"><Phone size={11} />{app.phone || '-'}</span>
-                              </td>
-                              <td style={{ padding: '12px 16px', fontSize: '0.8rem', color: '#475569', fontWeight: 500 }}>
-                                {(() => {
-                                  const user = userMap[app.userId];
-                                  if (user?.birthDate) return `${user.birthDate.includes('-') ? user.birthDate.slice(2,4) : user.birthDate.slice(0,2)}년생`;
-                                  if (!app.age) return '-';
-                                  const ageNum = Number(app.age);
-                                  if (ageNum > 0 && ageNum < 50) return `${String(2026 - ageNum).slice(-2)}년생`;
-                                  return `${String(app.age).padStart(2, '0')}년생`;
-                                })()}
-                              </td>
-                              <td style={{ padding: '12px 16px', fontSize: '0.8rem', color: '#475569', fontWeight: 500, maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{app.job || '-'}</td>
-                              <td style={{ padding: '12px 16px', fontSize: '0.8rem', color: '#475569', fontWeight: 500 }}>{app.residence || '-'}</td>
-                              <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                                <button onClick={() => handleCancelSelection(app)} className="px-2.5 py-1 rounded-lg text-[0.65rem] font-black bg-white border border-slate-200 text-slate-500 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all shadow-sm">
-                                  취소
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                    <div className="divide-y divide-slate-100">
+                      {genderWaitlist.map((app, idx) => {
+                        const user = userMap[app.userId];
+                        const birthYear = (() => {
+                          if (user?.birthDate) return `${user.birthDate.includes('-') ? user.birthDate.slice(2,4) : user.birthDate.slice(0,2)}년생`;
+                          if (!app.age) return '-';
+                          const n = Number(app.age);
+                          if (n > 0 && n < 50) return `${String(2026 - n).slice(-2)}년생`;
+                          return `${String(app.age).padStart(2, '0')}년생`;
+                        })();
+                        return (
+                          <div key={app.id} className="flex items-center gap-3 px-5 py-3.5 hover:bg-amber-50/30 transition-colors">
+                            <span className="text-xs font-black w-10 shrink-0 text-amber-600">대기 {idx + 1}</span>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-0.5">
+                                <span className="text-sm font-bold text-slate-800">{app.name || '-'}</span>
+                              </div>
+                              <div className="flex items-center gap-2 text-[0.72rem] text-slate-400 font-medium flex-wrap">
+                                <span className="flex items-center gap-0.5"><Phone size={10} />{app.phone || '-'}</span>
+                                <span>·</span>
+                                <span>{birthYear}</span>
+                                <span>·</span>
+                                <span className="truncate max-w-[80px]">{app.job || '-'}</span>
+                                <span>·</span>
+                                <span>{app.residence || '-'}</span>
+                              </div>
+                            </div>
+                            <button onClick={() => handleCancelSelection(app)} className="shrink-0 px-2.5 py-1 rounded-lg text-[0.65rem] font-black bg-white border border-slate-200 text-slate-400 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all">
+                              대기 취소
+                            </button>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 );
