@@ -94,7 +94,8 @@ export function subscribeAllSessions(
   callback: (sessions: Session[]) => void
 ) {
   const q = query(
-    collection(db, COLLECTION)
+    collection(db, COLLECTION),
+    orderBy('eventDate', 'asc')
   );
   return onSnapshot(
     q,

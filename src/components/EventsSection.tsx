@@ -60,12 +60,22 @@ export function EventsSection({ standalone = false }: { standalone?: boolean }) 
     return () => unsubscribe();
   }, []);
 
-  // 카드 리스트용 필터링 (날짜 + 지역)
-  const filtered = liveEvents.filter((e) => {
-    const dateMatch = selectedDate ? isSameDay(e.date, selectedDate) : true;
-    const regionMatch = e.region === selectedRegion;
-    return dateMatch && regionMatch;
-  });
+  // 카드 리스트용 필터링 및 정렬 (v8.4.6: 마감된 기수는 뒤로 배치)
+  const filtered = liveEvents
+    .filter((e) => {
+      const dateMatch = selectedDate ? isSameDay(e.date, selectedDate) : true;
+      const regionMatch = e.region === selectedRegion;
+      return dateMatch && regionMatch;
+    })
+    .sort((a, b) => {
+      const isSoldOutA = (a.currentMale >= a.maxMale) || (a.currentFemale >= a.maxFemale);
+      const isSoldOutB = (b.currentMale >= b.maxMale) || (b.currentFemale >= b.maxFemale);
+      
+      if (isSoldOutA !== isSoldOutB) {
+        return isSoldOutA ? 1 : -1;
+      }
+      return a.date.getTime() - b.date.getTime();
+    });
 
   // 달력용 필터링 (지역만 유지, 날짜 필터 제거하여 상시 노출)
   const calendarEvents = liveEvents.filter(e => e.region === selectedRegion);
@@ -84,7 +94,7 @@ export function EventsSection({ standalone = false }: { standalone?: boolean }) 
           <span className="kl-gradient-text">{selectedRegion === 'busan' ? '부산' : '창원'} 참여 신청</span>
         </h2>
         <p style={{ color: 'var(--color-text-secondary)', fontSize: '1rem', marginBottom: '32px' }}>
-          {selectedRegion === 'busan' ? '부산' : '창원'} 로테이션 소개팅 일정을 확인하고 신청하세요
+          {selectedRegion === 'busan' ? '부산' : '창원'} 로테이션 소개팅 일정을 확인하고 신청하세요. <span style={{ fontSize: '0.7rem', color: 'var(--color-primary-dark)', marginLeft: '4px' }}>v8.4.6</span>
         </p>
 
         {/* Region Filter */}
@@ -129,8 +139,10 @@ export function EventsSection({ standalone = false }: { standalone?: boolean }) 
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '24px' }}>
-            {filtered.map((event) => (
-              <EventCard key={event.id} event={event} />
+            {filtered.map((event, idx) => (
+              <div key={event.id} className="animate-fadeInUp" style={{ animationDelay: `${idx * 0.1}s` }}>
+                <EventCard event={event} />
+              </div>
             ))}
           </div>
         )}
