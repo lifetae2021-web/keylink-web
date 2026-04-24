@@ -205,12 +205,19 @@ export default function EventsPage() {
     };
   }, [sessions, globalCounts]);
 
+  // v8.1.7: 투표 폼 상태 퀵 토글
+  const toggleVotingForm = async (newStatus: SessionStatus) => {
+    if (!selectedId) return;
+    try {
+      const { updateDoc, doc } = await import('firebase/firestore');
+      await updateDoc(doc(db, 'sessions', selectedId), { status: newStatus });
+      toast.success(`투표 폼이 ${newStatus === 'voting' ? '[열림]' : '[닫힘]'} 상태로 변경되었습니다.`);
     } catch (e) {
       toast.error('상태 변경 중 오류 발생');
     }
   };
 
-  // v8.2.0: 참가 명단 (확정자만) 필터링 및 초과 인원 색출
+  // v8.2.1: 참가 명단 (확정자만) 필터링 및 초과 인원 색출
   const participants = useMemo(() => applicants.filter(a => a.status === 'confirmed'), [applicants]);
   
   const overQuotaAppIds = useMemo(() => {
