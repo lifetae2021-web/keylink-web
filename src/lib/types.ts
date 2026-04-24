@@ -119,6 +119,7 @@ export interface Vote {
   realName?: string;         // 실명 확인
   myAlias?: string;          // 본인 호수 (ex. 키링남 1호)
   finalCheck?: boolean;      // 매칭 라인업 최종 확인 여부
+  disclosureMode?: 'public' | 'anonymous'; // 공개 모드 (v8.1.5)
   feedback?: string;         // 후기 (선택 사항)
   
   submittedAt: Date;
