@@ -22,10 +22,10 @@ export default function AdminTimerPage() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string>('');
 
-  const [totalRounds, setTotalRounds] = useState(8);
-  const [talkTime, setTalkTime] = useState(15); // minutes
-  const [cakeRound, setCakeRound] = useState(4);
-  const [totalTables, setTotalTables] = useState(8);
+  const [totalRounds, setTotalRounds] = useState<number | ''>(8);
+  const [talkTime, setTalkTime] = useState<number | ''>(15); // minutes
+  const [cakeRound, setCakeRound] = useState<number | ''>(4);
+  const [totalTables, setTotalTables] = useState<number | ''>(8);
   
   const [customMaleId, setCustomMaleId] = useState<number | ''>('');
   const [customTableId, setCustomTableId] = useState<number | ''>('');
@@ -301,29 +301,29 @@ export default function AdminTimerPage() {
         <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex-1">
           <div className="flex items-center gap-2 mb-6">
             <Settings size={20} className="text-slate-400" />
-            <h2 className="text-lg font-black text-slate-800">엔진 파라미터 <span className="text-[10px] font-bold text-blue-500 ml-1">v8.3.2 Premium</span></h2>
+            <h2 className="text-lg font-black text-slate-800">엔진 파라미터 <span className="text-[10px] font-bold text-blue-500 ml-1">v8.3.6 Premium</span></h2>
           </div>
 
           <div className="space-y-5">
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-slate-500 mb-1.5 border-l-2 border-[#FF6F61] pl-2">총 회차</label>
-                <input type="number" value={totalRounds} onChange={e => setTotalRounds(Number(e.target.value))} className="w-full h-10 px-3 rounded-lg border border-slate-300 font-bold bg-slate-50 text-sm" disabled={isLive} />
+                <input type="number" value={totalRounds} onChange={e => setTotalRounds(e.target.value === '' ? '' : Number(e.target.value))} className="w-full h-10 px-3 rounded-lg border border-slate-300 font-bold bg-slate-50 text-sm" disabled={isLive} />
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-500 mb-1.5 border-l-2 border-[#FF6F61] pl-2">총 테이블 수</label>
-                <input type="number" value={totalTables} onChange={e => setTotalTables(Number(e.target.value))} className="w-full h-10 px-3 rounded-lg border border-slate-300 font-bold bg-slate-50 text-sm" disabled={isLive}/>
+                <input type="number" value={totalTables} onChange={e => setTotalTables(e.target.value === '' ? '' : Number(e.target.value))} className="w-full h-10 px-3 rounded-lg border border-slate-300 font-bold bg-slate-50 text-sm" disabled={isLive}/>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-slate-500 mb-1.5 border-l-2 border-[#FF6F61] pl-2">대화 시간 (분)</label>
-                <input type="number" value={talkTime} onChange={e => setTalkTime(Number(e.target.value))} className="w-full h-10 px-3 rounded-lg border border-slate-300 font-bold bg-slate-50 text-sm" disabled={isLive}/>
+                <input type="number" value={talkTime} onChange={e => setTalkTime(e.target.value === '' ? '' : Number(e.target.value))} className="w-full h-10 px-3 rounded-lg border border-slate-300 font-bold bg-slate-50 text-sm" disabled={isLive}/>
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-500 mb-1.5 border-l-2 border-purple-500 pl-2">케익 회차</label>
-                <input type="number" value={cakeRound} onChange={e => setCakeRound(Number(e.target.value))} className="w-full h-10 px-3 rounded-lg border border-slate-300 font-bold bg-slate-50 text-sm" disabled={isLive}/>
+                <input type="number" value={cakeRound} onChange={e => setCakeRound(e.target.value === '' ? '' : Number(e.target.value))} className="w-full h-10 px-3 rounded-lg border border-slate-300 font-bold bg-slate-50 text-sm" disabled={isLive}/>
                 <p className="text-[10px] text-slate-400 mt-1 font-semibold">* 해당 회차 직전 5분 휴식 블록 자동 삽입됨.</p>
               </div>
             </div>
@@ -353,11 +353,11 @@ export default function AdminTimerPage() {
       {/* RIGHT PANEL: 대시보드 */}
       <div className="w-full lg:w-2/3 flex flex-col gap-6">
         
-        {/* 라이브 타이머 헤더 */}
-        <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm relative overflow-hidden flex flex-col items-center justify-center text-center">
+        {/* 라이브 타이머 헤더 (더 콤팩트하게) */}
+        <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm relative overflow-hidden flex flex-col items-center justify-center text-center">
           <div className="absolute top-0 right-0 w-64 h-64 bg-rose-50 rounded-full blur-3xl -mr-20 -mt-20 opacity-50 z-0 pointer-events-none" />
           
-          <div className="relative z-10 w-full mb-6">
+          <div className="relative z-10 w-full mb-4">
             {isFinished ? (
               <div>
                 <p className="text-[#FF6F61] font-black text-xl mb-1">🎉 모든 일정이 종료되었습니다!</p>
@@ -394,7 +394,7 @@ export default function AdminTimerPage() {
                </div>
              )}
 
-             <div className="bg-slate-900 text-white rounded-2xl px-6 py-4 font-mono text-6xl md:text-8xl font-black shadow-inner shadow-black/20 flex items-center justify-center min-w-[280px]">
+             <div className="bg-slate-900 text-white rounded-2xl px-6 py-4 font-mono text-5xl md:text-7xl font-black shadow-inner shadow-black/20 flex items-center justify-center min-w-[240px]">
                {formatMinSec(remainingInBlockMs)}
              </div>
              
@@ -453,10 +453,13 @@ export default function AdminTimerPage() {
                       const isCur = currentBlock?.id === b.id;
                       const isPast = currentElapsedMs >= b.endMs;
                       return (
-                        <tr key={b.id} className={`${isCur ? 'bg-slate-900 text-white' : isPast ? 'opacity-40' : ''} border-b border-slate-50 transition-colors`}>
-                          <td className="p-4 text-left pl-8 font-black text-lg">{b.label}</td>
-                          <td className="p-4 font-bold">{Math.floor(b.durationMs/60000)}분</td>
-                          <td className="p-4 pr-8 font-black text-lg">{getAbsoluteTime(b.startMs)} ~ {getAbsoluteTime(b.endMs)}</td>
+                        <tr key={b.id} className={`${isCur ? 'bg-slate-900 text-white shadow-xl shadow-black/10 scale-[1.01] relative z-10' : isPast ? 'opacity-30' : ''} border-b border-slate-50 transition-all duration-300`}>
+                          <td className="p-4 text-left pl-8">
+                            <div className="font-black text-lg">{b.label}</div>
+                            {isCur && <div className="text-[10px] font-bold text-[#FF6F61] uppercase tracking-widest mt-1">Currently Processing</div>}
+                          </td>
+                          <td className="p-4 font-bold text-slate-400">{Math.floor(b.durationMs/60000)}분 소요</td>
+                          <td className="p-4 pr-8 font-black text-lg tracking-tighter">{getAbsoluteTime(b.startMs)} ~ {getAbsoluteTime(b.endMs)}</td>
                         </tr>
                       );
                     })}
