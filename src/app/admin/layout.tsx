@@ -11,7 +11,7 @@ import {
   LayoutDashboard, Users, Calendar, TrendingUp,
   Settings, LogOut, Bell, Menu, X,
   ExternalLink, ChevronDown, ShieldCheck,
-  FileText, Loader2
+  FileText, Loader2, Timer
 } from 'lucide-react';
 import Link from 'next/link';
 import { version } from '../../../package.json';
@@ -21,6 +21,7 @@ const PAGE_TITLE: Record<string, string> = {
   '/admin/users':         '회원 관리',
   '/admin/applications':  '기수별 신청 관리',
   '/admin/events':        '행사 / 매칭 관리',
+  '/admin/timer':         '키링크 타이머',
   '/admin/revenue':       '매출 통계',
   '/admin/cms':           '콘텐츠 편집',
   '/admin/settings':      '시스템 설정',
@@ -48,6 +49,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { label: '회원 관리',      icon: Users,           path: '/admin/users' },
     { label: '신청 관리',      icon: FileText,        path: '/admin/applications', badge: pendingCount },
     { label: '행사 / 매칭',   icon: Calendar,        path: '/admin/events' },
+    { label: '키링크 타이머', icon: Timer,           path: '/admin/timer' },
     { label: '매출 통계',     icon: TrendingUp,      path: '/admin/revenue' },
     { label: '콘텐츠 편집',   icon: FileText,        path: '/admin/cms' },
     { label: '시스템 설정',   icon: Settings,        path: '/admin/settings' },
