@@ -102,14 +102,18 @@ export default function AdminTimerPage() {
   const blocks = useMemo(() => {
     const list: RelativeBlock[] = [];
     let currentMs = 0;
-    for (let i = 1; i <= totalRounds; i++) {
-      if (i === cakeRound && i > 1) {
+    const tr = Number(totalRounds) || 0;
+    const tt = Number(talkTime) || 0;
+    const cr = Number(cakeRound) || 0;
+
+    for (let i = 1; i <= tr; i++) {
+      if (i === cr && i > 1) {
         let bEnd = currentMs + 5 * 60000;
         list.push({ id: `break_${i}`, type: 'break', label: '자리교체 & 휴식 (정비)', startMs: currentMs, endMs: bEnd, durationMs: 5 * 60000 });
         currentMs = bEnd;
       }
-      let tEnd = currentMs + talkTime * 60000;
-      list.push({ id: `round_${i}`, type: 'talk', roundNum: i, label: `${i}회차 ${i === cakeRound ? '🍰(대화 + 케익 대접)' : ''}`, startMs: currentMs, endMs: tEnd, durationMs: talkTime * 60000 });
+      let tEnd = currentMs + tt * 60000;
+      list.push({ id: `round_${i}`, type: 'talk', roundNum: i, label: `${i}회차 ${i === cr ? '🍰(대화 + 케익 대접)' : ''}`, startMs: currentMs, endMs: tEnd, durationMs: tt * 60000 });
       currentMs = tEnd;
     }
     return list;
@@ -225,7 +229,7 @@ export default function AdminTimerPage() {
   };
 
   const getMaleForTable = (table: number, round: number) => {
-    const N = totalTables;
+    const N = Number(totalTables) || 1; // Prevent div by zero
     const val = table - round + maleOffset;
     return ((val % N) + N) % N + 1;
   };
