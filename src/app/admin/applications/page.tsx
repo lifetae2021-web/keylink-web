@@ -251,9 +251,9 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
     setPreviewModalOpen(true);
   };
 
-  // v8.4.3: 더미 계정 직업 보정 로직 (유저 & 신청 정보 모두 업데이트)
+  // v8.4.5: 더미 계정 직업 보정 로직 (검색 범위 확장 & batch 처리성 Promise.all)
   const handleFixDummyJobs = async () => {
-    const dummyJobs = ['대기업', '공기업', '공무원', '초등교사', '승무원', '전문직', 'IT 개발자', '회사원', '교육직', '기술직', '군무원'];
+    const dummyJobs = ['회사원', '대기업', '공기업', '공무원', '초등교사', '승무원', '교육직', '기술직', '군무원', '전문직', 'IT개발자'];
     let count = 0;
     try {
       // 1. 유저 데이터 전체 스캔
@@ -264,26 +264,43 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
 
       usersSnap.forEach(docSnap => {
         const user = docSnap.data();
-        // '더미' 포함 혹은 직업이 비어있는 경우
-        if (user.name?.includes('더미') && (!user.job || user.job === '-' || user.job.trim() === '')) {
+        const name = user.name || '';
+        const job = user.job || '';
+        const email = user.email || '';
+
+        // v8.4.5: 광범위한 더미 식별 로직 (이름에 더미 포함 OR 직업이 비어있음 OR 이메일에 test/dummy 포함)
+        const isDummyName = name.includes('더미');
+        const isJobEmpty = !job || job === '-' || job.trim() === '';
+        const isTestEmail = email.includes('test') || email.includes('dummy');
+
+        if (isDummyName || isJobEmpty || isTestEmail) {
           const randomJob = dummyJobs[Math.floor(Math.random() * dummyJobs.length)];
           const userRef = doc(db, 'users', docSnap.id);
-          userUpdatePromises.push(updateDoc(userRef, { job: randomJob }));
+          
+          userUpdatePromises.push(updateDoc(userRef, { 
+            job: randomJob,
+            updatedAt: Timestamp.now()
+          }));
+          
           updatedUserIds.add(docSnap.id);
           count++;
           
+          // 로컬 상태 바로 업데이트 준비
           newUserMap[docSnap.id] = { ...user, job: randomJob };
         }
       });
 
+      if (count === 0) {
+        toast('보정할 더미 계정이 없습니다.');
+        return;
+      }
+
       await Promise.all(userUpdatePromises);
 
       // 2. 신청 정보(applications)의 displayJob 도 함께 업데이트하여 즉각 반영 보장
-      if (updatedUserIds.size > 0) {
-        const appUpdatePromises: Promise<void>[] = [];
-        const applicationsToUpdate = applications.filter(app => updatedUserIds.has(app.userId));
-        
-        for (const app of applicationsToUpdate) {
+      const appUpdatePromises: Promise<void>[] = [];
+      applications.forEach(app => {
+        if (updatedUserIds.has(app.userId)) {
           const randomJob = newUserMap[app.userId].job;
           const appRef = doc(db, 'applications', app.id);
           appUpdatePromises.push(updateDoc(appRef, { 
@@ -292,18 +309,18 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
             updatedAt: Timestamp.now()
           }));
         }
+      });
+
+      if (appUpdatePromises.length > 0) {
         await Promise.all(appUpdatePromises);
       }
 
-      if (count > 0) {
-        setUserMap(newUserMap);
-        toast.success(`총 ${count}명의 더미 계정 정보를 보격적으로 보정했습니다.`);
-      } else {
-        toast('보정할 대상이 없습니다.');
-      }
+      // 3. UI 상태 동기화 (onSnapshot이 있지만 즉각적인 반응성 확보)
+      setUserMap(newUserMap);
+      toast.success(`총 ${count}명의 더미 데이터 직업 보정이 완료되었습니다.`);
     } catch (e) {
       console.error(e);
-      toast.error('보정 중 오류가 발생했습니다.');
+      toast.error('더미 데이터 보정 중 오류가 발생했습니다.');
     }
   };
 
@@ -402,7 +419,7 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 style={{ fontSize: '1.25rem', fontWeight: 900, letterSpacing: '-0.02em', color: '#0F172A' }}>신청 관리</h2>
-          <p style={{ fontSize: '0.85rem', color: '#64748B', marginTop: 2 }}>참가 신청자들의 상세 정보를 심사하고 선발 여부를 결정합니다. <span className="text-[10px] font-bold text-[#3B82F6] ml-2">v8.4.4 Premium</span></p>
+          <p style={{ fontSize: '0.85rem', color: '#64748B', marginTop: 2 }}>참가 신청자들의 상세 정보를 심사하고 선발 여부를 결정합니다. <span className="text-[10px] font-bold text-[#3B82F6] ml-2">v8.4.5 Premium</span></p>
         </div>
         <div className="flex items-center gap-3">
           <div className="relative flex-1 md:flex-none group">
