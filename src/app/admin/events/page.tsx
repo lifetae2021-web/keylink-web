@@ -66,6 +66,30 @@ export default function EventsPage() {
     q5Label: '후기',
   });
 
+  // v8.1.9: 기수 목록 사이드바 실시간 집계를 위한 전역 구독 (성능 최적화: confirmed, selected만 필터링)
+  const [globalCounts, setGlobalCounts] = useState<Record<string, { male: number, female: number }>>({});
+
+  useEffect(() => {
+    // 확정 및 입금 대기 상태인 신청자만 실시간 집계하여 사이드바와 대시보드 동기화
+    const q = query(
+      collection(db, 'applications'),
+      where('status', 'in', ['confirmed', 'selected'])
+    );
+    const unsub = onSnapshot(q, (snap) => {
+      const counts: Record<string, { male: number, female: number }> = {};
+      snap.docs.forEach(d => {
+        const data = d.data();
+        const sid = data.sessionId;
+        if (!sid) return;
+        if (!counts[sid]) counts[sid] = { male: 0, female: 0 };
+        if (data.gender === 'male') counts[sid].male++;
+        else counts[sid].female++;
+      });
+      setGlobalCounts(counts);
+    }, (err) => console.error("Global counts sync error:", err));
+    return () => unsub();
+  }, []);
+
   // 1. 실시간 데이터 구독 (기수 목록)
   useEffect(() => {
     const q = query(collection(db, 'sessions'), orderBy('episodeNumber', 'desc'));
@@ -171,14 +195,15 @@ export default function EventsPage() {
 
   const stats = useMemo(() => {
     const openCount = sessions.filter(s => s.status === 'open').length;
-    const totalParticipants = sessions.reduce((sum, s) => sum + (s.currentMale || 0) + (s.currentFemale || 0), 0);
+    // v8.1.9: 모든 기수의 실시간 집계 인원을 합산하여 표시 (Global Sync)
+    const totalParticipants = Object.values(globalCounts).reduce((sum, c) => sum + c.male + c.female, 0);
     return {
       total: sessions.length,
       open: openCount,
       participants: totalParticipants,
       rate: 75
     };
-  }, [sessions]);
+  }, [sessions, globalCounts]);
 
   // v8.1.7: 투표 폼 상태 퀵 토글
   const toggleVotingForm = async (newStatus: SessionStatus) => {
@@ -377,10 +402,10 @@ export default function EventsPage() {
     );
   }
 
-  // v8.1.7: currentMale/Female 카운터 대신 실시간 applicants state에서 직접 집계
-  // → 세션 카운터 필드가 어긋나도 정확한 수치 표시 보장
-  const liveConfirmedMale = applicants.filter(a => a.status === 'confirmed' && a.gender === 'male').length;
-  const liveConfirmedFemale = applicants.filter(a => a.status === 'confirmed' && a.gender === 'female').length;
+  // v8.1.9: globalCounts에서 실시간 집계 데이터 추출 (선발확정 + 입금대기 포함)
+  const liveStats = globalCounts[selectedId || ''] || { male: 0, female: 0 };
+  const liveConfirmedMale = liveStats.male;
+  const liveConfirmedFemale = liveStats.female;
   const maleRatio = active ? Math.round((liveConfirmedMale / (active.maxMale || 1)) * 100) : 0;
   const femaleRatio = active ? Math.round((liveConfirmedFemale / (active.maxFemale || 1)) * 100) : 0;
 
@@ -430,14 +455,13 @@ export default function EventsPage() {
           </p>
           <div className="space-y-2 max-h-[800px] overflow-y-auto pr-2 custom-scrollbar">
             {sessions.map(ev => {
-              // v8.1.7: 선택된 기수는 실시간 applicants에서 직접 집계, 나머지는 카운터 사용
-              const isSelected = selectedId === ev.id;
-              const total = isSelected
-                ? liveConfirmedMale + liveConfirmedFemale
-                : (ev.currentMale || 0) + (ev.currentFemale || 0);
+              // v8.1.9: 전역 applicants 데이터 기반 실시간 집계 (선발 + 확정 합산)
+              const live = globalCounts[ev.id] || { male: 0, female: 0 };
+              const total = live.male + live.female;
               const maxT = ev.maxMale + ev.maxFemale;
               const pct = maxT > 0 ? Math.min(100, Math.round((total / maxT) * 100)) : 0;
               const sel = selectedId === ev.id;
+              const isOver = total > maxT; // v8.1.9 정원 초과 여부
               return (
                 <button
                   key={ev.id}
@@ -465,12 +489,12 @@ export default function EventsPage() {
                   <p className="flex items-center gap-1" style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: 12 }}>
                     <Calendar size={12} /> {format(ev.eventDate, 'MM. dd (E)', { locale: ko })}
                   </p>
-                  <div className="flex justify-between mb-1.5" style={{ fontSize: '0.7rem', color: '#475569', fontWeight: 500 }}>
-                    <span>{total} / {maxT}명</span>
-                    <span style={{ color: sel ? '#FF6F61' : '#64748b' }}>{pct}%</span>
+                  <div className="flex justify-between mb-1.5" style={{ fontSize: '0.7rem', color: isOver ? '#ef4444' : '#475569', fontWeight: isOver ? 900 : 500 }}>
+                    <span className={isOver ? 'animate-pulse' : ''}>{total} / {maxT}명</span>
+                    <span style={{ color: isOver ? '#ef4444' : (sel ? '#FF6F61' : '#64748b') }}>{pct}%</span>
                   </div>
                   <div style={{ height: 4, background: '#f1f5f9', borderRadius: 4, overflow: 'hidden' }}>
-                    <div style={{ width: `${pct}%`, height: '100%', background: sel ? '#FF6F61' : '#cbd5e1', borderRadius: 4 }} />
+                    <div style={{ width: `${pct}%`, height: '100%', background: isOver ? '#ef4444' : (sel ? '#FF6F61' : '#cbd5e1'), borderRadius: 4 }} />
                   </div>
                 </button>
               );
