@@ -267,7 +267,7 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
         }
       }
       if (count > 0) toast.success(`${count}개의 더미 계정 직업이 보정되었습니다.`);
-      else toast.info('보정할 더미 계정이 없습니다.');
+      else toast('보정할 더미 계정이 없습니다.');
     } catch (e) {
       toast.error('더미 데이터 보정 중 오류가 발생했습니다.');
     }
