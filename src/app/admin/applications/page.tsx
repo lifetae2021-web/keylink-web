@@ -226,6 +226,30 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
   const isMaleFull = selectionStats.male >= (activeEvent?.maxMale || 8);
   const isFemaleFull = selectionStats.female >= (activeEvent?.maxFemale || 8);
 
+  // v8.1.7: 정원을 초과한 확정자 색출 (오래된 순으로 선발했다고 가정할 때, 가장 최근에 신청/확정된 사람을 초과 인원으로 간주)
+  const overQuotaAppIds = useMemo(() => {
+    const ids = new Set<string>();
+    if (selectedEventId === 'all' || !activeEvent) return ids;
+
+    // 적용 순(또는 변경 순) 정렬: 가장 먼저 신청한 사람이 정원 내, 늦게 신청한 사람이 초과
+    const getSortedSelected = (gender: string) => 
+      applications
+        .filter(a => a.gender === gender && (a.status === 'selected' || a.status === 'confirmed'))
+        // 신청일 기준 오름차순 (먼저 신청한 사람 1순위)
+        .sort((a, b) => {
+          const aTime = a.appliedAt?.toMillis?.() || a.appliedAt || 0;
+          const bTime = b.appliedAt?.toMillis?.() || b.appliedAt || 0;
+          return aTime - bTime;
+        });
+
+    const males = getSortedSelected('male');
+    const females = getSortedSelected('female');
+
+    males.slice(activeEvent.maxMale || 8).forEach(a => ids.add(a.id));
+    females.slice(activeEvent.maxFemale || 8).forEach(a => ids.add(a.id));
+
+    return ids;
+  }, [applications, activeEvent, selectedEventId]);
 
   const filtered = applications.filter(app => {
     const user = userMap[app.userId] || {};
@@ -280,10 +304,31 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
             { label: '전체 신청',   value: applications.length,                                                         icon: Users,       color: '#FF6F61' },
             { label: '입금 대기',   value: applications.filter((a: any) => a.status === 'selected').length,              icon: CreditCard,  color: '#a78bfa' },
             { label: '참가 확정',   value: applications.filter((a: any) => a.status === 'confirmed').length,             icon: CheckCircle, color: '#4ade80' },
-            { label: '정원 현황',  value: `${(activeEvent.currentMale||0)+(activeEvent.currentFemale||0)} / ${(activeEvent.maxMale||0)+(activeEvent.maxFemale||0)}`, icon: Calendar, color: '#facc15' },
+            { 
+              label: '정원 현황',  
+              value: (
+                <span className={selectionStats.male + selectionStats.female > (activeEvent.maxMale || 0) + (activeEvent.maxFemale || 0) ? 'text-rose-500 animate-pulse font-black inline-block' : ''}>
+                  {selectionStats.male + selectionStats.female} / {(activeEvent.maxMale||0)+(activeEvent.maxFemale||0)}
+                </span>
+              ), 
+              icon: Calendar, 
+              color: '#facc15' 
+            },
             { 
               label: '선발 현황 (Reserved)', 
-              value: `남 ${selectionStats.male}/${activeEvent.maxMale} · 여 ${selectionStats.female}/${activeEvent.maxFemale}`, 
+              value: (
+                <div className="flex items-center gap-1 text-[0.95rem]">
+                  남 
+                  <span className={selectionStats.male > (activeEvent.maxMale || 0) ? 'text-rose-500 animate-pulse font-black inline-block' : ''}>
+                    {selectionStats.male}/{activeEvent.maxMale}
+                  </span>
+                  <span className="mx-1">·</span> 
+                  여 
+                  <span className={selectionStats.female > (activeEvent.maxFemale || 0) ? 'text-rose-500 animate-pulse font-black inline-block' : ''}>
+                    {selectionStats.female}/{activeEvent.maxFemale}
+                  </span>
+                </div>
+              ), 
               icon: ShieldCheck, 
               color: '#3B82F6' 
             },
@@ -342,6 +387,19 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
         </div>
       </div>
 
+      {/* v8.1.7: 초과 인원 경고 배너 */}
+      {activeEvent && (selectionStats.male > (activeEvent.maxMale || 8) || selectionStats.female > (activeEvent.maxFemale || 8)) && (
+        <div className="p-5 rounded-2xl bg-rose-600 border-2 border-rose-400 flex items-center gap-4 animate-bounce shadow-lg">
+          <XCircle className="text-white shrink-0" size={28} />
+          <div className="flex-1">
+            <p className="text-white font-black text-lg">⚠️ 현재 선발 인원이 정원을 초과했습니다!</p>
+            <p className="text-rose-100 text-sm mt-1 font-bold">
+              참여자 상태를 조정하여 정원을 맞추거나, 행사 관리에서 정원을 늘려주세요.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Main Content Table (Light Premium Theme - Clean White) */}
       <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 16, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
         <div className="overflow-x-auto">
@@ -387,6 +445,7 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
 
                   const isFull = (app.gender === 'male' && isMaleFull) || (app.gender === 'female' && isFemaleFull);
                   const canSelect = app.status === 'applied' || app.status === 'held';
+                  const isOverQuota = overQuotaAppIds.has(app.id); // v8.1.7
 
                   return (
                     <tr 
@@ -394,7 +453,8 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                       style={{ 
                         borderBottom: '1px solid #f0f0f0', 
                         height: '88px',
-                        background: (canSelect && isFull) ? '#FFF1F2' : 'transparent'
+                        // 정원 초과로 선택/확정된 사람은 명확한 빨간색, 더 이상 선택 못하게 막힌 줄은 연한 붉은색
+                        background: isOverQuota ? '#FFE4E6' : ((canSelect && isFull) ? '#FFF1F2' : 'transparent')
                       }} 
                       className={`transition-colors group cursor-default ${ (canSelect && isFull) ? 'opacity-85' : 'hover:bg-slate-50' }`}
                     >

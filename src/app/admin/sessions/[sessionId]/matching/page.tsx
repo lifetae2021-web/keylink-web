@@ -136,7 +136,7 @@ export default function MatchingAdminPage() {
 
         {/* 헤더 */}
         <div className="flex items-center gap-4 mb-8">
-          <Link href={`/admin/sessions/${sessionId}/applicants`} className="p-2 rounded-xl bg-gray-800 hover:bg-gray-700 transition-colors">
+          <Link href={`/admin/applications`} className="p-2 rounded-xl bg-gray-800 hover:bg-gray-700 transition-colors">
             <ArrowLeft size={20} className="text-gray-400" />
           </Link>
           <div>
