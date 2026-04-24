@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Calendar, MapPin, Users, ArrowRight, Timer, LayoutGrid, Loader2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { getOpenSessions } from '@/lib/firestore/sessions';
+import { getAllSessions } from '@/lib/firestore/sessions';
 import { Session } from '@/lib/types';
 
 export default function StatusListPage() {
@@ -13,8 +13,10 @@ export default function StatusListPage() {
   useEffect(() => {
     async function fetchSessions() {
       try {
-        const data = await getOpenSessions();
-        setSessions(data);
+        const data = await getAllSessions();
+        // v8.4.8: 최신 기수가 맨 위에 오도록 정렬 (이미 episodeNumber로 정산되어 내려올 수 있으나 date로 재검증)
+        const sorted = data.sort((a, b) => b.eventDate.getTime() - a.eventDate.getTime());
+        setSessions(sorted);
       } catch (error) {
         console.error("Error fetching sessions:", error);
       } finally {
@@ -24,18 +26,24 @@ export default function StatusListPage() {
     fetchSessions();
   }, []);
 
-  // Logic to determine status labels and colors
-  const getStatusInfo = (event: any) => {
+  // Logic to determine status labels and colors (v8.4.8 확장)
+  const getStatusInfo = (event: Session) => {
     const currentMale = event.currentMale || 0;
     const currentFemale = event.currentFemale || 0;
     const totalFilled = currentMale + currentFemale;
-    const totalMax = event.maxMale + event.maxFemale;
+    const totalMax = (event.maxMale || 8) + (event.maxFemale || 8);
     const ratio = totalFilled / totalMax;
 
-    if (event.status === 'closed' || event.status === 'completed') {
-      return { label: '진행 완료', color: '#999', bg: '#f5f5f5' };
+    if (event.status === 'completed') {
+      return { label: '매칭 완료', color: '#666', bg: '#f1f1f1' };
     }
-    if (ratio >= 0.8) {
+    if (event.status === 'voting' || event.status === 'matching') {
+      return { label: '진행 중', color: '#111', bg: '#EBF3FF' };
+    }
+    if (event.status === 'closed' || ratio >= 0.95) {
+      return { label: '모집 마감', color: '#C86A6A', bg: 'rgba(200,106,106,0.1)' };
+    }
+    if (ratio >= 0.7) {
       return { label: '마감 임박', color: '#fff', bg: 'linear-gradient(90deg, #FF9A8B, #FF6F61)' };
     }
     return { label: '모집 중', color: '#FF6F61', bg: '#FFF5F4' };
@@ -54,10 +62,10 @@ export default function StatusListPage() {
       <div className="kl-container" style={{ paddingTop: '60px' }}>
         <header style={{ textAlign: 'center', marginBottom: '50px' }}>
           <h1 style={{ fontSize: '2.8rem', fontWeight: '900', marginBottom: '16px', letterSpacing: '-0.04em' }}>
-            현재 모집 중인 <span style={{ color: '#FF6F61' }}>기수 명단</span>
+            전체 기수 <span style={{ color: '#FF6F61' }}>현황 라인업</span>
           </h1>
           <p style={{ color: 'var(--color-text-secondary)', fontSize: '1.1rem', fontWeight: '500' }}>
-            지점별 라인업과 모집 상태를 확인하고 원하는 기수에 참여하세요.
+            진행 중인 기수부터 종료된 기수까지 모든 실시간 명단을 확인하세요. <span style={{ fontSize: '0.7rem', color: '#CCC' }}>v8.4.8</span>
           </p>
         </header>
 

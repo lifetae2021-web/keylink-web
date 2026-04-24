@@ -3,7 +3,9 @@
 import { use, useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Users, ShieldCheck, RefreshCcw, ArrowRight, Heart, Timer, MapPin, Sparkles, Loader2 } from 'lucide-react';
+import { collection, doc, getDocs, getDoc, query, where } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { Users, ShieldCheck, RefreshCcw, ArrowRight, Heart, Timer, MapPin, Sparkles, Loader2, Gauge } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getSession } from '@/lib/firestore/sessions';
 import { getApplicationsBySession } from '@/lib/firestore/applications';
@@ -26,6 +28,20 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
         ]);
         setSession(sessionData);
         setApplicants(appData);
+
+        // v8.4.8: 인원 정보를 사용자 컬렉션에서 추가로 가져오기 (키 정보 등)
+        const confirmedApps = appData.filter(a => a.status === 'confirmed');
+        const userPromises = confirmedApps.map(a => getDoc(doc(db, 'users', a.userId)));
+        const userSnaps = await Promise.all(userPromises);
+        
+        const map: Record<string, any> = {};
+        userSnaps.forEach(snap => {
+          if (snap.exists()) {
+            map[snap.id] = snap.data();
+          }
+        });
+        setUserMap(map);
+
       } catch (error) {
         console.error("Error fetching status detail:", error);
       } finally {
@@ -46,40 +62,23 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
   const maleApplicants = applicants.filter(p => p.gender === 'male' && p.status === 'confirmed');
   const femaleApplicants = applicants.filter(p => p.gender === 'female' && p.status === 'confirmed');
 
-  // Data Dissociation & Anonymization Logic
-  const anonymizedRows = useMemo(() => {
+  // v8.4.8: 라인업 데이터 바인딩 (이름/연락처 완전 배제)
+  const confirmedRows = useMemo(() => {
     const currentList = activeTab === 'male' ? maleApplicants : femaleApplicants;
     
-    // 1. Ages: Sort descending (99 -> 90) to show youngest first
-    const ages = currentList
-      .map(p => `${p.age}년생`)
-      .sort((a, b) => parseInt(b) - parseInt(a));
+    return currentList.map(p => {
+      const u = userMap[p.userId] || {};
+      const birth = u.birthDate || '';
+      const year = birth.includes('-') ? birth.split('-')[0].slice(2, 4) : (birth.length >= 2 ? birth.slice(0, 2) : '??');
       
-    // 2. Jobs: Shuffle
-    const jobs = [...currentList.map(p => p.job)].sort(() => Math.random() - 0.5);
-      
-    // 3. MBTI: Shuffle
-    const mbtis = [...currentList.map(p => p.mbti || '공개가능')].sort(() => Math.random() - 0.5);
-    
-    // Combine into rows
-    const rows = [];
-    const maxSlots = 8; 
-    for (let i = 0; i < maxSlots; i++) {
-      if (i < currentList.length) {
-        rows.push({
-          age: ages[i],
-          job: jobs[i],
-          mbti: mbtis[i],
-          status: 'confirmed'
-        });
-      } else {
-        rows.push({
-          status: 'recruiting'
-        });
-      }
-    }
-    return rows;
-  }, [activeTab, maleApplicants, femaleApplicants]);
+      return {
+        birthYear: `${year}년생`,
+        job: p.displayJob || p.job || u.job || '직장인',
+        height: u.height ? `${u.height}cm` : '160cm대',
+        status: 'confirmed'
+      };
+    }).sort((a, b) => b.birthYear.localeCompare(a.birthYear));
+  }, [activeTab, maleApplicants, femaleApplicants, userMap]);
 
   const progressMale = session ? (session.currentMale / session.maxMale) : 0;
   const progressFemale = session ? (session.currentFemale / session.maxFemale) : 0;
@@ -108,7 +107,6 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
 
   return (
     <div style={{ paddingBottom: '100px', background: 'var(--color-bg)' }}>
-      {/* Real-time Status Header */}
       <div style={{ 
         position: 'sticky', top: '85px', zIndex: 100,
         background: 'rgba(255, 111, 97, 0.9)', backdropFilter: 'blur(10px)',
@@ -120,7 +118,6 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
       </div>
 
       <div className="kl-container" style={{ paddingTop: '100px' }}>
-        {/* Navigation & Back Button */}
         <div style={{ marginBottom: '40px' }}>
           <Link href="/status" style={{ 
             display: 'inline-flex', alignItems: 'center', gap: '8px', 
@@ -129,12 +126,11 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
             padding: '10px 20px', borderRadius: '12px', background: '#fff',
             border: '1.5px solid #eee', transition: 'all 0.2s ease',
             boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
-          }} onMouseEnter={e => { e.currentTarget.style.borderColor = '#FF6F61'; e.currentTarget.style.color = '#FF6F61'; e.currentTarget.style.transform = 'translateX(-4px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(255,111,97,0.15)'; }} onMouseLeave={e => { e.currentTarget.style.borderColor = '#eee'; e.currentTarget.style.color = '#666'; e.currentTarget.style.transform = 'translateX(0)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.05)'; }}>
+          }}>
             <ArrowRight size={16} style={{ transform: 'rotate(180deg)' }} /> 기수 목록으로 돌아가기
           </Link>
         </div>
 
-        {/* Hero Section */}
         <section style={{ marginBottom: '60px' }}>
           <div style={{ 
             display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '32px',
@@ -196,18 +192,17 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
           </div>
         </section>
 
-        {/* Anonymized Lineup Section */}
         <section style={{ marginBottom: '80px' }}>
           <div style={{ textAlign: 'center', marginBottom: '40px' }}>
             <h3 style={{ fontSize: '1.8rem', fontWeight: '900', color: '#111', marginBottom: '12px' }}>
-              실시간 라인업
+              참가 확정 라인업
             </h3>
             <p style={{ color: 'var(--color-text-secondary)', fontWeight: '500', maxWidth: '600px', margin: '0 auto' }}>
-              참여자의 프라이버시 보호를 위해 나이, 직업, MBTI 정보를 <br className="desktop-br"/>각각 분리하여 랜덤하게 나열하였습니다.
+              개인정보 보호를 위해 성함과 연락처를 제외한 <br className="desktop-br"/>
+              나이, 직업, 키 정보만 투명하게 공개합니다.
             </p>
           </div>
 
-          {/* Gender Tabs */}
           <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', marginBottom: '40px' }}>
             <button 
               onClick={() => setActiveTab('male')}
@@ -239,19 +234,7 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
             </button>
           </div>
 
-          {/* Dissociated List View */}
-          <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-            <div style={{ 
-              display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px',
-              padding: '15px 30px', background: 'rgba(0,0,0,0.03)', borderRadius: '16px',
-              fontWeight: '800', color: '#666', fontSize: '0.9rem', marginBottom: '12px',
-              textAlign: 'center'
-            }}>
-              <span>나이 (정렬됨)</span>
-              <span>직업 (랜덤)</span>
-              <span>MBTI (랜덤)</span>
-            </div>
-
+          <div style={{ maxWidth: '850px', margin: '0 auto' }}>
             <AnimatePresence mode="wait">
               <motion.div 
                 key={activeTab}
@@ -259,28 +242,26 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.3 }}
-                style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}
+                style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}
               >
-                {anonymizedRows.map((row, idx) => (
-                  <div key={idx} className="anon-row" style={{ 
-                    display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px',
-                    background: '#fff', border: '1px solid #f0f0f0', borderRadius: '20px',
-                    padding: '20px 30px', boxShadow: '0 4px 12px rgba(0,0,0,0.01)',
-                    alignItems: 'center', textAlign: 'center'
+                {confirmedRows.map((row, idx) => (
+                  <div key={idx} className="status-row" style={{ 
+                    display: 'grid', gridTemplateColumns: '1fr 2fr 1fr', gap: '20px',
+                    background: '#fff', border: '1px solid #f0f0f0', borderRadius: '24px',
+                    padding: '24px 40px', boxShadow: '0 4px 20px rgba(0,0,0,0.02)',
+                    alignItems: 'center'
                   }}>
-                    {row.status === 'confirmed' ? (
-                      <>
-                        <div style={{ fontWeight: '700', color: '#111' }}>{row.age}</div>
-                        <div style={{ fontWeight: '800', color: activeTab === 'male' ? '#007AFF' : '#FF6F61' }}>{row.job}</div>
-                        <div style={{ color: '#666', fontWeight: '500' }}>{row.mbti}</div>
-                      </>
-                    ) : (
-                      <div style={{ gridColumn: 'span 3', color: '#bbb', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                        <Sparkles size={16} /> 멋진 인연을 기다려요
-                      </div>
-                    )}
+                    <div style={{ fontWeight: '700', color: '#111', fontSize: '1.1rem', textAlign: 'left' }}>{row.birthYear}</div>
+                    <div style={{ fontWeight: '800', color: activeTab === 'male' ? '#3B82F6' : '#FF6F61', fontSize: '1.15rem', textAlign: 'center' }}>{row.job}</div>
+                    <div style={{ color: '#666', fontWeight: '600', fontSize: '1.05rem', textAlign: 'right' }}>{row.height}</div>
                   </div>
                 ))}
+                
+                {confirmedRows.length === 0 && (
+                   <div style={{ padding: '60px', textAlign: 'center', background: '#fff', borderRadius: '24px', border: '2px dashed #eee' }}>
+                      <p style={{ color: '#aaa', fontWeight: '700' }}>현재 확정된 {activeTab === 'male' ? '남성' : '여성'} 참가자가 없습니다.</p>
+                   </div>
+                )}
               </motion.div>
             </AnimatePresence>
           </div>
