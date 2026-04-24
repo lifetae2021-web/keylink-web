@@ -22,6 +22,7 @@ import {
   ListChecks,
   Phone,
   UserCheck,
+  MessageSquare,
 } from "lucide-react";
 import { auth, db } from "@/lib/firebase";
 import {
@@ -46,6 +47,7 @@ import {
   Application,
 } from "@/lib/types";
 import Link from "next/link";
+import SMSPreviewModal from "@/components/admin/SMSPreviewModal";
 
 const card = "bg-white border border-slate-200 rounded-xl shadow-sm";
 
@@ -61,6 +63,12 @@ export default function EventsPage() {
   const [applicants, setApplicants] = useState<Application[]>([]); // v7.2.0
   const [applicantsLoading, setApplicantsLoading] = useState(false); // v7.2.0
   const [userMap, setUserMap] = useState<Record<string, any>>({}); // v7.9.6: 유저 정보 조인용
+
+  // SMS Modal State
+  const [smsModalOpen, setSmsModalOpen] = useState(false);
+  const [smsTargets, setSmsTargets] = useState<{ phone: string; name: string; gender: string; slotNumber?: number; userId: string }[]>([]);
+  const [smsDefaultMsg, setSmsDefaultMsg] = useState('');
+  const [smsRecipientLabel, setSmsRecipientLabel] = useState('');
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -328,6 +336,44 @@ export default function EventsPage() {
     }
     return overIds;
   }, [participants, active]);
+
+  const handleBulkSMSOpen = () => {
+    if (!active) return;
+    const withPhone = participants.filter((p) => p.phone);
+    const noPhone = participants.length - withPhone.length;
+    if (noPhone > 0) toast(`${noPhone}명은 연락처가 없어 발송에서 제외됩니다.`, { icon: '⚠️' });
+    if (withPhone.length === 0) return toast.error('연락처가 있는 참가자가 없습니다.');
+    const datePart = active.eventDate ? format(active.eventDate, 'MM/dd', { locale: ko }) : '날짜';
+    const dayPart = active.eventDate ? format(active.eventDate, 'E', { locale: ko }) : '요일';
+    const timePart = active.eventDate ? format(active.eventDate, 'HH:mm', { locale: ko }) : '시간';
+    setSmsTargets(withPhone.map((p) => ({
+      phone: p.phone,
+      name: p.name || '참가자',
+      gender: p.gender,
+      slotNumber: p.slotNumber,
+      userId: p.userId,
+    })));
+    setSmsRecipientLabel(`전체 참가자 ${withPhone.length}명`);
+    setSmsDefaultMsg(
+      `안녕하세요😊 키링크입니다 :)\n일시 : ${datePart} ${dayPart} ${timePart} (약 2시간 소요)\n장소 : 부산진구 중앙대로 763-1 데일리팡 4층\n\n❤️{이름}님은 키링{성별} {호수}호입니다❤️\n입장 전 신분증(모바일 가능)을 미리 꺼내놔주세요\n\n슬리퍼, 운동복 등 소개팅 분위기와 맞지 않는 복장은 ❌❌\n{오픈채팅링크}\n카카오프렌즈 익명으로 입장해주시면 됩니다 ! 내일 오픈채팅으로 진행과정에 대해 설명드리니 지금 바로 입장부탁드립니다 :)`
+    );
+    setSmsModalOpen(true);
+  };
+
+  const handleBulkSMSConfirm = async (message: string) => {
+    const token = await auth.currentUser?.getIdToken();
+    const res = await fetch('/api/admin/sms/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ targets: smsTargets, message }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || '문자 발송 실패');
+    const msg = data.failCount > 0
+      ? `${data.successCount}명 발송 완료 (${data.failCount}명 실패)`
+      : `${data.successCount}명에게 문자 발송 완료`;
+    toast.success(msg);
+  };
 
   // v8.5.4: 선발 취소 - status API 경유 (대기자 자동 승격 포함)
   const handleCancelSelection = async (app: Application) => {
@@ -1094,6 +1140,13 @@ export default function EventsPage() {
                             />
                           )}
                           <button
+                            onClick={handleBulkSMSOpen}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border border-[#FF7E7E]/30 bg-white text-[#FF6F61] hover:bg-orange-50 hover:border-[#FF7E7E] transition-all"
+                          >
+                            <MessageSquare size={12} />
+                            전체 문자
+                          </button>
+                          <button
                             onClick={runSlotMigration}
                             disabled={isMigrating}
                             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-200 bg-white text-slate-500 hover:bg-amber-50 hover:text-amber-600 hover:border-amber-200 transition-all"
@@ -1256,16 +1309,30 @@ export default function EventsPage() {
                                                 </span>
                                               </div>
                                             </div>
-                                            <button
-                                              onClick={() =>
-                                                handleCancelSelection(app)
-                                              }
-                                              className="shrink-0 px-2.5 py-1 rounded-lg text-[0.65rem] font-black bg-white border border-slate-200 text-slate-400 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all"
-                                            >
-                                              {isOverQuota
-                                                ? "🔴 선발 취소"
-                                                : "선발 취소"}
-                                            </button>
+                                            <div className="flex items-center gap-1">
+                                              <button
+                                                onClick={() => {
+                                                  setSmsTargets([{ phone: app.phone, name: app.name || '참가자', gender: app.gender, slotNumber: app.slotNumber, userId: app.userId }]);
+                                                  setSmsRecipientLabel(`${app.name}님`);
+                                                  setSmsDefaultMsg(`안녕하세요😊 키링크입니다 :)\n일시 : ${active?.eventDate ? format(active.eventDate, 'MM/dd E HH:mm', { locale: ko }) : ''} (약 2시간 소요)\n장소 : 부산진구 중앙대로 763-1 데일리팡 4층\n\n❤️{이름}님은 키링{성별} {호수}호입니다❤️\n입장 전 신분증(모바일 가능)을 미리 꺼내놔주세요\n\n슬리퍼, 운동복 등 소개팅 분위기와 맞지 않는 복장은 ❌❌\n{오픈채팅링크}\n카카오프렌즈 익명으로 입장해주시면 됩니다 ! 내일 오픈채팅으로 진행과정에 대해 설명드리니 지금 바로 입장부탁드립니다 :)`);
+                                                  setSmsModalOpen(true);
+                                                }}
+                                                className="shrink-0 p-1.5 rounded-lg bg-white border border-[#FF7E7E]/30 text-[#FF6F61] hover:bg-orange-50 hover:border-[#FF7E7E] transition-all"
+                                                title="문자 보내기"
+                                              >
+                                                <MessageSquare size={11} />
+                                              </button>
+                                              <button
+                                                onClick={() =>
+                                                  handleCancelSelection(app)
+                                                }
+                                                className="shrink-0 px-2.5 py-1 rounded-lg text-[0.65rem] font-black bg-white border border-slate-200 text-slate-400 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all"
+                                              >
+                                                {isOverQuota
+                                                  ? "🔴 선발 취소"
+                                                  : "선발 취소"}
+                                              </button>
+                                            </div>
                                           </div>
                                         );
                                       })}
@@ -1737,6 +1804,18 @@ export default function EventsPage() {
           </div>
         </div>
       )}
+
+      {/* Bulk SMS Modal */}
+      <SMSPreviewModal
+        isOpen={smsModalOpen}
+        onClose={() => setSmsModalOpen(false)}
+        onConfirm={handleBulkSMSConfirm}
+        applicant={undefined}
+        session={active}
+        defaultMessage={smsDefaultMsg}
+        recipientLabel={smsRecipientLabel}
+        confirmLabel="문자 발송"
+      />
 
       {/* New Session Config Modal */}
       {isModalOpen && (
