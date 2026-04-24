@@ -657,19 +657,6 @@ export default function EventsPage() {
                   <>
               {/* Event detail */}
               <div style={{ padding: '0' }}>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                  {[
-                    { label: '일시', value: `${format(active.eventDate, 'MM. dd (E) HH:mm', { locale: ko })}` },
-                    { label: '장소', value: active.venue || '서면역 인근' },
-                    { label: '참가비', value: `${(active.price || 29000).toLocaleString()}원` },
-                  ].map(info => (
-                    <div key={info.label} style={{ background: '#f8fafc', border: '1px solid #f1f5f9', borderRadius: '10px', padding: '16px' }}>
-                      <p style={{ fontSize: '0.7rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', marginBottom: 6 }}>{info.label}</p>
-                      <p style={{ fontSize: '0.9rem', fontWeight: 700, color: '#334155' }}>{info.value}</p>
-                    </div>
-                  ))}
-                </div>
-
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   {[
                     { label: '남성 모집 현황', cur: liveConfirmedMale,   max: active.maxMale,   pct: maleRatio,   color: '#3b82f6', bg: '#eff6ff', border: '#bfdbfe' },
