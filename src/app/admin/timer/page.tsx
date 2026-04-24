@@ -33,6 +33,7 @@ export default function AdminTimerPage() {
   const [eventStartMs, setEventStartMs] = useState<number | null>(null);
   const [currentElapsedMs, setCurrentElapsedMs] = useState(0);
   const [isLive, setIsLive] = useState(false);
+  const [viewMode, setViewMode] = useState<'schedule' | 'map'>('schedule');
 
   // Audio refs
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -237,6 +238,21 @@ export default function AdminTimerPage() {
     return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   };
 
+  const getAbsoluteTime = (relativeMs: number) => {
+    if (!eventStartMs) return '--:--';
+    const date = new Date(eventStartMs + relativeMs);
+    return date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
+  };
+
+  const progressPct = currentBlock ? Math.min(100, Math.max(0, (currentElapsedMs - currentBlock.startMs) / currentBlock.durationMs * 100)) : 0;
+  
+  const bgStyle = useMemo(() => {
+    if (!currentBlock) return { background: '#F8FAFC' };
+    if (currentBlock.type === 'break') return { background: '#F0F7FF' }; // 파스텔 블루
+    if (currentBlock.label.includes('케익')) return { background: '#FFF5F7' }; // 파스텔 핑크
+    return { background: '#FFFFFF' };
+  }, [currentBlock]);
+
   return (
     <div className="flex flex-col lg:flex-row gap-6 min-h-[calc(100vh-130px)]">
       
@@ -285,7 +301,7 @@ export default function AdminTimerPage() {
         <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex-1">
           <div className="flex items-center gap-2 mb-6">
             <Settings size={20} className="text-slate-400" />
-            <h2 className="text-lg font-black text-slate-800">엔진 파라미터 <span className="text-[10px] font-bold text-blue-500 ml-1">v8.3.1 Premium</span></h2>
+            <h2 className="text-lg font-black text-slate-800">엔진 파라미터 <span className="text-[10px] font-bold text-blue-500 ml-1">v8.3.2 Premium</span></h2>
           </div>
 
           <div className="space-y-5">
@@ -368,9 +384,26 @@ export default function AdminTimerPage() {
           </div>
 
           <div className="relative z-10 flex flex-col items-center gap-3 w-full">
-             <div className="bg-slate-900 text-white rounded-2xl px-6 py-4 font-mono text-6xl md:text-7xl font-black shadow-inner shadow-black/20 flex items-center justify-center min-w-[240px]">
+             {/* 상태바 추가 */}
+             {isLive && !isFinished && currentBlock && (
+               <div className="w-full max-w-2xl h-2 bg-slate-100 rounded-full overflow-hidden mb-4 border border-slate-200">
+                  <div 
+                    className={`h-full transition-all duration-1000 ${currentBlock.type === 'break' ? 'bg-blue-400' : 'bg-[#FF6F61]'}`} 
+                    style={{ width: `${progressPct}%` }}
+                  />
+               </div>
+             )}
+
+             <div className="bg-slate-900 text-white rounded-2xl px-6 py-4 font-mono text-6xl md:text-8xl font-black shadow-inner shadow-black/20 flex items-center justify-center min-w-[280px]">
                {formatMinSec(remainingInBlockMs)}
              </div>
+             
+             {/* 다음 이동 시간 안내 */}
+             {isLive && !isFinished && currentBlock && (
+               <div className="mt-4 text-slate-500 font-bold text-lg">
+                 다음 자리 이동 시각: <span className="text-slate-800 font-black">{getAbsoluteTime(currentBlock.endMs)}</span>
+               </div>
+             )}
              
              {/* 타이머 미세 조정 (관리자 권한) */}
              {isLive && !isFinished && (
@@ -387,64 +420,94 @@ export default function AdminTimerPage() {
           </div>
         </div>
 
-        {/* 로테이션 맵 매트릭스 */}
-        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm flex-1 flex flex-col">
-          <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-             <h3 className="font-black text-slate-800 flex items-center gap-2"><RefreshCw size={18} className="text-[#FF6F61]"/> 스마트 이동 표 (Movement Map)</h3>
-             <span className="text-xs font-bold text-slate-400">여성 고정 / 남성 {tablesShiftLabel()} 이동</span>
-          </div>
+        {/* 뷰 토글 버튼 */}
+        <div className="flex justify-center -my-2 relative z-20">
+          <button 
+            onClick={() => setViewMode(v => v === 'schedule' ? 'map' : 'schedule')}
+            className="flex items-center gap-2 px-10 py-4 bg-white border-2 border-slate-200 rounded-full shadow-lg hover:border-[#FF6F61] hover:text-[#FF6F61] transition-all font-black text-lg active:scale-95"
+          >
+            {viewMode === 'schedule' ? <RefreshCw size={20} /> : <Clock size={20} />}
+            {viewMode === 'schedule' ? '로테이션 배치표 보기' : '전체 라이브 스케줄 보기'}
+          </button>
+        </div>
+
+        {/* 듀얼 뷰 콘텐츠 (애니메이션 적용) */}
+        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm flex-1 flex flex-col min-h-[500px]" style={bgStyle}>
           
-          <div className="flex-1 overflow-auto custom-scrollbar p-0">
-             <table className="w-full text-center border-collapse">
-               <thead className="sticky top-0 bg-white z-20 shadow-sm">
-                 <tr>
-                   <th className="p-3 bg-slate-100 border-b border-slate-200 text-xs font-black text-slate-500 min-w-[80px]">회차</th>
-                   {Array.from({length: totalTables}).map((_, i) => (
-                     <th key={i} className="p-2 bg-rose-50/80 border-b border-r border-slate-200 min-w-[60px]">
-                       <div className="font-black text-rose-600 text-sm">T{i+1}</div>
-                       <div className="text-[10px] font-bold text-rose-400">여{i+1}</div>
-                     </th>
-                   ))}
-                 </tr>
-               </thead>
-               <tbody className="bg-white">
-                 {blocks.map((b, bIdx) => {
-                   const isCur = currentBlock?.id === b.id;
-                   
-                   if (b.type === 'break') {
-                     return (
-                       <tr key={b.id} className={isCur ? 'bg-purple-100' : 'bg-slate-50'}>
-                         <td colSpan={totalTables + 1} className="p-2 border-b border-slate-200 text-xs font-bold text-purple-600 tracking-widest uppercase">
-                           ☕ {b.label} (5분)
-                         </td>
-                       </tr>
-                     );
-                   }
-
-                   return (
-                     <tr key={b.id} className={`${isCur ? 'bg-orange-50' : 'hover:bg-slate-50'} transition-colors`}>
-                       <td className={`p-3 border-b border-slate-200 text-xs ${isCur ? 'font-black text-orange-600' : 'font-bold text-slate-500'}`}>
-                         {b.label}
-                       </td>
-                       {Array.from({length: totalTables}).map((_, tIdx) => {
-                          const table = tIdx + 1;
-                          const maleId = getMaleForTable(table, b.roundNum!);
-                          
-                          // Highlight custom male specifically
-                          const isCustomTarget = customMaleId === maleId;
-
-                          return (
-                            <td key={table} className={`p-2 border-b border-r border-slate-100 ${isCur ? 'font-black' : 'font-bold'} ${isCustomTarget ? 'text-orange-600 bg-orange-100/50' : 'text-blue-600'}`}>
-                              남{maleId}
-                            </td>
-                          );
-                       })}
-                     </tr>
-                   )
-                 })}
-               </tbody>
-             </table>
-          </div>
+          {viewMode === 'schedule' ? (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 flex flex-col h-full">
+              <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+                <h3 className="font-black text-slate-800 flex items-center gap-2"><Clock size={18} className="text-blue-500"/> 라이브 타임 트래커 (Live Tracker)</h3>
+              </div>
+              <div className="flex-1 overflow-auto custom-scrollbar">
+                <table className="w-full text-center border-collapse">
+                  <thead className="sticky top-0 bg-white z-20 shadow-sm">
+                    <tr className="text-xs font-black text-slate-400 uppercase tracking-wider">
+                      <th className="p-4 border-b border-slate-100 text-left pl-8">회차 / 상태</th>
+                      <th className="p-4 border-b border-slate-100">소요 시간</th>
+                      <th className="p-4 border-b border-slate-100 pr-8">예정 시각</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {blocks.map((b) => {
+                      const isCur = currentBlock?.id === b.id;
+                      const isPast = currentElapsedMs >= b.endMs;
+                      return (
+                        <tr key={b.id} className={`${isCur ? 'bg-slate-900 text-white' : isPast ? 'opacity-40' : ''} border-b border-slate-50 transition-colors`}>
+                          <td className="p-4 text-left pl-8 font-black text-lg">{b.label}</td>
+                          <td className="p-4 font-bold">{Math.floor(b.durationMs/60000)}분</td>
+                          <td className="p-4 pr-8 font-black text-lg">{getAbsoluteTime(b.startMs)} ~ {getAbsoluteTime(b.endMs)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : (
+            <div className="animate-in fade-in slide-in-from-top-4 duration-500 flex flex-col h-full">
+              <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                <h3 className="font-black text-slate-800 flex items-center gap-2"><RefreshCw size={18} className="text-[#FF6F61]"/> 스마트 로테이션 맵 (Full Map)</h3>
+                <span className="text-xs font-bold text-slate-400">여성 고정 / 남성 +1 테이블 이동</span>
+              </div>
+              
+              <div className="flex-1 overflow-auto custom-scrollbar p-0">
+                <table className="w-full text-center border-collapse">
+                  <thead className="sticky top-0 bg-white z-20 shadow-sm font-black text-xs text-slate-500">
+                    <tr>
+                      <th className="p-4 bg-slate-100 border-b border-slate-200 min-w-[100px]">회차</th>
+                      {Array.from({length: totalTables}).map((_, i) => (
+                        <th key={i} className="p-4 bg-rose-50/80 border-b border-r border-slate-200">
+                          <div className="text-rose-600 font-black text-lg">T{i+1}</div>
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white">
+                    {blocks.filter(b => b.type === 'talk').map((b) => {
+                      const isCur = currentBlock?.id === b.id;
+                      return (
+                        <tr key={b.id} className={`${isCur ? 'bg-orange-100' : 'hover:bg-slate-50'} transition-colors`}>
+                          <td className={`p-5 border-b border-slate-200 font-black ${isCur ? 'text-orange-600' : 'text-slate-500'}`}>
+                            {b.roundNum}회차
+                          </td>
+                          {Array.from({length: totalTables}).map((_, tIdx) => {
+                              const table = tIdx + 1;
+                              const maleId = getMaleForTable(table, b.roundNum!);
+                              return (
+                                <td key={table} className={`p-5 border-b border-r border-slate-100 text-xl font-black ${isCur ? 'text-orange-600' : 'text-blue-600'}`}>
+                                  남{maleId}
+                                </td>
+                              );
+                          })}
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
         
       </div>

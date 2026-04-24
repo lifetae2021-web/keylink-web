@@ -107,6 +107,12 @@ export default function LiveTimerPage() {
     return ((val % totalTables) + totalTables) % totalTables + 1;
   };
 
+  const getAbsoluteTime = (relativeMs: number) => {
+    if (!timerConfig?.startMs) return '--:--';
+    const date = new Date(timerConfig.startMs + relativeMs);
+    return date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
+  };
+
   const formatMinSec = (ms: number) => {
     if (ms < 0) return '00:00';
     const totalSec = Math.floor(ms / 1000);
@@ -216,7 +222,10 @@ export default function LiveTimerPage() {
                    
                    <div className="flex-1 pb-1">
                      <div className="flex justify-between items-baseline mb-0.5">
-                       <span className={`text-[13px] font-black ${isCur ? 'text-[#FF6F61]' : isPast ? 'text-slate-400' : 'text-slate-600'}`}>{b.label}</span>
+                       <div className="flex flex-col">
+                         <span className={`text-[13px] font-black ${isCur ? 'text-[#FF6F61]' : isPast ? 'text-slate-400' : 'text-slate-600'}`}>{b.label}</span>
+                         <span className="text-[10px] font-bold text-slate-400">{getAbsoluteTime(b.startMs)} ~ {getAbsoluteTime(b.endMs)}</span>
+                       </div>
                        <span className="text-[10px] font-bold text-slate-400 bg-slate-50 px-2 py-0.5 rounded-md">
                          {Math.floor(b.durationMs/60000)}분
                        </span>
