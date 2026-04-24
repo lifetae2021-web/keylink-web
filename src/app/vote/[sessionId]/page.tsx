@@ -7,7 +7,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { collection, query, where, getDocs, doc, getDoc, Timestamp } from 'firebase/firestore';
 import { subscribeSession } from '@/lib/firestore/sessions';
 import { getMyVote, submitVote } from '@/lib/firestore/votes';
-import { getMyLatestApplication } from '@/lib/firestore/applications';
+import { getApplicationBySession } from '@/lib/firestore/applications';
 import { Session, Application, VoteChoice } from '@/lib/types';
 import { Heart, Lock, CheckCircle2, ArrowLeft, Star, User, Home, ShieldCheck, MessageSquare, ClipboardList, ChevronLeft } from 'lucide-react';
 import Link from 'next/link';
@@ -51,9 +51,9 @@ export default function VotePage() {
       if (!user) { router.push('/login'); return; }
       setUserId(user.uid);
 
-      // 신청서 확인
-      const app = await getMyLatestApplication(user.uid);
-      if (!app || app.sessionId !== sessionId || app.status !== 'confirmed') {
+      // 신청서 확인 (v8.2.3: 특정 세션에 대한 신청서 상태를 실시간 fetch 하여 검증 오류 해결)
+      const app = await getApplicationBySession(user.uid, sessionId);
+      if (!app || app.status !== 'confirmed') {
         toast.error('참가 확정된 사용자만 투표할 수 있습니다.');
         router.push('/mypage');
         return;

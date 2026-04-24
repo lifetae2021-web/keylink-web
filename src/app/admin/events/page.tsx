@@ -66,7 +66,7 @@ export default function EventsPage() {
     q5Label: '후기',
   });
 
-  // v8.2.2: 기수 목록 사이드바 실시간 집계를 위한 전역 구독 (성능 최적화: confirmed, selected만 필터링)
+  // v8.2.3: 기수 목록 사이드바 실시간 집계를 위한 전역 구독 (성능 최적화: confirmed, selected만 필터링)
   const [globalCounts, setGlobalCounts] = useState<Record<string, { male: number, female: number }>>({});
 
   useEffect(() => {
@@ -195,7 +195,7 @@ export default function EventsPage() {
 
   const stats = useMemo(() => {
     const openCount = sessions.filter(s => s.status === 'open').length;
-    // v8.2.2: 모든 기수의 실시간 집계 인원을 합산하여 표시 (Global Sync)
+    // v8.2.3: 모든 기수의 실시간 집계 인원을 합산하여 표시 (Global Sync)
     const totalParticipants = Object.values(globalCounts).reduce((sum, c) => sum + c.male + c.female, 0);
     return {
       total: sessions.length,
@@ -217,7 +217,7 @@ export default function EventsPage() {
     }
   };
 
-  // v8.2.2: 참가 명단 (확정자만) 필터링 및 초과 인원 색출
+  // v8.2.3: 참가 명단 (확정자만) 필터링 및 초과 인원 색출
   const participants = useMemo(() => applicants.filter(a => a.status === 'confirmed'), [applicants]);
   
   const overQuotaAppIds = useMemo(() => {
@@ -238,7 +238,7 @@ export default function EventsPage() {
     return overIds;
   }, [participants, active]);
 
-  // v8.2.0: 선발 취소 (보류/검토 중으로 원복)
+  // v8.2.3: 선발 취소 (보류/검토 중으로 원복)
   const handleCancelSelection = async (app: Application) => {
     if (!window.confirm(`[${app.name}] 님의 선발을 취소하고 '검토 중' 상태로 변경하시겠습니까?`)) return;
     try {
@@ -281,7 +281,7 @@ export default function EventsPage() {
   // 3. 수정 모드 진입
   const openEditModal = (session: Session) => {
     setEditingId(session.id);
-    // v7.5.2: 기존 '90~96년생' 또는 '90년생~96년생' 문자열 파싱
+    // v8.2.3: 기존 '90~96년생' 또는 '90년생~96년생' 문자열 파싱
     const ageString = session.targetMaleAge || '94~01년생';
     const ages = ageString.replace(/년생/g, '').split('~');
     const ageStart = ages[0]?.trim() || '';
@@ -304,7 +304,7 @@ export default function EventsPage() {
     setIsModalOpen(true);
   };
 
-  // v8.1.7: 투표 설정 모달 열기
+  // v8.2.3: 투표 설정 모달 열기
   const openConfigModal = (session: Session) => {
     if (session.voteConfig) {
       setConfigFormData({
@@ -377,9 +377,9 @@ export default function EventsPage() {
     const [h, m] = formData.eventTime.split(':');
     const combinedDate = new Date(Number(year), Number(month) - 1, Number(day), Number(h), Number(m));
 
-    // v7.5.1: 콤마 제거 후 숫자로 변환
+    // v8.2.3: 콤마 제거 후 숫자로 변환
     const numericPrice = Number(formData.price.replace(/,/g, ''));
-    // v7.5.2: 연령대 결합
+    // v8.2.3: 연령대 결합
     const combinedAge = `${formData.ageStart}~${formData.ageEnd}년생`;
 
     setIsSubmitting(true);
@@ -404,11 +404,11 @@ export default function EventsPage() {
       };
 
       if (editingId) {
-        // v7.0.0: 수정(Update) 로직
+        // v8.2.3: 수정(Update) 로직
         await updateDoc(doc(db, 'sessions', editingId), payload);
         toast.success('기수 정보가 수정되었습니다.');
       } else {
-        // v7.0.0: 신규 등록 로직
+        // v8.2.3: 신규 등록 로직
         await addDoc(collection(db, 'sessions'), {
           ...payload,
           currentMale: 0,
@@ -438,12 +438,13 @@ export default function EventsPage() {
     );
   }
 
-  // v8.2.2: globalCounts에서 실시간 집계 데이터 추출 (선발확정 + 입금대기 포함)
+  // v8.2.3: globalCounts에서 실시간 집계 데이터 추출 (선발확정 + 입금대기 포함)
   const liveStats = globalCounts[selectedId || ''] || { male: 0, female: 0 };
   const liveConfirmedMale = liveStats.male;
   const liveConfirmedFemale = liveStats.female;
   const maleRatio = active ? Math.round((liveConfirmedMale / (active.maxMale || 1)) * 100) : 0;
   const femaleRatio = active ? Math.round((liveConfirmedFemale / (active.maxFemale || 1)) * 100) : 0;
+  const isDetailFull = active ? (liveConfirmedMale + liveConfirmedFemale) >= (active.maxMale + active.maxFemale) : false;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-400">
@@ -491,13 +492,13 @@ export default function EventsPage() {
           </p>
           <div className="space-y-2 max-h-[800px] overflow-y-auto pr-2 custom-scrollbar">
             {sessions.map(ev => {
-              // v8.2.2: 전역 applicants 데이터 기반 실시간 집계 (선발 + 확정 합산)
+              // v8.2.3: 전역 applicants 데이터 기반 실시간 집계 (선발 + 확정 합산)
               const live = globalCounts[ev.id] || { male: 0, female: 0 };
               const total = live.male + live.female;
               const maxT = ev.maxMale + ev.maxFemale;
               const pct = maxT > 0 ? Math.min(100, Math.round((total / maxT) * 100)) : 0;
               const sel = selectedId === ev.id;
-              const isOver = total > maxT; // v8.2.0 정원 초과 여부
+              const isOver = total >= maxT && maxT > 0; // v8.2.3 정원 초과 여부
               return (
                 <button
                   key={ev.id}
@@ -516,10 +517,10 @@ export default function EventsPage() {
                     </p>
                     <span style={{
                       fontSize: '0.65rem', fontWeight: 700, padding: '3px 8px', borderRadius: 12,
-                      background: ev.status === 'open' ? '#dcfce7' : '#f1f5f9',
-                      color:      ev.status === 'open' ? '#15803d' : '#64748b',
+                      background: isOver ? '#fee2e2' : (ev.status === 'open' ? '#dcfce7' : '#f1f5f9'),
+                      color:      isOver ? '#b91c1c' : (ev.status === 'open' ? '#15803d' : '#64748b'),
                     }}>
-                      {ev.status === 'open' ? '모집 중' : ev.status === 'completed' ? '종료' : '진행 중'}
+                      {isOver ? '마감' : (ev.status === 'open' ? '모집 중' : ev.status === 'completed' ? '종료' : '진행 중')}
                     </span>
                   </div>
                   <p className="flex items-center gap-1" style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: 12 }}>
@@ -552,10 +553,10 @@ export default function EventsPage() {
                       </h3>
                       <span style={{
                         fontSize: '0.7rem', fontWeight: 800, padding: '4px 10px', borderRadius: 12,
-                        background: active.status === 'open' ? '#dcfce7' : '#f1f5f9',
-                        color:      active.status === 'open' ? '#15803d' : '#64748b',
+                        background: isDetailFull ? '#fee2e2' : (active.status === 'open' ? '#dcfce7' : '#f1f5f9'),
+                        color:      isDetailFull ? '#b91c1c' : (active.status === 'open' ? '#15803d' : '#64748b'),
                       }}>
-                         {active.status === 'open' ? '모집 중' : active.status === 'completed' ? '종료' : '진행 중'}
+                         {isDetailFull ? '마감 (모집 완료)' : (active.status === 'open' ? '모집 중' : active.status === 'completed' ? '종료' : '진행 중')}
                       </span>
                     </div>
                   </div>
@@ -1100,7 +1101,7 @@ export default function EventsPage() {
                 </div>
               </div>
 
-              {/* Status and Unified Capacity (v8.2.2) */}
+              {/* Status and Unified Capacity (v8.2.3) */}
               <div className="grid grid-cols-2 gap-6 p-6 rounded-2xl bg-slate-50 border border-slate-100 mb-8 items-center">
                 <div>
                   <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-widest text-center">초기 상태</label>

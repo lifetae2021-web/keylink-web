@@ -188,3 +188,17 @@ export async function submitApplication(
   });
   return docRef.id;
 }
+/** 특정 사용자의 특정 기수 신청서 조회 */
+export async function getApplicationBySession(
+  userId: string,
+  sessionId: string
+): Promise<Application | null> {
+  const q = query(
+    collection(db, COLLECTION),
+    where('userId', '==', userId),
+    where('sessionId', '==', sessionId)
+  );
+  const snap = await getDocs(q);
+  if (snap.empty) return null;
+  return fromDoc(snap.docs[0]);
+}
