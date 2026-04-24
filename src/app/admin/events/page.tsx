@@ -607,10 +607,10 @@ export default function EventsPage() {
                           {isDetailFull ? '마감' : active.status === 'open' ? '모집 중' : active.status === 'completed' ? '종료' : '진행 중'}
                         </span>
                       </div>
-                      <div className="flex items-center gap-3 text-[0.75rem] text-slate-400 font-medium">
-                        <span className="flex items-center gap-1"><Calendar size={11} />{format(active.eventDate, 'MM. dd (E) HH:mm', { locale: ko })}</span>
+                      <div className="flex items-center gap-3 text-[0.75rem] font-medium">
+                        <span className="flex items-center gap-1 text-slate-700"><Calendar size={11} />{format(active.eventDate, 'MM. dd (E) HH:mm', { locale: ko })}</span>
                         <span className="text-slate-200">|</span>
-                        <span className="flex items-center gap-1"><MapPin size={11} />{active.venue || '서면역 인근'}</span>
+                        <span className="flex items-center gap-1 text-slate-700"><MapPin size={11} />{active.venue || '서면역 인근'}</span>
                         <span className="text-slate-200">|</span>
                         <span className="flex items-center gap-1 text-[#FF6F61] font-semibold">{(active.price || 29000).toLocaleString()}원</span>
                       </div>
