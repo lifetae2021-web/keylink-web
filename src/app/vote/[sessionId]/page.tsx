@@ -210,28 +210,28 @@ export default function VotePage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F0F2F5] pb-20">
+    <div className="min-h-screen bg-[#F0F2F5] pb-20 w-full flex flex-col items-center">
       {/* Naver Form Style Header */}
-      <div className="w-full bg-[#FF6F61] h-32 md:h-48 relative overflow-hidden flex items-center justify-center">
+      <div className="w-full bg-[#FF6F61] h-32 md:h-48 relative overflow-hidden flex items-center justify-center shrink-0">
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-10 left-10 transform -rotate-12"><Heart size={80} fill="white" /></div>
           <div className="absolute bottom-5 right-20 transform rotate-12"><Heart size={60} fill="white" /></div>
         </div>
-        <div className="text-white text-center z-10 px-4">
+        <div className="text-white text-center z-10 px-4 w-full flex flex-col items-center">
           <div className="flex justify-center mb-2"><Heart size={32} fill="white" /></div>
-          <h1 className="text-xl md:text-2xl font-black tracking-tight underline decoration-pink-300 underline-offset-8 decoration-4">
+          <h1 className="text-xl md:text-2xl font-black tracking-tight underline decoration-pink-300 underline-offset-8 decoration-4 text-center">
             {session?.region === 'busan' ? '부산' : '창원'} 키링크 {session?.episodeNumber}기 만족도 및 호감도 설문
           </h1>
         </div>
       </div>
 
-      <div className="max-w-[800px] mx-auto -mt-6 md:-mt-10 px-4 relative z-20">
-        <div className="bg-white rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.06)] border border-slate-100 overflow-hidden mb-8">
-          <div className="p-6 md:p-8 space-y-12">
+      <div className="w-full max-w-[700px] mx-auto -mt-6 md:-mt-10 px-4 relative z-20 flex flex-col items-center text-center">
+        <div className="bg-white rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.06)] border border-slate-100 overflow-hidden mb-8 w-full">
+          <div className="p-6 md:p-8 space-y-12 w-full">
             
             {/* 1. 실명 확인 */}
-            <section className="space-y-4">
-              <div className="flex items-start gap-2">
+            <section className="space-y-4 w-full flex flex-col items-center">
+              <div className="flex items-center justify-center gap-2 text-center">
                 <span className="text-[#FF6F61] font-black text-lg">1.</span>
                 <label className="text-lg font-extrabold text-slate-800">{q1Label} <span className="text-[#FF6F61]">*</span></label>
               </div>
@@ -240,13 +240,13 @@ export default function VotePage() {
                 value={realName}
                 onChange={e => setRealName(e.target.value)}
                 placeholder="본인의 성함을 입력해주세요"
-                className="w-full h-14 px-5 rounded-xl border-2 border-slate-100 focus:border-[#FF6F61] focus:ring-0 outline-none font-bold text-slate-700 transition-colors"
+                className="w-full h-14 px-5 rounded-xl border-2 border-slate-100 focus:border-[#FF6F61] focus:ring-0 outline-none font-bold text-slate-700 transition-colors text-center"
               />
             </section>
 
             {/* 2. 본인 호수 선택 */}
-            <section className="space-y-4">
-              <div className="flex items-start gap-2">
+            <section className="space-y-4 w-full flex flex-col items-center">
+              <div className="flex items-center justify-center gap-2 text-center">
                 <span className="text-[#FF6F61] font-black text-lg">2.</span>
                 <label className="text-lg font-extrabold text-slate-800">{q2Label} <span className="text-[#FF6F61]">*</span></label>
               </div>
@@ -268,8 +268,8 @@ export default function VotePage() {
             </section>
 
             {/* 3. 이성 선택 */}
-            <section className="space-y-4">
-              <div className="flex items-start gap-2">
+            <section className="space-y-4 w-full flex flex-col items-center">
+              <div className="flex items-center justify-center gap-2 text-center">
                 <span className="text-[#FF6F61] font-black text-lg">3.</span>
                 <label className="text-lg font-extrabold text-slate-800">
                   {q3Label} <span className="text-[#FF6F61]">*</span>
@@ -296,7 +296,7 @@ export default function VotePage() {
                           if (nextP) handleChoiceSelect(nextP as any, candidate.userId);
                         }
                       }}
-                      className={`group flex items-center gap-4 p-4 rounded-2xl border-2 cursor-pointer transition-all ${
+                      className={`group flex items-center justify-between gap-4 p-4 rounded-2xl border-2 cursor-pointer transition-all w-full ${
                         priority ? 'border-[#FF6F61] bg-[#FFF5F4]' : 'border-slate-50 bg-slate-50 hover:border-slate-200'
                       }`}
                     >
@@ -312,11 +312,13 @@ export default function VotePage() {
                         </div>
                       )}
 
-                      <div className="flex-1 text-left">
+                      <div className="flex-1 text-center">
                         <p className={`font-black ${priority ? 'text-[#FF6F61]' : 'text-slate-700'}`}>{label} {idx + 1}호</p>
                         <p className="text-[0.7rem] font-bold text-slate-400">{candidate.age}세 · {candidate.job} · {candidate.residence}</p>
                       </div>
-                      {priority && <CheckCircle2 size={20} className="text-[#FF6F61]" />}
+                      <div className="w-10 flex justify-center shrink-0">
+                        {priority && <CheckCircle2 size={20} className="text-[#FF6F61]" />}
+                      </div>
                     </div>
                   );
                 })}
@@ -324,27 +326,29 @@ export default function VotePage() {
                 {/* 다음 인연 기대 옵션 */}
                 <div 
                   onClick={() => setNextEventOpt(!nextEventOpt)}
-                  className={`flex items-center gap-4 p-4 rounded-2xl border-2 cursor-pointer transition-all ${
+                  className={`flex items-center justify-between gap-4 p-4 rounded-2xl border-2 cursor-pointer transition-all w-full ${
                     nextEventOpt ? 'border-[#FF6F61] bg-[#FFF5F4]' : 'border-slate-50 bg-slate-50 hover:border-slate-200'
                   }`}
                 >
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center bg-slate-200 text-slate-500 shrink-0`}>
                     <Heart size={16} fill={nextEventOpt ? '#FF6F61' : 'none'} className={nextEventOpt ? 'text-[#FF6F61]' : ''} />
                   </div>
-                  <p className={`flex-1 text-left font-black ${nextEventOpt ? 'text-[#FF6F61]' : 'text-slate-700'}`}>다음 새로운 인연을 기대할게요❤️</p>
-                  {nextEventOpt && <CheckCircle2 size={20} className="text-[#FF6F61]" />}
+                  <p className={`flex-1 text-center font-black ${nextEventOpt ? 'text-[#FF6F61]' : 'text-slate-700'}`}>다음 새로운 인연을 기대할게요❤️</p>
+                  <div className="w-10 flex justify-center shrink-0">
+                    {nextEventOpt && <CheckCircle2 size={20} className="text-[#FF6F61]" />}
+                  </div>
                 </div>
               </div>
             </section>
 
             {/* 4. 최종 확인 */}
-            <section className="space-y-4">
-              <div className="flex items-start gap-2">
+            <section className="space-y-4 w-full flex flex-col items-center">
+              <div className="flex items-center justify-center gap-2 text-center">
                 <span className="text-[#FF6F61] font-black text-lg">4.</span>
                 <label className="text-lg font-extrabold text-slate-800">{q4Label.split('\n')[0]} <span className="text-[#FF6F61]">*</span></label>
               </div>
-              {q4Label.includes('\n') && <p className="text-sm font-bold text-slate-400 leading-relaxed pl-6 whitespace-pre-wrap text-left">{q4Label.split('\n').slice(1).join('\n')}</p>}
-              <label className="flex items-center gap-3 p-5 rounded-2xl bg-[#F8FAFC] border-2 border-slate-100 cursor-pointer transition-colors hover:border-slate-200">
+              {q4Label.includes('\n') && <p className="text-sm font-bold text-slate-400 leading-relaxed whitespace-pre-wrap text-center">{q4Label.split('\n').slice(1).join('\n')}</p>}
+              <label className="flex items-center justify-center gap-3 p-5 rounded-2xl bg-[#F8FAFC] border-2 border-slate-100 cursor-pointer transition-colors hover:border-slate-200 w-full max-w-sm">
                 <input 
                   type="checkbox" 
                   checked={finalCheck}
@@ -356,19 +360,19 @@ export default function VotePage() {
             </section>
 
             {/* 4.5 호감 공개 여부 선택 (v8.1.7) */}
-            <section className="space-y-4">
-              <div className="flex items-start gap-2">
+            <section className="space-y-4 w-full flex flex-col items-center">
+              <div className="flex items-center justify-center gap-2 text-center">
                 <span className="text-[#FF6F61] font-black text-lg">4.5</span>
                 <label className="text-lg font-extrabold text-slate-800">상대방에게 나의 호감을 어떻게 표시할까요? <span className="text-[#FF6F61]">*</span></label>
               </div>
-              <p className="text-sm font-bold text-slate-400 leading-relaxed pl-6">결과 발표 시 적용될 나의 공개 모드입니다.</p>
+              <p className="text-sm font-bold text-slate-400 leading-relaxed text-center">결과 발표 시 적용될 나의 공개 모드입니다.</p>
               
-              <div className="space-y-3 pl-6">
+              <div className="space-y-3 w-full">
                 {[
                   { id: 'public', label: '공개 모드', desc: '상대방에게 내 이름을 공개합니다 (나를 선택한 사람의 이름도 볼 수 있습니다)' },
                   { id: 'anonymous', label: '익명 모드', desc: "상대방에게 '익명'으로 표시합니다 (나를 선택한 사람도 '익명'으로 보입니다)" }
                 ].map(opt => (
-                  <label key={opt.id} className={`flex items-center gap-4 p-5 rounded-2xl border-2 cursor-pointer transition-all ${
+                  <label key={opt.id} className={`flex flex-col items-center justify-center gap-2 p-5 rounded-2xl border-2 cursor-pointer transition-all w-full text-center ${
                     disclosureMode === opt.id ? 'border-[#FF6F61] bg-[#FFF5F4]' : 'border-slate-50 bg-slate-50 hover:border-slate-200'
                   }`}>
                     <input 
@@ -376,11 +380,11 @@ export default function VotePage() {
                       name="disclosure" 
                       checked={disclosureMode === opt.id}
                       onChange={() => setDisclosureMode(opt.id as any)}
-                      className="w-5 h-5 accent-[#FF6F61]"
+                      className="w-5 h-5 accent-[#FF6F61] mb-1"
                     />
-                    <div>
+                    <div className="flex flex-col items-center">
                       <p className={`font-black text-sm ${disclosureMode === opt.id ? 'text-[#FF6F61]' : 'text-slate-700'}`}>{opt.label}</p>
-                      <p className="text-[0.7rem] font-bold text-slate-400">{opt.desc}</p>
+                      <p className="text-[0.7rem] font-bold text-slate-400 text-center">{opt.desc}</p>
                     </div>
                   </label>
                 ))}
@@ -388,8 +392,8 @@ export default function VotePage() {
             </section>
 
             {/* 5. 후기 작성 */}
-            <section className="space-y-4">
-              <div className="flex items-start gap-2">
+            <section className="space-y-4 w-full flex flex-col items-center">
+              <div className="flex items-center justify-center gap-2 text-center">
                 <span className="text-[#FF6F61] font-black text-lg">5.</span>
                 <label className="text-lg font-extrabold text-slate-800">{q5Label}</label>
               </div>
@@ -397,7 +401,7 @@ export default function VotePage() {
                 value={feedback}
                 onChange={e => setFeedback(e.target.value)}
                 placeholder="오늘 행사는 어떠셨나요? 소중한 후기를 들려주세요!"
-                className="w-full h-32 p-5 rounded-2xl border-2 border-slate-100 focus:border-[#FF6F61] focus:ring-0 outline-none font-bold text-slate-700 transition-colors resize-none"
+                className="w-full h-32 p-5 rounded-2xl border-2 border-slate-100 focus:border-[#FF6F61] focus:ring-0 outline-none font-bold text-slate-700 transition-colors resize-none text-center"
               />
             </section>
 
