@@ -15,8 +15,7 @@ import toast from 'react-hot-toast';
 import { Session, SessionStatus, MatchingResult, Application } from '@/lib/types';
 import Link from 'next/link';
 
-// v6.6.0 Premium Light Theme Panel
-const panel = { background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' };
+const card = 'bg-white border border-slate-200 rounded-xl shadow-sm';
 
 export default function EventsPage() {
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -24,6 +23,7 @@ export default function EventsPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isMatching, setIsMatching] = useState(false);
+  const [activeTab, setActiveTab] = useState<'overview' | 'participants' | 'waitlist' | 'stats'>('overview');
   const [applicants, setApplicants] = useState<Application[]>([]); // v7.2.0
   const [applicantsLoading, setApplicantsLoading] = useState(false); // v7.2.0
   const [userMap, setUserMap] = useState<Record<string, any>>({}); // v7.9.6: 유저 정보 조인용
@@ -33,6 +33,7 @@ export default function EventsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null); // v7.0.0: 수정 중인 문서 ID
   const ageEndRef = useRef<HTMLInputElement>(null); // v7.5.2: 자동 포커스 이동용
+  const detailPanelRef = useRef<HTMLDivElement>(null);
   
   const initialFormData = {
     region: 'busan',
@@ -113,6 +114,17 @@ export default function EventsPage() {
     return () => unsub();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!selectedId) return;
+    setActiveTab('overview');
+    setTimeout(() => {
+      const el = detailPanelRef.current;
+      if (!el) return;
+      const top = el.getBoundingClientRect().top + window.scrollY - 80;
+      window.scrollTo({ top, behavior: 'smooth' });
+    }, 100);
+  }, [selectedId]);
 
   // v7.2.0: 선택된 기수의 신청자 명단 실시간 구독
   useEffect(() => {
@@ -477,8 +489,8 @@ export default function EventsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-slate-900" style={{ fontSize: '1.2rem', fontWeight: 700 }}>행사 / 매칭 관리</h2>
-          <p className="text-slate-500" style={{ fontSize: '0.85rem', marginTop: 4 }}>기수별 행사 현황과 매칭 알고리즘을 관리합니다.</p>
+          <h2 className="text-slate-900 text-xl font-bold">행사 / 매칭 관리</h2>
+          <p className="text-slate-500 text-[0.85rem] mt-1">기수별 행사 현황과 매칭 알고리즘을 관리합니다.</p>
         </div>
         <button
           onClick={() => {
@@ -486,8 +498,7 @@ export default function EventsPage() {
             setFormData(initialFormData);
             setIsModalOpen(true);
           }}
-          className="flex items-center gap-2 rounded-lg transition-transform hover:scale-105"
-          style={{ padding: '10px 18px', fontSize: '0.85rem', fontWeight: 600, background: '#FF6F61', color: '#fff', boxShadow: '0 4px 12px rgba(255,111,97,0.2)' }}
+          className="flex items-center gap-2 rounded-lg transition-transform hover:scale-105 px-[18px] py-[10px] text-[0.85rem] font-semibold bg-[#FF6F61] text-white shadow-[0_4px_12px_rgba(255,111,97,0.2)]"
         >
           <Plus size={16} /> 새 기수 등록
         </button>
@@ -501,21 +512,21 @@ export default function EventsPage() {
           { label: '총 참가자',  value: stats.participants,  color: '#3b82f6' },
           { label: '평균 매칭률', value: `${stats.rate}%`,     color: '#ec4899' },
         ].map((s, i) => (
-          <div key={i} style={{ ...panel, padding: '20px' }}>
-            <p style={{ fontSize: '1.6rem', fontWeight: 800, color: s.color }}>{s.value}</p>
-            <p style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 6, fontWeight: 500 }}>{s.label}</p>
+          <div key={i} className={`${card} p-5`}>
+            <p className="text-[1.6rem] font-extrabold" style={{ color: s.color }}>{s.value}</p>
+            <p className="text-[0.8rem] text-slate-500 mt-1.5 font-medium">{s.label}</p>
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
+      <div className="flex flex-col gap-6">
 
         {/* Event list */}
-        <div className="xl:col-span-1 space-y-3">
+        <div className="space-y-3">
           <p style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', paddingLeft: 4 }}>
             기수 목록
           </p>
-          <div className="space-y-2 max-h-[800px] overflow-y-auto pr-2 custom-scrollbar">
+          <div className="flex flex-row gap-2 overflow-x-auto pb-2 custom-scrollbar">
             {sessions.map(ev => {
               // v8.2.3: 전역 applicants 데이터 기반 실시간 집계 (선발 + 확정 합산)
               const live = globalCounts[ev.id] || { male: 0, female: 0 };
@@ -528,7 +539,7 @@ export default function EventsPage() {
                 <button
                   key={ev.id}
                   onClick={() => setSelectedId(ev.id)}
-                  className="w-full text-left rounded-xl transition-all duration-150"
+                  className="shrink-0 w-52 text-left rounded-xl transition-all duration-150"
                   style={{
                     padding: '16px',
                     background: sel ? '#FFF5F4' : '#ffffff',
@@ -565,42 +576,66 @@ export default function EventsPage() {
         </div>
 
         {/* Right panel */}
-        <div className="xl:col-span-3 space-y-6">
+        <div className="space-y-6" ref={detailPanelRef}>
           {active ? (
             <>
-              {/* Event detail */}
-              <div style={{ ...panel, padding: '28px' }}>
-                <div className="flex items-start justify-between mb-8">
-                  <div>
-                    <div className="flex items-center gap-3 mb-1">
-                      <h3 className="text-slate-900" style={{ fontSize: '1.4rem', fontWeight: 800 }}>
-                        {active.region === 'busan' ? '부산' : '창원'} {active.episodeNumber}기
-                      </h3>
-                      <span style={{
-                        fontSize: '0.7rem', fontWeight: 800, padding: '4px 10px', borderRadius: 12,
-                        background: isDetailFull ? '#fee2e2' : (active.status === 'open' ? '#dcfce7' : '#f1f5f9'),
-                        color:      isDetailFull ? '#b91c1c' : (active.status === 'open' ? '#15803d' : '#64748b'),
-                      }}>
-                         {isDetailFull ? '마감 (모집 완료)' : (active.status === 'open' ? '모집 중' : active.status === 'completed' ? '종료' : '진행 중')}
-                      </span>
-                    </div>
+              {/* 탭 네비게이션 */}
+              <div className={card}>
+                {/* 기수 헤더 */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 sm:px-7 py-4 sm:py-5" style={{ borderBottom: '1px solid #f1f5f9' }}>
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-slate-900" style={{ fontSize: '1.1rem', fontWeight: 800 }}>
+                      {active.region === 'busan' ? '부산' : '창원'} {active.episodeNumber}기
+                    </h3>
+                    <span style={{
+                      fontSize: '0.7rem', fontWeight: 800, padding: '4px 10px', borderRadius: 12,
+                      background: isDetailFull ? '#fee2e2' : (active.status === 'open' ? '#dcfce7' : '#f1f5f9'),
+                      color:      isDetailFull ? '#b91c1c' : (active.status === 'open' ? '#15803d' : '#64748b'),
+                    }}>
+                      {isDetailFull ? '마감 (모집 완료)' : (active.status === 'open' ? '모집 중' : active.status === 'completed' ? '종료' : '진행 중')}
+                    </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <button 
-                      onClick={() => openEditModal(active)}
-                      className="flex items-center gap-1.5 rounded-lg transition-colors px-4 py-2 bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-100"
-                    >
-                      <Edit2 size={14} /> 수정
+                    <button onClick={() => openEditModal(active)} className="flex items-center gap-1.5 rounded-lg transition-colors px-3 py-1.5 bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-100">
+                      <Edit2 size={13} /> 수정
                     </button>
-                    <button 
-                      onClick={() => handleDeleteSession(active.id, `${active.region === 'busan' ? '부산' : '창원'} ${active.episodeNumber}기`)}
-                      className="flex items-center gap-1.5 rounded-lg transition-colors px-4 py-2 bg-rose-50 border border-rose-100 text-xs font-semibold text-rose-600 hover:bg-rose-100"
-                    >
-                      <Trash2 size={14} /> 삭제
+                    <button onClick={() => handleDeleteSession(active.id, `${active.region === 'busan' ? '부산' : '창원'} ${active.episodeNumber}기`)} className="flex items-center gap-1.5 rounded-lg transition-colors px-3 py-1.5 bg-rose-50 border border-rose-100 text-xs font-semibold text-rose-600 hover:bg-rose-100">
+                      <Trash2 size={13} /> 삭제
                     </button>
                   </div>
                 </div>
 
+                {/* 탭 버튼 */}
+                <div className="flex border-b border-slate-100 px-2 overflow-x-auto">
+                  {([
+                    { key: 'overview',     label: '개요' },
+                    { key: 'participants', label: `참가자 ${participants.length}명` },
+                    { key: 'waitlist',     label: `대기자 ${waitlisted.length}명` },
+                    { key: 'stats',        label: '매칭 통계' },
+                  ] as const).map(tab => (
+                    <button
+                      key={tab.key}
+                      onClick={() => setActiveTab(tab.key)}
+                      className="px-3 sm:px-5 py-3 sm:py-3.5 text-xs sm:text-sm font-bold transition-colors relative shrink-0"
+                      style={{
+                        color: activeTab === tab.key ? '#FF6F61' : '#94a3b8',
+                        borderBottom: activeTab === tab.key ? '2px solid #FF6F61' : '2px solid transparent',
+                        marginBottom: -1,
+                      }}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* 탭 컨텐츠 */}
+                <div className="p-4 sm:p-7">
+
+                {/* 개요 탭 */}
+                {activeTab === 'overview' && (
+                  <>
+              {/* Event detail */}
+              <div style={{ padding: '0' }}>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
                   {[
                     { label: '일시', value: `${format(active.eventDate, 'MM. dd (E) HH:mm', { locale: ko })}` },
@@ -614,7 +649,7 @@ export default function EventsPage() {
                   ))}
                 </div>
 
-                <div className="grid grid-cols-2 gap-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   {[
                     { label: '남성 모집 현황', cur: liveConfirmedMale,   max: active.maxMale,   pct: maleRatio,   color: '#3b82f6', bg: '#eff6ff', border: '#bfdbfe' },
                     { label: '여성 모집 현황', cur: liveConfirmedFemale, max: active.maxFemale, pct: femaleRatio, color: '#ec4899', bg: '#fdf2f8', border: '#fbcfe8' },
@@ -636,7 +671,7 @@ export default function EventsPage() {
               </div>
 
               {/* Matching Panel */}
-              <div style={{ ...panel, padding: '28px' }}>
+              <div style={{ marginTop: '2rem' }}>
                 <h3 className="flex items-center gap-2 mb-6" style={{ fontSize: '1rem', fontWeight: 800, color: '#1e293b' }}>
                   <Zap size={18} style={{ color: '#FF6F61' }} /> 매칭 알고리즘 가동 시스템
                 </h3>
@@ -708,15 +743,11 @@ export default function EventsPage() {
                   </Link>
                 </div>
               </div>
-            </>
-          ) : (
-            <div className="flex h-[300px] items-center justify-center" style={panel}>
-              <p className="text-slate-400 font-medium">기수를 선택해 주세요.</p>
-            </div>
-          )}
+                  </>
+                )}
 
-          {/* 참가 명단 - 남/여 분리 */}
-          {active && (
+                {/* 참가자 탭 */}
+                {activeTab === 'participants' && (
             <div className="space-y-4">
               {/* 헤더 */}
               <div className="flex items-center justify-between" style={{ paddingLeft: 4 }}>
@@ -741,16 +772,16 @@ export default function EventsPage() {
               </div>
 
               {applicants.length === 0 ? (
-                <div className="py-12 text-center text-slate-400 font-medium text-sm" style={panel}>
+                <div className={`py-12 text-center text-slate-400 font-medium text-sm ${card}`}>
                   {applicantsLoading ? '불러오는 중...' : '신청자가 없습니다.'}
                 </div>
               ) : (
-                <>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   {(['male', 'female'] as const).map(gender => {
                     const genderList = participants.filter(a => a.gender === gender);
                     const isMaleSection = gender === 'male';
                     return (
-                      <div key={gender} style={{ ...panel, overflow: 'hidden' }}>
+                      <div key={gender} className={`${card} overflow-hidden`}>
                         <div className="flex items-center gap-2 px-6 py-4" style={{ borderBottom: '1px solid #f1f5f9', background: isMaleSection ? '#eff6ff' : '#fdf2f8' }}>
                           <span style={{ fontSize: '0.85rem', fontWeight: 800, color: isMaleSection ? '#1d4ed8' : '#be185d' }}>
                             {isMaleSection ? '👨 남성' : '👩 여성'} 참가자
@@ -892,28 +923,29 @@ export default function EventsPage() {
                       </div>
                     );
                   })}
-                </>
+                </div>
               )}
             </div>
-          )}
+                )}
 
-          {/* 대기자 명단 */}
-          {active && waitlisted.length > 0 && (
-            <div className="space-y-4">
-              <div style={{ paddingLeft: 4 }}>
-                <h3 className="flex items-center gap-2" style={{ fontSize: '0.95rem', fontWeight: 800, color: '#b45309' }}>
+                {/* 대기자 탭 */}
+                {activeTab === 'waitlist' && (
+                <div className="space-y-4">
+                  <div style={{ paddingLeft: 4 }}>
+                    <h3 className="flex items-center gap-2" style={{ fontSize: '0.95rem', fontWeight: 800, color: '#b45309' }}>
                   ⏳ 대기자 명단
                   <span style={{ fontSize: '0.75rem', fontWeight: 700, padding: '2px 10px', borderRadius: 20, background: '#fef3c7', color: '#b45309', marginLeft: 4 }}>
                     총 {waitlisted.length}명 ({waitlisted.filter(a => a.gender === 'male').length}남 / {waitlisted.filter(a => a.gender === 'female').length}여)
                   </span>
                 </h3>
               </div>
+              <div className="grid grid-cols-2 gap-4">
               {(['male', 'female'] as const).map(gender => {
                 const genderWaitlist = waitlisted.filter(a => a.gender === gender).sort((a, b) => a.appliedAt.getTime() - b.appliedAt.getTime());
                 if (genderWaitlist.length === 0) return null;
                 const isMaleSection = gender === 'male';
                 return (
-                  <div key={gender} style={{ ...panel, overflow: 'hidden' }}>
+                  <div key={gender} className={`${card} overflow-hidden`}>
                     <div className="flex items-center gap-2 px-6 py-4" style={{ borderBottom: '1px solid #f1f5f9', background: '#fffbeb' }}>
                       <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#b45309' }}>
                         {isMaleSection ? '👨 남성' : '👩 여성'} 대기자
@@ -966,46 +998,51 @@ export default function EventsPage() {
                   </div>
                 );
               })}
+              </div>
+                </div>
+                )}
+
+                {/* 매칭 통계 탭 */}
+                {activeTab === 'stats' && (
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr>
+                        {['기수', '날짜', '상태'].map((h) => (
+                          <th key={h} style={{
+                            padding: '12px 16px', textAlign: 'left',
+                            fontSize: '0.75rem', fontWeight: 700, color: '#64748b',
+                            textTransform: 'uppercase', letterSpacing: '0.04em',
+                            borderBottom: '1px solid #e2e8f0', whiteSpace: 'nowrap',
+                          }}>
+                            {h}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {matchingHistory.map((r: any) => (
+                        <tr key={r.id} className="hover:bg-slate-50 transition-colors border-b border-slate-100">
+                          <td style={{ padding: '16px', fontSize: '0.9rem', fontWeight: 800, color: '#1e293b' }}>{r.episode}기</td>
+                          <td style={{ padding: '16px', fontSize: '0.85rem', color: '#64748b', fontWeight: 500 }}>{r.date}</td>
+                          <td style={{ padding: '16px' }}>
+                            <span className={`text-xs font-bold px-3 py-1 rounded-full ${r.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                              {r.status === 'completed' ? '매칭 완료' : '진행 중'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+
+                </div>{/* 탭 컨텐츠 끝 */}
+              </div>{/* 탭 패널 끝 */}
+            </>
+          ) : (
+            <div className={`flex h-[300px] items-center justify-center ${card}`}>
+              <p className="text-slate-400 font-medium">기수를 선택해 주세요.</p>
             </div>
           )}
-
-          {/* Past results */}
-          <div style={{ ...panel, overflow: 'hidden' }}>
-            <div className="flex items-center justify-between px-7 py-5" style={{ borderBottom: '1px solid #f1f5f9', background: '#f8fafc' }}>
-              <h3 className="flex items-center gap-2 text-slate-800" style={{ fontSize: '0.95rem', fontWeight: 800 }}>
-                <BarChart3 size={16} style={{ color: '#3b82f6' }} /> 최근 매칭 스테이터스 통계
-              </h3>
-            </div>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr>
-                  {['기수', '날짜', '상태'].map((h, i) => (
-                    <th key={h} style={{
-                      padding: '12px 28px', textAlign: 'left',
-                      fontSize: '0.75rem', fontWeight: 700, color: '#64748b',
-                      textTransform: 'uppercase', letterSpacing: '0.04em',
-                      borderBottom: '1px solid #e2e8f0', whiteSpace: 'nowrap',
-                    }}>
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {matchingHistory.map((r: any) => (
-                  <tr key={r.id} className="hover:bg-slate-50 transition-colors border-b border-slate-100">
-                    <td style={{ padding: '16px 28px', fontSize: '0.9rem', fontWeight: 800, color: '#1e293b' }}>{r.episode}기</td>
-                    <td style={{ padding: '16px 28px', fontSize: '0.85rem', color: '#64748b', fontWeight: 500 }}>{r.date}</td>
-                    <td style={{ padding: '16px 28px' }}>
-                      <span className={`text-xs font-bold px-3 py-1 rounded-full ${r.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
-                        {r.status === 'completed' ? '매칭 완료' : '진행 중'}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
         </div>
       </div>
 
