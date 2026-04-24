@@ -68,10 +68,10 @@ export default function ApplicationsPage() {
   const [editingJobId, setEditingJobId] = useState<string | null>(null);
   const [tempJobValue, setTempJobValue] = useState<string>('');
 
-  // v8.4.3: 초기 필터링 상태 (전체 옵션 제거)
+  // v8.4.4: 필터링 상태 초기화 (헤더 필터 제거로 인한 전체 보기 복구)
   const [sortConfig, setSortConfig] = useState<{ field: string; direction: 'asc' | 'desc' }>({ field: 'appliedAt', direction: 'desc' });
-  const [ageFilter, setAgeFilter] = useState<string>('90s'); 
-  const [statusFilter, setStatusFilter] = useState<string>('applied');
+  const [ageFilter, setAgeFilter] = useState<string>('all'); 
+  const [statusFilter, setStatusFilter] = useState<string>('all');
 
   // 1. sessions 컬렉션 실시간 동기화
   useEffect(() => {
@@ -80,9 +80,9 @@ export default function ApplicationsPage() {
     const unsub = onSnapshot(q, (snap) => {
       const fetchedEvents = snap.docs.map(d => ({ id: d.id, ...d.data() } as any));
       setEvents(fetchedEvents);
-      // v8.4.3: 기본값을 첫 번째 기수로 설정 (전체 기수 보기 제거 대응)
+      // v7.4.0: 기본값을 'all'로 설정하여 진입 시 전체 목록 노출 가능
       if (!selectedEventId && fetchedEvents.length > 0) {
-        setSelectedEventId(fetchedEvents[0].id);
+        setSelectedEventId('all');
       }
       setIsLoading(false);
     }, (err) => {
@@ -402,7 +402,7 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 style={{ fontSize: '1.25rem', fontWeight: 900, letterSpacing: '-0.02em', color: '#0F172A' }}>신청 관리</h2>
-          <p style={{ fontSize: '0.85rem', color: '#64748B', marginTop: 2 }}>참가 신청자들의 상세 정보를 심사하고 선발 여부를 결정합니다. <span className="text-[10px] font-bold text-[#3B82F6] ml-2">v8.4.3 Premium</span></p>
+          <p style={{ fontSize: '0.85rem', color: '#64748B', marginTop: 2 }}>참가 신청자들의 상세 정보를 심사하고 선발 여부를 결정합니다. <span className="text-[10px] font-bold text-[#3B82F6] ml-2">v8.4.4 Premium</span></p>
         </div>
         <div className="flex items-center gap-3">
           <div className="relative flex-1 md:flex-none group">
@@ -412,6 +412,7 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
               className="bg-white border-2 border-[#FFD2CE]/60 rounded-2xl pr-10 text-xs font-black text-slate-800 outline-none focus:border-[#FF7E7E]/60 transition-all cursor-pointer shadow-sm appearance-none"
               style={{ minWidth: '180px', width: 'auto', height: '48px', paddingLeft: '16px' }}
             >
+              <option value="all">전체 기수 보기</option>
               {events.map(ev => (
                 <option key={ev.id} value={ev.id}>
                   {ev.region === 'busan' ? '부산' : ev.region === 'changwon' ? '창원' : (ev.region ?? '부산')} {ev.episodeNumber}기 [{(ev.status === 'open' || ev.status === 'recruiting') ? '모집중' : '마감'}]
@@ -558,26 +559,12 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                     <div onClick={() => setSortConfig({ field: 'sessionId', direction: sortConfig.direction === 'asc' ? 'desc' : 'asc' })} className="cursor-pointer flex items-center justify-center gap-1">
                       신청 기수 <span style={{ color: sortConfig.field === 'sessionId' ? '#FF6F61' : '#CBD5E1' }}>{sortConfig.field === 'sessionId' && sortConfig.direction === 'asc' ? '↑' : '↓'}</span>
                     </div>
-                    <div className="relative group/filter flex items-center justify-center">
-                      <select value={selectedEventId} onChange={e => setSelectedEventId(e.target.value)} className="appearance-none text-[10px] font-black border-none bg-transparent outline-none cursor-pointer pl-1 pr-3" style={{ color: selectedEventId !== 'all' ? '#3B82F6' : '#94A3B8' }}>
-                        {events.map(ev => <option key={ev.id} value={ev.id}>{ev.region?.slice(0,2)} {ev.episodeNumber}기</option>)}
-                      </select>
-                      <ChevronDown size={10} className="absolute right-0 pointer-events-none" style={{ color: selectedEventId !== 'all' ? '#3B82F6' : '#94A3B8' }} />
-                    </div>
                   </div>
                 </th>
                 <th style={{ padding: '18px 10px', textAlign: 'center', fontSize: '0.75rem', fontWeight: 800, color: ageFilter !== 'all' ? '#FF6F61' : '#64748B' }}>
                   <div className="flex flex-col items-center justify-center gap-1">
                     <div onClick={() => setSortConfig({ field: 'age', direction: sortConfig.direction === 'asc' ? 'desc' : 'asc' })} className="cursor-pointer flex items-center justify-center gap-1">
                       나이 <span style={{ color: sortConfig.field === 'age' ? '#FF6F61' : '#CBD5E1' }}>{sortConfig.field === 'age' && sortConfig.direction === 'asc' ? '↑' : '↓'}</span>
-                    </div>
-                    <div className="relative group/filter flex items-center justify-center">
-                      <select value={ageFilter} onChange={e => setAgeFilter(e.target.value)} className="appearance-none text-[10px] font-black border-none bg-transparent outline-none cursor-pointer pl-1 pr-3" style={{ color: ageFilter !== 'all' ? '#FF6F61' : '#94A3B8' }}>
-                        <option value="90s">90년대생</option>
-                        <option value="80s">80년대생</option>
-                        <option value="00s">00년대생</option>
-                      </select>
-                      <ChevronDown size={10} className="absolute right-0 pointer-events-none" style={{ color: ageFilter !== 'all' ? '#FF6F61' : '#94A3B8' }} />
                     </div>
                   </div>
                 </th>
@@ -587,12 +574,6 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                   <div className="flex flex-col items-center justify-center gap-1">
                     <div onClick={() => setSortConfig({ field: 'status', direction: sortConfig.direction === 'asc' ? 'desc' : 'asc' })} className="cursor-pointer flex items-center justify-center gap-1">
                       상태 <span style={{ color: sortConfig.field === 'status' ? '#FF6F61' : '#CBD5E1' }}>{sortConfig.field === 'status' && sortConfig.direction === 'asc' ? '↑' : '↓'}</span>
-                    </div>
-                    <div className="relative group/filter flex items-center justify-center">
-                      <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="appearance-none text-[10px] font-black border-none bg-transparent outline-none cursor-pointer pl-1 pr-3" style={{ color: statusFilter !== 'all' ? '#FF6F61' : '#94A3B8' }}>
-                        {Object.keys(APP_STATUS).map(k => <option key={k} value={k}>{APP_STATUS[k].label}</option>)}
-                      </select>
-                      <ChevronDown size={10} className="absolute right-0 pointer-events-none" style={{ color: statusFilter !== 'all' ? '#FF6F61' : '#94A3B8' }} />
                     </div>
                   </div>
                 </th>
