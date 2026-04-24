@@ -507,14 +507,19 @@ export default function EventsPage() {
       {/* Summary */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
-          { label: '전체 기수',  value: stats.total,        color: '#FF6F61' },
-          { label: '모집 중',    value: stats.open,         color: '#10b981' },
-          { label: '총 참가자',  value: stats.participants,  color: '#3b82f6' },
-          { label: '평균 매칭률', value: `${stats.rate}%`,     color: '#ec4899' },
+          { label: '전체 기수',   value: stats.total,          icon: Calendar,   iconBg: 'bg-orange-100',   iconColor: 'text-[#FF6F61]', valColor: 'text-[#FF6F61]', border: 'border-orange-100' },
+          { label: '모집 중',     value: stats.open,           icon: CheckCircle, iconBg: 'bg-emerald-100',  iconColor: 'text-emerald-600', valColor: 'text-emerald-600', border: 'border-emerald-100' },
+          { label: '총 참가자',   value: stats.participants,   icon: Users,       iconBg: 'bg-blue-100',     iconColor: 'text-blue-600',    valColor: 'text-blue-600',    border: 'border-blue-100' },
+          { label: '평균 매칭률', value: `${stats.rate}%`,     icon: Heart,       iconBg: 'bg-pink-100',     iconColor: 'text-pink-500',    valColor: 'text-pink-500',    border: 'border-pink-100' },
         ].map((s, i) => (
-          <div key={i} className={`${card} p-5`}>
-            <p className="text-[1.6rem] font-extrabold" style={{ color: s.color }}>{s.value}</p>
-            <p className="text-[0.8rem] text-slate-500 mt-1.5 font-medium">{s.label}</p>
+          <div key={i} className={`bg-white border ${s.border} rounded-xl shadow-sm p-5 flex items-center gap-4`}>
+            <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${s.iconBg}`}>
+              <s.icon size={20} className={s.iconColor} />
+            </div>
+            <div>
+              <p className={`text-2xl font-extrabold ${s.valColor}`}>{s.value}</p>
+              <p className="text-[0.75rem] text-slate-400 font-medium mt-0.5">{s.label}</p>
+            </div>
           </div>
         ))}
       </div>
@@ -539,35 +544,34 @@ export default function EventsPage() {
                 <button
                   key={ev.id}
                   onClick={() => setSelectedId(ev.id)}
-                  className="shrink-0 w-52 text-left rounded-xl transition-all duration-150"
-                  style={{
-                    padding: '16px',
-                    background: sel ? '#FFF5F4' : '#ffffff',
-                    border: `1px solid ${sel ? '#ffc2bc' : '#e2e8f0'}`,
-                    boxShadow: sel ? '0 4px 12px rgba(255,111,97,0.1)' : '0 1px 2px rgba(0,0,0,0.02)'
-                  }}
+                  className={`shrink-0 w-52 text-left rounded-xl transition-all duration-150 p-4 ${
+                    sel
+                      ? 'bg-orange-50 border-2 border-[#FF6F61] shadow-md shadow-orange-100'
+                      : 'bg-white border border-slate-200 hover:border-slate-300 hover:shadow-sm'
+                  }`}
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <p className={sel ? 'text-[#FF6F61]' : 'text-slate-800'} style={{ fontSize: '0.9rem', fontWeight: 700 }}>
+                    <p className={`text-[0.9rem] font-bold ${sel ? 'text-[#FF6F61]' : 'text-slate-800'}`}>
                       {ev.region === 'busan' ? '부산' : '창원'} {ev.episodeNumber}기
                     </p>
-                    <span style={{
-                      fontSize: '0.65rem', fontWeight: 700, padding: '3px 8px', borderRadius: 12,
-                      background: isOver ? '#fee2e2' : (ev.status === 'open' ? '#dcfce7' : '#f1f5f9'),
-                      color:      isOver ? '#b91c1c' : (ev.status === 'open' ? '#15803d' : '#64748b'),
-                    }}>
-                      {isOver ? '마감' : (ev.status === 'open' ? '모집 중' : ev.status === 'completed' ? '종료' : '진행 중')}
+                    <span className={`text-[0.65rem] font-bold px-2 py-0.5 rounded-full ${
+                      isOver ? 'bg-red-100 text-red-700' : ev.status === 'open' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'
+                    }`}>
+                      {isOver ? '마감' : ev.status === 'open' ? '모집 중' : ev.status === 'completed' ? '종료' : '진행 중'}
                     </span>
                   </div>
-                  <p className="flex items-center gap-1" style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: 12 }}>
+                  <p className="flex items-center gap-1 text-[0.75rem] text-slate-400 mb-3">
                     <Calendar size={12} /> {format(ev.eventDate, 'MM. dd (E)', { locale: ko })}
                   </p>
-                  <div className="flex justify-between mb-1.5" style={{ fontSize: '0.7rem', color: isOver ? '#ef4444' : '#475569', fontWeight: isOver ? 900 : 500 }}>
+                  <div className={`flex justify-between mb-1.5 text-[0.7rem] font-semibold ${isOver ? 'text-red-500' : 'text-slate-500'}`}>
                     <span className={isOver ? 'animate-pulse' : ''}>{total} / {maxT}명</span>
-                    <span style={{ color: isOver ? '#ef4444' : (sel ? '#FF6F61' : '#64748b') }}>{pct}%</span>
+                    <span className={isOver ? 'text-red-500' : sel ? 'text-[#FF6F61]' : 'text-slate-400'}>{pct}%</span>
                   </div>
-                  <div style={{ height: 4, background: '#f1f5f9', borderRadius: 4, overflow: 'hidden' }}>
-                    <div style={{ width: `${pct}%`, height: '100%', background: isOver ? '#ef4444' : (sel ? '#FF6F61' : '#cbd5e1'), borderRadius: 4 }} />
+                  <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all ${isOver ? 'bg-red-400' : sel ? 'bg-[#FF6F61]' : 'bg-slate-300'}`}
+                      style={{ width: `${pct}%` }}
+                    />
                   </div>
                 </button>
               );
@@ -582,47 +586,62 @@ export default function EventsPage() {
               {/* 탭 네비게이션 */}
               <div className={card}>
                 {/* 기수 헤더 */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 sm:px-7 py-4 sm:py-5" style={{ borderBottom: '1px solid #f1f5f9' }}>
-                  <div className="flex items-center gap-3">
-                    <h3 className="text-slate-900" style={{ fontSize: '1.1rem', fontWeight: 800 }}>
-                      {active.region === 'busan' ? '부산' : '창원'} {active.episodeNumber}기
-                    </h3>
-                    <span style={{
-                      fontSize: '0.7rem', fontWeight: 800, padding: '4px 10px', borderRadius: 12,
-                      background: isDetailFull ? '#fee2e2' : (active.status === 'open' ? '#dcfce7' : '#f1f5f9'),
-                      color:      isDetailFull ? '#b91c1c' : (active.status === 'open' ? '#15803d' : '#64748b'),
-                    }}>
-                      {isDetailFull ? '마감 (모집 완료)' : (active.status === 'open' ? '모집 중' : active.status === 'completed' ? '종료' : '진행 중')}
-                    </span>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-5 sm:px-7 py-5 border-b border-slate-100">
+                  <div className="flex items-center gap-4">
+                    {/* 기수 아이콘 뱃지 */}
+                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#FF6F61] to-[#ff8c7f] flex items-center justify-center shrink-0 shadow-md shadow-orange-100">
+                      <span className="text-white font-black text-sm">{active.episodeNumber}기</span>
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2.5 mb-1">
+                        <h3 className="text-slate-900 text-lg font-black">
+                          {active.region === 'busan' ? '부산' : '창원'} {active.episodeNumber}기
+                        </h3>
+                        <span className={`text-[0.65rem] font-black px-2.5 py-1 rounded-full ${
+                          isDetailFull
+                            ? 'bg-red-100 text-red-700'
+                            : active.status === 'open'
+                              ? 'bg-emerald-100 text-emerald-700'
+                              : 'bg-slate-100 text-slate-500'
+                        }`}>
+                          {isDetailFull ? '마감' : active.status === 'open' ? '모집 중' : active.status === 'completed' ? '종료' : '진행 중'}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3 text-[0.75rem] text-slate-400 font-medium">
+                        <span className="flex items-center gap-1"><Calendar size={11} />{format(active.eventDate, 'MM. dd (E) HH:mm', { locale: ko })}</span>
+                        <span className="text-slate-200">|</span>
+                        <span className="flex items-center gap-1"><MapPin size={11} />{active.venue || '서면역 인근'}</span>
+                      </div>
+                    </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <button onClick={() => openEditModal(active)} className="flex items-center gap-1.5 rounded-lg transition-colors px-3 py-1.5 bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-100">
+                    <button onClick={() => openEditModal(active)} className="flex items-center gap-1.5 rounded-xl transition-all px-4 py-2 bg-slate-50 border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-100 hover:border-slate-300">
                       <Edit2 size={13} /> 수정
                     </button>
-                    <button onClick={() => handleDeleteSession(active.id, `${active.region === 'busan' ? '부산' : '창원'} ${active.episodeNumber}기`)} className="flex items-center gap-1.5 rounded-lg transition-colors px-3 py-1.5 bg-rose-50 border border-rose-100 text-xs font-semibold text-rose-600 hover:bg-rose-100">
+                    <button onClick={() => handleDeleteSession(active.id, `${active.region === 'busan' ? '부산' : '창원'} ${active.episodeNumber}기`)} className="flex items-center gap-1.5 rounded-xl transition-all px-4 py-2 bg-rose-50 border border-rose-200 text-xs font-bold text-rose-600 hover:bg-rose-100">
                       <Trash2 size={13} /> 삭제
                     </button>
                   </div>
                 </div>
 
                 {/* 탭 버튼 */}
-                <div className="flex border-b border-slate-100 px-2 overflow-x-auto">
+                <div className="flex border-b border-slate-100 px-4 overflow-x-auto gap-1">
                   {([
-                    { key: 'overview',     label: '개요' },
-                    { key: 'participants', label: `참가자 ${participants.length}명` },
-                    { key: 'waitlist',     label: `대기자 ${waitlisted.length}명` },
-                    { key: 'stats',        label: '매칭 통계' },
+                    { key: 'overview',     label: '개요',                    icon: BarChart3 },
+                    { key: 'participants', label: `참가자 ${participants.length}명`, icon: UserCheck },
+                    { key: 'waitlist',     label: `대기자 ${waitlisted.length}명`,  icon: Clock },
+                    { key: 'stats',        label: '매칭 통계',               icon: Zap },
                   ] as const).map(tab => (
                     <button
                       key={tab.key}
                       onClick={() => setActiveTab(tab.key)}
-                      className="px-3 sm:px-5 py-3 sm:py-3.5 text-xs sm:text-sm font-bold transition-colors relative shrink-0"
-                      style={{
-                        color: activeTab === tab.key ? '#FF6F61' : '#94a3b8',
-                        borderBottom: activeTab === tab.key ? '2px solid #FF6F61' : '2px solid transparent',
-                        marginBottom: -1,
-                      }}
+                      className={`flex items-center gap-1.5 px-3 sm:px-4 py-3 text-xs sm:text-[0.8rem] font-bold transition-all relative shrink-0 border-b-2 -mb-px ${
+                        activeTab === tab.key
+                          ? 'text-[#FF6F61] border-[#FF6F61]'
+                          : 'text-slate-400 border-transparent hover:text-slate-600'
+                      }`}
                     >
+                      <tab.icon size={13} />
                       {tab.label}
                     </button>
                   ))}
