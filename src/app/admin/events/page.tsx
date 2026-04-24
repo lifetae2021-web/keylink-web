@@ -528,7 +528,7 @@ export default function EventsPage() {
 
         {/* Event list */}
         <div className="space-y-3">
-          <p style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', paddingLeft: 4 }}>
+          <p className="text-[0.75rem] font-bold text-slate-400 uppercase tracking-widest pl-1">
             기수 목록
           </p>
           <div className="flex flex-row gap-2 overflow-x-auto pb-2 custom-scrollbar">
@@ -656,32 +656,32 @@ export default function EventsPage() {
                 {activeTab === 'overview' && (
                   <>
               {/* Event detail */}
-              <div style={{ padding: '0' }}>
+              <div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   {[
                     { label: '남성 모집 현황', cur: liveConfirmedMale,   max: active.maxMale,   pct: maleRatio,   color: '#3b82f6', bg: '#eff6ff', border: '#bfdbfe' },
                     { label: '여성 모집 현황', cur: liveConfirmedFemale, max: active.maxFemale, pct: femaleRatio, color: '#ec4899', bg: '#fdf2f8', border: '#fbcfe8' },
                   ].map(g => (
-                    <div key={g.label} style={{ background: g.bg, border: `1px solid ${g.border}`, borderRadius: '12px', padding: '20px' }}>
+                    <div key={g.label} className="rounded-xl p-5" style={{ background: g.bg, border: `1px solid ${g.border}` }}>
                       <div className="flex justify-between mb-4">
-                        <span className="flex items-center gap-2" style={{ fontSize: '0.85rem', fontWeight: 800, color: g.color }}>
-                           <Users size={14} /> {g.label}
+                        <span className="flex items-center gap-2 text-[0.85rem] font-extrabold" style={{ color: g.color }}>
+                          <Users size={14} /> {g.label}
                         </span>
-                        <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#64748b' }}>{g.cur} / {g.max}명</span>
+                        <span className="text-[0.8rem] font-semibold text-slate-500">{g.cur} / {g.max}명</span>
                       </div>
-                      <div style={{ height: 6, background: '#ffffff', borderRadius: 4, overflow: 'hidden', border: `1px solid ${g.border}` }}>
-                        <div style={{ width: `${g.pct}%`, height: '100%', background: g.color, borderRadius: 3 }} />
+                      <div className="h-1.5 bg-white rounded-full overflow-hidden" style={{ border: `1px solid ${g.border}` }}>
+                        <div className="h-full rounded-full" style={{ width: `${g.pct}%`, background: g.color }} />
                       </div>
-                      <p style={{ textAlign: 'right', fontSize: '0.8rem', fontWeight: 800, color: g.color, marginTop: 8 }}>{g.pct}%</p>
+                      <p className="text-right text-[0.8rem] font-extrabold mt-2" style={{ color: g.color }}>{g.pct}%</p>
                     </div>
                   ))}
                 </div>
               </div>
 
               {/* Matching Panel */}
-              <div style={{ marginTop: '2rem' }}>
-                <h3 className="flex items-center gap-2 mb-6" style={{ fontSize: '1rem', fontWeight: 800, color: '#1e293b' }}>
-                  <Zap size={18} style={{ color: '#FF6F61' }} /> 매칭 알고리즘 가동 시스템
+              <div className="mt-8">
+                <h3 className="flex items-center gap-2 mb-6 text-base font-extrabold text-slate-800">
+                  <Zap size={18} className="text-[#FF6F61]" /> 매칭 알고리즘 가동 시스템
                 </h3>
                 
                 {/* v8.1.7: 3컬럼 레이아웃 개편 */}
@@ -713,23 +713,23 @@ export default function EventsPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-4 rounded-xl" style={{ padding: '16px 20px', background: '#fefce8', border: '1px solid #fef08a' }}>
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style={{ background: '#fef08a' }}>
-                      <Users size={18} style={{ color: '#ca8a04' }} />
+                  <div className="flex items-center gap-4 rounded-xl px-5 py-4 bg-yellow-50 border border-yellow-200">
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-yellow-200">
+                      <Users size={18} className="text-yellow-700" />
                     </div>
                     <div>
-                      <p style={{ fontSize: '0.9rem', fontWeight: 800, color: '#ca8a04' }}>참가자 현황 검증</p>
-                      <p style={{ fontSize: '0.75rem', color: '#a16207', marginTop: 2, fontWeight: 500 }}>총 {liveConfirmedMale + liveConfirmedFemale}명 참여 확인</p>
+                      <p className="text-[0.9rem] font-extrabold text-yellow-700">참가자 현황 검증</p>
+                      <p className="text-[0.75rem] text-yellow-600 mt-0.5 font-medium">총 {liveConfirmedMale + liveConfirmedFemale}명 참여 확인</p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-4 rounded-xl" style={{ padding: '16px 20px', background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style={{ background: '#bbf7d0' }}>
-                      <CheckCircle size={18} style={{ color: '#16a34a' }} />
+                  <div className="flex items-center gap-4 rounded-xl px-5 py-4 bg-emerald-50 border border-emerald-200">
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-emerald-200">
+                      <CheckCircle size={18} className="text-emerald-700" />
                     </div>
                     <div>
-                      <p style={{ fontSize: '0.9rem', fontWeight: 800, color: '#16a34a' }}>연산 클러스터 연결</p>
-                      <p style={{ fontSize: '0.75rem', color: '#15803d', marginTop: 2, fontWeight: 500 }}>API 정상 통합됨</p>
+                      <p className="text-[0.9rem] font-extrabold text-emerald-700">연산 클러스터 연결</p>
+                      <p className="text-[0.75rem] text-emerald-600 mt-0.5 font-medium">API 정상 통합됨</p>
                     </div>
                   </div>
                 </div>
@@ -758,11 +758,11 @@ export default function EventsPage() {
                 {activeTab === 'participants' && (
             <div className="space-y-4">
               {/* 헤더 */}
-              <div className="flex items-center justify-between" style={{ paddingLeft: 4 }}>
-                <h3 className="flex items-center gap-2 text-slate-800" style={{ fontSize: '0.95rem', fontWeight: 800 }}>
-                  <ListChecks size={16} style={{ color: '#FF6F61' }} />
+              <div className="flex items-center justify-between pl-1">
+                <h3 className="flex items-center gap-2 text-slate-800 text-[0.95rem] font-extrabold">
+                  <ListChecks size={16} className="text-[#FF6F61]" />
                   참가 명단
-                  <span style={{ fontSize: '0.75rem', fontWeight: 700, padding: '2px 10px', borderRadius: 20, background: '#FFF5F4', color: '#FF6F61', marginLeft: 4 }}>
+                  <span className="text-[0.75rem] font-bold px-2.5 py-0.5 rounded-full bg-orange-50 text-[#FF6F61] ml-1">
                     총 {participants.length}명 ({participants.filter(a => a.gender === 'male').length}남 / {participants.filter(a => a.gender === 'female').length}여)
                   </span>
                 </h3>
@@ -790,11 +790,11 @@ export default function EventsPage() {
                     const isMaleSection = gender === 'male';
                     return (
                       <div key={gender} className={`${card} overflow-hidden`}>
-                        <div className="flex items-center gap-2 px-6 py-4" style={{ borderBottom: '1px solid #f1f5f9', background: isMaleSection ? '#eff6ff' : '#fdf2f8' }}>
-                          <span style={{ fontSize: '0.85rem', fontWeight: 800, color: isMaleSection ? '#1d4ed8' : '#be185d' }}>
+                        <div className={`flex items-center gap-2 px-6 py-4 border-b border-slate-100 ${isMaleSection ? 'bg-blue-50' : 'bg-pink-50'}`}>
+                          <span className={`text-[0.85rem] font-extrabold ${isMaleSection ? 'text-blue-700' : 'text-pink-700'}`}>
                             {isMaleSection ? '👨 남성' : '👩 여성'} 참가자
                           </span>
-                          <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '2px 8px', borderRadius: 12, background: isMaleSection ? '#dbeafe' : '#fce7f3', color: isMaleSection ? '#1d4ed8' : '#be185d' }}>
+                          <span className={`text-[0.72rem] font-bold px-2 py-0.5 rounded-full ${isMaleSection ? 'bg-blue-100 text-blue-700' : 'bg-pink-100 text-pink-700'}`}>
                             {genderList.length}명
                           </span>
                         </div>
@@ -904,14 +904,14 @@ export default function EventsPage() {
                 {/* 대기자 탭 */}
                 {activeTab === 'waitlist' && (
                 <div className="space-y-4">
-                  <div style={{ paddingLeft: 4 }}>
-                    <h3 className="flex items-center gap-2" style={{ fontSize: '0.95rem', fontWeight: 800, color: '#b45309' }}>
-                  ⏳ 대기자 명단
-                  <span style={{ fontSize: '0.75rem', fontWeight: 700, padding: '2px 10px', borderRadius: 20, background: '#fef3c7', color: '#b45309', marginLeft: 4 }}>
-                    총 {waitlisted.length}명 ({waitlisted.filter(a => a.gender === 'male').length}남 / {waitlisted.filter(a => a.gender === 'female').length}여)
-                  </span>
-                </h3>
-              </div>
+                  <div className="pl-1">
+                    <h3 className="flex items-center gap-2 text-[0.95rem] font-extrabold text-amber-700">
+                      ⏳ 대기자 명단
+                      <span className="text-[0.75rem] font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-700 ml-1">
+                        총 {waitlisted.length}명 ({waitlisted.filter(a => a.gender === 'male').length}남 / {waitlisted.filter(a => a.gender === 'female').length}여)
+                      </span>
+                    </h3>
+                  </div>
               <div className="grid grid-cols-2 gap-4">
               {(['male', 'female'] as const).map(gender => {
                 const genderWaitlist = waitlisted.filter(a => a.gender === gender).sort((a, b) => a.appliedAt.getTime() - b.appliedAt.getTime());
