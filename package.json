@@ -1,6 +1,6 @@
 {
   "name": "keylink",
-  "version": "8.4.9",
+  "version": "8.5.0",
   "private": true,
   "scripts": {
     "dev": "next dev",

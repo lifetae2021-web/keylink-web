@@ -65,7 +65,7 @@ export default function StatusListPage() {
             전체 기수 <span style={{ color: '#FF6F61' }}>현황 라인업</span>
           </h1>
           <p style={{ color: 'var(--color-text-secondary)', fontSize: '1.1rem', fontWeight: '500' }}>
-            진행 중인 기수부터 종료된 기수까지 모든 실시간 명단을 확인하세요. <span style={{ fontSize: '0.7rem', color: '#CCC' }}>v8.4.8</span>
+            진행 중인 기수부터 종료된 기수까지 모든 실시간 명단을 확인하세요. <span style={{ fontSize: '0.7rem', color: '#CCC' }}>v8.5.0 Premium</span>
           </p>
         </header>
 

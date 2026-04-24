@@ -7,7 +7,7 @@ import { collection, doc, getDocs, getDoc, query, where } from 'firebase/firesto
 import { db } from '@/lib/firebase';
 import { Users, ShieldCheck, RefreshCcw, ArrowRight, Heart, Timer, MapPin, Sparkles, Loader2, Gauge } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getSession } from '@/lib/firestore/sessions';
+import { getSession, getAllSessions } from '@/lib/firestore/sessions';
 import { getApplicationsBySession } from '@/lib/firestore/applications';
 import { Session, Application } from '@/lib/types';
 
@@ -24,15 +24,26 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
   useEffect(() => {
     async function fetchData() {
       try {
-        const [sessionData, appData] = await Promise.all([
-          getSession(sessionId),
-          getApplicationsBySession(sessionId)
-        ]);
+        let sessionData = await getSession(sessionId);
+        
+        // v8.5.0: 레거시 경로 대응 - ID로 조회 실패 시 기수 번호(episodeNumber)로 재시도
+        if (!sessionData && !isNaN(parseInt(sessionId))) {
+           const all = await getAllSessions();
+           sessionData = all.find(s => s.episodeNumber === parseInt(sessionId)) || null;
+        }
+        
+        if (!sessionData) {
+          setIsLoading(false);
+          return;
+        }
+
+        const appData = await getApplicationsBySession(sessionData.id);
+        const confirmedApps = appData.filter(a => a.status === 'confirmed');
+
         setSession(sessionData);
         setApplicants(appData);
 
-        // v8.4.8: 인원 정보를 사용자 컬렉션에서 추가로 가져오기 (키 정보 등)
-        const confirmedApps = appData.filter(a => a.status === 'confirmed');
+        // v8.4.8+: 사용자 상세 정보(키, MBTI 등) 가져오기
         const userPromises = confirmedApps.map(a => getDoc(doc(db, 'users', a.userId)));
         const userSnaps = await Promise.all(userPromises);
         
@@ -76,6 +87,7 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
       return {
         birthYear: `${year}년생`,
         job: p.displayJob || p.job || u.job || '직장인',
+        mbti: p.mbti || u.mbti || '미표기',
         height: u.height ? `${u.height}cm` : '160cm대',
         status: 'confirmed'
       };
@@ -236,7 +248,21 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
             </button>
           </div>
 
-          <div style={{ maxWidth: '850px', margin: '0 auto' }}>
+          <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+            {/* Header for Lineup List */}
+            <div style={{ 
+              display: 'grid', gridTemplateColumns: '80px 100px 1fr 120px 100px', gap: '10px',
+              padding: '15px 40px', background: 'rgba(0,0,0,0.02)', borderRadius: '16px',
+              fontWeight: '800', color: '#888', fontSize: '0.85rem', marginBottom: '16px',
+              textAlign: 'center', opacity: activeTab === 'male' ? 0.8 : 1
+            }}>
+              <span>번호</span>
+              <span>출생연도</span>
+              <span>직업군</span>
+              <span>성향(MBTI)</span>
+              <span>키</span>
+            </div>
+
             <AnimatePresence mode="wait">
               <motion.div 
                 key={activeTab}
@@ -244,24 +270,28 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.3 }}
-                style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}
+                style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}
               >
                 {confirmedRows.map((row, idx) => (
-                  <div key={idx} className="status-row" style={{ 
-                    display: 'grid', gridTemplateColumns: '1fr 2fr 1fr', gap: '20px',
-                    background: '#fff', border: '1px solid #f0f0f0', borderRadius: '24px',
-                    padding: '24px 40px', boxShadow: '0 4px 20px rgba(0,0,0,0.02)',
-                    alignItems: 'center'
+                  <div key={idx} className="status-row v850-card" style={{ 
+                    display: 'grid', gridTemplateColumns: '80px 100px 1fr 120px 100px', gap: '10px',
+                    background: '#fff', border: '1.5px solid #f2f2f2', borderRadius: '24px',
+                    padding: '28px 40px', boxShadow: '0 8px 24px rgba(0,0,0,0.02)',
+                    alignItems: 'center', textAlign: 'center',
+                    transition: 'all 0.3s ease'
                   }}>
-                    <div style={{ fontWeight: '700', color: '#111', fontSize: '1.1rem', textAlign: 'left' }}>{row.birthYear}</div>
-                    <div style={{ fontWeight: '800', color: activeTab === 'male' ? '#3B82F6' : '#FF6F61', fontSize: '1.15rem', textAlign: 'center' }}>{row.job}</div>
-                    <div style={{ color: '#666', fontWeight: '600', fontSize: '1.05rem', textAlign: 'right' }}>{row.height}</div>
+                    <div style={{ fontWeight: '900', color: '#CCC', fontSize: '1.2rem' }}>{idx + 1}</div>
+                    <div style={{ fontWeight: '800', color: '#111', fontSize: '1rem' }}>{row.birthYear}</div>
+                    <div style={{ fontWeight: '900', color: activeTab === 'male' ? '#3B82F6' : '#FF6F61', fontSize: '1.1rem' }}>{row.job}</div>
+                    <div style={{ color: '#555', fontWeight: '700', fontSize: '0.95rem', background: '#F8F9FA', padding: '6px 12px', borderRadius: '10px' }}>{row.mbti}</div>
+                    <div style={{ color: '#666', fontWeight: '800', fontSize: '1rem' }}>{row.height}</div>
                   </div>
                 ))}
                 
                 {confirmedRows.length === 0 && (
-                   <div style={{ padding: '60px', textAlign: 'center', background: '#fff', borderRadius: '24px', border: '2px dashed #eee' }}>
-                      <p style={{ color: '#aaa', fontWeight: '700' }}>현재 확정된 {activeTab === 'male' ? '남성' : '여성'} 참가자가 없습니다.</p>
+                   <div style={{ padding: '80px 40px', textAlign: 'center', background: '#fff', borderRadius: '24px', border: '2px dashed #eee' }}>
+                      <p style={{ color: '#aaa', fontWeight: '800', fontSize: '1.1rem' }}>현재 확정된 {activeTab === 'male' ? '키링남' : '키링녀'} 참가자가 없습니다.</p>
+                      <p style={{ color: '#ccc', fontSize: '0.9rem', marginTop: '8px' }}>실시간으로 명단이 업데이트되고 있으니 잠시 후 다시 확인해 주세요.</p>
                    </div>
                 )}
               </motion.div>
@@ -314,11 +344,13 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
         .pulse-circle { width: 8px; height: 8px; background-color: #fff; border-radius: 50%; animation: pulse 1.5s infinite; }
         @keyframes pulse { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(255, 255, 255, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); } }
         
-        .anon-row:hover { transform: translateY(-2px); border-color: #ddd; box-shadow: 0 8px 24px rgba(0,0,0,0.04); }
+        .status-row:hover { transform: translateY(-4px); border-color: #eee; box-shadow: 0 12px 32px rgba(0,0,0,0.06); }
+        .v850-card { border-left: 6px solid #f0f0f0; }
 
-        @media (max-width: 640px) {
+        @media (max-width: 768px) {
           .desktop-br { display: none; }
-          .anon-row { padding: 15px 10px !important; font-size: 0.85rem; }
+          .v850-card { grid-template-columns: 50px 1fr 1fr !important; padding: 20px !important; gap: 8px !important; }
+          .v850-card > div:nth-child(4), .v850-card > div:nth-child(5) { display: none; }
           h1 { font-size: 1.8rem !important; }
         }
       `}</style>
