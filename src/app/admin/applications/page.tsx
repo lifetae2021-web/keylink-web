@@ -6,7 +6,7 @@ import {
   Download, ShieldCheck, ChevronLeft, ChevronRight, Loader2,
   FileText, Users, CreditCard, Filter, Calendar, MapPin,
   X, Phone, Briefcase, Ruler, Smile, Cigarette, Beer, Camera, Info, 
-  Ticket
+  Ticket, Edit3
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { auth, db } from '@/lib/firebase';
@@ -62,6 +62,10 @@ export default function ApplicationsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
   const [previewData, setPreviewData] = useState<any>(null);
+
+  // v8.3.8: 직업 검토 프로세스용 로컬 상태
+  const [editingJobId, setEditingJobId] = useState<string | null>(null);
+  const [tempJobValue, setTempJobValue] = useState<string>('');
 
   // 1. sessions 컬렉션 실시간 동기화
   useEffect(() => {
@@ -182,6 +186,34 @@ export default function ApplicationsPage() {
     }
   };
 
+  // v8.3.8: 직업 정보 업데이트 및 자동 승인
+  const handleJobUpdate = async (appId: string, value: string) => {
+    try {
+      const appRef = doc(db, 'applications', appId);
+      await updateDoc(appRef, {
+        displayJob: value,
+        isJobReviewed: true,
+        updatedAt: Timestamp.now()
+      });
+      setEditingJobId(null);
+      toast.success('직업 정보가 수정 및 승인되었습니다.');
+    } catch (e) {
+      toast.error('직업 정보 업데이트에 실패했습니다.');
+    }
+  };
+
+  const toggleJobReviewed = async (appId: string, checked: boolean) => {
+    try {
+      const appRef = doc(db, 'applications', appId);
+      await updateDoc(appRef, {
+        isJobReviewed: checked,
+        updatedAt: Timestamp.now()
+      });
+    } catch (e) {
+      toast.error('승인 상태 변경에 실패했습니다.');
+    }
+  };
+
   const handleOpenPreview = (app: any) => {
     const session = events.find(e => e.id === app.sessionId);
     if (!session) return toast.error('세션 정보를 찾을 수 없습니다.');
@@ -270,7 +302,7 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 style={{ fontSize: '1.25rem', fontWeight: 900, letterSpacing: '-0.02em', color: '#0F172A' }}>신청 관리</h2>
-          <p style={{ fontSize: '0.85rem', color: '#64748B', marginTop: 2 }}>참가 신청자들의 상세 정보를 심사하고 선발 여부를 결정합니다. <span className="text-[10px] font-bold text-[#3B82F6] ml-2">v8.2.3 Premium</span></p>
+          <p style={{ fontSize: '0.85rem', color: '#64748B', marginTop: 2 }}>참가 신청자들의 상세 정보를 심사하고 선발 여부를 결정합니다. <span className="text-[10px] font-bold text-[#3B82F6] ml-2">v8.3.8 Premium</span></p>
         </div>
         <div className="flex items-center gap-3">
           <div className="relative flex-1 md:flex-none group">
@@ -496,9 +528,50 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                         </div>
                       </td>
 
-                      {/* 직업 */}
+                      {/* 직업 (v8.3.8: 인라인 편집 + 검토 체크박스) */}
                       <td style={{ padding: '0 16px' }}>
-                        <p className="text-[0.85rem] font-bold text-slate-700 truncate">{user.job || user.workplace?.split(',')[0] || <span className="text-slate-300 font-normal">-</span>}</p>
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-center gap-2 group/job relative">
+                            {editingJobId === app.id ? (
+                              <input 
+                                autoFocus
+                                value={tempJobValue}
+                                onChange={(e) => setTempJobValue(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') handleJobUpdate(app.id, tempJobValue);
+                                  if (e.key === 'Escape') setEditingJobId(null);
+                                }}
+                                onBlur={() => setEditingJobId(null)}
+                                className="w-full h-8 px-2 rounded border-2 border-blue-400 text-[0.8rem] font-bold outline-none"
+                              />
+                            ) : (
+                              <>
+                                <p className={`text-[0.85rem] font-black tracking-tight ${app.displayJob ? 'text-blue-600' : 'text-slate-800'}`}>
+                                  {app.displayJob || user.job || user.workplace?.split(',')[0] || <span className="text-slate-300 font-normal">-</span>}
+                                </p>
+                                <button 
+                                  onClick={() => {
+                                    setEditingJobId(app.id);
+                                    setTempJobValue(app.displayJob || user.job || user.workplace?.split(',')[0] || '');
+                                  }}
+                                  className="p-1.5 rounded-lg bg-slate-100 text-slate-400 opacity-0 group-hover/job:opacity-100 hover:bg-blue-50 hover:text-blue-500 transition-all"
+                                >
+                                  <Edit3 size={12} />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                          
+                          <label className={`flex items-center gap-1.5 cursor-pointer select-none px-2 py-1 rounded-lg border transition-all ${app.isJobReviewed ? 'bg-blue-50 border-blue-100 text-blue-600' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>
+                            <input 
+                              type="checkbox" 
+                              checked={!!app.isJobReviewed} 
+                              onChange={(e) => toggleJobReviewed(app.id, e.target.checked)}
+                              className="w-3 h-3 rounded"
+                            />
+                            <span className="text-[10px] font-black uppercase tracking-tight">Job Reviewed</span>
+                          </label>
+                        </div>
                       </td>
 
                       {/* 기수 */}
@@ -552,6 +625,7 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                               )}
                               <button 
                                 onClick={() => {
+                                  if (!app.isJobReviewed) return toast.error('먼저 직업 정보를 확인/수정하고 승인(Job Reviewed)해 주세요.');
                                   if ((app.gender === 'male' && isMaleFull) || (app.gender === 'female' && isFemaleFull)) {
                                     return toast.error(`해당 성별의 모집 정원이 이미 충족되었습니다. (최대 ${app.gender === 'male' ? activeEvent?.maxMale : activeEvent?.maxFemale}명)`);
                                   }
@@ -559,28 +633,31 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                                     updateAppStatus(app, 'confirmed');
                                   }
                                 }} 
-                                disabled={(app.gender === 'male' && isMaleFull) || (app.gender === 'female' && isFemaleFull)}
+                                disabled={!app.isJobReviewed || (app.gender === 'male' && isMaleFull) || (app.gender === 'female' && isFemaleFull)}
                                 className={`px-3 py-1.5 rounded-xl text-[0.75rem] font-bold border transition-all shadow-sm ${
-                                  (app.gender === 'male' && isMaleFull) || (app.gender === 'female' && isFemaleFull)
-                                    ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
+                                  !app.isJobReviewed || (app.gender === 'male' && isMaleFull) || (app.gender === 'female' && isFemaleFull)
+                                    ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed grayscale'
                                     : 'bg-[#FFD700]/10 text-[#B8860B] border-[#FFD700]/30 hover:bg-[#FFD700] hover:text-white'
                                 }`}
+                                title={!app.isJobReviewed ? "먼저 직업 정보를 확인/수정하고 승인해 주세요" : ""}
                               >
                                 선발확정
                               </button>
                               <button 
                                 onClick={() => {
+                                  if (!app.isJobReviewed) return toast.error('먼저 직업 정보를 확인/수정하고 승인(Job Reviewed)해 주세요.');
                                   if ((app.gender === 'male' && isMaleFull) || (app.gender === 'female' && isFemaleFull)) {
                                     return toast.error(`해당 성별의 모집 정원이 이미 충족되었습니다. (최대 ${app.gender === 'male' ? activeEvent?.maxMale : activeEvent?.maxFemale}명)`);
                                   }
                                   handleOpenPreview(app);
                                 }} 
-                                disabled={(app.gender === 'male' && isMaleFull) || (app.gender === 'female' && isFemaleFull)}
+                                disabled={!app.isJobReviewed || (app.gender === 'male' && isMaleFull) || (app.gender === 'female' && isFemaleFull)}
                                 className={`px-3 py-1.5 rounded-xl text-[0.75rem] font-bold border transition-all shadow-sm ${
-                                  (app.gender === 'male' && isMaleFull) || (app.gender === 'female' && isFemaleFull)
-                                    ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
+                                  !app.isJobReviewed || (app.gender === 'male' && isMaleFull) || (app.gender === 'female' && isFemaleFull)
+                                    ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed grayscale'
                                     : 'bg-[#FF7E7E]/10 text-[#FF7E7E] border-[#FF7E7E]/20 hover:bg-[#FF7E7E] hover:text-white'
                                 }`}
+                                title={!app.isJobReviewed ? "먼저 직업 정보를 확인/수정하고 승인해 주세요" : ""}
                               >
                                 선발
                               </button>

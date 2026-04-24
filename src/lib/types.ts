@@ -107,7 +107,12 @@ export interface Application {
   idealType?: string;
   nonIdealType?: string;
   avoidAcquaintance?: string;
+  avoidAcquaintance?: string;
   etc?: string;
+
+  // v8.3.8: 직업 검토 프로세스용 필드
+  displayJob?: string;         // 대외 노출용 정제된 직업명 (예: 대기업 직장인)
+  isJobReviewed?: boolean;     // 관리자 직업 확인 완료 여부
 }
 
 // ─────────────────────────────────────────────
