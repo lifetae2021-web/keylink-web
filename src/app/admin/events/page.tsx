@@ -854,7 +854,7 @@ export default function EventsPage() {
                                     onClick={() => handleCancelSelection(app)}
                                     className="shrink-0 px-2.5 py-1 rounded-lg text-[0.65rem] font-black bg-white border border-slate-200 text-slate-400 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all"
                                   >
-                                    {isOverQuota ? '🔴 취소' : '취소'}
+                                    {isOverQuota ? '🔴 선발 취소' : '선발 취소'}
                                   </button>
                                 </div>
                               );
@@ -884,7 +884,7 @@ export default function EventsPage() {
                                     onClick={() => handleCancelSelection(app)}
                                     className="shrink-0 px-2.5 py-1 rounded-lg text-[0.65rem] font-black bg-white border border-slate-200 text-slate-400 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all"
                                   >
-                                    취소
+                                    선발 취소
                                   </button>
                                 </div>
                               );
