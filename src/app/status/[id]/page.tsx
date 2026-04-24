@@ -19,6 +19,8 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
   const [applicants, setApplicants] = useState<Application[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
+  const [userMap, setUserMap] = useState<Record<string, any>>({});
+
   useEffect(() => {
     async function fetchData() {
       try {
