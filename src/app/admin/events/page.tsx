@@ -377,8 +377,12 @@ export default function EventsPage() {
     );
   }
 
-  const maleRatio = active ? Math.round(((active.currentMale || 0) / active.maxMale) * 100) : 0;
-  const femaleRatio = active ? Math.round(((active.currentFemale || 0) / active.maxFemale) * 100) : 0;
+  // v8.1.7: currentMale/Female 카운터 대신 실시간 applicants state에서 직접 집계
+  // → 세션 카운터 필드가 어긋나도 정확한 수치 표시 보장
+  const liveConfirmedMale = applicants.filter(a => a.status === 'confirmed' && a.gender === 'male').length;
+  const liveConfirmedFemale = applicants.filter(a => a.status === 'confirmed' && a.gender === 'female').length;
+  const maleRatio = active ? Math.round((liveConfirmedMale / (active.maxMale || 1)) * 100) : 0;
+  const femaleRatio = active ? Math.round((liveConfirmedFemale / (active.maxFemale || 1)) * 100) : 0;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-400">
@@ -426,9 +430,13 @@ export default function EventsPage() {
           </p>
           <div className="space-y-2 max-h-[800px] overflow-y-auto pr-2 custom-scrollbar">
             {sessions.map(ev => {
-              const total = (ev.currentMale || 0) + (ev.currentFemale || 0);
+              // v8.1.7: 선택된 기수는 실시간 applicants에서 직접 집계, 나머지는 카운터 사용
+              const isSelected = selectedId === ev.id;
+              const total = isSelected
+                ? liveConfirmedMale + liveConfirmedFemale
+                : (ev.currentMale || 0) + (ev.currentFemale || 0);
               const maxT = ev.maxMale + ev.maxFemale;
-              const pct = Math.round((total / maxT) * 100);
+              const pct = maxT > 0 ? Math.min(100, Math.round((total / maxT) * 100)) : 0;
               const sel = selectedId === ev.id;
               return (
                 <button
@@ -522,8 +530,8 @@ export default function EventsPage() {
 
                 <div className="grid grid-cols-2 gap-5">
                   {[
-                    { label: '남성 모집 현황', cur: active.currentMale,   max: active.maxMale,   pct: maleRatio,   color: '#3b82f6', bg: '#eff6ff', border: '#bfdbfe' },
-                    { label: '여성 모집 현황', cur: active.currentFemale, max: active.maxFemale, pct: femaleRatio, color: '#ec4899', bg: '#fdf2f8', border: '#fbcfe8' },
+                    { label: '남성 모집 현황', cur: liveConfirmedMale,   max: active.maxMale,   pct: maleRatio,   color: '#3b82f6', bg: '#eff6ff', border: '#bfdbfe' },
+                    { label: '여성 모집 현황', cur: liveConfirmedFemale, max: active.maxFemale, pct: femaleRatio, color: '#ec4899', bg: '#fdf2f8', border: '#fbcfe8' },
                   ].map(g => (
                     <div key={g.label} style={{ background: g.bg, border: `1px solid ${g.border}`, borderRadius: '12px', padding: '20px' }}>
                       <div className="flex justify-between mb-4">
@@ -582,7 +590,7 @@ export default function EventsPage() {
                     </div>
                     <div>
                       <p style={{ fontSize: '0.9rem', fontWeight: 800, color: '#ca8a04' }}>참가자 현황 검증</p>
-                      <p style={{ fontSize: '0.75rem', color: '#a16207', marginTop: 2, fontWeight: 500 }}>총 {(active.currentMale || 0) + (active.currentFemale || 0)}명 참여 확인</p>
+                      <p style={{ fontSize: '0.75rem', color: '#a16207', marginTop: 2, fontWeight: 500 }}>총 {liveConfirmedMale + liveConfirmedFemale}명 참여 확인</p>
                     </div>
                   </div>
 
