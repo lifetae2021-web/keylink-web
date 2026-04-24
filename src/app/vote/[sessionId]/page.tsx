@@ -20,7 +20,7 @@ interface Candidate {
   job: string;
   residence: string;
   gender: 'male' | 'female';
-  photos?: string[]; // v8.1.4
+  photos?: string[]; // v8.1.5
 }
 
 export default function VotePage() {
@@ -38,10 +38,11 @@ export default function VotePage() {
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // v8.1.4: 네이버 폼 스타일 신규 상태
+  // v8.1.5: 네이버 폼 스타일 신규 상태
   const [realName, setRealName] = useState('');
   const [myAlias, setMyAlias] = useState('');
   const [finalCheck, setFinalCheck] = useState(false);
+  const [disclosureMode, setDisclosureMode] = useState<'public' | 'anonymous'>('public'); // v8.1.5
   const [feedback, setFeedback] = useState('');
   const [nextEventOpt, setNextEventOpt] = useState(false); // "다음 인연 기대" 옵션
 
@@ -136,6 +137,7 @@ export default function VotePage() {
         realName,
         myAlias,
         finalCheck,
+        disclosureMode, // v8.1.5
         feedback
       });
       
@@ -154,7 +156,7 @@ export default function VotePage() {
     </div>
   );
 
-  // 투표 활성화 로직: v7.9.9 행사 당일 체크 + v8.1.4 퀵 토글 상태 체크
+  // 투표 활성화 로직: v7.9.9 행사 당일 체크 + v8.1.5 퀵 토글 상태 체크
   const isEventDay = session ? (
     new Date().toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' }) === 
     session.eventDate.toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' })
@@ -178,7 +180,7 @@ export default function VotePage() {
     );
   }
 
-  // v8.1.4: 동적 설정값 추출 (네이버 폼 커스텀 라벨 포함)
+  // v8.1.5: 동적 설정값 추출 (네이버 폼 커스텀 라벨 포함)
   const maxLimit = session?.voteConfig?.maxSelection || 3;
   const questionText = session?.voteConfig?.questionText || '오늘 가장 호감 갔던 이성을 3명까지 골라주세요.';
   const q1Label = session?.voteConfig?.q1Label || '실명을 적어주세요';
@@ -223,8 +225,8 @@ export default function VotePage() {
         </div>
       </div>
 
-      <div className="max-w-[600px] mx-auto -mt-6 md:-mt-10 px-4 relative z-20">
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-8">
+      <div className="max-w-[800px] mx-auto -mt-6 md:-mt-10 px-4 relative z-20">
+        <div className="bg-white rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.06)] border border-slate-100 overflow-hidden mb-8">
           <div className="p-6 md:p-8 space-y-12">
             
             {/* 1. 실명 확인 */}
@@ -253,7 +255,7 @@ export default function VotePage() {
                   <button 
                     key={num}
                     onClick={() => setMyAlias(`${myApplication?.gender === 'male' ? '키링남' : '키링녀'} ${num}호`)}
-                    className={`h-12 rounded-xl border-2 font-black text-sm transition-all ${
+                    className={`h-16 rounded-2xl border-2 font-black text-lg transition-all ${
                       myAlias.includes(`${num}호`)
                         ? 'border-[#FF6F61] bg-[#FFF5F4] text-[#FF6F61]'
                         : 'border-slate-50 bg-slate-50 text-slate-400 hover:border-slate-200'
@@ -351,6 +353,38 @@ export default function VotePage() {
                 />
                 <span className="font-black text-slate-700 text-sm">네, 확인했습니다.</span>
               </label>
+            </section>
+
+            {/* 4.5 호감 공개 여부 선택 (v8.1.5) */}
+            <section className="space-y-4">
+              <div className="flex items-start gap-2">
+                <span className="text-[#FF6F61] font-black text-lg">4.5</span>
+                <label className="text-lg font-extrabold text-slate-800">상대방에게 나의 호감을 어떻게 표시할까요? <span className="text-[#FF6F61]">*</span></label>
+              </div>
+              <p className="text-sm font-bold text-slate-400 leading-relaxed pl-6">결과 발표 시 적용될 나의 공개 모드입니다.</p>
+              
+              <div className="space-y-3 pl-6">
+                {[
+                  { id: 'public', label: '공개 모드', desc: '상대방에게 내 이름을 공개합니다 (나를 선택한 사람의 이름도 볼 수 있습니다)' },
+                  { id: 'anonymous', label: '익명 모드', desc: "상대방에게 '익명'으로 표시합니다 (나를 선택한 사람도 '익명'으로 보입니다)" }
+                ].map(opt => (
+                  <label key={opt.id} className={`flex items-center gap-4 p-5 rounded-2xl border-2 cursor-pointer transition-all ${
+                    disclosureMode === opt.id ? 'border-[#FF6F61] bg-[#FFF5F4]' : 'border-slate-50 bg-slate-50 hover:border-slate-200'
+                  }`}>
+                    <input 
+                      type="radio" 
+                      name="disclosure" 
+                      checked={disclosureMode === opt.id}
+                      onChange={() => setDisclosureMode(opt.id as any)}
+                      className="w-5 h-5 accent-[#FF6F61]"
+                    />
+                    <div>
+                      <p className={`font-black text-sm ${disclosureMode === opt.id ? 'text-[#FF6F61]' : 'text-slate-700'}`}>{opt.label}</p>
+                      <p className="text-[0.7rem] font-bold text-slate-400">{opt.desc}</p>
+                    </div>
+                  </label>
+                ))}
+              </div>
             </section>
 
             {/* 5. 후기 작성 */}
