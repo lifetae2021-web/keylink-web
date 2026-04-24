@@ -5,7 +5,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 
 /**
  * 선발 처리 및 알림톡 발송 API
- * v8.1.6: 트랜잭션 기반 인원 초과 방지(Hard Limit) 및 카운터 동기화
+ * v8.1.7: 트랜잭션 기반 인원 초과 방지(Hard Limit) 및 카운터 동기화
  */
 
 export async function POST(req: NextRequest) {
@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
           return; // 성공으로 간주하거나 중단
         }
 
-        // v8.1.6: 쿼리(get query)는 트랜잭션 내에서 지원되지 않으므로 세션 카운터를 활용
+        // v8.1.7: 쿼리(get query)는 트랜잭션 내에서 지원되지 않으므로 세션 카운터를 활용
         const currentCount = gender === 'male' ? (sessionData.currentMale || 0) : (sessionData.currentFemale || 0);
         const maxCount = gender === 'male' ? (sessionData.maxMale || 8) : (sessionData.maxFemale || 8);
 

@@ -20,7 +20,7 @@ interface Candidate {
   job: string;
   residence: string;
   gender: 'male' | 'female';
-  photos?: string[]; // v8.1.6
+  photos?: string[]; // v8.1.7
 }
 
 export default function VotePage() {
@@ -38,11 +38,11 @@ export default function VotePage() {
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // v8.1.6: 네이버 폼 스타일 신규 상태
+  // v8.1.7: 네이버 폼 스타일 신규 상태
   const [realName, setRealName] = useState('');
   const [myAlias, setMyAlias] = useState('');
   const [finalCheck, setFinalCheck] = useState(false);
-  const [disclosureMode, setDisclosureMode] = useState<'public' | 'anonymous'>('public'); // v8.1.6
+  const [disclosureMode, setDisclosureMode] = useState<'public' | 'anonymous'>('public'); // v8.1.7
   const [feedback, setFeedback] = useState('');
   const [nextEventOpt, setNextEventOpt] = useState(false); // "다음 인연 기대" 옵션
 
@@ -137,7 +137,7 @@ export default function VotePage() {
         realName,
         myAlias,
         finalCheck,
-        disclosureMode, // v8.1.6
+        disclosureMode, // v8.1.7
         feedback
       });
       
@@ -156,7 +156,7 @@ export default function VotePage() {
     </div>
   );
 
-  // 투표 활성화 로직: v7.9.9 행사 당일 체크 + v8.1.6 퀵 토글 상태 체크
+  // 투표 활성화 로직: v7.9.9 행사 당일 체크 + v8.1.7 퀵 토글 상태 체크
   const isEventDay = session ? (
     new Date().toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' }) === 
     session.eventDate.toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' })
@@ -180,7 +180,7 @@ export default function VotePage() {
     );
   }
 
-  // v8.1.6: 동적 설정값 추출 (네이버 폼 커스텀 라벨 포함)
+  // v8.1.7: 동적 설정값 추출 (네이버 폼 커스텀 라벨 포함)
   const maxLimit = session?.voteConfig?.maxSelection || 3;
   const questionText = session?.voteConfig?.questionText || '오늘 가장 호감 갔던 이성을 3명까지 골라주세요.';
   const q1Label = session?.voteConfig?.q1Label || '실명을 적어주세요';
@@ -355,7 +355,7 @@ export default function VotePage() {
               </label>
             </section>
 
-            {/* 4.5 호감 공개 여부 선택 (v8.1.6) */}
+            {/* 4.5 호감 공개 여부 선택 (v8.1.7) */}
             <section className="space-y-4">
               <div className="flex items-start gap-2">
                 <span className="text-[#FF6F61] font-black text-lg">4.5</span>

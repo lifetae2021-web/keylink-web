@@ -4,7 +4,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 
 /**
  * 신청 관리 상태 변경 API (Hard Limit 반영)
- * v8.1.6: 모든 상태 변경(확정, 취소, 복구)을 트랜잭션으로 처리하여 인원 초과 방지
+ * v8.1.7: 모든 상태 변경(확정, 취소, 복구)을 트랜잭션으로 처리하여 인원 초과 방지
  */
 
 export async function POST(req: NextRequest) {
@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
       const isDecreasing = (status === 'cancelled' && (prevStatus === 'selected' || prevStatus === 'confirmed'));
 
       if (isIncreasing) {
-        // v8.1.6: 쿼리(get query)는 트랜잭션 내에서 지원되지 않으므로 세션 카운터를 활용
+        // v8.1.7: 쿼리(get query)는 트랜잭션 내에서 지원되지 않으므로 세션 카운터를 활용
         const currentCount = gender === 'male' ? (sessionData.currentMale || 0) : (sessionData.currentFemale || 0);
         const maxCount = gender === 'male' ? (sessionData.maxMale || 8) : (sessionData.maxFemale || 8);
 
