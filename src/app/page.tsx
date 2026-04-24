@@ -128,7 +128,7 @@ export default function HomePage() {
             {[
               { num: '120기+', label: '누적 진행' },
               { num: '부산 & 창원', label: '운영 지역' },
-              { num: '6:6~10:10', label: '정원제 진행' },
+              { num: '6:6~8:8', label: '소규모 진행' },
             ].map((s) => (
               <div key={s.label} style={{ textAlign: 'center' }}>
                 <p style={{ fontSize: '1.4rem', fontWeight: '800', color: '#FF6F61', whiteSpace: 'nowrap' }}>{s.num}</p>
