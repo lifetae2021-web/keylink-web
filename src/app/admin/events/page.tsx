@@ -66,7 +66,7 @@ export default function EventsPage() {
     q5Label: '후기',
   });
 
-  // v8.2.0: 기수 목록 사이드바 실시간 집계를 위한 전역 구독 (성능 최적화: confirmed, selected만 필터링)
+  // v8.2.2: 기수 목록 사이드바 실시간 집계를 위한 전역 구독 (성능 최적화: confirmed, selected만 필터링)
   const [globalCounts, setGlobalCounts] = useState<Record<string, { male: number, female: number }>>({});
 
   useEffect(() => {
@@ -195,7 +195,7 @@ export default function EventsPage() {
 
   const stats = useMemo(() => {
     const openCount = sessions.filter(s => s.status === 'open').length;
-    // v8.2.0: 모든 기수의 실시간 집계 인원을 합산하여 표시 (Global Sync)
+    // v8.2.2: 모든 기수의 실시간 집계 인원을 합산하여 표시 (Global Sync)
     const totalParticipants = Object.values(globalCounts).reduce((sum, c) => sum + c.male + c.female, 0);
     return {
       total: sessions.length,
@@ -217,7 +217,7 @@ export default function EventsPage() {
     }
   };
 
-  // v8.2.1: 참가 명단 (확정자만) 필터링 및 초과 인원 색출
+  // v8.2.2: 참가 명단 (확정자만) 필터링 및 초과 인원 색출
   const participants = useMemo(() => applicants.filter(a => a.status === 'confirmed'), [applicants]);
   
   const overQuotaAppIds = useMemo(() => {
@@ -438,7 +438,7 @@ export default function EventsPage() {
     );
   }
 
-  // v8.2.0: globalCounts에서 실시간 집계 데이터 추출 (선발확정 + 입금대기 포함)
+  // v8.2.2: globalCounts에서 실시간 집계 데이터 추출 (선발확정 + 입금대기 포함)
   const liveStats = globalCounts[selectedId || ''] || { male: 0, female: 0 };
   const liveConfirmedMale = liveStats.male;
   const liveConfirmedFemale = liveStats.female;
@@ -491,7 +491,7 @@ export default function EventsPage() {
           </p>
           <div className="space-y-2 max-h-[800px] overflow-y-auto pr-2 custom-scrollbar">
             {sessions.map(ev => {
-              // v8.2.0: 전역 applicants 데이터 기반 실시간 집계 (선발 + 확정 합산)
+              // v8.2.2: 전역 applicants 데이터 기반 실시간 집계 (선발 + 확정 합산)
               const live = globalCounts[ev.id] || { male: 0, female: 0 };
               const total = live.male + live.female;
               const maxT = ev.maxMale + ev.maxFemale;
@@ -1100,38 +1100,33 @@ export default function EventsPage() {
                 </div>
               </div>
 
-              {/* Status and Capacities */}
-              <div className="grid grid-cols-3 gap-4 p-5 rounded-xl bg-slate-50 border border-slate-100 mb-8">
+              {/* Status and Unified Capacity (v8.2.2) */}
+              <div className="grid grid-cols-2 gap-6 p-6 rounded-2xl bg-slate-50 border border-slate-100 mb-8 items-center">
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide text-center">초기 상태</label>
+                  <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-widest text-center">초기 상태</label>
                   <select 
                     value={formData.status} 
                     onChange={e => setFormData({ ...formData, status: e.target.value as SessionStatus })}
-                    className="w-full h-10 text-center rounded-lg border border-slate-300 bg-white text-slate-800 font-bold focus:ring-[#FF6F61]/20 focus:border-[#FF6F61] outline-none"
+                    className="w-full h-11 text-center rounded-xl border-2 border-slate-200 bg-white text-slate-800 font-bold focus:border-[#FF6F61] focus:ring-0 outline-none transition-all"
                   >
                     <option value="open">모집 중 (게시됨)</option>
                     <option value="closed">모집 마감</option>
                   </select>
                 </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide text-center">남성 정원</label>
+                <div className="flex flex-col items-center">
+                  <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-widest text-center">성별 정원 (1:1 기준)</label>
                   <input 
                     type="number" 
                     required
                     value={formData.maxMale} 
-                    onChange={e => setFormData({ ...formData, maxMale: e.target.value })}
-                    className="w-full h-10 text-center px-4 rounded-lg border border-slate-300 bg-white text-slate-800 font-bold focus:ring-[#FF6F61]/20 focus:border-[#FF6F61] outline-none"
+                    onChange={e => setFormData({ ...formData, maxMale: e.target.value, maxFemale: e.target.value })}
+                    className="w-full h-11 text-center px-4 rounded-xl border-2 border-slate-200 bg-white text-slate-800 font-black text-lg focus:border-[#FF6F61] focus:ring-0 outline-none transition-all"
+                    placeholder="8"
                   />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide text-center">여성 정원</label>
-                  <input 
-                    type="number" 
-                    required
-                    value={formData.maxFemale} 
-                    onChange={e => setFormData({ ...formData, maxFemale: e.target.value })}
-                    className="w-full h-10 text-center px-4 rounded-lg border border-slate-300 bg-white text-slate-800 font-bold focus:ring-[#FF6F61]/20 focus:border-[#FF6F61] outline-none"
-                  />
+                  <p className="text-[11px] text-slate-400 font-bold mt-2 text-center leading-relaxed">
+                    남녀 성비가 1:1로 자동 설정됩니다.<br/>
+                    <span className="text-[#FF6F61]">총 {(Number(formData.maxMale) || 0) * 2}명 선발 가능</span>
+                  </p>
                 </div>
               </div>
 
