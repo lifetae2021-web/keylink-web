@@ -47,6 +47,17 @@ export interface Session {
     q5Label?: string;              // 후기 입력 문구
   };
   
+  // v8.2.4: 스마트 로테이션 타이머 설정
+  timerConfig?: {
+    totalRounds?: number;
+    talkTime?: number;
+    cakeRound?: number;
+    totalTables?: number;
+    customMaleOffset?: number;
+    startMs?: number | null;
+    status?: 'stopped' | 'running' | 'paused';
+  };
+  
   // v6.6.0 추가 필드 (새 기수 등록 폼 연동)
   venue?: string;                  // 서면역 인근 카페
   venueAddress?: string;           // 상세 주소
