@@ -15,6 +15,7 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
   const { id: sessionId } = use(params);
   const [activeTab, setActiveTab] = useState<'male' | 'female'>('male');
   const [watchers, setWatchers] = useState(24);
+  const [shuffleSeed, setShuffleSeed] = useState(0);
   const [session, setSession] = useState<Session | null>(null);
   const [applicants, setApplicants] = useState<Application[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -68,6 +69,7 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
         const delta = Math.floor(Math.random() * 5) - 2;
         return Math.max(18, Math.min(42, prev + delta));
       });
+      setShuffleSeed(prev => prev + 1);
     }, 5000);
     return () => clearInterval(interval);
   }, [sessionId]);
@@ -78,21 +80,38 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
   // v8.4.8: 라인업 데이터 바인딩 (이름/연락처 완전 배제)
   const confirmedRows = useMemo(() => {
     const currentList = activeTab === 'male' ? maleApplicants : femaleApplicants;
-    
-    return currentList.map(p => {
+
+    const rows = currentList.map(p => {
       const u = userMap[p.userId] || {};
       const birth = u.birthDate || '';
       const year = birth.includes('-') ? birth.split('-')[0].slice(2, 4) : (birth.length >= 2 ? birth.slice(0, 2) : '??');
-      
       return {
         birthYear: `${year}년생`,
         job: p.displayJob || p.job || u.job || '직장인',
-        mbti: p.mbti || u.mbti || '미표기',
         height: u.height ? `${u.height}cm` : '160cm대',
-        status: 'confirmed'
       };
     }).sort((a, b) => b.birthYear.localeCompare(a.birthYear));
-  }, [activeTab, maleApplicants, femaleApplicants, userMap]);
+
+    const shuffle = <T,>(arr: T[], seed: number): T[] => {
+      const result = [...arr];
+      let s = seed;
+      for (let i = result.length - 1; i > 0; i--) {
+        s = (s * 1664525 + 1013904223) & 0xffffffff;
+        const j = Math.abs(s) % (i + 1);
+        [result[i], result[j]] = [result[j], result[i]];
+      }
+      return result;
+    };
+
+    const jobs = shuffle(rows.map(r => r.job), shuffleSeed);
+    const heights = shuffle(rows.map(r => r.height), shuffleSeed + 999);
+
+    return rows.map((r, i) => ({
+      birthYear: r.birthYear,
+      job: jobs[i],
+      height: heights[i],
+    }));
+  }, [activeTab, maleApplicants, femaleApplicants, userMap, shuffleSeed]);
 
   const progressMale = session ? (session.currentMale / session.maxMale) : 0;
   const progressFemale = session ? (session.currentFemale / session.maxFemale) : 0;
@@ -250,16 +269,15 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
 
           <div style={{ maxWidth: '900px', margin: '0 auto' }}>
             {/* Header for Lineup List */}
-            <div style={{ 
-              display: 'grid', gridTemplateColumns: '80px 100px 1fr 120px 100px', gap: '10px',
+            <div className="lineup-header" style={{
+              display: 'grid', gridTemplateColumns: '80px 100px 1fr 100px', gap: '10px',
               padding: '15px 40px', background: 'rgba(0,0,0,0.02)', borderRadius: '16px',
               fontWeight: '800', color: '#888', fontSize: '0.85rem', marginBottom: '16px',
               textAlign: 'center', opacity: activeTab === 'male' ? 0.8 : 1
             }}>
               <span>번호</span>
               <span>출생연도</span>
-              <span>직업군</span>
-              <span>성향(MBTI)</span>
+              <span>직업</span>
               <span>키</span>
             </div>
 
@@ -273,8 +291,8 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
                 style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}
               >
                 {confirmedRows.map((row, idx) => (
-                  <div key={idx} className="status-row v850-card" style={{ 
-                    display: 'grid', gridTemplateColumns: '80px 100px 1fr 120px 100px', gap: '10px',
+                  <div key={idx} className="status-row v850-card" style={{
+                    display: 'grid', gridTemplateColumns: '80px 100px 1fr 100px', gap: '10px',
                     background: '#fff', border: '1.5px solid #f2f2f2', borderRadius: '24px',
                     padding: '28px 40px', boxShadow: '0 8px 24px rgba(0,0,0,0.02)',
                     alignItems: 'center', textAlign: 'center',
@@ -283,7 +301,6 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
                     <div style={{ fontWeight: '900', color: '#CCC', fontSize: '1.2rem' }}>{idx + 1}</div>
                     <div style={{ fontWeight: '800', color: '#111', fontSize: '1rem' }}>{row.birthYear}</div>
                     <div style={{ fontWeight: '900', color: activeTab === 'male' ? '#3B82F6' : '#FF6F61', fontSize: '1.1rem' }}>{row.job}</div>
-                    <div style={{ color: '#555', fontWeight: '700', fontSize: '0.95rem', background: '#F8F9FA', padding: '6px 12px', borderRadius: '10px' }}>{row.mbti}</div>
                     <div style={{ color: '#666', fontWeight: '800', fontSize: '1rem' }}>{row.height}</div>
                   </div>
                 ))}
@@ -349,8 +366,8 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
 
         @media (max-width: 768px) {
           .desktop-br { display: none; }
-          .v850-card { grid-template-columns: 50px 1fr 1fr !important; padding: 20px !important; gap: 8px !important; }
-          .v850-card > div:nth-child(4), .v850-card > div:nth-child(5) { display: none; }
+          .v850-card { grid-template-columns: 40px 80px 1fr 70px !important; padding: 16px 20px !important; gap: 6px !important; }
+          .lineup-header { grid-template-columns: 40px 80px 1fr 70px !important; padding: 12px 20px !important; gap: 6px !important; }
           h1 { font-size: 1.8rem !important; }
         }
       `}</style>
