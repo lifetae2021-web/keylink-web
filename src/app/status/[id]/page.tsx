@@ -15,6 +15,7 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
   const { id: sessionId } = use(params);
   const [activeTab, setActiveTab] = useState<'male' | 'female'>('male');
   const [watchers, setWatchers] = useState(24);
+  const [shuffleSeed, setShuffleSeed] = useState(0);
   const [session, setSession] = useState<Session | null>(null);
   const [applicants, setApplicants] = useState<Application[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -68,6 +69,7 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
         const delta = Math.floor(Math.random() * 5) - 2;
         return Math.max(18, Math.min(42, prev + delta));
       });
+      setShuffleSeed(prev => prev + 1);
     }, 5000);
     return () => clearInterval(interval);
   }, [sessionId]);
@@ -79,7 +81,7 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
   const confirmedRows = useMemo(() => {
     const currentList = activeTab === 'male' ? maleApplicants : femaleApplicants;
     
-    return currentList.map(p => {
+    const baseData = currentList.map(p => {
       const u = userMap[p.userId] || {};
       const birth = u.birthDate || '';
       const year = birth.includes('-') ? birth.split('-')[0].slice(2, 4) : (birth.length >= 2 ? birth.slice(0, 2) : '??');
@@ -90,7 +92,29 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
         height: u.height ? `${u.height}cm` : '160cm대',
       };
     }).sort((a, b) => b.birthYear.localeCompare(a.birthYear));
-  }, [activeTab, maleApplicants, femaleApplicants, userMap]);
+
+    if (baseData.length === 0) return [];
+
+    const shuffle = <T,>(arr: T[], seed: number): T[] => {
+      const result = [...arr];
+      let s = seed;
+      for (let i = result.length - 1; i > 0; i--) {
+        s = (s * 1664525 + 1013904223) & 0xffffffff;
+        const j = Math.abs(s) % (i + 1);
+        [result[i], result[j]] = [result[j], result[i]];
+      }
+      return result;
+    };
+
+    const jobs = shuffle(baseData.map(r => r.job), shuffleSeed);
+    const heights = shuffle(baseData.map(r => r.height), shuffleSeed + 999);
+
+    return baseData.map((r, i) => ({
+      birthYear: r.birthYear,
+      job: jobs[i],
+      height: heights[i],
+    }));
+  }, [activeTab, maleApplicants, femaleApplicants, userMap, shuffleSeed]);
 
   const progressMale = session ? (session.currentMale / session.maxMale) : 0;
   const progressFemale = session ? (session.currentFemale / session.maxFemale) : 0;
@@ -127,7 +151,7 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
       }}>
         <div className="pulse-circle" />
         <span>현재 {watchers}명이 이 기수를 같이 보고 있어요</span>
-        <span style={{ fontSize: '0.7rem', opacity: 0.6, marginLeft: '10px' }}>v8.8.3</span>
+        <span style={{ fontSize: '0.7rem', opacity: 0.6, marginLeft: '10px' }}>v8.8.4</span>
       </div>
 
       <div className="kl-container" style={{ paddingTop: '100px' }}>
@@ -257,8 +281,8 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
             }}>
               <span>번호</span>
               <span>출생연도</span>
-              <span>직업</span>
-              <span>키</span>
+              <span>직업 <small style={{ fontSize: '0.65rem', color: '#bbb', fontWeight: '500' }}>(랜덤)</small></span>
+              <span>키 <small style={{ fontSize: '0.65rem', color: '#bbb', fontWeight: '500' }}>(랜덤)</small></span>
             </div>
 
             <AnimatePresence mode="wait">
@@ -291,8 +315,34 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
                       {isFilled ? (
                         <>
                           <div style={{ fontWeight: '800', color: '#111', fontSize: '1rem' }}>{row.birthYear}</div>
-                          <div style={{ fontWeight: '900', color: activeTab === 'male' ? '#3B82F6' : '#FF6F61', fontSize: '1.1rem' }}>{row.job}</div>
-                          <div style={{ color: '#666', fontWeight: '800', fontSize: '1rem' }}>{row.height}</div>
+                          <div style={{ fontWeight: '900', color: activeTab === 'male' ? '#3B82F6' : '#FF6F61', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                            <AnimatePresence mode="wait">
+                              <motion.span 
+                                key={row.job}
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                transition={{ duration: 0.4 }}
+                              >
+                                {row.job}
+                              </motion.span>
+                            </AnimatePresence>
+                            <span style={{ fontSize: '0.65rem', color: '#bbb', fontWeight: '500' }}>(랜덤)</span>
+                          </div>
+                          <div style={{ color: '#666', fontWeight: '800', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                            <AnimatePresence mode="wait">
+                              <motion.span 
+                                key={row.height}
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                transition={{ duration: 0.4 }}
+                              >
+                                {row.height}
+                              </motion.span>
+                            </AnimatePresence>
+                            <span style={{ fontSize: '0.65rem', color: '#bbb', fontWeight: '500' }}>(랜덤)</span>
+                          </div>
                         </>
                       ) : (
                         <div style={{ gridColumn: 'span 3', color: '#bbb', fontWeight: '700', fontSize: '0.95rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
