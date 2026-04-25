@@ -1282,9 +1282,12 @@ export default function EventsPage() {
                                             <div className="flex items-center gap-2">
                                               <button
                                                 onClick={() => {
-                                                  setSmsTargets([{ phone: app.phone, name: app.name || '참가자', gender: app.gender, slotNumber: app.slotNumber, userId: app.userId }]);
+                                                  const _name = app.name || '참가자';
+                                                  const _gender = app.gender === 'male' ? '남' : '녀';
+                                                  const _slot = app.slotNumber != null ? String(app.slotNumber) : '?';
+                                                  setSmsTargets([{ phone: app.phone, name: _name, gender: app.gender, slotNumber: app.slotNumber, userId: app.userId }]);
                                                   setSmsRecipientLabel(`${app.name}님`);
-                                                  setSmsDefaultMsg(`안녕하세요😊 키링크입니다 :)\n일시 : ${active?.eventDate ? format(active.eventDate, 'MM/dd E HH:mm', { locale: ko }) : ''} (약 2시간 소요)\n장소 : 부산진구 중앙대로 763-1 데일리팡 4층\n\n❤️{이름}님은 키링{성별} {호수}호입니다❤️\n입장 전 신분증(모바일 가능)을 미리 꺼내놔주세요\n\n슬리퍼, 운동복 등 소개팅 분위기와 맞지 않는 복장은 ❌❌\n{오픈채팅링크}\n카카오프렌즈 익명으로 입장해주시면 됩니다 ! 내일 오픈채팅으로 진행과정에 대해 설명드리니 지금 바로 입장부탁드립니다 :)`);
+                                                  setSmsDefaultMsg(`안녕하세요😊 키링크입니다 :)\n일시 : ${active?.eventDate ? format(active.eventDate, 'MM/dd E HH:mm', { locale: ko }) : ''} (약 2시간 소요)\n장소 : 부산진구 중앙대로 763-1 데일리팡 4층\n\n❤️${_name}님은 키링${_gender} ${_slot}호입니다❤️\n입장 전 신분증(모바일 가능)을 미리 꺼내놔주세요\n\n슬리퍼, 운동복 등 소개팅 분위기와 맞지 않는 복장은 ❌❌\n{오픈채팅링크}\n카카오프렌즈 익명으로 입장해주시면 됩니다 ! 내일 오픈채팅으로 진행과정에 대해 설명드리니 지금 바로 입장부탁드립니다 :)`);
                                                   setSmsModalOpen(true);
                                                 }}
                                                 className="shrink-0 p-1.5 rounded-lg bg-white border border-[#FF7E7E]/30 text-[#FF6F61] hover:bg-orange-50 hover:border-[#FF7E7E] transition-all"
