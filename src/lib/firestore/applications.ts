@@ -46,6 +46,7 @@ function fromDoc(snap: DocumentSnapshot): Application | null {
     nonIdealType: d.nonIdealType,
     avoidAcquaintance: d.avoidAcquaintance,
     etc: d.etc,
+    slotNumber: d.slotNumber ?? undefined,
   };
 }
 

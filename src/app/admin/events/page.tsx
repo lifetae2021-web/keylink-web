@@ -56,6 +56,7 @@ export default function EventsPage() {
   const [matchingHistory, setMatchingHistory] = useState<any[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selectedIdRef = useRef<string | null>(null);
+  const isInitialSelectRef = useRef(true);
   const [isLoading, setIsLoading] = useState(true);
   const [isMatching, setIsMatching] = useState(false);
   const [activeTab, setActiveTab] = useState<
@@ -174,6 +175,10 @@ export default function EventsPage() {
   useEffect(() => {
     if (!selectedId) return;
     setActiveTab("overview");
+    if (isInitialSelectRef.current) {
+      isInitialSelectRef.current = false;
+      return;
+    }
     setTimeout(() => {
       const el = detailPanelRef.current;
       if (!el) return;

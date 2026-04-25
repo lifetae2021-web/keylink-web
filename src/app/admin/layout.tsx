@@ -10,8 +10,8 @@ import {
 import {
   LayoutDashboard, Users, Calendar, TrendingUp,
   Settings, LogOut, Bell, Menu, X,
-  ExternalLink, ChevronDown, ShieldCheck,
-  FileText, Loader2, Timer
+  ExternalLink, ChevronDown,
+  FileText, Loader2, Timer, ChevronsLeft, ChevronsRight
 } from 'lucide-react';
 import Link from 'next/link';
 import { version } from '../../../package.json';
@@ -38,6 +38,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname();
   const router   = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+  const [showText, setShowText] = useState(true);
   const [notiOpen, setNotiOpen]       = useState(false);
   const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS);
   const [authState, setAuthState] = useState<'loading' | 'admin' | 'denied'>('loading');
@@ -115,6 +117,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const markAllRead = () => setNotifications(prev => prev.map(n => ({ ...n, read: true })));
 
+  const toggleCollapse = (next: boolean) => {
+    if (next) {
+      // 접을 때: 텍스트 먼저 숨기고 사이드바 축소
+      setShowText(false);
+      setCollapsed(true);
+    } else {
+      // 펼칠 때: 사이드바 먼저 펼치고 300ms 후 텍스트 표시
+      setCollapsed(false);
+      setTimeout(() => setShowText(true), 280);
+    }
+  };
+
   if (pathname === '/admin/login') return <>{children}</>;
 
   // Loading / access denied
@@ -141,29 +155,39 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       {/* ── Sidebar ── */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex flex-col transition-transform duration-300 lg:translate-x-0 lg:static ${
+        className={`fixed inset-y-0 left-0 z-50 flex flex-col transition-all duration-300 lg:translate-x-0 lg:static ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
-        style={{ width: 250, background: '#FFFFFF', borderRight: '1px solid #E2E8F0' }}
+        style={{ width: collapsed ? 68 : 220, background: '#FFFFFF', borderRight: '1px solid #E2E8F0', overflow: 'hidden' }}
       >
         {/* Logo */}
-        <div className="flex items-center justify-between px-6" style={{ height: 72, borderBottom: '1px solid #F1F5F9' }}>
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg flex items-center justify-center shadow-sm" style={{ background: '#FF7E7E' }}>
-              <ShieldCheck size={14} color="#fff" />
+        <div className="flex items-center justify-between px-5" style={{ height: 72, borderBottom: '1px solid #F1F5F9', minWidth: 0 }}>
+          {showText && (
+            <div className="flex items-center gap-2.5 overflow-hidden">
+              <span style={{ fontWeight: 800, fontSize: '1.1rem', letterSpacing: '-0.02em', color: '#0F172A', whiteSpace: 'nowrap' }}>KEYLINK</span>
+              <span style={{ fontSize: '0.6rem', fontWeight: 800, color: '#FF7E7E', background: 'rgba(255,126,126,0.1)', padding: '2px 6px', borderRadius: 4, whiteSpace: 'nowrap' }}>
+                ADMIN
+              </span>
             </div>
-            <span style={{ fontWeight: 800, fontSize: '1.1rem', letterSpacing: '-0.02em', color: '#0F172A' }}>KEYLINK</span>
-            <span style={{ fontSize: '0.6rem', fontWeight: 800, color: '#FF7E7E', background: 'rgba(255,126,126,0.1)', padding: '2px 6px', borderRadius: 4 }}>
-              ADMIN
-            </span>
+          )}
+          <div className={`flex items-center gap-1 ${collapsed ? 'mx-auto' : 'ml-auto'}`}>
+            <button onClick={() => setSidebarOpen(false)} className="lg:hidden shrink-0" style={{ color: '#666' }}>
+              <X size={18} />
+            </button>
+            <button
+              onClick={() => toggleCollapse(!collapsed)}
+              className="hidden lg:flex items-center justify-center rounded-xl transition-all duration-150 shrink-0"
+              style={{ width: 36, height: 36, color: '#475569' }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#F1F5F9'; (e.currentTarget as HTMLElement).style.color = '#0F172A'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = '#475569'; }}
+            >
+              {collapsed ? <ChevronsRight size={24} /> : <ChevronsLeft size={24} />}
+            </button>
           </div>
-          <button onClick={() => setSidebarOpen(false)} className="lg:hidden" style={{ color: '#666' }}>
-            <X size={18} />
-          </button>
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 py-4 overflow-y-auto" style={{ padding: '16px 12px' }}>
+        <nav className="flex-1 overflow-y-auto" style={{ padding: '16px 12px' }}>
           {NAV.map(item => {
             const active = pathname === item.path;
             return (
@@ -171,9 +195,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 key={item.path}
                 href={item.path}
                 onClick={() => setSidebarOpen(false)}
-                className="flex items-center gap-3 rounded-lg mb-0.5 transition-all duration-150"
+                title={collapsed ? item.label : undefined}
+                className="flex items-center rounded-lg mb-0.5 transition-all duration-150"
                 style={{
-                  padding: '10px 14px',
+                  padding: '0 10px',
+                  height: 40,
                   color: active ? '#fff' : '#64748B',
                   background: active ? '#FF7E7E' : 'transparent',
                   fontWeight: active ? 600 : 500,
@@ -183,32 +209,34 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.background = '#F1F5F9'; }}
                 onMouseLeave={e => { if (!active) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
               >
-                <item.icon size={16} />
-                <span className="flex-1">{item.label}</span>
-                {item.badge ? (
-                  <span style={{ fontSize: '0.65rem', fontWeight: 700, background: '#FF6F61', color: '#fff', borderRadius: 10, padding: '1px 6px' }}>
+                <span style={{ width: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <item.icon size={16} />
+                </span>
+                {showText && <span className="flex-1 whitespace-nowrap" style={{ marginLeft: 10 }}>{item.label}</span>}
+                {showText && item.badge ? (
+                  <span style={{ fontSize: '0.65rem', fontWeight: 700, background: '#FF6F61', color: '#fff', borderRadius: 10, padding: '1px 6px', marginLeft: 4 }}>
                     {item.badge}
                   </span>
                 ) : null}
               </Link>
             );
           })}
-        </nav>
-
-        {/* Sidebar Footer */}
-        <div style={{ padding: '12px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+          {/* 로그아웃 */}
           <button
             onClick={() => auth.signOut()}
-            className="w-full flex items-center gap-3 rounded-lg transition-all duration-150"
-            style={{ padding: '10px 14px', color: '#94A3B8', fontSize: '0.9rem', background: 'transparent' }}
+            title={collapsed ? '로그아웃' : undefined}
+            className="w-full flex items-center rounded-lg mt-0.5 transition-all duration-150"
+            style={{ padding: '0 10px', height: 40, justifyContent: 'flex-start', color: '#94A3B8', fontSize: '0.9rem', background: 'transparent' }}
             onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#EF4444'; (e.currentTarget as HTMLElement).style.background = '#FEF2F2'; }}
             onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = '#94A3B8'; (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
           >
-            <LogOut size={16} />
-            <span>로그아웃</span>
+            <span style={{ width: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <LogOut size={16} />
+            </span>
+            {showText && <span className="whitespace-nowrap" style={{ marginLeft: 10 }}>로그아웃</span>}
           </button>
-          <p style={{ fontSize: '0.65rem', color: '#333', marginTop: 8, paddingLeft: 14 }}>v{version}</p>
-        </div>
+        </nav>
+
       </aside>
 
       {/* ── Main ── */}

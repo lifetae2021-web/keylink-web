@@ -753,8 +753,10 @@ function ApplicationStatusSection({ applications, sessionsMap, userId }: { appli
   const confirmedApps = applications
     .filter(a => a.status === 'confirmed')
     .sort((a, b) => {
-      const dateA = sessionsMap[a.sessionId]?.eventDate?.getTime() || 0;
-      const dateB = sessionsMap[b.sessionId]?.eventDate?.getTime() || 0;
+      const edA = sessionsMap[a.sessionId]?.eventDate;
+      const edB = sessionsMap[b.sessionId]?.eventDate;
+      const dateA = edA instanceof Date ? edA.getTime() : (edA as any)?.toMillis?.() || 0;
+      const dateB = edB instanceof Date ? edB.getTime() : (edB as any)?.toMillis?.() || 0;
       return dateA - dateB;
     });
 
@@ -829,9 +831,10 @@ function ApplicationStatusBlock({ application, session, userId, hasVoted }: Stat
     ? `${session.region === 'busan' ? '부산' : '창원'} ${session.episodeNumber}기`
     : application.sessionId || '해당 기수';
   
-  const sessionDateStr = session
-    ? `${session.eventDate.getMonth() + 1}월 ${session.eventDate.getDate()}일 ${String(session.eventDate.getHours()).padStart(2,'0')}:${String(session.eventDate.getMinutes()).padStart(2,'0')}`
-    : null;
+  const sessionDateStr = session ? (() => {
+    const d = session.eventDate instanceof Date ? session.eventDate : (session.eventDate as any).toDate();
+    return `${d.getMonth() + 1}월 ${d.getDate()}일 ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  })() : null;
 
   const sessionVenue = session?.venue || null;
 
@@ -893,10 +896,10 @@ function ApplicationStatusBlock({ application, session, userId, hasVoted }: Stat
   // ── 참가 확정 (confirmed) ──
   if (application.status === 'confirmed') {
     // v8.1.7: KST 기준 행사 당일 00:00부터 투표 활성화
-    const isEventDay = session ? (
-      new Date().toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' }) === 
-      session.eventDate.toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' })
-    ) : false;
+    const isEventDay = session ? (() => {
+      const d = session.eventDate instanceof Date ? session.eventDate : (session.eventDate as any).toDate();
+      return new Date().toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' }) === d.toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' });
+    })() : false;
 
     const isVotingActive = isEventDay || session?.status === 'voting';
     const canVote = isVotingActive && !hasVoted;

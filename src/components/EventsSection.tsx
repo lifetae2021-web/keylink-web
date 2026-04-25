@@ -227,10 +227,10 @@ function EventCalendar({ events, onDateSelect, selectedDate }: { events: Keylink
 }
 
 function EventCard({ event }: { event: KeylinkEvent }) {
-  // 남성 또는 여성 중 하나라도 정원이 찼으면 마감
+  // 남성 AND 여성 모두 정원이 찼을 때만 마감
   const soldOutM = event.currentMale >= event.maxMale;
   const soldOutF = event.currentFemale >= event.maxFemale;
-  const isSoldOut = soldOutM || soldOutF;
+  const isSoldOut = soldOutM && soldOutF;
 
   // 배지 상태 결정
   const badgeStatus = isSoldOut ? 'closed' : event.status === 'open' ? 'open' : 'upcoming';

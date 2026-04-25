@@ -2,23 +2,22 @@
 
 import { useState, useEffect } from 'react';
 import {
-  Users, Calendar, Heart, TrendingUp,
-  ArrowUpRight, ArrowDownRight, Clock,
-  CalendarCheck, UserPlus, ChevronRight, Zap, Loader2
+  Users, Heart, TrendingUp, Clock,
+  CalendarCheck, UserPlus, ChevronRight, Zap, Loader2,
+  ClipboardList, Calendar
 } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, PieChart, Pie, Cell
 } from 'recharts';
-import { format, subDays } from 'date-fns';
+import { format, subDays, startOfDay, startOfToday } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import Link from 'next/link';
 import { db } from '@/lib/firebase';
-import { 
-  collection, getDocs, query, where, orderBy, limit 
+import {
+  collection, getDocs, query, where, orderBy, limit
 } from 'firebase/firestore';
 
-// Skeleton Component for the dark theme
 const Skeleton = ({ className }: { className?: string }) => (
   <div className={`animate-pulse bg-white/5 rounded-lg ${className}`} />
 );
@@ -30,23 +29,44 @@ const STATUS = {
 };
 
 const panel = {
-  background: 'rgba(255,255,255,0.03)',
-  border: '1px solid rgba(255,255,255,0.07)',
+  background: '#ffffff',
+  border: '1px solid #e2e8f0',
   borderRadius: 12,
+  boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
 };
+
+function toDate(val: any): Date | null {
+  if (!val) return null;
+  if (val instanceof Date) return val;
+  if (val?.toDate) return val.toDate();
+  if (val?.seconds) return new Date(val.seconds * 1000);
+  return null;
+}
+
+const DAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
 
 export default function AdminDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState({
     totalUsers: 0,
+    monthlyNewUsers: 0,
+    prevMonthlyNewUsers: 0,
     weeklyApps: 0,
-    matches: 624, // Keep mock for now as matching logic is pending
-    monthlyRevenue: '₩3.8M', // Keep mock for now
+    prevWeeklyApps: 0,
+    monthlyApps: 0,
+    prevMonthlyApps: 0,
+    totalApps: 0,
+    matchCount: 0,
+    monthlyMatchCount: 0,
+    prevMonthlyMatchCount: 0,
+    monthlyRevenue: 0,
+    prevMonthlyRevenue: 0,
   });
   const [genderData, setGenderData] = useState([
     { name: '남성', value: 0, color: '#60a5fa' },
     { name: '여성', value: 0, color: '#FF6F61' },
   ]);
+  const [chartData, setChartData] = useState<any[]>([]);
   const [upcomingEvents, setUpcomingEvents] = useState<any[]>([]);
   const [recentUsers, setRecentUsers] = useState<any[]>([]);
 
@@ -55,71 +75,123 @@ export default function AdminDashboard() {
       try {
         setIsLoading(true);
 
-        // 1. Total Users & Gender Analysis
+        // 1. 전체 회원 + 성별 + 이번 달 신규
         const usersSnap = await getDocs(collection(db, 'users'));
-        const totalUsers = usersSnap.size;
-        let maleCount = 0;
-        let femaleCount = 0;
-        
+        let maleCount = 0, femaleCount = 0, monthlyNewUsers = 0, prevMonthlyNewUsers = 0;
+        const thisMonthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+        const userPrevMonthStart = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1);
         usersSnap.forEach(doc => {
           const data = doc.data();
-          if (data.gender === 'male') maleCount++;
-          else if (data.gender === 'female') femaleCount++;
+          const g = data.gender;
+          if (g === 'male') maleCount++;
+          else if (g === 'female') femaleCount++;
+          const created = toDate(data.createdAt);
+          if (created && created >= thisMonthStart) monthlyNewUsers++;
+          else if (created && created >= userPrevMonthStart) prevMonthlyNewUsers++;
         });
 
-        // 2. Weekly Applications
-        const sevenDaysAgo = subDays(new Date(), 7);
-        const appsQuery = query(
-          collection(db, 'applications'),
-          where('createdAt', '>=', sevenDaysAgo)
-        );
-        let weeklyApps = 0;
-        try {
-          const appsSnap = await getDocs(appsQuery);
-          weeklyApps = appsSnap.size;
-        } catch (e) {
-          console.warn('Applications collection error:', e);
-        }
+        // 2. 신청 데이터 + 일별 차트 (최근 7일 + 이전 7일)
+        const appsSnap = await getDocs(collection(db, 'applications'));
+        const allApps = appsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-        // 3. Upcoming Events
         const now = new Date();
-        const eventsQuery = query(
-          collection(db, 'events'),
-          where('date', '>=', now),
-          orderBy('date', 'asc'),
-          limit(3)
-        );
-        let events: any[] = [];
-        try {
-          const eventsSnap = await getDocs(eventsQuery);
-          events = eventsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        } catch (e) {
-          console.warn('Events collection error:', e);
+        const dayMap: Record<string, { applicants: number; matches: number }> = {};
+        for (let i = 6; i >= 0; i--) {
+          const d = subDays(now, i);
+          dayMap[format(d, 'yyyy-MM-dd')] = { applicants: 0, matches: 0 };
         }
 
-        // 4. Recent Members
+        const appMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const appPrevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        let weeklyApps = 0, prevWeeklyApps = 0, confirmedCount = 0, monthlyApps = 0, prevMonthlyApps = 0;
+        allApps.forEach((app: any) => {
+          const d = toDate(app.appliedAt);
+          if (!d) return;
+          const key = format(d, 'yyyy-MM-dd');
+          if (dayMap[key]) {
+            dayMap[key].applicants++;
+            weeklyApps++;
+          }
+          // 이전 7일 신청 수
+          const daysAgo = Math.floor((now.getTime() - d.getTime()) / 86400000);
+          if (daysAgo >= 7 && daysAgo <= 13) prevWeeklyApps++;
+          // 이번 달 / 전월 신청 수
+          if (d >= appMonthStart) monthlyApps++;
+          else if (d >= appPrevMonthStart) prevMonthlyApps++;
+          // 확정된 신청
+          if (app.status === 'confirmed' || app.paymentConfirmed === true) {
+            confirmedCount++;
+            if (dayMap[key]) dayMap[key].matches++;
+          }
+        });
+
+        const chart = Object.entries(dayMap).map(([dateStr, v]) => ({
+          day: DAY_LABELS[new Date(dateStr).getDay()],
+          ...v,
+        }));
+
+        // 3. 매칭 성공 커플 (votes 컬렉션)
+        let matchCount = 0, monthlyMatchCount = 0, prevMonthlyMatchCount = 0;
+        try {
+          const votesSnap = await getDocs(collection(db, 'votes'));
+          matchCount = votesSnap.size;
+          const voteMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+          const votePrevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+          votesSnap.docs.forEach(doc => {
+            const d = toDate(doc.data().submittedAt);
+            if (d && d >= voteMonthStart) monthlyMatchCount++;
+            else if (d && d >= votePrevMonthStart) prevMonthlyMatchCount++;
+          });
+        } catch (e) { /* votes 없으면 0 */ }
+
+        // 4. sessions 한 번만 fetch — 매출 계산 + 예정 기수
+        const sessionsSnap = await getDocs(collection(db, 'sessions'));
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const todayStart = startOfToday();
+
+        let monthlyRevenue = 0, prevMonthlyRevenue = 0;
+        sessionsSnap.docs.forEach(doc => {
+          const s = doc.data();
+          const eventDate = toDate(s.eventDate);
+          if (!eventDate) return;
+          const fee = Number(s.price || 0);
+          const cnt = allApps.filter(
+            (a: any) => a.sessionId === doc.id && (a.status === 'confirmed' || a.paymentConfirmed === true)
+          ).length;
+          if (eventDate >= monthStart) monthlyRevenue += fee * cnt;
+          else if (eventDate >= prevMonthStart) prevMonthlyRevenue += fee * cnt;
+        });
+
+        const upcoming = sessionsSnap.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .filter((s: any) => {
+            const d = toDate(s.eventDate);
+            return d && d >= todayStart;
+          })
+          .sort((a: any, b: any) => {
+            const da = toDate((a as any).eventDate)?.getTime() || 0;
+            const db2 = toDate((b as any).eventDate)?.getTime() || 0;
+            return da - db2;
+          })
+          .slice(0, 3);
+
+        // 6. 최근 가입자
         const recentQuery = query(
           collection(db, 'users'),
           orderBy('createdAt', 'desc'),
           limit(5)
         );
         const recentSnap = await getDocs(recentQuery);
-        const latestUsers = recentSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-        setStats(prev => ({
-          ...prev,
-          totalUsers,
-          weeklyApps,
-        }));
-
-        const totalGendered = maleCount + femaleCount;
+        setStats({ totalUsers: usersSnap.size, monthlyNewUsers, prevMonthlyNewUsers, weeklyApps, prevWeeklyApps, monthlyApps, prevMonthlyApps, totalApps: allApps.length, matchCount, monthlyMatchCount, prevMonthlyMatchCount, monthlyRevenue, prevMonthlyRevenue });
         setGenderData([
-          { name: '남성', value: totalGendered > 0 ? Math.round((maleCount / totalGendered) * 100) : 50, color: '#60a5fa' },
-          { name: '여성', value: totalGendered > 0 ? Math.round((femaleCount / totalGendered) * 100) : 50, color: '#FF6F61' },
+          { name: '남성', value: maleCount + femaleCount > 0 ? Math.round((maleCount / (maleCount + femaleCount)) * 100) : 50, color: '#60a5fa' },
+          { name: '여성', value: maleCount + femaleCount > 0 ? Math.round((femaleCount / (maleCount + femaleCount)) * 100) : 50, color: '#FF6F61' },
         ]);
-
-        setUpcomingEvents(events);
-        setRecentUsers(latestUsers);
+        setChartData(chart);
+        setUpcomingEvents(upcoming);
+        setRecentUsers(recentSnap.docs.map(d => ({ id: d.id, ...d.data() })));
 
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
@@ -127,53 +199,61 @@ export default function AdminDashboard() {
         setIsLoading(false);
       }
     }
-
     fetchData();
   }, []);
 
+  const formatRevenue = (n: number) => `₩${n.toLocaleString()}`;
+
+  const calcTrend = (curr: number, prev: number) =>
+    prev === 0 ? (curr > 0 ? 100 : 0) : Math.round(((curr - prev) / prev) * 100);
+
   const statsCards = [
-    { label: '누적 가입자', value: stats.totalUsers.toLocaleString(), change: '+12%', up: true, icon: Users, color: '#FF6F61' },
-    { label: '이번 주 신청', value: stats.weeklyApps.toLocaleString(), change: '+8%', up: true, icon: UserPlus, color: '#60a5fa' },
-    { label: '매칭 성공 커플', value: stats.matches.toLocaleString(), change: '-2%', up: false, icon: Heart, color: '#f472b6' },
-    { label: '이번 달 매출', value: stats.monthlyRevenue, change: '+5%', up: true, icon: TrendingUp, color: '#4ade80' },
+    { label: '가입자',    icon: Users,      color: '#FF6F61', monthlyNew: stats.monthlyNewUsers,   monthlyNewLabel: '이번 달', subValue: stats.totalUsers.toLocaleString(),           subLabel: '누적', trend: calcTrend(stats.monthlyNewUsers, stats.prevMonthlyNewUsers) },
+    { label: '신청',      icon: UserPlus,   color: '#60a5fa', monthlyNew: stats.monthlyApps,       monthlyNewLabel: '이번 달', subValue: stats.totalApps.toLocaleString(),            subLabel: '누적', trend: calcTrend(stats.monthlyApps, stats.prevMonthlyApps) },
+    { label: '매칭 커플', icon: Heart,      color: '#f472b6', monthlyNew: stats.monthlyMatchCount, monthlyNewLabel: '이번 달', subValue: stats.matchCount.toLocaleString(),           subLabel: '누적', trend: calcTrend(stats.monthlyMatchCount, stats.prevMonthlyMatchCount) },
+    { label: '매출',      icon: TrendingUp, color: '#4ade80', monthlyNew: stats.monthlyRevenue,    monthlyNewLabel: '이번 달', subValue: formatRevenue(stats.prevMonthlyRevenue),     subLabel: '전월', trend: calcTrend(stats.monthlyRevenue, stats.prevMonthlyRevenue) },
   ];
 
   return (
     <div className="space-y-8 animate-in fade-in duration-400">
 
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <p style={{ fontSize: '0.8rem', color: '#555', marginBottom: 2 }}>
-            {format(new Date(), 'yyyy년 M월 d일 (E)', { locale: ko })}
-          </p>
-          <h2 style={{ fontSize: '1.4rem', fontWeight: 700 }}>안녕하세요, 관리자님 👋</h2>
-        </div>
-        <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{ background: 'rgba(74,222,128,0.08)', border: '1px solid rgba(74,222,128,0.15)' }}>
-          <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#4ade80' }} />
-          <span style={{ fontSize: '0.75rem', color: '#4ade80', fontWeight: 600 }}>실시간 운영 중</span>
-        </div>
-      </div>
-
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {statsCards.map((s, i) => (
-          <div key={i} style={{ ...panel, padding: '20px 24px' }} className="hover:border-white/10 transition-colors group">
-            <div className="flex items-start justify-between mb-4">
-              <div className="w-9 h-9 rounded-lg flex items-center justify-center transition-transform group-hover:scale-110" style={{ background: `${s.color}14` }}>
-                <s.icon size={17} style={{ color: s.color }} />
+          <div key={i} style={{ ...panel, padding: '16px 20px' }} className="hover:border-slate-300 transition-colors group">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center transition-transform group-hover:scale-110" style={{ background: `${s.color}14` }}>
+                <s.icon size={15} style={{ color: s.color }} />
               </div>
-              <span className="flex items-center gap-0.5" style={{ fontSize: '0.75rem', fontWeight: 700, color: s.up ? '#4ade80' : '#ef4444' }}>
-                {s.up ? <ArrowUpRight size={13} /> : <ArrowDownRight size={13} />}
-                {s.change}
-              </span>
+              <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#0f172a' }}>{s.label}</span>
             </div>
             {isLoading ? (
-              <Skeleton className="h-8 w-2/3 mt-2" />
+              <Skeleton className="h-8 w-2/3" />
             ) : (
-              <p style={{ fontSize: '1.6rem', fontWeight: 700, letterSpacing: '-0.02em' }}>{s.value}</p>
+              <div className="flex items-baseline justify-between gap-2">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p style={{ fontSize: '1.6rem', fontWeight: 700, letterSpacing: '-0.02em', color: '#0f172a', lineHeight: 1.1 }}>
+                      {s.label === '매출' ? formatRevenue(s.monthlyNew as number) : (s.monthlyNew ?? 0)}
+                      {(s.label === '가입자' || s.label === '신청') && <span style={{ fontSize: '1rem', fontWeight: 600, marginLeft: 2 }}>명</span>}
+                      {s.label === '매칭 커플' && <span style={{ fontSize: '1rem', fontWeight: 600, marginLeft: 2 }}>커플</span>}
+                    </p>
+                    <span style={{
+                      fontSize: '0.68rem', fontWeight: 700, padding: '2px 5px', borderRadius: 5,
+                      color: s.trend >= 0 ? '#16a34a' : '#dc2626',
+                      background: s.trend >= 0 ? '#dcfce7' : '#fee2e2',
+                    }}>
+                      {s.trend >= 0 ? '+' : ''}{s.trend}%
+                    </span>
+                  </div>
+                  <p style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: 4 }}>{s.monthlyNewLabel}</p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p style={{ fontSize: '1.05rem', fontWeight: 700, letterSpacing: '-0.02em', color: '#cbd5e1', lineHeight: 1.1 }}>{s.subValue}</p>
+                  <p style={{ fontSize: '0.75rem', color: '#cbd5e1', marginTop: 4 }}>{s.subLabel}</p>
+                </div>
+              </div>
             )}
-            <p style={{ fontSize: '0.78rem', color: '#555', marginTop: 4 }}>{s.label}</p>
           </div>
         ))}
       </div>
@@ -181,45 +261,46 @@ export default function AdminDashboard() {
       {/* Charts row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-        {/* Weekly trend (Kept with illustrative data) */}
+        {/* 주간 신청 추이 */}
         <div style={{ ...panel, padding: '24px' }} className="lg:col-span-2">
           <div className="flex items-center justify-between mb-6">
-            <h3 style={{ fontSize: '0.95rem', fontWeight: 600 }}>주간 신청 및 매칭 추이</h3>
+            <h3 style={{ fontSize: '0.95rem', fontWeight: 600 }}>주간 신청 및 확정 추이</h3>
             <span style={{ fontSize: '0.75rem', color: '#444' }}>최근 7일</span>
           </div>
           <div style={{ height: 220 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={[
-                { day: '월', applicants: 12, matches: 4 }, { day: '화', applicants: 18, matches: 6 },
-                { day: '수', applicants: 25, matches: 8 }, { day: '목', applicants: 20, matches: 5 },
-                { day: '금', applicants: 32, matches: 12 }, { day: '토', applicants: 45, matches: 18 },
-                { day: '일', applicants: 38, matches: 15 }
-              ]} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="gA" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#FF6F61" stopOpacity={0.2} />
-                    <stop offset="95%" stopColor="#FF6F61" stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id="gM" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#60a5fa" stopOpacity={0.15} />
-                    <stop offset="95%" stopColor="#60a5fa" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
-                <XAxis dataKey="day" stroke="#333" fontSize={11} tickLine={false} axisLine={false} />
-                <YAxis stroke="#333" fontSize={11} tickLine={false} axisLine={false} />
-                <Tooltip
-                  contentStyle={{ background: '#1a1a1e', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, fontSize: 12 }}
-                  labelStyle={{ color: '#888' }}
-                  cursor={{ stroke: 'rgba(255,255,255,0.06)' }}
-                />
-                <Area type="monotone" dataKey="applicants" stroke="#FF6F61" strokeWidth={2} fill="url(#gA)" name="신청자" />
-                <Area type="monotone" dataKey="matches"    stroke="#60a5fa" strokeWidth={2} fill="url(#gM)" name="매칭 성사" />
-              </AreaChart>
-            </ResponsiveContainer>
+            {isLoading ? (
+              <div className="flex items-center justify-center h-full">
+                <Loader2 className="animate-spin text-[#FF6F61]" size={32} />
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="gA" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#FF6F61" stopOpacity={0.2} />
+                      <stop offset="95%" stopColor="#FF6F61" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="gM" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#60a5fa" stopOpacity={0.15} />
+                      <stop offset="95%" stopColor="#60a5fa" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
+                  <XAxis dataKey="day" stroke="#333" fontSize={11} tickLine={false} axisLine={false} />
+                  <YAxis stroke="#333" fontSize={11} tickLine={false} axisLine={false} />
+                  <Tooltip
+                    contentStyle={{ background: '#1a1a1e', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, fontSize: 12 }}
+                    labelStyle={{ color: '#888' }}
+                    cursor={{ stroke: 'rgba(255,255,255,0.06)' }}
+                  />
+                  <Area type="monotone" dataKey="applicants" stroke="#FF6F61" strokeWidth={2} fill="url(#gA)" name="신청" />
+                  <Area type="monotone" dataKey="matches"    stroke="#60a5fa" strokeWidth={2} fill="url(#gM)" name="확정" />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
           </div>
           <div className="flex gap-5 mt-4 pt-4" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-            {[['#FF6F61', '신청자'], ['#60a5fa', '매칭 성사']].map(([c, l]) => (
+            {[['#FF6F61', '신청'], ['#60a5fa', '확정']].map(([c, l]) => (
               <div key={l} className="flex items-center gap-2">
                 <div style={{ width: 12, height: 2, borderRadius: 2, background: c }} />
                 <span style={{ fontSize: '0.75rem', color: '#555' }}>{l}</span>
@@ -228,7 +309,7 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Gender ratio */}
+        {/* 성별 비율 */}
         <div style={{ ...panel, padding: '24px' }}>
           <h3 style={{ fontSize: '0.95rem', fontWeight: 600, marginBottom: 24 }}>성별 비율</h3>
           <div style={{ position: 'relative', height: 160 }}>
@@ -274,11 +355,11 @@ export default function AdminDashboard() {
       {/* Bottom row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-        {/* Upcoming events */}
+        {/* 예정 행사 */}
         <div style={{ ...panel, padding: '24px' }} className="lg:col-span-2">
           <div className="flex items-center justify-between mb-5">
             <h3 className="flex items-center gap-2" style={{ fontSize: '0.95rem', fontWeight: 600 }}>
-              <CalendarCheck size={15} style={{ color: '#facc15' }} /> 진행 예정 행사
+              <CalendarCheck size={15} style={{ color: '#facc15' }} /> 진행 예정 기수
             </h3>
             <Link href="/admin/events" className="flex items-center gap-1 transition-colors hover:text-white" style={{ fontSize: '0.78rem', color: '#555' }}>
               전체 보기 <ChevronRight size={12} />
@@ -288,32 +369,40 @@ export default function AdminDashboard() {
             {isLoading ? (
               [1, 2, 3].map(i => <Skeleton key={i} className="h-16 w-full" />)
             ) : upcomingEvents.length > 0 ? (
-              upcomingEvents.map(ev => (
-                <div key={ev.id} className="flex items-center gap-4 rounded-xl transition-colors hover:bg-white/[0.04]" style={{ padding: '14px 16px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
-                  <div className="flex items-center justify-center rounded-xl shrink-0" style={{ width: 40, height: 40, background: 'rgba(255,111,97,0.08)' }}>
-                    <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#FF6F61' }}>{ev.episode || '신규'}</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p style={{ fontSize: '0.88rem', fontWeight: 600 }}>{ev.title} {ev.episode && `${ev.episode}기`}</p>
-                    <p className="flex items-center gap-1.5" style={{ fontSize: '0.75rem', color: '#555', marginTop: 2 }}>
-                      <Clock size={10} /> {ev.date?.seconds ? format(new Date(ev.date.seconds * 1000), 'M월 d일 (E) HH:mm', { locale: ko }) : '날짜 미정'} · {ev.venue}
-                    </p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p style={{ fontSize: '0.8rem', fontWeight: 700, marginBottom: 4 }}>모집중</p>
-                    <div style={{ width: 72, height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 4, overflow: 'hidden' }}>
-                      <div style={{ width: `40%`, height: '100%', borderRadius: 4, background: '#60a5fa' }} />
+              upcomingEvents.map((ev: any) => {
+                const d = toDate(ev.eventDate);
+                const regionLabel = ev.region === 'busan' ? '부산' : '창원';
+                return (
+                  <div key={ev.id} className="flex items-center gap-4 rounded-xl transition-colors hover:bg-white/[0.04]" style={{ padding: '14px 16px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
+                    <div className="flex items-center justify-center rounded-xl shrink-0" style={{ width: 40, height: 40, background: 'rgba(255,111,97,0.08)' }}>
+                      <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#FF6F61' }}>{ev.episodeNumber}기</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p style={{ fontSize: '0.88rem', fontWeight: 600 }}>{regionLabel} 키링크 {ev.episodeNumber}기</p>
+                      <p className="flex items-center gap-1.5" style={{ fontSize: '0.75rem', color: '#555', marginTop: 2 }}>
+                        <Clock size={10} />
+                        {d ? format(d, 'M월 d일 (E) HH:mm', { locale: ko }) : '날짜 미정'}
+                        {ev.venue && ` · ${ev.venue}`}
+                      </p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p style={{ fontSize: '0.78rem', fontWeight: 700, color: '#aaa' }}>
+                        남 {ev.currentMale || 0}/{ev.maxMale || 0}
+                      </p>
+                      <p style={{ fontSize: '0.78rem', fontWeight: 700, color: '#aaa' }}>
+                        여 {ev.currentFemale || 0}/{ev.maxFemale || 0}
+                      </p>
                     </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             ) : (
-              <div className="text-center py-10 text-gray-600 text-sm">진행 예정인 행사가 없습니다.</div>
+              <div className="text-center py-10 text-gray-600 text-sm">진행 예정인 기수가 없습니다.</div>
             )}
           </div>
         </div>
 
-        {/* Quick actions */}
+        {/* 빠른 메뉴 */}
         <div className="space-y-4">
           <div style={{ ...panel, padding: '24px' }}>
             <h3 className="flex items-center gap-2 mb-4" style={{ fontSize: '0.95rem', fontWeight: 600 }}>
@@ -321,9 +410,9 @@ export default function AdminDashboard() {
             </h3>
             <div className="space-y-1.5">
               {[
-                { label: '신청자 승인', desc: '대기 명단 확인', href: '/admin/users', color: '#60a5fa' },
-                { label: '행사 등록',   desc: '새 기수 만들기', href: '/admin/events', color: '#4ade80' },
-                { label: '매칭 실행',   desc: '알고리즘 가동', href: '/admin/events', color: '#FF6F61' },
+                { label: '신청자 승인', desc: '대기 명단 확인',  href: '/admin/applications', color: '#60a5fa', icon: ClipboardList },
+                { label: '행사/매칭',   desc: '기수 관리',       href: '/admin/events',       color: '#4ade80', icon: Calendar },
+                { label: '매출 관리',   desc: '결제 내역 확인',  href: '/admin/revenue',      color: '#facc15', icon: TrendingUp },
               ].map(a => (
                 <Link
                   key={a.label}
@@ -332,7 +421,7 @@ export default function AdminDashboard() {
                   style={{ padding: '11px 14px', border: '1px solid rgba(255,255,255,0.06)', background: 'transparent' }}
                 >
                   <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${a.color}14` }}>
-                    <span style={{ fontSize: '0.6rem', fontWeight: 800, color: a.color }}>GO</span>
+                    <a.icon size={15} style={{ color: a.color }} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p style={{ fontSize: '0.83rem', fontWeight: 600 }}>{a.label}</p>
@@ -343,21 +432,10 @@ export default function AdminDashboard() {
               ))}
             </div>
           </div>
-
-          <div className="rounded-xl p-4" style={{ background: 'rgba(250,204,21,0.05)', border: '1px solid rgba(250,204,21,0.12)' }}>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#facc15' }} />
-              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#facc15' }}>알림</span>
-            </div>
-            <p style={{ fontSize: '0.83rem', color: '#aaa' }}>
-              실시간 데이터가 동기화되었습니다. 최신 가입 정보를 확인하세요.
-            </p>
-            <span  className="text-[10px] opacity-30">v3.5.3</span>
-          </div>
         </div>
       </div>
 
-      {/* Recent members table */}
+      {/* 최근 가입자 */}
       <div style={{ ...panel, padding: 0, overflow: 'hidden' }}>
         <div className="flex items-center justify-between px-6 py-5" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
           <h3 style={{ fontSize: '0.95rem', fontWeight: 600 }}>최근 가입자</h3>
@@ -384,8 +462,9 @@ export default function AdminDashboard() {
                   </tr>
                 ))
               ) : recentUsers.length > 0 ? (
-                recentUsers.map((m, i) => {
+                recentUsers.map((m: any) => {
                   const s = STATUS[m.status as keyof typeof STATUS] || STATUS.pending;
+                  const d = toDate(m.createdAt);
                   return (
                     <tr key={m.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }} className="hover:bg-white/[0.02] transition-colors">
                       <td style={{ padding: '12px 24px', fontSize: '0.85rem', fontWeight: 600 }}>{m.name || '미입력'}</td>
@@ -397,7 +476,7 @@ export default function AdminDashboard() {
                         </span>
                       </td>
                       <td style={{ padding: '12px 24px', fontSize: '0.78rem', color: '#555' }}>
-                        {m.createdAt?.seconds ? format(new Date(m.createdAt.seconds * 1000), 'yyyy-MM-dd') : '-'}
+                        {d ? format(d, 'yyyy-MM-dd') : '-'}
                       </td>
                     </tr>
                   );
