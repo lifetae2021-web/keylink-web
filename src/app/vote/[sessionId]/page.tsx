@@ -220,7 +220,7 @@ export default function VotePage() {
         <div className="text-white text-center z-10 px-4 w-full flex flex-col items-center">
           <div className="flex justify-center mb-2"><Heart size={32} fill="white" /></div>
           <h1 className="text-xl md:text-2xl font-black tracking-tight underline decoration-pink-300 underline-offset-8 decoration-4 text-center">
-            {session?.region === 'busan' ? '부산' : '창원'} 키링크 {session?.episodeNumber}기 만족도 및 호감도 설문
+            {session?.region === 'busan' ? '부산' : '창원'} 키링크 {session?.episodeNumber}기 호감도 및 만족도 설문
           </h1>
         </div>
       </div>
