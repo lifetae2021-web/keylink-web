@@ -149,7 +149,7 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose }:
                   <img
                     src={currentPhoto}
                     alt={user.name}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-contain"
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
