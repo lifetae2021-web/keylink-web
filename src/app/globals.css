@@ -69,6 +69,16 @@ html {
   -webkit-text-size-adjust: none;
 }
 
+/* 모든 요소에서 핀치 줌 및 더블 탭 줌 억제 강화 */
+*, *::before, *::after {
+  touch-action: manipulation;
+}
+
+/* 입력 필드 포커스 시 iOS 자동 줌 방지 (폰트 크기 16px 미만일 때 발생) */
+input, textarea, select {
+  font-size: 16px !important;
+}
+
 body {
   background-color: var(--color-bg);
   background-image: radial-gradient(circle at 15% 50%, rgba(255, 219, 233, 0.25), transparent 25%), radial-gradient(circle at 85% 30%, rgba(230, 230, 250, 0.25), transparent 25%);
