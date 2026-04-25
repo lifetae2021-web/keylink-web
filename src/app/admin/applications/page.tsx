@@ -59,6 +59,7 @@ export default function ApplicationsPage() {
   const [filterUnselectedOnly, setFilterUnselectedOnly] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedUser, setSelectedUser] = useState<any | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
   const [previewData, setPreviewData] = useState<any>(null);
 
