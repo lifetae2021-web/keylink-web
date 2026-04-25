@@ -212,7 +212,7 @@ export default function VotePage() {
   return (
     <div className="min-h-screen bg-[#F0F2F5] pb-20 w-full flex flex-col items-center">
       {/* Naver Form Style Header */}
-      <div className="w-full bg-[#FF6F61] h-32 md:h-48 relative overflow-hidden flex items-center justify-center shrink-0">
+      <div className="w-full bg-[#FF6F61] h-32 md:h-48 relative overflow-hidden flex items-center justify-center shrink-0 pt-16">
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-10 left-10 transform -rotate-12"><Heart size={80} fill="white" /></div>
           <div className="absolute bottom-5 right-20 transform rotate-12"><Heart size={60} fill="white" /></div>
