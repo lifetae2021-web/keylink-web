@@ -48,6 +48,7 @@ import {
 } from "@/lib/types";
 import Link from "next/link";
 import SMSPreviewModal from "@/components/admin/SMSPreviewModal";
+import UserProfileModal from "@/app/admin/users/UserProfileModal";
 
 const card = "bg-white border border-slate-200 rounded-xl shadow-sm";
 
@@ -69,6 +70,10 @@ export default function EventsPage() {
   // 대기자 선발 SMS 미리보기
   const [selectPreviewOpen, setSelectPreviewOpen] = useState(false);
   const [selectPreviewData, setSelectPreviewData] = useState<any>(null);
+
+  // 프로필 모달
+  const [selectedUser, setSelectedUser] = useState<any | null>(null);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   // SMS Modal State
   const [smsModalOpen, setSmsModalOpen] = useState(false);
@@ -1566,9 +1571,20 @@ ${user.name || app.name || "참가자"}님은 ${fDate} ${fDay} ${fTime} 소개�
                                       key={app.id}
                                       className="flex items-center gap-3 px-5 py-3.5 hover:bg-amber-50/30 transition-colors"
                                     >
-                                      <span className="text-xs font-black w-10 shrink-0 text-amber-600">
+                                      <span className="text-xs font-black w-6 shrink-0 text-amber-600">
                                         {idx + 1}
                                       </span>
+                                      <div
+                                        className="w-10 h-10 rounded-full border-2 border-[#D4AF37] shadow-sm flex items-center justify-center overflow-hidden bg-slate-100 shrink-0 cursor-pointer hover:scale-110 transition-transform"
+                                        style={{ boxShadow: "0 0 8px rgba(212,175,55,0.2)" }}
+                                        onClick={() => { setSelectedUser(userMap[app.userId] || {}); setIsProfileModalOpen(true); }}
+                                      >
+                                        {(userMap[app.userId]?.photoUrl || userMap[app.userId]?.photoURL || userMap[app.userId]?.photos?.[0]) ? (
+                                          <img src={userMap[app.userId]?.photoUrl || userMap[app.userId]?.photoURL || userMap[app.userId]?.photos?.[0]} className="w-full h-full object-cover" />
+                                        ) : (
+                                          <span className="text-xs font-bold text-[#D4AF37]">{(app.name || "U")[0]}</span>
+                                        )}
+                                      </div>
                                       <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-2 mb-0.5">
                                           <span className="text-sm font-bold text-slate-800">
@@ -1962,6 +1978,12 @@ ${user.name || app.name || "참가자"}님은 ${fDate} ${fDay} ${fTime} 소개�
         session={selectPreviewData?.session}
         defaultMessage={selectPreviewData?.defaultMsg || ""}
         confirmLabel="선발 및 문자 발송"
+      />
+
+      <UserProfileModal
+        user={selectedUser}
+        isOpen={isProfileModalOpen}
+        onClose={() => { setIsProfileModalOpen(false); setSelectedUser(null); }}
       />
 
       {/* New Session Config Modal */}
