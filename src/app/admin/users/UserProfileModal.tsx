@@ -1,6 +1,6 @@
 'use client';
 
-import { X, User, ShieldCheck, Phone, Camera, MapPin, Briefcase, Users2, Wine, Cigarette, Info, Coffee, Heart, HeartOff, Mail, Calendar, Ruler, Weight, ExternalLink, History, AlertCircle, CheckCircle } from 'lucide-react';
+import { X, User, ShieldCheck, Phone, Camera, MapPin, Briefcase, Users2, Wine, Cigarette, Info, Coffee, Heart, HeartOff, Mail, Calendar, Ruler, Weight, ExternalLink, History, AlertCircle, CheckCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 import { db } from '@/lib/firebase';
@@ -51,11 +51,13 @@ const TextBox = ({ label, value, icon: Icon, color }: { label: string; value?: s
 export default function UserProfileModal({ user: initialUser, isOpen, onClose }: UserProfileModalProps) {
   const [user, setUser] = useState(initialUser);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [photoIndex, setPhotoIndex] = useState(0);
 
   // Sync state with props when modal opens or user changes
   useEffect(() => {
     if (initialUser) {
       setUser(initialUser);
+      setPhotoIndex(0);
     }
   }, [initialUser, isOpen]);
 
@@ -103,6 +105,12 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose }:
     ? new Date().getFullYear() - parseInt(user.birthDate.split('-')[0]) + 1
     : null;
 
+  const photos: string[] = [
+    ...(Array.isArray(user.photos) ? user.photos : []),
+    ...(!Array.isArray(user.photos) && (user.photoUrl || user.photoURL) ? [user.photoUrl || user.photoURL] : []),
+  ].filter(Boolean);
+  const currentPhoto = photos[photoIndex] || null;
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -137,9 +145,9 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose }:
               
               {/* Profile Image & Name Section */}
               <div className="relative h-72 bg-slate-100 border-b border-slate-100 overflow-hidden">
-                {(user.photos?.[0] || user.photoUrl || user.photoURL) ? (
+                {currentPhoto ? (
                   <img
-                    src={user.photos?.[0] || user.photoUrl || user.photoURL}
+                    src={currentPhoto}
                     alt={user.name}
                     className="w-full h-full object-cover"
                   />
@@ -149,6 +157,34 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose }:
                   </div>
                 )}
                 <div className="absolute inset-0 bg-gradient-to-t from-white via-white/10 to-transparent" />
+
+                {/* 슬라이더 화살표 */}
+                {photos.length > 1 && (
+                  <>
+                    <button
+                      onClick={() => setPhotoIndex((i) => (i - 1 + photos.length) % photos.length)}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 z-20 p-1.5 rounded-full bg-white/70 backdrop-blur-sm text-slate-700 hover:bg-white transition-all shadow"
+                    >
+                      <ChevronLeft size={18} />
+                    </button>
+                    <button
+                      onClick={() => setPhotoIndex((i) => (i + 1) % photos.length)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 z-20 p-1.5 rounded-full bg-white/70 backdrop-blur-sm text-slate-700 hover:bg-white transition-all shadow"
+                    >
+                      <ChevronRight size={18} />
+                    </button>
+                    {/* 페이지 dot */}
+                    <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 flex gap-1.5">
+                      {photos.map((_, i) => (
+                        <button
+                          key={i}
+                          onClick={() => setPhotoIndex(i)}
+                          className={`w-1.5 h-1.5 rounded-full transition-all ${i === photoIndex ? 'bg-white scale-125' : 'bg-white/50'}`}
+                        />
+                      ))}
+                    </div>
+                  </>
+                )}
                 
                 <div className="absolute bottom-6 left-8 right-6">
                   <div className="flex items-center gap-3 mb-2">
