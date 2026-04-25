@@ -19,7 +19,7 @@ import { version } from '../../../package.json';
 const PAGE_TITLE: Record<string, string> = {
   '/admin':               '대시보드',
   '/admin/users':         '회원 관리',
-  '/admin/applications':  '기수별 신청 관리',
+  '/admin/applications':  '신청 관리',
   '/admin/events':        '행사 / 매칭 관리',
   '/admin/timer':         '키링크 타이머',
   '/admin/revenue':       '매출 통계',

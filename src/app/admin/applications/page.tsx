@@ -178,7 +178,7 @@ export default function ApplicationsPage() {
         toast.success('참가 확정 완료');
       } else if (status === 'cancelled') {
         await cancelApplicant(appId, sessionId, gender, prevStatus === 'confirmed');
-        toast.success('취소 처리 완료');
+        toast.success('삭제 완료');
       }
       
     } catch (e: any) {
@@ -653,7 +653,7 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                                   className="px-2.5 py-1.5 rounded-lg text-[0.7rem] font-black bg-amber-100 text-amber-700 border border-amber-200 hover:bg-amber-200 transition-all shadow-sm flex items-center gap-1 group/held"
                                   title="검토 중으로 되돌리기"
                                 >
-                                  보류 중 <X size={12} className="opacity-0 group-hover/held:opacity-100 transition-opacity" />
+                                  보류 중 <X size={12} />
                                 </button>
                               )}
                               <button 
@@ -715,11 +715,11 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                           ) : (
                             <button
                               onClick={() => {
-                                if (window.confirm('정말 취소하시겠습니까? (확정된 참가자의 경우 정원 카운트도 줄어듭니다)')) {
+                                if (window.confirm('정말 삭제하시겠습니까? 데이터가 완전히 삭제되며 복구할 수 없습니다.')) {
                                   updateAppStatus(app, 'cancelled');
                                 }
                               }}
-                              className="w-9 h-9 rounded-xl flex items-center justify-center transition-all bg-rose-50 text-rose-400 opacity-0 group-hover:opacity-100 border border-rose-100 hover:bg-rose-500 hover:text-white shadow-sm"
+                              className="w-9 h-9 rounded-xl flex items-center justify-center transition-all bg-rose-50 text-rose-400 border border-rose-100 hover:bg-rose-500 hover:text-white shadow-sm"
                             >
                               <XCircle size={18} />
                             </button>

@@ -66,6 +66,10 @@ export default function EventsPage() {
   const [applicantsLoading, setApplicantsLoading] = useState(false); // v7.2.0
   const [userMap, setUserMap] = useState<Record<string, any>>({}); // v7.9.6: 유저 정보 조인용
 
+  // 대기자 선발 SMS 미리보기
+  const [selectPreviewOpen, setSelectPreviewOpen] = useState(false);
+  const [selectPreviewData, setSelectPreviewData] = useState<any>(null);
+
   // SMS Modal State
   const [smsModalOpen, setSmsModalOpen] = useState(false);
   const [smsTargets, setSmsTargets] = useState<{ phone: string; name: string; gender: string; slotNumber?: number; userId: string }[]>([]);
@@ -227,6 +231,7 @@ export default function EventsPage() {
               avoidAcquaintance: d.data().avoidAcquaintance,
               etc: d.data().etc,
               slotNumber: d.data().slotNumber ?? null,
+              price: d.data().price,
             }) as Application,
         );
         list.sort((a, b) => a.appliedAt.getTime() - b.appliedAt.getTime());
@@ -323,9 +328,14 @@ export default function EventsPage() {
     [applicants],
   );
   const waitlisted = useMemo(
-    () => applicants.filter((a) => a.status === "waitlisted"),
+    () => applicants.filter((a) => ["applied", "held", "waitlisted"].includes(a.status)),
     [applicants],
   );
+
+  const isGenderFull = useMemo(() => ({
+    male: participants.filter((a) => a.gender === "male").length >= (active?.maxMale ?? 0),
+    female: participants.filter((a) => a.gender === "female").length >= (active?.maxFemale ?? 0),
+  }), [participants, active]);
 
   const overQuotaAppIds = useMemo(() => {
     const overIds = new Set<string>();
@@ -360,6 +370,97 @@ export default function EventsPage() {
       ? `${data.successCount}명 발송 완료 (${data.failCount}명 실패)`
       : `${data.successCount}명에게 문자 발송 완료`;
     toast.success(msg);
+  };
+
+  const callStatusApi = async (applicationId: string, status: string) => {
+    const token = await auth.currentUser?.getIdToken();
+    const res = await fetch("/api/admin/applications/status", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ applicationId, status }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    return data;
+  };
+
+  const handleWaitlistSelect = (app: Application) => {
+    const session = active;
+    if (!session) return toast.error("세션 정보를 찾을 수 없습니다.");
+    const user = userMap[app.userId] || {};
+
+    const eventTime = session.eventDate instanceof Date ? session.eventDate : session.eventDate.toDate();
+    const formatter = new Intl.DateTimeFormat("ko-KR", {
+      timeZone: "Asia/Seoul",
+      month: "numeric", day: "numeric", weekday: "short",
+      hour: "2-digit", minute: "2-digit", hour12: false,
+    });
+    const parts = formatter.formatToParts(eventTime);
+    const getPart = (t: string) => parts.find((p) => p.type === t)?.value;
+    const fDate = `${getPart("month")}/${getPart("day")}`;
+    const fDay = `(${getPart("weekday")})`;
+    const fTime = `${getPart("hour")}:${getPart("minute")}`;
+
+    const defaultMsg = `안녕하세요 ! 키링크에 지원해주셔서 감사합니다☺️
+${user.name || app.name || "참가자"}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 지정되었습니다
+
+아래 계좌번호로 ${(app.price || Number(String(session.price).replace(/,/g, "")) || 60000).toLocaleString("ko-KR")}원 입금해주셔야 라인업에 확정등록되니 참고 부탁드립니다 :)
+3333359229548 카카오뱅크 태영훈(키링크) 입금 또는 참석가능 여부 알려주세요😭
+혹시나 입금이 늦을 것 같은 경우 말씀해주세요.
+
+좋은 인연 만날 수 있도록 키링크가 끝까지 책임질게요🥰`;
+
+    setSelectPreviewData({ app, session, defaultMsg });
+    setSelectPreviewOpen(true);
+  };
+
+  const handleWaitlistSelectConfirm = async (msg: string) => {
+    if (!selectPreviewData) return;
+    const token = await auth.currentUser?.getIdToken();
+    const res = await fetch("/api/admin/applications/select", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ applicationId: selectPreviewData.app.id, customMessage: msg }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    toast.success(data.warning ? data.warning : "선발 및 안내 문자 발송 완료");
+  };
+
+  const handleWaitlistHold = async (app: Application) => {
+    try {
+      await callStatusApi(app.id, "held");
+      toast.success("보류 처리 완료");
+    } catch (e: any) {
+      toast.error(e.message || "오류가 발생했습니다.");
+    }
+  };
+
+  const handleWaitlistConfirm = async (app: Application) => {
+    if (!window.confirm(`[${app.name}] 님을 선발확정 처리하시겠습니까?`)) return;
+    try {
+      await callStatusApi(app.id, "confirmed");
+      toast.success("선발확정 완료");
+    } catch (e: any) {
+      toast.error(e.message || "오류가 발생했습니다.");
+    }
+  };
+
+  const handleWaitlistDelete = async (app: Application) => {
+    if (!window.confirm(`[${app.name}] 님의 신청을 삭제하시겠습니까? 복구할 수 없습니다.`)) return;
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      const res = await fetch("/api/admin/applications/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ applicationId: app.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      toast.success("삭제 완료");
+    } catch (e: any) {
+      toast.error(e.message || "오류가 발생했습니다.");
+    }
   };
 
   // v8.5.4: 선발 취소 - status API 경유 (대기자 자동 승격 포함)
@@ -1466,13 +1567,19 @@ export default function EventsPage() {
                                       className="flex items-center gap-3 px-5 py-3.5 hover:bg-amber-50/30 transition-colors"
                                     >
                                       <span className="text-xs font-black w-10 shrink-0 text-amber-600">
-                                        대기 {idx + 1}
+                                        {idx + 1}
                                       </span>
                                       <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-2 mb-0.5">
                                           <span className="text-sm font-bold text-slate-800">
                                             {app.name || "-"}
                                           </span>
+                                          {app.status === "held" && (
+                                            <span className="text-[0.65rem] font-black px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-500">보류</span>
+                                          )}
+                                          {app.status === "waitlisted" && (
+                                            <span className="text-[0.65rem] font-black px-1.5 py-0.5 rounded-md bg-orange-100 text-orange-600">정원초과대기</span>
+                                          )}
                                         </div>
                                         <div className="flex items-center gap-2 text-[0.72rem] text-slate-400 font-medium flex-wrap">
                                           <span className="flex items-center gap-0.5">
@@ -1489,14 +1596,34 @@ export default function EventsPage() {
                                           <span>{app.residence || "-"}</span>
                                         </div>
                                       </div>
-                                      <button
-                                        onClick={() =>
-                                          handleCancelSelection(app)
-                                        }
-                                        className="shrink-0 px-2.5 py-1 rounded-lg text-[0.65rem] font-black bg-white border border-slate-200 text-slate-400 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all"
-                                      >
-                                        대기 취소
-                                      </button>
+                                      <div className="shrink-0 flex items-center gap-1">
+                                        <button
+                                          onClick={() => handleWaitlistSelect(app)}
+                                          disabled={isGenderFull[app.gender as "male" | "female"]}
+                                          className="px-2 py-1 rounded-lg text-[0.65rem] font-black bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-500 hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-blue-50 disabled:hover:text-blue-600"
+                                        >
+                                          선발
+                                        </button>
+                                        <button
+                                          onClick={() => handleWaitlistHold(app)}
+                                          className="px-2 py-1 rounded-lg text-[0.65rem] font-black bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-400 hover:text-white transition-all"
+                                        >
+                                          보류
+                                        </button>
+                                        <button
+                                          onClick={() => handleWaitlistConfirm(app)}
+                                          disabled={isGenderFull[app.gender as "male" | "female"]}
+                                          className="px-2 py-1 rounded-lg text-[0.65rem] font-black bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-500 hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-emerald-50 disabled:hover:text-emerald-600"
+                                        >
+                                          선발확정
+                                        </button>
+                                        <button
+                                          onClick={() => handleWaitlistDelete(app)}
+                                          className="px-2 py-1 rounded-lg text-[0.65rem] font-black bg-rose-50 text-rose-400 border border-rose-100 hover:bg-rose-500 hover:text-white transition-all"
+                                        >
+                                          삭제
+                                        </button>
+                                      </div>
                                     </div>
                                   );
                                 })}
@@ -1796,6 +1923,16 @@ export default function EventsPage() {
         defaultMessage={smsDefaultMsg}
         recipientLabel={smsRecipientLabel}
         confirmLabel="문자 발송"
+      />
+
+      <SMSPreviewModal
+        isOpen={selectPreviewOpen}
+        onClose={() => setSelectPreviewOpen(false)}
+        onConfirm={handleWaitlistSelectConfirm}
+        applicant={selectPreviewData?.app}
+        session={selectPreviewData?.session}
+        defaultMessage={selectPreviewData?.defaultMsg || ""}
+        confirmLabel="선발 및 문자 발송"
       />
 
       {/* New Session Config Modal */}

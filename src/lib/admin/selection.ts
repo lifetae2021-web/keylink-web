@@ -46,16 +46,26 @@ export async function confirmPayment(
   await callStatusApi(applicationId, 'confirmed');
 }
 
-/** 
- * 신청 취소 처리 (status: 'cancelled')
+/**
+ * 신청 삭제 처리 (Firestore 문서 완전 삭제, 슬롯/카운터 자동 정리)
  */
 export async function cancelApplicant(
-  applicationId: string, 
-  sessionId: string, 
+  applicationId: string,
+  sessionId: string,
   gender: 'male' | 'female',
   wasConfirmed: boolean = false
 ): Promise<void> {
-  await callStatusApi(applicationId, 'cancelled');
+  const token = await auth.currentUser?.getIdToken();
+  const res = await fetch('/api/admin/applications/delete', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({ applicationId })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || '처리 중 오류가 발생했습니다.');
 }
 
 /**
