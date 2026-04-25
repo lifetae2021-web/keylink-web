@@ -656,34 +656,14 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                                   보류 중 <X size={12} />
                                 </button>
                               )}
-                              <button 
-                                onClick={() => {
-                                  if (!user.isJobReviewed) return toast.error('먼저 회원 관리에서 직업 정보를 확인하고 승인(Job Reviewed)해 주세요.');
-                                  if ((app.gender === 'male' && isMaleFull) || (app.gender === 'female' && isFemaleFull)) {
-                                    return toast.error(`해당 성별의 모집 정원이 이미 충족되었습니다. (최대 ${app.gender === 'male' ? activeEvent?.maxMale : activeEvent?.maxFemale}명)`);
-                                  }
-                                  if (window.confirm('문자 발송 없이 입금 완료 처리하시겠습니까?')) {
-                                    updateAppStatus(app, 'confirmed');
-                                  }
-                                }} 
-                                disabled={!user.isJobReviewed || (app.gender === 'male' && isMaleFull) || (app.gender === 'female' && isFemaleFull)}
-                                className={`px-3 py-1.5 rounded-xl text-[0.75rem] font-bold border transition-all shadow-sm ${
-                                  !user.isJobReviewed || (app.gender === 'male' && isMaleFull) || (app.gender === 'female' && isFemaleFull)
-                                    ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed grayscale'
-                                    : 'bg-[#FFD700]/10 text-[#B8860B] border-[#FFD700]/30 hover:bg-[#FFD700] hover:text-white'
-                                }`}
-                                title={!user.isJobReviewed ? "먼저 직업 정보를 확인/수정하고 승인해 주세요" : ""}
-                              >
-                                선발확정
-                              </button>
-                              <button 
+                              <button
                                 onClick={() => {
                                   if (!user.isJobReviewed) return toast.error('먼저 회원 관리에서 직업 정보를 확인하고 승인(Job Reviewed)해 주세요.');
                                   if ((app.gender === 'male' && isMaleFull) || (app.gender === 'female' && isFemaleFull)) {
                                     return toast.error(`해당 성별의 모집 정원이 이미 충족되었습니다. (최대 ${app.gender === 'male' ? activeEvent?.maxMale : activeEvent?.maxFemale}명)`);
                                   }
                                   handleOpenPreview(app);
-                                }} 
+                                }}
                                 disabled={!user.isJobReviewed || (app.gender === 'male' && isMaleFull) || (app.gender === 'female' && isFemaleFull)}
                                 className={`px-3 py-1.5 rounded-xl text-[0.75rem] font-bold border transition-all shadow-sm ${
                                   !user.isJobReviewed || (app.gender === 'male' && isMaleFull) || (app.gender === 'female' && isFemaleFull)
@@ -694,10 +674,31 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                               >
                                 선발
                               </button>
-                              
+
                               {app.status === 'applied' && (
                                 <button onClick={() => updateAppStatus(app, 'held')} className="px-3 py-1.5 rounded-xl text-[0.75rem] font-bold bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200 transition-all shadow-sm">보류</button>
                               )}
+
+                              <button
+                                onClick={() => {
+                                  if (!user.isJobReviewed) return toast.error('먼저 회원 관리에서 직업 정보를 확인하고 승인(Job Reviewed)해 주세요.');
+                                  if ((app.gender === 'male' && isMaleFull) || (app.gender === 'female' && isFemaleFull)) {
+                                    return toast.error(`해당 성별의 모집 정원이 이미 충족되었습니다. (최대 ${app.gender === 'male' ? activeEvent?.maxMale : activeEvent?.maxFemale}명)`);
+                                  }
+                                  if (window.confirm('문자 발송 없이 입금 완료 처리하시겠습니까?')) {
+                                    updateAppStatus(app, 'confirmed');
+                                  }
+                                }}
+                                disabled={!user.isJobReviewed || (app.gender === 'male' && isMaleFull) || (app.gender === 'female' && isFemaleFull)}
+                                className={`px-3 py-1.5 rounded-xl text-[0.75rem] font-bold border transition-all shadow-sm ${
+                                  !user.isJobReviewed || (app.gender === 'male' && isMaleFull) || (app.gender === 'female' && isFemaleFull)
+                                    ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed grayscale'
+                                    : 'bg-[#FFD700]/10 text-[#B8860B] border-[#FFD700]/30 hover:bg-[#FFD700] hover:text-white'
+                                }`}
+                                title={!user.isJobReviewed ? "먼저 직업 정보를 확인/수정하고 승인해 주세요" : ""}
+                              >
+                                선발확정
+                              </button>
                             </>
                           )}
                           
