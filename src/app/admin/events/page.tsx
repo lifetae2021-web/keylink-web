@@ -976,7 +976,7 @@ export default function EventsPage() {
 
                         {/* v8.1.7: 3컬럼 레이아웃 개편 */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                          {/* 신규: 호감도 매칭 폼 제어 */}
+                          {/* 신규: 호감도 투표 폼 제어 */}
                           <div className="flex flex-col gap-3 rounded-xl border border-indigo-100 p-5 bg-indigo-50/30">
                             <div className="flex items-center gap-3">
                               <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-indigo-100">
@@ -992,7 +992,7 @@ export default function EventsPage() {
                               </div>
                               <div className="flex-1">
                                 <p className="text-sm font-extrabold text-indigo-900">
-                                  호감도 매칭 폼
+                                  호감도 투표 폼
                                 </p>
                                 <p className="text-[0.7rem] font-bold text-indigo-500 mt-0.5">
                                   상태:{" "}
