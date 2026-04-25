@@ -156,7 +156,7 @@ export default function RevenueStatsPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 style={{ fontSize: '1.5rem', fontWeight: 900, letterSpacing: '-0.03em', color: '#0F172A' }}>비즈니스 인사이트</h2>
-          <p style={{ fontSize: '0.85rem', color: '#64748B', marginTop: 2 }}>Keylink 서비스의 수익 모델과 성장 지표를 분석합니다. <span className="text-[10px] font-bold text-[#FF7E7E] ml-2">v8.10.0 Premium</span></p>
+          <p style={{ fontSize: '0.85rem', color: '#64748B', marginTop: 2 }}>Keylink 서비스의 수익 모델과 성장 지표를 분석합니다. <span className="text-[10px] font-bold text-[#FF7E7E] ml-2">v8.11.0 Premium</span></p>
         </div>
         <div className="flex items-center gap-3">
           <button className="flex items-center gap-2 rounded-xl h-11 px-5 border border-slate-200 bg-white text-slate-600 font-bold text-sm hover:bg-slate-50 transition-all">

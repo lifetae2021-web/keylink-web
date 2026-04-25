@@ -364,19 +364,57 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
   return (
     <div className="space-y-6 animate-in fade-in duration-400 pb-20">
       
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 900, letterSpacing: '-0.02em', color: '#0F172A' }}>신청 관리</h2>
-          <p style={{ fontSize: '0.85rem', color: '#64748B', marginTop: 2 }}>접수된 신청내역을 한눈에 검토하고 처리 현황을 관리합니다. <span className="text-[10px] font-bold text-[#3B82F6] ml-2">v8.10.0 Premium</span></p>
+      {/* Top Controls Bar (Integrated Header & Filters) */}
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+        {/* Left: Filters */}
+        <div className="flex items-center gap-2">
+          <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
+            {[
+              { id: 'all', label: '전체' },
+              { id: 'male', label: '남성' },
+              { id: 'female', label: '여성' }
+            ].map(t => (
+              <button
+                key={t.id}
+                onClick={() => setFilterGender(t.id as any)}
+                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${filterGender === t.id ? 'bg-white text-[#FF7E7E] shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => setFilterUnselectedOnly(!filterUnselectedOnly)}
+            className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all ${filterUnselectedOnly ? 'bg-[#FF7E7E] text-white border-[#FF7E7E] shadow-md' : 'bg-white text-slate-400 border-slate-200 hover:border-[#FF7E7E]/30'}`}
+            style={{ height: '40px' }}
+          >
+            미선발만 보기
+          </button>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="relative flex-1 md:flex-none group">
+
+        {/* Center: Search */}
+        <div className="relative flex-1 max-w-md group">
+          <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none z-10">
+            <Search size={16} className="text-slate-400 group-focus-within:text-[#FF7E7E] transition-colors" />
+          </div>
+          <input
+            type="text"
+            placeholder="이름, 직업, 거주지로 검색..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-white border-2 border-slate-100 rounded-2xl pr-4 text-sm font-bold text-slate-800 outline-none focus:border-[#FF7E7E]/30 focus:bg-slate-50/30 transition-all shadow-sm"
+            style={{ height: '40px', paddingLeft: '44px' }}
+          />
+        </div>
+
+        {/* Right: Actions */}
+        <div className="flex items-center gap-2">
+          <div className="relative group">
             <select
               value={selectedEventId}
               onChange={(e) => setSelectedEventId(e.target.value)}
-              className="bg-white border-2 border-[#FFD2CE]/60 rounded-2xl pr-10 text-xs font-black text-slate-800 outline-none focus:border-[#FF7E7E]/60 transition-all cursor-pointer shadow-sm appearance-none"
-              style={{ minWidth: '180px', width: 'auto', height: '48px', paddingLeft: '16px' }}
+              className="bg-white border-2 border-[#FFD2CE]/60 rounded-xl pr-8 text-xs font-black text-slate-800 outline-none focus:border-[#FF7E7E]/60 transition-all cursor-pointer shadow-sm appearance-none"
+              style={{ minWidth: '150px', height: '40px', paddingLeft: '12px' }}
             >
               <option value="all">전체 기수 보기</option>
               {events.map(ev => (
@@ -385,17 +423,17 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                 </option>
               ))}
             </select>
-            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-[#FF7E7E]/60 group-hover:text-[#FF7E7E] transition-colors">
-              <ChevronRight size={14} className="rotate-90" />
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-[#FF7E7E]/60">
+              <ChevronRight size={12} className="rotate-90" />
             </div>
           </div>
           <button 
             onClick={handleFixDummyJobs}
-            className="flex items-center gap-2 rounded-2xl transition-all hover:bg-orange-50" style={{ height: '48px', padding: '0 15px', fontSize: '0.75rem', background: '#fff', border: '1px solid #fed7aa', color: '#ea580c', fontWeight: 800 }}>
-            <Briefcase size={14} /> 더미 직업 보정
+            className="flex items-center gap-2 rounded-xl transition-all hover:bg-orange-50" style={{ height: '40px', padding: '0 12px', fontSize: '0.7rem', background: '#fff', border: '1px solid #fed7aa', color: '#ea580c', fontWeight: 800 }}>
+            <Briefcase size={12} /> 보정
           </button>
-          <button className="flex items-center gap-2 rounded-2xl transition-all hover:bg-slate-100" style={{ height: '48px', padding: '0 20px', fontSize: '0.85rem', background: '#fff', border: '1px solid #E2E8F0', color: '#64748B', fontWeight: 800 }}>
-            <Download size={14} className="text-[#64748B]" /> 엑셀 다운로드
+          <button className="flex items-center gap-2 rounded-xl transition-all hover:bg-slate-100" style={{ height: '40px', padding: '0 12px', fontSize: '0.75rem', background: '#fff', border: '1px solid #E2E8F0', color: '#64748B', fontWeight: 800 }}>
+            <Download size={12} /> 엑셀
           </button>
         </div>
       </div>
@@ -449,46 +487,6 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
         </div>
       )}
 
-      {/* Filters Bar */}
-      <div style={{ ...panel, padding: '12px 20px' }} className="flex flex-col md:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-2 w-full md:w-auto">
-          <div className="flex bg-slate-100 p-1.5 rounded-xl border border-slate-200">
-            {[
-              { id: 'all', label: '전체' },
-              { id: 'male', label: '남성' },
-              { id: 'female', label: '여성' }
-            ].map(t => (
-              <button
-                key={t.id}
-                onClick={() => setFilterGender(t.id as any)}
-                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${filterGender === t.id ? 'bg-white text-[#FF7E7E] shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
-          <button
-            onClick={() => setFilterUnselectedOnly(!filterUnselectedOnly)}
-            className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all ${filterUnselectedOnly ? 'bg-[#FF7E7E] text-white border-[#FF7E7E] shadow-md' : 'bg-white text-slate-400 border-slate-200 hover:border-[#FF7E7E]/30'}`}
-          >
-            미선발만 보기
-          </button>
-        </div>
-
-        <div className="relative w-full md:w-[320px] group flex items-center">
-          <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none z-10">
-            <Search size={16} className="text-slate-400 group-focus-within:text-[#FF7E7E] transition-colors" />
-          </div>
-          <input
-            type="text"
-            placeholder="이름, 직업, 거주지로 검색..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-white border-2 border-slate-100 rounded-2xl pr-4 text-sm font-bold text-slate-800 outline-none focus:border-[#FF7E7E]/30 focus:bg-slate-50/30 transition-all shadow-inner"
-            style={{ height: '48px', paddingLeft: '44px' }}
-          />
-        </div>
-      </div>
 
       {/* v8.1.7: 초과 인원 경고 배너 */}
       {activeEvent && (selectionStats.male > (activeEvent.maxMale || 8) || selectionStats.female > (activeEvent.maxFemale || 8)) && (
@@ -509,53 +507,31 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
           <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' }}>
             <thead className="sticky top-0 z-20 shadow-sm" style={{ background: '#F8FAFC' }}>
               <tr style={{ borderBottom: '1px solid #E2E8F0' }}>
-                {/* NO */}
-                <th style={{ padding: '18px 10px', textAlign: 'center', fontSize: '0.75rem', fontWeight: 800, color: sortConfig.field === 'appliedAt' ? '#FF6F61' : '#64748B', textTransform: 'uppercase' }}>
-                  <div className="flex flex-col items-center justify-center gap-1">
-                    <div onClick={() => setSortConfig({ field: 'appliedAt', direction: sortConfig.direction === 'asc' ? 'desc' : 'asc' })} className="cursor-pointer flex items-center justify-center gap-1">
-                      NO <span style={{ color: sortConfig.field === 'appliedAt' ? '#FF6F61' : '#CBD5E1' }}>{sortConfig.field === 'appliedAt' && sortConfig.direction === 'asc' ? '↑' : '↓'}</span>
-                    </div>
-                  </div>
-                </th>
-                <th style={{ padding: '18px 10px', textAlign: 'center', fontSize: '0.75rem', fontWeight: 800, color: '#64748B' }}>프로필</th>
-                <th style={{ padding: '18px 10px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 800, color: '#64748B' }}>이름</th>
-                <th style={{ padding: '18px 10px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 800, color: '#64748B' }}>직업</th>
+                {/* 신청 기수 */}
                 <th style={{ padding: '18px 10px', textAlign: 'center', fontSize: '0.75rem', fontWeight: 800, color: selectedEventId !== 'all' ? '#3B82F6' : '#64748B' }}>
-                  <div className="flex flex-col items-center justify-center gap-1">
-                    <div onClick={() => setSortConfig({ field: 'sessionId', direction: sortConfig.direction === 'asc' ? 'desc' : 'asc' })} className="cursor-pointer flex items-center justify-center gap-1">
-                      신청 기수 <span style={{ color: sortConfig.field === 'sessionId' ? '#FF6F61' : '#CBD5E1' }}>{sortConfig.field === 'sessionId' && sortConfig.direction === 'asc' ? '↑' : '↓'}</span>
-                    </div>
-                  </div>
+                  신청 기수
                 </th>
-                <th style={{ padding: '18px 10px', textAlign: 'center', fontSize: '0.75rem', fontWeight: 800, color: ageFilter !== 'all' ? '#FF6F61' : '#64748B' }}>
-                  <div className="flex flex-col items-center justify-center gap-1">
-                    <div onClick={() => setSortConfig({ field: 'age', direction: sortConfig.direction === 'asc' ? 'desc' : 'asc' })} className="cursor-pointer flex items-center justify-center gap-1">
-                      나이 <span style={{ color: sortConfig.field === 'age' ? '#FF6F61' : '#CBD5E1' }}>{sortConfig.field === 'age' && sortConfig.direction === 'asc' ? '↑' : '↓'}</span>
-                    </div>
-                  </div>
+                {/* 신청자 정보 (프로필 + 이름 + 나이) */}
+                <th style={{ padding: '18px 20px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 800, color: '#64748B' }}>
+                  신청자 정보 (사진/이름/나이)
                 </th>
+                <th style={{ padding: '18px 10px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 800, color: '#64748B' }}>직업</th>
                 <th style={{ padding: '18px 10px', textAlign: 'center', fontSize: '0.75rem', fontWeight: 800, color: '#64748B' }}>거주지</th>
+                <th style={{ padding: '18px 10px', textAlign: 'center', fontSize: '0.75rem', fontWeight: 800, color: statusFilter !== 'all' ? '#FF6F61' : '#64748B' }}>상태</th>
+                <th style={{ padding: '18px 16px', textAlign: 'center', fontSize: '0.75rem', fontWeight: 800, color: '#64748B' }}>선발 관리</th>
                 <th style={{ padding: '18px 10px', textAlign: 'center', fontSize: '0.75rem', fontWeight: 800, color: '#64748B' }}>연락처</th>
-                <th style={{ padding: '18px 10px', textAlign: 'center', fontSize: '0.75rem', fontWeight: 800, color: statusFilter !== 'all' ? '#FF6F61' : '#64748B' }}>
-                  <div className="flex flex-col items-center justify-center gap-1">
-                    <div onClick={() => setSortConfig({ field: 'status', direction: sortConfig.direction === 'asc' ? 'desc' : 'asc' })} className="cursor-pointer flex items-center justify-center gap-1">
-                      상태 <span style={{ color: sortConfig.field === 'status' ? '#FF6F61' : '#CBD5E1' }}>{sortConfig.field === 'status' && sortConfig.direction === 'asc' ? '↑' : '↓'}</span>
-                    </div>
-                  </div>
-                </th>
-                <th style={{ padding: '18px 16px', textAlign: 'right', fontSize: '0.75rem', fontWeight: 800, color: '#64748B' }}>선발 관리</th>
               </tr>
             </thead>
             <tbody>
               {isDataLoading ? (
                 [1,2,3,4,5,6,7,8].map(i => (
                   <tr key={i} style={{ borderBottom: '1px solid #F1F5F9', height: '88px' }}>
-                    <td colSpan={10} style={{ padding: '0 20px' }}><Skeleton className="h-10 w-full" /></td>
+                    <td colSpan={7} style={{ padding: '0 20px' }}><Skeleton className="h-10 w-full" /></td>
                   </tr>
                 ))
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={10} style={{ padding: '100px 20px', textAlign: 'center', color: '#555' }}>
+                  <td colSpan={7} style={{ padding: '100px 20px', textAlign: 'center', color: '#555' }}>
                     <div className="flex flex-col items-center gap-4">
                       <FileText size={48} className="opacity-10 text-slate-400" />
                       <p style={{ fontSize: '0.9rem', color: '#64748B' }}>검색 결과와 일치하는 신청 내역이 없습니다.</p>
@@ -589,53 +565,7 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                       }} 
                       className={`transition-colors group cursor-default ${ (canSelect && isFull) ? 'opacity-85' : 'hover:bg-slate-50' }`}
                     >
-                      {/* NO */}
-                      <td style={{ padding: '0 16px', textAlign: 'center' }}>
-                        <span className="text-slate-400 font-bold text-[0.8rem]">{filtered.length - index}</span>
-                      </td>
-
-                      {/* 프로필 */}
-                      <td style={{ padding: '0 16px' }}>
-                        <div 
-                          className="w-12 h-12 rounded-full border-2 border-[#D4AF37] shadow-sm flex items-center justify-center overflow-hidden bg-slate-100 shrink-0 cursor-pointer hover:scale-110 transition-transform"
-                          style={{ boxShadow: '0 0 10px rgba(212, 175, 55, 0.2)' }}
-                          onClick={() => { setSelectedUser(user); setIsModalOpen(true); }}
-                        >
-                          {user.photoUrl || user.photoURL || user.photos?.[0] ? (
-                            <img src={user.photoUrl || user.photoURL || user.photos?.[0]} className="w-full h-full object-cover" />
-                          ) : (
-                            <span className="text-xs font-bold text-[#D4AF37]">{user.name?.[0] || 'U'}</span>
-                          )}
-                        </div>
-                      </td>
-
-                      {/* 이름 */}
-                      <td style={{ padding: '0 16px' }}>
-                        <div className="flex flex-col">
-                          <button 
-                            onClick={() => { setSelectedUser(user); setIsModalOpen(true); }}
-                            className="text-[0.95rem] font-black text-slate-800 hover:text-[#FF7E7E] transition-colors text-left whitespace-nowrap"
-                          >
-                            {user.name || app.name || '미입력'}
-                          </button>
-                          <span className={`text-[0.65rem] font-bold mt-1 ${user.gender === 'male' ? 'text-blue-500' : 'text-rose-500'} flex items-center gap-1.5`}>
-                            {user.gender === 'male' ? '남성' : '여성'}
-                            {isFull && canSelect && (
-                              <span className="bg-rose-500 text-white px-1.5 py-0.5 rounded-md text-[9px] font-black animate-pulse">정원 마감</span>
-                            )}
-                          </span>
-                        </div>
-                      </td>
-
-                      {/* 직업 (v8.8.6: 회원 정보 마스터 기준 읽기 전용) */}
-                      <td style={{ padding: '0 16px' }}>
-                        <p className={`text-[0.85rem] font-bold tracking-tight ${user.job ? 'text-slate-800' : 'text-slate-400'}`}>
-                          {user.job || user.workplace?.split(',')[0] || <span className="font-normal">-</span>}
-                          {user.isJobReviewed && <CheckCircle size={10} className="inline ml-1 text-blue-500 mb-0.5" />}
-                        </p>
-                      </td>
-
-                      {/* 기수 */}
+                      {/* 신청 기수 */}
                       <td style={{ padding: '0 16px', textAlign: 'center' }}>
                         <div className="flex flex-col items-center">
                           <p className="text-[0.85rem] font-black text-slate-800 tracking-tighter whitespace-nowrap">{regionName} {event?.episodeNumber || '??'}기</p>
@@ -643,36 +573,78 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                         </div>
                       </td>
 
-                      {/* 나이 */}
+                      {/* 신청자 정보 (통합) */}
+                      <td style={{ padding: '0 20px' }}>
+                        <div className="flex items-center gap-4">
+                          <div 
+                            className="w-14 h-14 rounded-full border-2 border-[#D4AF37] shadow-sm flex items-center justify-center overflow-hidden bg-slate-100 shrink-0 cursor-pointer hover:scale-110 transition-transform"
+                            style={{ boxShadow: '0 0 10px rgba(212, 175, 55, 0.2)' }}
+                            onClick={() => { setSelectedUser(user); setIsModalOpen(true); }}
+                          >
+                            {user.photoUrl || user.photoURL || user.photos?.[0] ? (
+                              <img src={user.photoUrl || user.photoURL || user.photos?.[0]} className="w-full h-full object-cover" />
+                            ) : (
+                              <span className="text-xs font-bold text-[#D4AF37]">{user.name?.[0] || 'U'}</span>
+                            )}
+                          </div>
+                          <div className="flex flex-col">
+                            <div className="flex items-center gap-2">
+                              <button 
+                                onClick={() => { setSelectedUser(user); setIsModalOpen(true); }}
+                                className="text-[1rem] font-black text-slate-800 hover:text-[#FF7E7E] transition-colors"
+                              >
+                                {user.name || app.name}
+                              </button>
+                              <span className={`text-[0.65rem] font-bold px-1.5 py-0.5 rounded ${user.gender === 'male' ? 'text-blue-600 bg-blue-50' : 'text-rose-600 bg-rose-50'}`}>
+                                {user.gender === 'male' ? '남성' : '여성'}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-[0.85rem] font-bold text-slate-600">{user.birthDate ? `${user.birthDate.includes('-') ? user.birthDate.slice(2,4) : user.birthDate.slice(0,2)}년생` : '??'}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* 직업 */}
                       <td style={{ padding: '0 16px' }}>
-                        <p className="text-[0.9rem] font-extrabold text-slate-800">{user.birthDate ? `${user.birthDate.includes('-') ? user.birthDate.slice(2,4) : user.birthDate.slice(0,2)}년생` : '??'}</p>
+                        <div className="flex flex-col">
+                          <p className={`text-[0.85rem] font-bold tracking-tight ${user.job ? 'text-slate-800' : 'text-slate-400'}`}>
+                            {user.job || user.workplace?.split(',')[0] || <span className="font-normal">-</span>}
+                          </p>
+                          <span className="text-[0.72rem] text-slate-400">{user.company || ''}</span>
+                        </div>
                       </td>
 
                       {/* 거주지 */}
-                      <td style={{ padding: '0 16px' }}>
-                        <p className="text-[0.85rem] font-bold text-slate-700 whitespace-nowrap">{app.residence || user.residence || user.location || <span className="text-slate-300 font-normal">-</span>}</p>
-                      </td>
-
-                      {/* 연락처 */}
                       <td style={{ padding: '0 16px', textAlign: 'center' }}>
-                        <p className="text-[0.85rem] text-slate-600 font-bold tracking-tight whitespace-nowrap">{user.phone || <span className="text-slate-300 font-normal">-</span>}</p>
+                        <p className="text-[0.85rem] font-bold text-slate-700 whitespace-nowrap">{app.residence || user.residence || user.location || '-'}</p>
                       </td>
 
-                      {/* 상태/결제 */}
-                      <td style={{ padding: '0 16px' }}>
-                        <div className="flex flex-col gap-1.5">
-                          <span style={{ fontSize: '0.62rem', fontWeight: 800, padding: '3px 8px', borderRadius: 6, width: 'fit-content', background: aStatus.bg, color: aStatus.color, boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>{aStatus.label}</span>
-                          {app.paymentConfirmed ? (
-                            <span className="text-[10px] text-blue-500 font-black flex items-center gap-1"><CheckCircle size={10}/> 입금완료</span>
-                          ) : (
-                            <span className="text-[10px] text-slate-300 font-bold flex items-center gap-1"><Loader2 size={10} className="animate-spin" /> 입금대기</span>
-                          )}
+                      {/* 상태 (Unified) */}
+                      <td style={{ padding: '0 16px', textAlign: 'center' }}>
+                        <div className="flex flex-col items-center gap-1">
+                          <span style={{ 
+                            fontSize: '0.72rem', 
+                            fontWeight: 900, 
+                            padding: '4px 10px', 
+                            borderRadius: 6, 
+                            color: aStatus.color, 
+                            background: aStatus.bg,
+                            border: `1px solid ${aStatus.color}20`
+                          }}>
+                            {aStatus.label}
+                          </span>
+                          <div className="flex items-center gap-1">
+                            <div className="w-1 h-1 rounded-full" style={{ background: dStatus.color }} />
+                            <span style={{ fontSize: '0.65rem', fontWeight: 700, color: dStatus.color }}>{dStatus.label}</span>
+                          </div>
                         </div>
                       </td>
 
                       {/* 선발 관리 */}
                        <td style={{ padding: '0 16px' }}>
-                        <div className="flex items-center justify-end gap-1.5 transition-all">
+                        <div className="flex items-center justify-center gap-1.5 transition-all">
                           {(app.status === 'applied' || app.status === 'held') && (
                             <>
                               {app.status === 'held' && (
@@ -753,6 +725,11 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                             </button>
                           )}
                         </div>
+                      </td>
+
+                      {/* 연락처 */}
+                      <td style={{ padding: '0 16px', textAlign: 'center' }}>
+                        <p className="text-[0.85rem] text-slate-600 font-bold tracking-tight whitespace-nowrap">{user.phone || '-'}</p>
                       </td>
                     </tr>
                   );

@@ -301,7 +301,7 @@ export default function AdminTimerPage() {
         <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex-1">
           <div className="flex items-center gap-2 mb-6">
             <Settings size={20} className="text-slate-400" />
-            <h2 className="text-lg font-black text-slate-800">엔진 파라미터 <span className="text-[10px] font-bold text-blue-500 ml-1">v8.10.0 Premium</span></h2>
+            <h2 className="text-lg font-black text-slate-800">엔진 파라미터 <span className="text-[10px] font-bold text-blue-500 ml-1">v8.11.0 Premium</span></h2>
           </div>
 
           <div className="space-y-5">

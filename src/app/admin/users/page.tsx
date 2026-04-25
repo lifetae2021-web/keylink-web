@@ -250,7 +250,7 @@ export default function UsersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0F172A' }}>회원 관리</h2>
-          <p style={{ fontSize: '0.8rem', color: '#64748B', marginTop: 2 }}>서비스의 모든 회원 정보를 통합 관리하고 활동 내역을 확인합니다. <span className="text-[10px] font-bold text-[#FF7E7E] ml-2">v8.10.0 Premium</span></p>
+          <p style={{ fontSize: '0.8rem', color: '#64748B', marginTop: 2 }}>서비스의 모든 회원 정보를 통합 관리하고 활동 내역을 확인합니다. <span className="text-[10px] font-bold text-[#FF7E7E] ml-2">v8.11.0 Premium</span></p>
         </div>
         <button
           onClick={downloadCSV}
