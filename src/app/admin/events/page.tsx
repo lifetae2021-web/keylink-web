@@ -157,9 +157,10 @@ export default function EventsPage() {
         } as Session;
       });
       setSessions(fetched);
-      if (fetched.length > 0 && !selectedId) {
-        setSelectedId(fetched[0].id);
-      }
+      setSelectedId((prev) => {
+        if (prev) return prev;
+        return fetched.length > 0 ? fetched[0].id : null;
+      });
       setIsLoading(false);
     });
     return () => unsub();
