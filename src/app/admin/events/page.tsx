@@ -971,8 +971,7 @@ export default function EventsPage() {
                       {/* Matching Panel */}
                       <div className="mt-8">
                         <h3 className="flex items-center gap-2 mb-6 text-base font-extrabold text-slate-800">
-                          <Zap size={18} className="text-[#FF6F61]" /> 매칭
-                          알고리즘 가동 시스템
+                          <Zap size={18} className="text-[#FF6F61]" /> 호감도 투표 및 매칭
                         </h3>
 
                         {/* v8.1.7: 3컬럼 레이아웃 개편 */}
