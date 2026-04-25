@@ -185,24 +185,26 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose }:
                   </>
                 )}
                 
-                <div className="absolute bottom-6 left-8 right-6">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h3 className="text-3xl font-black text-slate-900 tracking-tight">{user.name || '이름 없음'}</h3>
-                    {user.isVerified && (
-                      <span className="inline-flex items-center gap-1 bg-emerald-500 text-white rounded-full px-2.5 py-0.5 text-[10px] font-bold shadow-sm">
-                        <ShieldCheck size={11} fill="white" /> 인증 완료
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 text-sm font-bold">
-                    <span className={user.gender === 'male' ? 'text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md' : 'text-rose-600 bg-rose-50 px-2 py-0.5 rounded-md'}>
-                      {user.gender === 'male' ? '남성' : '여성'}
+              </div>
+
+              {/* 이름 / 기본 정보 */}
+              <div className="px-8 pt-6 pb-2 border-b border-slate-100">
+                <div className="flex items-center gap-3 mb-2">
+                  <h3 className="text-3xl font-black text-slate-900 tracking-tight">{user.name || '이름 없음'}</h3>
+                  {user.isVerified && (
+                    <span className="inline-flex items-center gap-1 bg-emerald-500 text-white rounded-full px-2.5 py-0.5 text-[10px] font-bold shadow-sm">
+                      <ShieldCheck size={11} fill="white" /> 인증 완료
                     </span>
-                    <span className="text-slate-400">/</span>
-                    <span className="text-slate-700">{user.birthDate ? `${user.birthDate.includes('-') ? user.birthDate.slice(2,4) : user.birthDate.slice(0,2)}년생` : '??'}</span>
-                  </div>
-                  <DetailRow label="거주지" value={user.residence || user.location} icon={MapPin} />
+                  )}
                 </div>
+                <div className="flex items-center gap-2 text-sm font-bold mb-2">
+                  <span className={user.gender === 'male' ? 'text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md' : 'text-rose-600 bg-rose-50 px-2 py-0.5 rounded-md'}>
+                    {user.gender === 'male' ? '남성' : '여성'}
+                  </span>
+                  <span className="text-slate-400">/</span>
+                  <span className="text-slate-700">{user.birthDate ? `${user.birthDate.includes('-') ? user.birthDate.slice(2,4) : user.birthDate.slice(0,2)}년생` : '??'}</span>
+                </div>
+                <DetailRow label="거주지" value={user.residence || user.location} icon={MapPin} />
               </div>
 
               {/* Detail Content */}
