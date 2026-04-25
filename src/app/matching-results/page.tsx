@@ -93,7 +93,7 @@ export default function MatchingResultsListPage() {
           <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-pink-50 text-pink-500 rounded-full text-xs font-black tracking-wider border border-pink-100 mb-4 uppercase">
             History
           </div>
-          <h1 className="text-4xl font-black text-gray-900 mb-4 tracking-tight">내 매칭 결과</h1>
+          <h1 className="text-4xl font-black text-gray-900 mb-4 tracking-tight">내 매칭 결과 히스토리</h1>
           <p className="text-gray-500 font-semibold text-lg leading-relaxed">참여하신 기수별 매칭 결과를 모아두었습니다.</p>
         </div>
 

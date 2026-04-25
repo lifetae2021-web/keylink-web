@@ -220,14 +220,43 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* Mobile Dropdown */}
-      {isMenuOpen && (
-        <div style={{ background: 'rgba(253, 253, 253, 0.98)', backdropFilter: 'blur(20px)', borderTop: '1px solid var(--color-border)', padding: '16px 20px' }}>
+      {/* Mobile Side Panel Overlay */}
+      <div
+        onClick={() => setIsMenuOpen(false)}
+        style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 998,
+          opacity: isMenuOpen ? 1 : 0,
+          pointerEvents: isMenuOpen ? 'auto' : 'none',
+          transition: 'opacity 0.3s ease',
+        }}
+      />
+      <div
+        style={{
+          position: 'fixed', top: 0, right: 0, bottom: 0, width: '80%', maxWidth: '320px',
+          background: '#FDFDFD', zIndex: 999, display: 'flex', flexDirection: 'column',
+          transform: isMenuOpen ? 'translateX(0)' : 'translateX(100%)',
+          transition: 'transform 0.35s cubic-bezier(0.32, 0, 0.15, 1)',
+          boxShadow: '-8px 0 40px rgba(0,0,0,0.12)',
+        }}
+      >
+        {/* Panel Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '1px solid #FFF0EE' }}>
+          <span style={{ fontSize: '1rem', fontWeight: '900', color: '#111' }}>메뉴</span>
+          <button
+            onClick={() => setIsMenuOpen(false)}
+            style={{ background: '#F5F5F5', border: 'none', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+          >
+            <X size={18} color="#555" />
+          </button>
+        </div>
+
+        {/* Nav Links */}
+        <nav style={{ flex: 1, padding: '12px 16px', overflowY: 'auto' }}>
           {navLinks.map((link) => {
             const active = isLinkActive(link);
             const isConversionMenu = link.href === '/events';
             const activeColor = isConversionMenu ? '#FF4D3D' : '#FF6F61';
-            const activeBg = isConversionMenu ? 'rgba(255, 77, 61, 0.12)' : 'rgba(255, 111, 97, 0.08)';
+            const activeBg = isConversionMenu ? 'rgba(255, 77, 61, 0.08)' : 'rgba(255, 111, 97, 0.08)';
 
             return link.anchor ? (
               <a
@@ -236,8 +265,8 @@ export default function Navbar() {
                 onClick={(e) => handleAnchorClick(e, link.anchor)}
                 style={{
                   display: 'block', padding: '14px 16px', fontSize: '1rem', fontWeight: active ? '800' : '500',
-                  color: active ? activeColor : 'var(--color-text-secondary)', textDecoration: 'none',
-                  borderRadius: '10px', marginBottom: '4px', background: active ? activeBg : 'transparent',
+                  color: active ? activeColor : '#444', textDecoration: 'none',
+                  borderRadius: '12px', marginBottom: '4px', background: active ? activeBg : 'transparent',
                 }}
               >
                 {link.label}
@@ -249,34 +278,50 @@ export default function Navbar() {
                 onClick={() => setIsMenuOpen(false)}
                 style={{
                   display: 'block', padding: '14px 16px', fontSize: '1rem', fontWeight: active ? '800' : '500',
-                  color: active ? activeColor : 'var(--color-text-secondary)', textDecoration: 'none',
-                  borderRadius: '10px', marginBottom: '4px', background: active ? activeBg : 'transparent',
+                  color: active ? activeColor : '#444', textDecoration: 'none',
+                  borderRadius: '12px', marginBottom: '4px', background: active ? activeBg : 'transparent',
                 }}
               >
                 {link.label}
               </Link>
             );
           })}
+        </nav>
+
+        {/* Bottom Actions */}
+        <div style={{ padding: '16px 20px', borderTop: '1px solid #FFF0EE', display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <Link
             href={user ? "/events" : "/login"}
             onClick={() => setIsMenuOpen(false)}
             className="kl-btn-primary"
-            style={{ marginTop: '12px', width: '100%', display: 'flex', justifyContent: 'center' }}
+            style={{ width: '100%', display: 'flex', justifyContent: 'center' }}
           >
             {user ? "지금 신청하기" : "로그인하고 신청하기"}
           </Link>
           {user && (
-            <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <Link href="/mypage" onClick={() => setIsMenuOpen(false)} className="kl-btn-outline" style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}>
-                <UserIcon size={16} /> 마이페이지
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <Link
+                href="/mypage"
+                onClick={() => setIsMenuOpen(false)}
+                className="kl-btn-outline"
+                style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px' }}
+              >
+                <UserIcon size={15} /> 마이페이지
               </Link>
-              <button onClick={handleLogout} className="kl-btn-outline" style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}>
-                로그아웃 <LogOut size={16} />
+              <button
+                onClick={handleLogout}
+                style={{
+                  flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px',
+                  background: 'transparent', border: '1px solid #EDEDED', borderRadius: '100px',
+                  color: '#9CA3AF', fontSize: '0.88rem', fontWeight: '600', cursor: 'pointer', padding: '10px'
+                }}
+              >
+                <LogOut size={15} /> 로그아웃
               </button>
             </div>
           )}
         </div>
-      )}
+      </div>
 
       <style>{`
         @media (max-width: 1024px) {
