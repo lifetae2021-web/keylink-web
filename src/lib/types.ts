@@ -80,6 +80,7 @@ export type ApplicationStatus =
   | 'selected'    // 선발됨 (입금 대기)
   | 'confirmed'   // 입금 확인 → 참가 확정
   | 'waitlisted'  // 정원 초과 → 대기자
+  | 'held'        // 보류
   | 'cancelled';  // 취소
 
 export interface Application {
