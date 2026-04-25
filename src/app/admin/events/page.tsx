@@ -328,7 +328,7 @@ export default function EventsPage() {
     [applicants],
   );
   const waitlisted = useMemo(
-    () => applicants.filter((a) => ["applied", "held", "waitlisted"].includes(a.status)),
+    () => applicants.filter((a) => ["applied", "held", "waitlisted", "selected"].includes(a.status)),
     [applicants],
   );
 
@@ -1574,12 +1574,6 @@ ${user.name || app.name || "참가자"}님은 ${fDate} ${fDay} ${fTime} 소개�
                                           <span className="text-sm font-bold text-slate-800">
                                             {app.name || "-"}
                                           </span>
-                                          {app.status === "held" && (
-                                            <span className="text-[0.65rem] font-black px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-500">보류</span>
-                                          )}
-                                          {app.status === "waitlisted" && (
-                                            <span className="text-[0.65rem] font-black px-1.5 py-0.5 rounded-md bg-orange-100 text-orange-600">정원초과대기</span>
-                                          )}
                                         </div>
                                         <div className="flex items-center gap-2 text-[0.72rem] text-slate-400 font-medium flex-wrap">
                                           <span className="flex items-center gap-0.5">
@@ -1596,7 +1590,22 @@ ${user.name || app.name || "참가자"}님은 ${fDate} ${fDay} ${fTime} 소개�
                                           <span>{app.residence || "-"}</span>
                                         </div>
                                       </div>
-                                      <div className="shrink-0 flex items-center gap-1">
+                                      <div className="shrink-0 flex items-center gap-6">
+                                        <div>
+                                          {app.status === "applied" && (
+                                            <span className="text-[0.65rem] font-black px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-400">검토중</span>
+                                          )}
+                                          {app.status === "held" && (
+                                            <span className="text-[0.65rem] font-black px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-500">보류</span>
+                                          )}
+                                          {app.status === "selected" && (
+                                            <span className="text-[0.65rem] font-black px-1.5 py-0.5 rounded-md bg-green-50 text-green-600">입금대기</span>
+                                          )}
+                                          {app.status === "waitlisted" && (
+                                            <span className="text-[0.65rem] font-black px-1.5 py-0.5 rounded-md bg-orange-100 text-orange-600">정원초과대기</span>
+                                          )}
+                                        </div>
+                                        <div className="flex items-center gap-1">
                                         <button
                                           onClick={() => handleWaitlistSelect(app)}
                                           disabled={isGenderFull[app.gender as "male" | "female"]}
@@ -1623,6 +1632,7 @@ ${user.name || app.name || "참가자"}님은 ${fDate} ${fDay} ${fTime} 소개�
                                         >
                                           삭제
                                         </button>
+                                        </div>
                                       </div>
                                     </div>
                                   );
