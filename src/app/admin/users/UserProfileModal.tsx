@@ -61,6 +61,17 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose }:
     }
   }, [initialUser, isOpen]);
 
+  // 모달 열릴 때 모든 사진 preload
+  useEffect(() => {
+    if (isOpen && initialUser) {
+      const imgs: string[] = [
+        ...(Array.isArray(initialUser.photos) ? initialUser.photos : []),
+        ...(!Array.isArray(initialUser.photos) && (initialUser.photoUrl || initialUser.photoURL) ? [initialUser.photoUrl || initialUser.photoURL] : []),
+      ].filter(Boolean);
+      imgs.forEach((src) => { const img = new Image(); img.src = src; });
+    }
+  }, [isOpen, initialUser]);
+
   if (!user) return null;
 
   const handleToggleVerify = async () => {
