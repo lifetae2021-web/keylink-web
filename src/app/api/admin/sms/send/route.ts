@@ -50,7 +50,8 @@ export async function POST(req: NextRequest) {
       try {
         await sendSMS({ to: phone, text: personalized });
         successCount++;
-      } catch {
+      } catch (e: any) {
+        console.error(`SMS 발송 실패 (${phone}):`, e?.message || e);
         failCount++;
       }
     }

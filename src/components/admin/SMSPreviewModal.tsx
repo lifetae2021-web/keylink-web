@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, MessageSquare, Send, User, Calendar, MapPin, CreditCard } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 interface SMSPreviewModalProps {
   isOpen: boolean;
@@ -38,8 +39,9 @@ const SMSPreviewModal: React.FC<SMSPreviewModalProps> = ({
     try {
       await onConfirm(message);
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
+      toast.error(error?.message || '문자 발송 중 오류가 발생했습니다.');
     } finally {
       setIsSending(false);
     }
