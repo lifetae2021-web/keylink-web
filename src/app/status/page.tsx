@@ -26,28 +26,19 @@ export default function StatusListPage() {
     fetchSessions();
   }, []);
 
-  // Logic to determine status labels and colors (v8.4.8 확장)
   const getStatusInfo = (event: Session) => {
     const currentMale = event.currentMale || 0;
     const currentFemale = event.currentFemale || 0;
     const totalFilled = currentMale + currentFemale;
-    const totalMax = (event.maxMale || 8) + (event.maxFemale || 8);
-    const ratio = totalFilled / totalMax;
-    const isPast = event.eventDate < new Date();
+    const totalMax = (event.maxMale || 0) + (event.maxFemale || 0);
+    const now = new Date();
+    const twoHoursAfter = new Date(event.eventDate.getTime() + 2 * 60 * 60 * 1000);
+    const isFull = totalMax > 0 && totalFilled >= totalMax;
 
-    if (isPast || event.status === 'completed') {
-      return { label: '종료', color: '#666', bg: '#f1f1f1' };
-    }
-    if (event.status === 'voting' || event.status === 'matching') {
-      return { label: '진행 중', color: '#111', bg: '#EBF3FF' };
-    }
-    if (event.status === 'closed' || ratio >= 0.95) {
-      return { label: '모집 마감', color: '#C86A6A', bg: 'rgba(200,106,106,0.1)' };
-    }
-    if (ratio >= 0.7) {
-      return { label: '마감 임박', color: '#fff', bg: 'linear-gradient(90deg, #FF9A8B, #FF6F61)' };
-    }
-    return { label: '모집 중', color: '#FF6F61', bg: '#FFF5F4' };
+    if (now >= twoHoursAfter) return { label: '종료', color: '#64748b', bg: '#f1f5f9' };
+    if (now >= event.eventDate) return { label: '진행 중', color: '#1d4ed8', bg: '#dbeafe' };
+    if (isFull) return { label: '마감', color: '#dc2626', bg: '#fee2e2' };
+    return { label: '모집 중', color: '#047857', bg: '#d1fae5' };
   };
 
   if (isLoading) {
