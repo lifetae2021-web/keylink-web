@@ -129,6 +129,7 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
       }}>
         <div className="pulse-circle" />
         <span>현재 {watchers}명이 이 기수를 같이 보고 있어요</span>
+        <span style={{ fontSize: '0.7rem', opacity: 0.6, marginLeft: '10px' }}>v8.8.3</span>
       </div>
 
       <div className="kl-container" style={{ paddingTop: '100px' }}>
@@ -249,17 +250,16 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
           </div>
 
           <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-            {/* Header for Lineup List */}
+            {/* Header for Lineup List (v8.8.3 Optimized) */}
             <div style={{ 
-              display: 'grid', gridTemplateColumns: '80px 100px 1fr 120px 100px', gap: '10px',
+              display: 'grid', gridTemplateColumns: 'minmax(60px, 80px) 120px 1fr 120px', gap: '15px',
               padding: '15px 40px', background: 'rgba(0,0,0,0.02)', borderRadius: '16px',
               fontWeight: '800', color: '#888', fontSize: '0.85rem', marginBottom: '16px',
-              textAlign: 'center', opacity: activeTab === 'male' ? 0.8 : 1
+              textAlign: 'center'
             }}>
               <span>번호</span>
               <span>출생연도</span>
-              <span>직업군</span>
-              <span>성향(MBTI)</span>
+              <span>직업</span>
               <span>키</span>
             </div>
 
@@ -272,28 +272,38 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
                 transition={{ duration: 0.3 }}
                 style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}
               >
-                {confirmedRows.map((row, idx) => (
-                  <div key={idx} className="status-row v850-card" style={{ 
-                    display: 'grid', gridTemplateColumns: '80px 100px 1fr 120px 100px', gap: '10px',
-                    background: '#fff', border: '1.5px solid #f2f2f2', borderRadius: '24px',
-                    padding: '28px 40px', boxShadow: '0 8px 24px rgba(0,0,0,0.02)',
-                    alignItems: 'center', textAlign: 'center',
-                    transition: 'all 0.3s ease'
-                  }}>
-                    <div style={{ fontWeight: '900', color: '#CCC', fontSize: '1.2rem' }}>{idx + 1}</div>
-                    <div style={{ fontWeight: '800', color: '#111', fontSize: '1rem' }}>{row.birthYear}</div>
-                    <div style={{ fontWeight: '900', color: activeTab === 'male' ? '#3B82F6' : '#FF6F61', fontSize: '1.1rem' }}>{row.job}</div>
-                    <div style={{ color: '#555', fontWeight: '700', fontSize: '0.95rem', background: '#F8F9FA', padding: '6px 12px', borderRadius: '10px' }}>{row.mbti}</div>
-                    <div style={{ color: '#666', fontWeight: '800', fontSize: '1rem' }}>{row.height}</div>
-                  </div>
-                ))}
-                
-                {confirmedRows.length === 0 && (
-                   <div style={{ padding: '80px 40px', textAlign: 'center', background: '#fff', borderRadius: '24px', border: '2px dashed #eee' }}>
-                      <p style={{ color: '#aaa', fontWeight: '800', fontSize: '1.1rem' }}>현재 확정된 {activeTab === 'male' ? '키링남' : '키링녀'} 참가자가 없습니다.</p>
-                      <p style={{ color: '#ccc', fontSize: '0.9rem', marginTop: '8px' }}>실시간으로 명단이 업데이트되고 있으니 잠시 후 다시 확인해 주세요.</p>
-                   </div>
-                )}
+                {Array.from({ length: activeTab === 'male' ? (session.maxMale || 8) : (session.maxFemale || 8) }).map((_, idx) => {
+                  const row = confirmedRows[idx];
+                  const isFilled = !!row;
+
+                  return (
+                    <div key={idx} className={`status-row ${isFilled ? 'v850-card' : 'empty-slot'}`} style={{ 
+                      display: 'grid', gridTemplateColumns: 'minmax(60px, 80px) 120px 1fr 120px', gap: '15px',
+                      background: isFilled ? '#fff' : 'rgba(255,255,255,0.4)', 
+                      border: isFilled ? '1.5px solid #f2f2f2' : '1.5px dashed #eee', 
+                      borderRadius: '24px',
+                      padding: '24px 40px', 
+                      boxShadow: isFilled ? '0 8px 24px rgba(0,0,0,0.02)' : 'none',
+                      alignItems: 'center', textAlign: 'center',
+                      transition: 'all 0.3s ease',
+                      opacity: isFilled ? 1 : 0.6
+                    }}>
+                      <div style={{ fontWeight: '900', color: isFilled ? '#CCC' : '#EEE', fontSize: '1.2rem' }}>{idx + 1}</div>
+                      
+                      {isFilled ? (
+                        <>
+                          <div style={{ fontWeight: '800', color: '#111', fontSize: '1rem' }}>{row.birthYear}</div>
+                          <div style={{ fontWeight: '900', color: activeTab === 'male' ? '#3B82F6' : '#FF6F61', fontSize: '1.1rem' }}>{row.job}</div>
+                          <div style={{ color: '#666', fontWeight: '800', fontSize: '1rem' }}>{row.height}</div>
+                        </>
+                      ) : (
+                        <div style={{ gridColumn: 'span 3', color: '#bbb', fontWeight: '700', fontSize: '0.95rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+                          <Sparkles size={16} className="text-gray-200" /> 모집 중 / 새로운 인연을 기다리고 있어요!
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </motion.div>
             </AnimatePresence>
           </div>
@@ -349,8 +359,8 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
 
         @media (max-width: 768px) {
           .desktop-br { display: none; }
-          .v850-card { grid-template-columns: 50px 1fr 1fr !important; padding: 20px !important; gap: 8px !important; }
-          .v850-card > div:nth-child(4), .v850-card > div:nth-child(5) { display: none; }
+          .status-row { grid-template-columns: 50px 1fr !important; padding: 15px 20px !important; gap: 8px !important; }
+          .status-row > div:nth-child(3), .status-row > div:nth-child(4) { display: none; }
           h1 { font-size: 1.8rem !important; }
         }
       `}</style>
