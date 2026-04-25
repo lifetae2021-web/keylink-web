@@ -118,9 +118,6 @@ export default function StatusListPage() {
                     }}>
                       {status.label}
                     </div>
-                    <div style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem', fontWeight: '700' }}>
-                      {event.episodeNumber}기
-                    </div>
                   </div>
 
                   <div>
