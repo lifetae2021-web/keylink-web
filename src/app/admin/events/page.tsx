@@ -996,15 +996,14 @@ export default function EventsPage() {
                                 />
                               </div>
                               <div className="flex-1">
-                                <p className="text-sm font-extrabold text-indigo-900">
-                                  호감도 투표 폼
-                                </p>
-                                <p className="text-[0.7rem] font-bold text-indigo-500 mt-0.5">
-                                  상태:{" "}
-                                  {active.status === "voting"
-                                    ? "열림 (Live)"
-                                    : "닫힘 (Hidden)"}
-                                </p>
+                                <div className="flex items-center gap-2">
+                                  <p className="text-sm font-extrabold text-indigo-900">
+                                    호감도 투표 폼
+                                  </p>
+                                  <span className={`text-[0.65rem] font-black px-2 py-0.5 rounded-full ${active.status === "voting" ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-400"}`}>
+                                    {active.status === "voting" ? "● 진행 중" : "● 닫힘"}
+                                  </span>
+                                </div>
                               </div>
                             </div>
                             <div className="flex gap-2 mt-2">
