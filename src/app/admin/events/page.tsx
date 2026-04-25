@@ -1000,7 +1000,7 @@ export default function EventsPage() {
                                   <p className="text-sm font-extrabold text-indigo-900">
                                     호감도 투표 폼
                                   </p>
-                                  <span className={`text-[0.65rem] font-black px-2 py-0.5 rounded-full ${active.status === "voting" ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-400"}`}>
+                                  <span className={`text-[0.75rem] font-black px-2.5 py-1 rounded-full ${active.status === "voting" ? "bg-emerald-500 text-white" : "bg-slate-400 text-white"}`}>
                                     {active.status === "voting" ? "● 진행 중" : "● 닫힘"}
                                   </span>
                                 </div>
