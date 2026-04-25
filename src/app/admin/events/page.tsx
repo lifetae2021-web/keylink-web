@@ -55,6 +55,7 @@ export default function EventsPage() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [matchingHistory, setMatchingHistory] = useState<any[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selectedIdRef = useRef<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isMatching, setIsMatching] = useState(false);
   const [activeTab, setActiveTab] = useState<
@@ -157,15 +158,18 @@ export default function EventsPage() {
         } as Session;
       });
       setSessions(fetched);
-      setSelectedId((prev) => {
-        if (prev) return prev;
-        return fetched.length > 0 ? fetched[0].id : null;
-      });
+      if (!selectedIdRef.current && fetched.length > 0) {
+        setSelectedId(fetched[0].id);
+      }
       setIsLoading(false);
     });
     return () => unsub();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    selectedIdRef.current = selectedId;
+  }, [selectedId]);
 
   useEffect(() => {
     if (!selectedId) return;
