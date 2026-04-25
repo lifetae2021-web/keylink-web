@@ -1,6 +1,6 @@
 'use client';
 
-import { X, User, ShieldCheck, Phone, Camera, MapPin, Briefcase, Users2, Wine, Cigarette, Info, Coffee, Heart, HeartOff, Mail, Calendar, Ruler, Weight, ExternalLink } from 'lucide-react';
+import { X, User, ShieldCheck, Phone, Camera, MapPin, Briefcase, Users2, Wine, Cigarette, Info, Coffee, Heart, HeartOff, Mail, Calendar, Ruler, Weight, ExternalLink, History, AlertCircle, CheckCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 import { db } from '@/lib/firebase';
@@ -81,6 +81,24 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose }:
     }
   };
 
+  const handleApproveWorkplace = async (latestWorkplace: string) => {
+    if (isUpdating) return;
+    setIsUpdating(true);
+    try {
+      const userRef = doc(db, 'users', user.uid || user.id);
+      const updateData: any = { job: latestWorkplace, isJobReviewed: true };
+      
+      await updateDoc(userRef, updateData);
+      setUser((prev: any) => ({ ...prev, ...updateData }));
+      toast.success('유저가 입력한 직업이 마스터 정보로 반영되고 승인되었습니다.');
+    } catch (error) {
+      console.error(error);
+      toast.error('직업 마스터 반영에 실패했습니다.');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const age = user.birthDate
     ? new Date().getFullYear() - parseInt(user.birthDate.split('-')[0]) + 1
     : null;
@@ -155,6 +173,41 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose }:
               {/* Detail Content */}
               <div className="px-8 pt-8 space-y-10">
                 
+                {/* v8.8.8: Audit Logs & Master Data Reflection */}
+                {(!user.isJobReviewed && user.profile_change_logs && user.profile_change_logs.length > 0) && (
+                  <div className="bg-rose-50 border border-rose-200 rounded-3xl p-5 mb-6">
+                    <div className="flex items-center gap-2 mb-3">
+                      <AlertCircle size={18} className="text-rose-500" />
+                      <h4 className="text-[0.95rem] font-black text-rose-600 tracking-tight">유저 정보 수정 알림</h4>
+                    </div>
+                    <p className="text-xs text-rose-500/80 font-bold mb-4">
+                      유저가 본인의 프로필 정보를 수정했습니다. 변경된 '회사명/직무'를 확인하시고, 라인업 화면에 공개할 마스터 직업에 편입시켜 주세요.
+                    </p>
+                    <div className="space-y-2 mb-4">
+                      {[...user.profile_change_logs].reverse().slice(0, 3).map((log: any, idx: number) => (
+                        <div key={idx} className="bg-white rounded-xl p-3 shadow-sm border border-rose-100 flex items-center justify-between">
+                          <div>
+                            <span className="text-[10px] font-bold text-slate-400 block mb-0.5 max-w-[200px] truncate">{log.changedAt ? new Date(log.changedAt).toLocaleString() : '최근'}</span>
+                            <div className="flex items-center gap-2 text-[0.85rem] font-bold text-slate-700">
+                              <span className="line-through text-slate-400 max-w-[120px] truncate">{log.oldValue || '비어있음'}</span>
+                              <span className="text-xs text-rose-300">→</span>
+                              <span className="text-rose-600 max-w-[150px] truncate">{log.newValue}</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    <button 
+                      onClick={() => handleApproveWorkplace(user.profile_change_logs[user.profile_change_logs.length - 1].newValue)}
+                      disabled={isUpdating}
+                      className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-black text-[0.85rem] transition-all shadow-md shadow-rose-200"
+                    >
+                      <CheckCircle size={16} /> 변경 내용 마스터 데이터에 반영 및 승인
+                    </button>
+                  </div>
+                )}
+
                 {/* 1. 핵심 연락 정보 */}
                 <div className="bg-slate-50/50 border border-slate-100 rounded-[2rem] p-6 space-y-1">
                   <DetailRow label="연락처" value={user.phone} icon={Phone} />

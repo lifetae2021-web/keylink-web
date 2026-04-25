@@ -7,7 +7,7 @@ import { compressImage } from '@/lib/utils';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { 
   doc, getDoc, updateDoc, serverTimestamp, deleteField, 
-  collection, query, where, getDocs, orderBy 
+  collection, query, where, getDocs, orderBy, arrayUnion 
 } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import {
@@ -240,7 +240,7 @@ export default function MyPage() {
         return acc;
       }, {});
 
-      const updateData = {
+      const updateData: any = {
         ...sanitizedForm,
         photos: uploadedUrls,
         employmentProof: finalVerificationUrl,
@@ -256,6 +256,19 @@ export default function MyPage() {
         updatedAt: serverTimestamp()
       };
       
+      // v8.8.8: Audit Log - 회사명/직무 변경 감지
+      const oldWorkplace = userData?.workplace || '';
+      const newWorkplace = sanitizedForm.workplace || '';
+      if (oldWorkplace !== newWorkplace) {
+        updateData.isJobReviewed = false;
+        updateData.profile_change_logs = arrayUnion({
+          field: 'workplace',
+          oldValue: oldWorkplace,
+          newValue: newWorkplace,
+          changedAt: new Date().toISOString()
+        });
+      }
+
       await updateDoc(doc(db, 'users', user!.uid), updateData);
       setUserData((p: any) => ({ ...p, ...updateData }));
       setPhotos(uploadedUrls); // Update local state with URLs
@@ -680,7 +693,7 @@ export default function MyPage() {
         </button>
 
         <div style={{ textAlign: 'center', marginTop: '32px', color: '#BBB', fontSize: '0.8rem', fontWeight: '500' }}>
-          매칭을 위한 모든 정보는 암호화되어 보호됩니다. <span style={{ marginLeft: 8, fontSize: '0.7rem', color: '#DDD' }}>v8.2.3</span>
+          매칭을 위한 모든 정보는 암호화되어 보호됩니다. <span style={{ marginLeft: 8, fontSize: '0.7rem', color: '#DDD' }}>v8.8.8</span>
         </div>
       </div>
 
