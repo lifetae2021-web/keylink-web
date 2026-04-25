@@ -9,17 +9,18 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+  viewportFit: 'cover',
 };
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://www.keylink.kr'),
   title: "키링크 | 부산 프리미엄 로테이션 소개팅",
   description:
-    "2025년 론칭 후 120기 돌파! 부산 지역 소규모 프리미엄 로테이션 소개팅 키링크. 중복만남 100% 환불, 미매칭 30% 환불 보장. v8.1.7",
+    "2025년 론칭 후 120기 돌파! 부산 지역 소규모 프리미엄 로테이션 소개팅 키링크. 중복만남 100% 환불, 미매칭 30% 환불 보장. v1.9.4",
   keywords: ["소개팅", "로테이션소개팅", "부산소개팅", "키링크"],
   openGraph: {
     title: "키링크 | 부산 프리미엄 로테이션 소개팅",
-    description: "2025년 론칭 후 120기 돌파! 소규모 프리미엄 로테이션 소개팅 v8.1.7",
+    description: "2025년 론칭 후 120기 돌파! 소규모 프리미엄 로테이션 소개팅 v1.9.4",
     type: "website",
   },
 };
@@ -32,7 +33,7 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
       </head>
       <body className="antialiased">
         <PublicLayout>{children}</PublicLayout>

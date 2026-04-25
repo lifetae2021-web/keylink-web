@@ -65,6 +65,8 @@
 html {
   scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
+  touch-action: pan-x pan-y;
+  -webkit-text-size-adjust: none;
 }
 
 body {
@@ -78,6 +80,8 @@ body {
   -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
   overflow-x: hidden;
+  touch-action: pan-x pan-y;
+  -webkit-text-size-adjust: none;
 }
 
 /* ── Keylink Custom Components ── */
