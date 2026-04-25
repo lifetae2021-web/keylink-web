@@ -6,10 +6,10 @@ import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { subscribeSession } from '@/lib/firestore/sessions';
-import { getMyVote, submitVote } from '@/lib/firestore/votes';
+import { getMyVote, submitVote, getAllVotesBySession } from '@/lib/firestore/votes';
 import { getApplicationBySession } from '@/lib/firestore/applications';
 import { Session, Application, VoteChoice } from '@/lib/types';
-import { Heart, Lock, CheckCircle2, ChevronLeft, User, Eye, EyeOff, MessageSquare } from 'lucide-react';
+import { Heart, Lock, CheckCircle2, ChevronLeft, User, Eye, EyeOff, MessageSquare, BarChart2, X } from 'lucide-react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 
@@ -73,10 +73,23 @@ export default function VotePage() {
   const [feedback, setFeedback] = useState('');
   const [nextEventOpt, setNextEventOpt] = useState(false);
 
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [showVoteStatus, setShowVoteStatus] = useState(false);
+  const [voteStatusData, setVoteStatusData] = useState<{
+    submitted: { name: string; alias: string; gender: 'male' | 'female' }[];
+    pending: { name: string; alias: string; gender: 'male' | 'female' }[];
+  } | null>(null);
+  const [loadingStatus, setLoadingStatus] = useState(false);
+
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
       if (!user) { router.push('/login'); return; }
       setUserId(user.uid);
+
+      const userSnap = await getDoc(doc(db, 'users', user.uid));
+      if (userSnap.exists() && userSnap.data()?.role === 'admin') {
+        setIsAdmin(true);
+      }
 
       const app = await getApplicationBySession(user.uid, sessionId);
       if (!app || app.status !== 'confirmed') {
@@ -125,6 +138,48 @@ export default function VotePage() {
     return () => { unsub(); unsubSession(); };
   }, [sessionId]);
 
+  const handleOpenVoteStatus = async () => {
+    setShowVoteStatus(true);
+    if (voteStatusData) return;
+    setLoadingStatus(true);
+    try {
+      const [allAppsSnap, votes] = await Promise.all([
+        getDocs(query(
+          collection(db, 'applications'),
+          where('sessionId', '==', sessionId),
+          where('status', '==', 'confirmed')
+        )),
+        getAllVotesBySession(sessionId),
+      ]);
+
+      const submittedUserIds = new Set(votes.map(v => v.userId));
+
+      const submitted: { name: string; alias: string; gender: 'male' | 'female' }[] = [];
+      const pending: { name: string; alias: string; gender: 'male' | 'female' }[] = [];
+
+      allAppsSnap.docs.forEach(d => {
+        const data = d.data();
+        const gender = data.gender as 'male' | 'female';
+        const prefix = gender === 'male' ? '키링남' : '키링녀';
+        const alias = data.slotNumber ? `${prefix} ${data.slotNumber}호` : prefix;
+        const entry = { name: data.name, alias, gender };
+        if (submittedUserIds.has(data.userId)) {
+          submitted.push(entry);
+        } else {
+          pending.push(entry);
+        }
+      });
+
+      submitted.sort((a, b) => a.alias.localeCompare(b.alias));
+      pending.sort((a, b) => a.alias.localeCompare(b.alias));
+      setVoteStatusData({ submitted, pending });
+    } catch (e) {
+      toast.error('현황을 불러오지 못했습니다.');
+    } finally {
+      setLoadingStatus(false);
+    }
+  };
+
   const handleChoiceSelect = (priority: 1 | 2 | 3, targetUserId: string) => {
     setChoices(prev => {
       const next = { ...prev };
@@ -145,7 +200,7 @@ export default function VotePage() {
       toast.error('호감 가는 이성을 선택해주세요.');
       return;
     }
-    if (!finalCheck) { toast.error('최종 확인 체크가 필요합니다.'); return; }
+    if (!feedback.trim()) { toast.error('참여 후기를 필수로 작성해주세요.'); return; }
     if (!userId) return;
 
     setSubmitting(true);
@@ -158,7 +213,7 @@ export default function VotePage() {
       await submitVote(sessionId, userId, voteChoices, {
         realName,
         myAlias,
-        finalCheck,
+        finalCheck: true, // 체크 항목 생략됨 (자동 동의)
         disclosureMode,
         feedback
       });
@@ -228,6 +283,79 @@ export default function VotePage() {
   return (
     <div className="min-h-screen bg-[#FFF5F3] pb-24">
 
+      {/* 관리자 투표 현황 팝업 */}
+      {isAdmin && showVoteStatus && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm max-h-[80vh] flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <BarChart2 size={18} className="text-[#FF6F61]" />
+                <h2 className="font-black text-slate-800 text-base">투표 제출 현황</h2>
+              </div>
+              <button onClick={() => setShowVoteStatus(false)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 transition-colors">
+                <X size={18} className="text-slate-400" />
+              </button>
+            </div>
+            <div className="overflow-y-auto flex-1 px-5 py-4 space-y-5">
+              {loadingStatus ? (
+                <div className="flex justify-center py-8">
+                  <div className="w-8 h-8 border-2 border-[#FF6F61] border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : voteStatusData ? (
+                <>
+                  <div>
+                    <p className="text-xs font-black text-green-600 mb-2">
+                      제출 완료 ({voteStatusData.submitted.length}명)
+                    </p>
+                    {voteStatusData.submitted.length === 0 ? (
+                      <p className="text-xs text-slate-400 font-medium">아직 없습니다.</p>
+                    ) : (
+                      <div className="space-y-1.5">
+                        {voteStatusData.submitted.map((p, i) => (
+                          <div key={i} className="flex items-center gap-2 px-3 py-2 rounded-xl bg-green-50 border border-green-100">
+                            <CheckCircle2 size={14} className="text-green-500 shrink-0" />
+                            <span className="text-sm font-bold text-slate-700">{p.alias}</span>
+                            <span className="text-xs text-slate-400 ml-auto">{p.name}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-xs font-black text-rose-500 mb-2">
+                      미제출 ({voteStatusData.pending.length}명)
+                    </p>
+                    {voteStatusData.pending.length === 0 ? (
+                      <p className="text-xs text-slate-400 font-medium">모두 제출 완료!</p>
+                    ) : (
+                      <div className="space-y-1.5">
+                        {voteStatusData.pending.map((p, i) => (
+                          <div key={i} className="flex items-center gap-2 px-3 py-2 rounded-xl bg-rose-50 border border-rose-100">
+                            <div className="w-3.5 h-3.5 rounded-full border-2 border-rose-300 shrink-0" />
+                            <span className="text-sm font-bold text-slate-700">{p.alias}</span>
+                            <span className="text-xs text-slate-400 ml-auto">{p.name}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </>
+              ) : null}
+            </div>
+            {!loadingStatus && voteStatusData && (
+              <div className="px-5 py-3 border-t border-slate-100">
+                <button
+                  onClick={() => { setVoteStatusData(null); handleOpenVoteStatus(); }}
+                  className="w-full py-2 rounded-xl text-sm font-bold text-[#FF6F61] border border-[#FF6F61]/30 hover:bg-[#FFF5F4] transition-colors"
+                >
+                  새로고침
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="w-full bg-gradient-to-b from-[#FF6F61] to-[#FF8C7E] pt-20 pb-10 px-4 text-center relative overflow-hidden">
         <div className="absolute inset-0 opacity-10 pointer-events-none">
@@ -246,42 +374,21 @@ export default function VotePage() {
       {/* Form */}
       <div className="max-w-[600px] mx-auto px-4 -mt-4 space-y-4 relative z-10">
 
-        {/* 섹션 1: 실명 */}
-        <SectionCard number={1} icon={<User size={16} />} title={q1Label} required>
-          <input
-            type="text"
-            value={realName}
-            onChange={e => setRealName(e.target.value)}
-            placeholder="본인의 성함을 입력해주세요"
-            className="w-full h-12 px-4 rounded-2xl border-2 border-slate-100 bg-slate-50 focus:border-[#FF6F61] focus:bg-white focus:ring-0 outline-none font-bold text-slate-700 transition-all"
-          />
-        </SectionCard>
-
-        {/* 섹션 2: 호수 선택 */}
-        <SectionCard number={2} icon={<User size={16} />} title={q2Label} required>
-          <div className="grid grid-cols-4 gap-2">
-            {Array.from({ length: session?.voteConfig?.slotCount || 8 }, (_, i) => i + 1).map(num => {
-              const alias = `${myApplication?.gender === 'male' ? '키링남' : '키링녀'} ${num}호`;
-              const selected = myAlias === alias;
-              return (
-                <button
-                  key={num}
-                  onClick={() => setMyAlias(alias)}
-                  className={`h-14 rounded-2xl border-2 font-black text-base transition-all ${
-                    selected
-                      ? 'border-[#FF6F61] bg-[#FF6F61] text-white shadow-sm shadow-pink-200'
-                      : 'border-slate-100 bg-slate-50 text-slate-400 hover:border-slate-200'
-                  }`}
-                >
-                  {num}호
-                </button>
-              );
-            })}
+        {/* 섹션 1: 실명 및 호수 확인 */}
+        <SectionCard number={1} icon={<User size={16} />} title="실명 및 본인 호수" required>
+          <div className="flex items-center gap-3">
+            <div className="flex-1 h-14 flex items-center justify-center rounded-2xl border-2 border-slate-100 bg-slate-50 font-bold text-slate-600 text-lg cursor-not-allowed">
+              {realName || '정보 없음'}
+            </div>
+            <div className="flex-1 h-14 flex items-center justify-center rounded-2xl border-2 border-[#FF6F61] bg-[#FF6F61] text-white font-black text-lg shadow-sm shadow-pink-200">
+              {myAlias || '호수 정보 없음'}
+            </div>
           </div>
+          <p className="mt-3 text-[10px] text-slate-400 font-medium text-center">배정받으신 본인의 정보입니다. 수정이 불가합니다.</p>
         </SectionCard>
 
-        {/* 섹션 3: 이성 선택 */}
-        <SectionCard number={3} icon={<Heart size={16} />} title={q3Label} required>
+        {/* 섹션 2: 이성 선택 */}
+        <SectionCard number={2} icon={<Heart size={16} />} title={q3Label} required>
           <p className="text-sm text-slate-400 font-medium mb-4">{questionText}</p>
 
           {/* 선택 진행 상황 */}
@@ -329,19 +436,8 @@ export default function VotePage() {
                   <div className={`w-9 h-9 rounded-full flex items-center justify-center font-black text-sm shrink-0 ${
                     priority ? 'bg-[#FF6F61] text-white' : 'bg-white border-2 border-slate-200 text-slate-400'
                   }`}>
-                    {priority ? `${priority}위` : idx + 1}
+                    {priority ? <Heart size={16} fill="white" /> : idx + 1}
                   </div>
-
-                  {/* 프로필 사진 */}
-                  {candidate.photos && candidate.photos[0] ? (
-                    <div className="w-11 h-11 rounded-xl overflow-hidden shrink-0 border border-slate-100">
-                      <img src={candidate.photos[0]} alt="" className="w-full h-full object-cover" />
-                    </div>
-                  ) : (
-                    <div className="w-11 h-11 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
-                      <User size={18} className="text-slate-300" />
-                    </div>
-                  )}
 
                   {/* 정보 */}
                   <div className="flex-1 text-left">
@@ -349,7 +445,7 @@ export default function VotePage() {
                       {label} {idx + 1}호
                     </p>
                     <p className="text-xs font-bold text-slate-400 mt-0.5">
-                      {candidate.age}세 · {candidate.job} · {candidate.residence}
+                      {candidate.age}세 · {candidate.job} · {candidate.residence?.split(' ')[0]}
                     </p>
                   </div>
 
@@ -378,44 +474,21 @@ export default function VotePage() {
           </div>
         </SectionCard>
 
-        {/* 섹션 4: 최종 확인 */}
-        <SectionCard number={4} icon={<CheckCircle2 size={16} />} title={q4Label.split('\n')[0]} required>
-          {q4Label.includes('\n') && (
-            <p className="text-sm text-slate-400 font-medium mb-4 whitespace-pre-wrap leading-relaxed">
-              {q4Label.split('\n').slice(1).join('\n')}
-            </p>
-          )}
-          <label className={`flex items-center gap-3 p-4 rounded-2xl border-2 cursor-pointer transition-all ${
-            finalCheck ? 'border-[#FF6F61] bg-[#FFF5F4]' : 'border-slate-100 bg-slate-50'
-          }`}>
-            <input
-              type="checkbox"
-              checked={finalCheck}
-              onChange={e => setFinalCheck(e.target.checked)}
-              className="w-5 h-5 accent-[#FF6F61] shrink-0"
-            />
-            <span className={`font-black text-sm ${finalCheck ? 'text-[#FF6F61]' : 'text-slate-600'}`}>
-              네, 확인했습니다.
-            </span>
-            {finalCheck && <CheckCircle2 size={18} className="text-[#FF6F61] ml-auto shrink-0" />}
-          </label>
-        </SectionCard>
-
-        {/* 섹션 5: 공개 모드 */}
-        <SectionCard number={5} icon={<Eye size={16} />} title="호감 공개 여부" required>
+        {/* 섹션 3: 공개 모드 */}
+        <SectionCard number={3} icon={<Eye size={16} />} title="호감 공개 여부" required>
           <p className="text-sm text-slate-400 font-medium mb-4">결과 발표 시 적용될 나의 공개 모드입니다.</p>
           <div className="space-y-2">
             {[
               {
                 id: 'public',
                 label: '공개 모드',
-                desc: '상대방에게 내 이름을 공개합니다',
+                desc: '상대방에게 내 호수를 공개합니다',
                 icon: <Eye size={18} />,
               },
               {
                 id: 'anonymous',
                 label: '익명 모드',
-                desc: "상대방에게 '익명'으로 표시됩니다",
+                desc: "상대방에게 '익명'으로 보이며, 나를 선택한 상대방이 공개모드라도 나에게는 무조건 '익명'으로 표시됩니다.",
                 icon: <EyeOff size={18} />,
               },
             ].map(opt => (
@@ -448,12 +521,12 @@ export default function VotePage() {
           </div>
         </SectionCard>
 
-        {/* 섹션 6: 후기 */}
-        <SectionCard number={6} icon={<MessageSquare size={16} />} title={q5Label}>
+        {/* 섹션 4: 후기 */}
+        <SectionCard number={4} icon={<MessageSquare size={16} />} title={q5Label} required>
           <textarea
             value={feedback}
             onChange={e => setFeedback(e.target.value)}
-            placeholder="오늘 행사는 어떠셨나요? 소중한 후기를 들려주세요! (선택)"
+            placeholder="오늘 행사는 어떠셨나요? 소중한 후기를 들려주세요!"
             className="w-full h-28 p-4 rounded-2xl border-2 border-slate-100 bg-slate-50 focus:border-[#FF6F61] focus:bg-white focus:ring-0 outline-none font-medium text-slate-700 transition-all resize-none text-sm"
           />
         </SectionCard>

@@ -12,7 +12,7 @@ import toast from 'react-hot-toast';
 import { auth, db } from '@/lib/firebase';
 import UserProfileModal from '../users/UserProfileModal';
 import { 
-  collection, getDocs, doc, query, where, orderBy, Timestamp, getDoc, onSnapshot 
+  collection, getDocs, doc, query, where, orderBy, Timestamp, getDoc, onSnapshot, writeBatch, increment 
 } from 'firebase/firestore';
 import {
   selectApplicant,
@@ -273,6 +273,44 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
     }
   };
 
+  const handleSeedDummyAccounts = async () => {
+    if (!selectedEventId || selectedEventId === 'all') {
+      toast.error('먼저 특정 기수를 선택해주세요 (예: 1007기)');
+      return;
+    }
+    
+    const countStr = window.prompt('추가할 남녀 각각의 더미 인원수를 입력하세요 (예: 8을 입력하면 남8, 여8 추가됨)', '8');
+    if (!countStr) return;
+    
+    const count = parseInt(countStr, 10);
+    if (isNaN(count) || count <= 0 || count > 50) {
+      toast.error('올바른 숫자를 입력해주세요 (1~50)');
+      return;
+    }
+    
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error('로그인이 필요합니다.');
+
+      const res = await fetch('/api/admin/seed', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ sessionId: selectedEventId, count })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '처리 중 오류가 발생했습니다.');
+
+      toast.success(`더미 계정 총 ${count * 2}명(남${count}, 여${count}) 추가 완료!`);
+    } catch (e: any) {
+      console.error(e);
+      toast.error(`더미 추가 실패: ${e.message || '알 수 없는 오류'}`);
+    }
+  };
+
   const activeEvent = events.find(e => e.id === selectedEventId);
   
   // v8.1.7: 실시간 선발 현황 계산 (selected + confirmed)
@@ -427,6 +465,11 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
               <ChevronRight size={12} className="rotate-90" />
             </div>
           </div>
+          <button 
+            onClick={handleSeedDummyAccounts}
+            className="flex items-center gap-2 rounded-xl transition-all hover:bg-emerald-50" style={{ height: '40px', padding: '0 12px', fontSize: '0.7rem', background: '#fff', border: '1px solid #6ee7b7', color: '#059669', fontWeight: 800 }}>
+            <Users size={12} /> 더미 추가
+          </button>
           <button 
             onClick={handleFixDummyJobs}
             className="flex items-center gap-2 rounded-xl transition-all hover:bg-orange-50" style={{ height: '40px', padding: '0 12px', fontSize: '0.7rem', background: '#fff', border: '1px solid #fed7aa', color: '#ea580c', fontWeight: 800 }}>

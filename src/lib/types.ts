@@ -156,8 +156,9 @@ export interface MatchingResult {
   sessionId: string;
   userId: string;
   matched: boolean;
-  partnerId: string | null;   // 매칭된 상대 UID (미매칭 시 null)
-  partnerProfile?: {          // 결과 화면 표시용 캐시
+  partnerId: string | null;   // (Deprecated) 첫 번째 매칭 상대
+  partnerIds: string[];       // v8.6.0: 다중 매칭 지원을 위한 상대방 UID 배열
+  partnerProfile?: {          // 결과 화면 표시용 캐시 (Deprecated)
     number: string;
     gender: Gender;
     age: string;

@@ -23,6 +23,10 @@ import {
   Phone,
   UserCheck,
   MessageSquare,
+  AlertCircle,
+  CheckCircle2,
+  Trophy,
+  UserX,
 } from "lucide-react";
 import { auth, db } from "@/lib/firebase";
 import {
@@ -47,6 +51,7 @@ import {
   Application,
 } from "@/lib/types";
 import Link from "next/link";
+import { getAllVotesBySession } from "@/lib/firestore/votes";
 import SMSPreviewModal from "@/components/admin/SMSPreviewModal";
 import UserProfileModal from "@/app/admin/users/UserProfileModal";
 
@@ -80,6 +85,17 @@ export default function EventsPage() {
   const [smsTargets, setSmsTargets] = useState<{ phone: string; name: string; gender: string; slotNumber?: number; userId: string }[]>([]);
   const [smsDefaultMsg, setSmsDefaultMsg] = useState('');
   const [smsRecipientLabel, setSmsRecipientLabel] = useState('');
+
+  // Voting Status Modal State
+  const [votingStatusModalOpen, setVotingStatusModalOpen] = useState(false);
+  const [votingStatusData, setVotingStatusData] = useState<{ submitted: Application[], pending: Application[], total: number, percent: number, rawVotes: any[] } | null>(null);
+  const [votingStatusLoading, setVotingStatusLoading] = useState(false);
+  const [showVoteDetailsInModal, setShowVoteDetailsInModal] = useState(false);
+
+  // Review Modal State
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [reviewList, setReviewList] = useState<{ name: string; gender: string; content: string; slotNumber: number }[]>([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -580,6 +596,66 @@ ${user.name || app.name || "참가자"}님은 ${fDate} ${fDay} ${fTime} 소개�
     setIsConfigModalOpen(true);
   };
 
+  const handleOpenVotingStatus = async (session: Session) => {
+    setVotingStatusModalOpen(true);
+    setVotingStatusLoading(true);
+    try {
+      const sessionParticipants = participants; 
+      const votes = await getAllVotesBySession(session.id);
+      const votedUserIds = new Set(votes.map(v => v.userId));
+
+      const submitted: Application[] = [];
+      const pending: Application[] = [];
+      sessionParticipants.forEach(app => {
+        if (votedUserIds.has(app.userId)) submitted.push(app);
+        else pending.push(app);
+      });
+
+      const total = sessionParticipants.length;
+      setVotingStatusData({
+        total,
+        submitted,
+        pending,
+        percent: total > 0 ? Math.round((submitted.length / total) * 100) : 0,
+        rawVotes: votes
+      });
+    } catch (e) {
+      console.error(e);
+      toast.error('투표 현황을 불러오는데 실패했습니다.');
+    } finally {
+      setVotingStatusLoading(false);
+    }
+  };
+
+  const handleOpenReviews = async (session: Session) => {
+    setReviewModalOpen(true);
+    setReviewsLoading(true);
+    try {
+      const votes = await getAllVotesBySession(session.id);
+      const list = votes
+        .filter(v => v.feedback && v.feedback.trim())
+        .map(v => {
+          const app = participants.find(p => p.userId === v.userId);
+          return {
+            name: app?.name || '익명',
+            gender: app?.gender || 'unknown',
+            slotNumber: app?.slotNumber || 0,
+            content: v.feedback
+          };
+        })
+        .sort((a, b) => {
+          if (a.gender !== b.gender) return a.gender === 'male' ? -1 : 1;
+          return a.slotNumber - b.slotNumber;
+        });
+      setReviewList(list);
+    } catch (e) {
+      console.error(e);
+      toast.error('후기를 불러오는데 실패했습니다.');
+    } finally {
+      setReviewsLoading(false);
+    }
+  };
+
   const handleSaveConfig = async () => {
     if (!selectedId) return;
     setIsConfigSaving(true);
@@ -709,6 +785,15 @@ ${user.name || app.name || "참가자"}님은 ${fDate} ${fDay} ${fTime} 소개�
     ? liveConfirmedMale + liveConfirmedFemale >=
       active.maxMale + active.maxFemale
     : false;
+
+  let activeBadgeLabel = "";
+  let activeBadgeCls = "";
+  if (active) {
+    const now = new Date();
+    const twoHoursAfter = new Date(active.eventDate.getTime() + 2 * 60 * 60 * 1000);
+    activeBadgeLabel = now >= twoHoursAfter ? '종료' : now >= active.eventDate ? '진행 중' : isDetailFull ? '마감' : '모집 중';
+    activeBadgeCls = now >= twoHoursAfter ? 'bg-slate-100 text-slate-500' : now >= active.eventDate ? 'bg-blue-100 text-blue-700' : isDetailFull ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-700';
+  }
 
   return (
     <div className="space-y-6 animate-in fade-in duration-400">
@@ -889,22 +974,8 @@ ${user.name || app.name || "참가자"}님은 ${fDate} ${fDay} ${fTime} 소개�
                           {active.region === "busan" ? "부산" : "창원"}{" "}
                           {active.episodeNumber}기
                         </h3>
-                        <span
-                          className={`text-[0.65rem] font-black px-2.5 py-1 rounded-full ${
-                            isDetailFull
-                              ? "bg-red-100 text-red-700"
-                              : active.status === "open"
-                                ? "bg-emerald-100 text-emerald-700"
-                                : "bg-slate-100 text-slate-500"
-                          }`}
-                        >
-                          {isDetailFull
-                            ? "마감"
-                            : active.status === "open"
-                              ? "모집 중"
-                              : active.status === "completed"
-                                ? "종료"
-                                : "진행 중"}
+                        <span className={`text-[0.65rem] font-black px-2.5 py-1 rounded-full ${activeBadgeCls}`}>
+                          {activeBadgeLabel}
                         </span>
                       </div>
                       <div className="flex items-center gap-3 text-[0.75rem] font-medium">
@@ -1057,9 +1128,9 @@ ${user.name || app.name || "참가자"}님은 ${fDate} ${fDay} ${fTime} 소개�
                           <Zap size={18} className="text-[#FF6F61]" /> 호감도 투표 및 매칭
                         </h3>
 
-                        {/* v8.1.7: 3컬럼 레이아웃 개편 */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                          {/* 신규: 호감도 투표 폼 제어 */}
+                        {/* 4컬럼 운영 워크플로우 */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                          {/* 1. 투표 폼 제어 */}
                           <div className="flex flex-col gap-3 rounded-xl border border-indigo-100 p-5 bg-indigo-50/30">
                             <div className="flex items-center gap-3">
                               <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-indigo-100">
@@ -1074,14 +1145,12 @@ ${user.name || app.name || "참가자"}님은 ${fDate} ${fDay} ${fTime} 소개�
                                 />
                               </div>
                               <div className="flex-1">
-                                <div className="flex items-center gap-2">
-                                  <p className="text-sm font-extrabold text-indigo-900">
-                                    호감도 투표 폼
-                                  </p>
-                                  <span className={`text-[0.75rem] font-semibold px-2.5 py-1 rounded-full ${active.status === "voting" ? "bg-emerald-500 text-white" : "bg-slate-400 text-white"}`}>
-                                    {active.status === "voting" ? "● 진행 중" : "● 닫힘"}
-                                  </span>
-                                </div>
+                                <p className="text-sm font-extrabold text-indigo-900">
+                                  호감도 투표 폼
+                                </p>
+                                <p className="text-[0.7rem] font-bold text-indigo-400">
+                                  {active.status === "voting" ? "현재 투표 진행 중" : "투표 폼 닫힘"}
+                                </p>
                               </div>
                             </div>
                             <div className="flex gap-2 mt-2">
@@ -1108,60 +1177,61 @@ ${user.name || app.name || "참가자"}님은 ${fDate} ${fDay} ${fTime} 소개�
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-4 rounded-xl px-5 py-4 bg-yellow-50 border border-yellow-200">
-                            <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-yellow-200">
-                              <Users size={18} className="text-yellow-700" />
-                            </div>
-                            <div>
-                              <p className="text-[0.9rem] font-extrabold text-yellow-700">
-                                참가자 현황 검증
-                              </p>
-                              <p className="text-[0.75rem] text-yellow-600 mt-0.5 font-medium">
-                                총 {liveConfirmedMale + liveConfirmedFemale}명
-                                참여 확인
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-4 rounded-xl px-5 py-4 bg-emerald-50 border border-emerald-200">
+                          {/* 2. 실시간 투표 현황 */}
+                          <button
+                            onClick={() => handleOpenVotingStatus(active)}
+                            className="flex items-center gap-4 rounded-xl px-5 py-4 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition-all text-left"
+                          >
                             <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-emerald-200">
-                              <CheckCircle
-                                size={18}
-                                className="text-emerald-700"
-                              />
+                              <BarChart3 size={18} className="text-emerald-700" />
                             </div>
-                            <div>
+                            <div className="flex-1">
                               <p className="text-[0.9rem] font-extrabold text-emerald-700">
-                                연산 클러스터 연결
+                                실시간 투표 현황
                               </p>
                               <p className="text-[0.75rem] text-emerald-600 mt-0.5 font-medium">
-                                API 정상 통합됨
+                                제출 완료/미제출 확인
                               </p>
                             </div>
-                          </div>
-                        </div>
-
-                        <div className="flex flex-col sm:flex-row gap-4">
-                          <button
-                            onClick={runMatching}
-                            disabled={
-                              isMatching || active.status === "completed"
-                            }
-                            className="flex-1 flex items-center justify-center gap-2 rounded-xl transition-all h-14 bg-[#FF6F61] hover:bg-[#ff5746] text-white font-bold disabled:opacity-50 shadow-[0_4px_12px_rgba(255,111,97,0.25)]"
-                          >
-                            {isMatching ? (
-                              <Loader2 className="animate-spin" size={18} />
-                            ) : (
-                              <Play size={18} fill="currentColor" />
-                            )}
-                            가중치 기반 자동 매칭 시작
+                            <ChevronRight size={16} className="text-emerald-400" />
                           </button>
+
+                          {/* 3. 참가자 후기 모음 */}
+                          <button
+                            onClick={() => handleOpenReviews(active)}
+                            className="flex items-center gap-4 rounded-xl px-5 py-4 bg-orange-50 border border-orange-200 hover:bg-orange-100 transition-all text-left"
+                          >
+                            <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-orange-200">
+                              <MessageSquare size={18} className="text-orange-700" />
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-[0.9rem] font-extrabold text-orange-700">
+                                참가자 후기 모음
+                              </p>
+                              <p className="text-[0.75rem] text-orange-600 mt-0.5 font-medium">
+                                작성된 후기만 따로 보기
+                              </p>
+                            </div>
+                            <ChevronRight size={16} className="text-orange-400" />
+                          </button>
+
+                          {/* 4. 투표 결과 확인 (최종 승인) */}
                           <Link
                             href={`/admin/sessions/${active.id}/matching`}
-                            className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white h-14 text-slate-700 font-bold hover:bg-slate-50 shadow-sm"
+                            className="flex items-center gap-4 rounded-xl px-5 py-4 bg-pink-50 border border-pink-200 hover:bg-pink-100 transition-all text-left"
                           >
-                            <Heart size={18} className="text-pink-500" /> 결과
-                            상세 보기
+                            <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-pink-200">
+                              <Trophy size={18} className="text-pink-700" />
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-[0.9rem] font-extrabold text-pink-700">
+                                투표 결과
+                              </p>
+                              <p className="text-[0.75rem] text-pink-600 mt-0.5 font-medium">
+                                최종 승인 및 공개
+                              </p>
+                            </div>
+                            <ChevronRight size={16} className="text-pink-400" />
                           </Link>
                         </div>
                       </div>
@@ -1948,6 +2018,319 @@ ${user.name || app.name || "참가자"}님은 ${fDate} ${fDay} ${fTime} 소개�
         isOpen={isProfileModalOpen}
         onClose={() => { setIsProfileModalOpen(false); setSelectedUser(null); }}
       />
+
+      {/* Voting Status Modal */}
+      {votingStatusModalOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+              <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                <BarChart3 size={18} className="text-indigo-600" /> 투표 제출 현황 실시간 집계
+              </h3>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => active && handleOpenVotingStatus(active)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold rounded-lg transition-colors"
+                >
+                  <RefreshCw size={14} className={votingStatusLoading ? "animate-spin" : ""} /> 새로고침
+                </button>
+                <button
+                  onClick={() => setVotingStatusModalOpen(false)}
+                  className="p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-50 transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+            <div className="p-6 bg-slate-50/50 max-h-[80vh] overflow-y-auto">
+              {votingStatusLoading ? (
+                <div className="flex flex-col items-center justify-center py-12 gap-3">
+                  <Loader2 className="animate-spin text-indigo-500" size={32} />
+                  <p className="text-sm font-semibold text-slate-500">실시간 데이터 불러오는 중...</p>
+                </div>
+              ) : votingStatusData ? (
+                <div className="space-y-6">
+                  <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                    <div className="flex justify-between items-end mb-4">
+                      <div>
+                        <h4 className="font-extrabold text-slate-800">전체 진행률</h4>
+                        <p className="text-sm font-medium text-slate-500 mt-1">총 {votingStatusData.total}명 중 {votingStatusData.submitted.length}명 제출 완료</p>
+                      </div>
+                      <span className="text-2xl font-black text-indigo-600">{votingStatusData.percent}%</span>
+                    </div>
+                    <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
+                      <div className="h-full bg-indigo-500 rounded-full transition-all duration-500" style={{ width: `${votingStatusData.percent}%` }} />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* 키링남 (왼쪽) */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between px-1">
+                        <div className="flex items-center gap-2">
+                          <span className="w-1.5 h-4 bg-blue-500 rounded-full" />
+                          <h4 className="font-black text-slate-800 text-sm uppercase tracking-wider">키링남 (Men)</h4>
+                        </div>
+                        <span className="text-[0.7rem] font-bold text-slate-400">
+                          {votingStatusData.submitted.filter(s => s.gender === 'male').length} / {participants.filter(p => p.gender === 'male').length} 제출
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-1 gap-2">
+                        {participants
+                          .filter(p => p.gender === 'male')
+                          .sort((a, b) => (a.slotNumber || 0) - (b.slotNumber || 0))
+                          .map(p => {
+                            const isSubmitted = votingStatusData.submitted.some(s => s.userId === p.userId);
+                            return (
+                              <div 
+                                key={p.id} 
+                                className={`flex items-center justify-between p-3.5 rounded-xl border transition-all duration-300 ${
+                                  isSubmitted 
+                                    ? 'bg-blue-600 border-blue-700 shadow-md shadow-blue-100 scale-[1.02]' 
+                                    : 'bg-white border-slate-200'
+                                }`}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[0.75rem] font-black shrink-0 ${
+                                    isSubmitted ? 'bg-blue-500 text-white' : 'bg-blue-50 text-blue-600'
+                                  }`}>
+                                    {p.slotNumber}
+                                  </div>
+                                  <div className="flex flex-col">
+                                    <span className={`text-sm font-extrabold ${isSubmitted ? 'text-white' : 'text-slate-700'}`}>
+                                      {p.name}
+                                    </span>
+                                  </div>
+                                </div>
+                                {isSubmitted ? (
+                                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 animate-in fade-in zoom-in duration-300">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                                    <span className="text-[0.65rem] font-black text-white">제출완료</span>
+                                  </div>
+                                ) : (
+                                  <span className="text-[0.65rem] font-bold text-slate-300">미제출</span>
+                                )}
+                              </div>
+                            );
+                          })}
+                      </div>
+                    </div>
+
+                    {/* 키링녀 (오른쪽) */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between px-1">
+                        <div className="flex items-center gap-2">
+                          <span className="w-1.5 h-4 bg-pink-500 rounded-full" />
+                          <h4 className="font-black text-slate-800 text-sm uppercase tracking-wider">키링녀 (Women)</h4>
+                        </div>
+                        <span className="text-[0.7rem] font-bold text-slate-400">
+                          {votingStatusData.submitted.filter(s => s.gender === 'female').length} / {participants.filter(p => p.gender === 'female').length} 제출
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-1 gap-2">
+                        {participants
+                          .filter(p => p.gender === 'female')
+                          .sort((a, b) => (a.slotNumber || 0) - (b.slotNumber || 0))
+                          .map(p => {
+                            const isSubmitted = votingStatusData.submitted.some(s => s.userId === p.userId);
+                            return (
+                              <div 
+                                key={p.id} 
+                                className={`flex items-center justify-between p-3.5 rounded-xl border transition-all duration-300 ${
+                                  isSubmitted 
+                                    ? 'bg-pink-600 border-pink-700 shadow-md shadow-pink-100 scale-[1.02]' 
+                                    : 'bg-white border-slate-200'
+                                }`}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[0.75rem] font-black shrink-0 ${
+                                    isSubmitted ? 'bg-pink-500 text-white' : 'bg-pink-50 text-pink-600'
+                                  }`}>
+                                    {p.slotNumber}
+                                  </div>
+                                  <div className="flex flex-col">
+                                    <span className={`text-sm font-extrabold ${isSubmitted ? 'text-white' : 'text-slate-700'}`}>
+                                      {p.name}
+                                    </span>
+                                  </div>
+                                </div>
+                                {isSubmitted ? (
+                                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 animate-in fade-in zoom-in duration-300">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                                    <span className="text-[0.65rem] font-black text-white">제출완료</span>
+                                  </div>
+                                ) : (
+                                  <span className="text-[0.65rem] font-bold text-slate-300">미제출</span>
+                                )}
+                              </div>
+                            );
+                          })}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 투표 상세 내역 섹션 추가 */}
+                  <div className="mt-8 pt-6 border-t border-slate-200">
+                    <button
+                      onClick={() => setShowVoteDetailsInModal(!showVoteDetailsInModal)}
+                      className="w-full flex items-center justify-between px-6 py-4 bg-violet-50 hover:bg-violet-100 border border-violet-100 rounded-xl transition-all group"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-violet-200 flex items-center justify-center">
+                          <Heart size={16} className="text-violet-600" />
+                        </div>
+                        <span className="font-extrabold text-violet-700">투표 상세 내역 보기 (선택 리스트)</span>
+                      </div>
+                      <ChevronRight size={18} className={`text-violet-400 transition-transform duration-300 ${showVoteDetailsInModal ? 'rotate-90' : ''}`} />
+                    </button>
+
+                    {showVoteDetailsInModal && votingStatusData.rawVotes && votingStatusData.rawVotes.length > 0 && (
+                      <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 animate-in slide-in-from-top-2 duration-300">
+                        {/* 키링남 상세 선택 */}
+                        <div className="space-y-3">
+                          <p className="text-[0.7rem] font-black text-blue-500 uppercase tracking-widest px-1">Men Selection Details</p>
+                          <div className="space-y-2">
+                            {participants
+                              .filter(p => p.gender === 'male')
+                              .sort((a,b) => (a.slotNumber || 0) - (b.slotNumber || 0))
+                              .map(p => {
+                                const vote = votingStatusData.rawVotes.find(v => v.userId === p.userId);
+                                if (!vote) return null;
+                                return (
+                                  <div key={p.id} className="p-4 bg-white border border-slate-100 rounded-xl shadow-sm">
+                                    <div className="flex items-center gap-2 mb-3">
+                                      <span className="text-[0.65rem] font-black bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded-md">{p.slotNumber}호</span>
+                                      <span className="text-sm font-bold text-slate-800">{p.name}</span>
+                                    </div>
+                                    <div className="flex flex-wrap gap-1.5">
+                                      {[...vote.choices]
+                                        .sort((a, b) => {
+                                          const tA = participants.find(tp => tp.userId === a.targetUserId)?.slotNumber || 0;
+                                          const tB = participants.find(tp => tp.userId === b.targetUserId)?.slotNumber || 0;
+                                          return tA - tB;
+                                        })
+                                        .map((c: any) => {
+                                          const target = participants.find(tp => tp.userId === c.targetUserId);
+                                          return (
+                                            <div key={c.targetUserId} className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-50 border border-slate-100 rounded-lg">
+                                              <span className="text-[0.7rem] font-black text-pink-500">{target?.slotNumber || '?'}호</span>
+                                              <span className="text-[0.7rem] font-bold text-slate-600">{target?.name || '익명'}</span>
+                                            </div>
+                                          );
+                                        })}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                          </div>
+                        </div>
+
+                        {/* 키링녀 상세 선택 */}
+                        <div className="space-y-3">
+                          <p className="text-[0.7rem] font-black text-pink-500 uppercase tracking-widest px-1">Women Selection Details</p>
+                          <div className="space-y-2">
+                            {participants
+                              .filter(p => p.gender === 'female')
+                              .sort((a,b) => (a.slotNumber || 0) - (b.slotNumber || 0))
+                              .map(p => {
+                                const vote = votingStatusData.rawVotes.find(v => v.userId === p.userId);
+                                if (!vote) return null;
+                                return (
+                                  <div key={p.id} className="p-4 bg-white border border-slate-100 rounded-xl shadow-sm">
+                                    <div className="flex items-center gap-2 mb-3">
+                                      <span className="text-[0.65rem] font-black bg-pink-50 text-pink-600 px-1.5 py-0.5 rounded-md">{p.slotNumber}호</span>
+                                      <span className="text-sm font-bold text-slate-800">{p.name}</span>
+                                    </div>
+                                    <div className="flex flex-wrap gap-1.5">
+                                      {[...vote.choices]
+                                        .sort((a, b) => {
+                                          const tA = participants.find(tp => tp.userId === a.targetUserId)?.slotNumber || 0;
+                                          const tB = participants.find(tp => tp.userId === b.targetUserId)?.slotNumber || 0;
+                                          return tA - tB;
+                                        })
+                                        .map((c: any) => {
+                                          const target = participants.find(tp => tp.userId === c.targetUserId);
+                                          return (
+                                            <div key={c.targetUserId} className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-50 border border-slate-100 rounded-lg">
+                                              <span className="text-[0.7rem] font-black text-blue-500">{target?.slotNumber || '?'}호</span>
+                                              <span className="text-[0.7rem] font-bold text-slate-600">{target?.name || '익명'}</span>
+                                            </div>
+                                          );
+                                        })}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Review List Modal */}
+      {reviewModalOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+              <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                <MessageSquare size={18} className="text-orange-600" /> 참가자 후기 모음
+              </h3>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => active && handleOpenReviews(active)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold rounded-lg transition-colors"
+                >
+                  <RefreshCw size={14} className={reviewsLoading ? "animate-spin" : ""} /> 새로고침
+                </button>
+                <button
+                  onClick={() => setReviewModalOpen(false)}
+                  className="p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-50 transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+            <div className="p-6 bg-slate-50/50 max-h-[80vh] overflow-y-auto">
+              {reviewsLoading ? (
+                <div className="flex flex-col items-center justify-center py-12 gap-3">
+                  <Loader2 className="animate-spin text-orange-500" size={32} />
+                  <p className="text-sm font-semibold text-slate-500">후기 데이터 불러오는 중...</p>
+                </div>
+              ) : reviewList.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {reviewList.map((rev, i) => (
+                    <div key={i} className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className={`text-[0.65rem] font-black px-2 py-0.5 rounded-md ${rev.gender === 'male' ? 'bg-blue-50 text-blue-600' : 'bg-pink-50 text-pink-600'}`}>
+                          {rev.gender === 'male' ? '남' : '여'} {rev.slotNumber}호
+                        </span>
+                        <span className="text-sm font-bold text-slate-800">{rev.name}</span>
+                      </div>
+                      <div className="relative">
+                        <span className="absolute -top-2 -left-1 text-4xl text-slate-100 font-serif">"</span>
+                        <p className="text-[0.85rem] text-slate-600 leading-relaxed relative z-10 pl-2">
+                          {rev.content}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-12 text-slate-400">
+                  <MessageSquare size={48} className="opacity-20 mb-3" />
+                  <p className="font-medium">아직 작성된 후기가 없습니다.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* New Session Config Modal */}
       {isModalOpen && (

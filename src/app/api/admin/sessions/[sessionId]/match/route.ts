@@ -9,9 +9,9 @@ import { Timestamp } from 'firebase-admin/firestore';
  */
 
 const WEIGHTS = {
-  1: 10, // 1st choice
-  2: 5,  // 2nd choice
-  3: 2   // 3rd choice
+  1: 10, // Equal weight
+  2: 10,
+  3: 10
 };
 
 export async function POST(
@@ -37,7 +37,6 @@ export async function POST(
     }
 
     // 2. Fetch all participants and votes
-    // We only match 'confirmed' status users (those who paid and are coming)
     const [appsSnap, votesSnap] = await Promise.all([
       adminDb.collection('applications')
         .where('sessionId', '==', sessionId)
@@ -55,101 +54,57 @@ export async function POST(
       return NextResponse.json({ error: 'No data to match' }, { status: 400 });
     }
 
-    // 3. Build Weight Map (UserId -> TargetId -> Weight)
+    // 3. Build Weight Map
     const weightMap: Record<string, Record<string, number>> = {};
     const voteCountMap: Record<string, number> = {};
 
     votes.forEach((v: Vote) => {
       weightMap[v.userId] = {};
-      v.choices.forEach((c: VoteChoice) => {
-        weightMap[v.userId][c.targetUserId] = WEIGHTS[c.priority as keyof typeof WEIGHTS] || 0;
+      v.choices.forEach((c: any) => {
+        const p = c.priority || c.rank;
+        weightMap[v.userId][c.targetUserId] = WEIGHTS[p as keyof typeof WEIGHTS] || 0;
         voteCountMap[c.targetUserId] = (voteCountMap[c.targetUserId] || 0) + 1;
       });
     });
 
-    // 4. Calculate Scores for every possible M-F pair
-    // Pair score = Weight(A->B) + Weight(B->A)
+    // 4. Mutual Selection Matching (Double Opt-in)
     const maleUids = participants.filter((p: { id: string; gender: string }) => p.gender === 'male').map((p: { id: string; gender: string }) => p.id);
     const femaleUids = participants.filter((p: { id: string; gender: string }) => p.gender === 'female').map((p: { id: string; gender: string }) => p.id);
 
-    type ScoringPair = { m: string; f: string; score: number };
-    const candidates: ScoringPair[] = [];
+    const matchedPairs: MatchPair[] = [];
+    const userPartners: Record<string, string[]> = {};
+
+    // Initialize partner arrays
+    participants.forEach(p => { userPartners[p.id] = []; });
 
     maleUids.forEach((m: string) => {
       femaleUids.forEach((f: string) => {
         const scoreM = weightMap[m]?.[f] || 0;
         const scoreF = weightMap[f]?.[m] || 0;
         
-        // Only consider matches where there is at least one-way choice (optional, but optimizes)
-        if (scoreM > 0 || scoreF > 0) {
-          candidates.push({ m, f, score: scoreM + scoreF });
+        // ONLY match if BOTH picked each other
+        if (scoreM > 0 && scoreF > 0) {
+          matchedPairs.push({ userAId: m, userBId: f });
+          userPartners[m].push(f);
+          userPartners[f].push(m);
         }
       });
     });
 
-    // Sort by descending score (stable sorting to maintain priority)
-    candidates.sort((a, b) => b.score - a.score);
-
-    // 5. Greedy Selection
-    const matchedUids = new Set<string>();
-    const matchedPairs: MatchPair[] = [];
-
-    candidates.forEach(cand => {
-      if (!matchedUids.has(cand.m) && !matchedUids.has(cand.f)) {
-        // Double check for mutual block if needed (e.g. avoidAcquaintance logic could go here)
-        matchedPairs.push({ userAId: cand.m, userBId: cand.f });
-        matchedUids.add(cand.m);
-        matchedUids.add(cand.f);
-      }
-    });
-
-    const unmatchedUserIds = participants
-      .map((p: { id: string; gender: string }) => p.id)
-      .filter((uid: string) => !matchedUids.has(uid));
-
-    // 6. Persistence to Firestore (MatchingResults)
+    // 5. Persistence to Firestore
     const batch = adminDb.batch();
     
-    // Clear old results for this session if any (Optional but safer)
-    // Actually, we'll just overwrite
-    
-    // Matched
-    matchedPairs.forEach(pair => {
-      const idA = `${sessionId}_${pair.userAId}`;
-      const idB = `${sessionId}_${pair.userBId}`;
+    participants.forEach(p => {
+      const partners = userPartners[p.id] || [];
+      const id = `${sessionId}_${p.id}`;
       
-      batch.set(adminDb.collection('matchingResults').doc(idA), {
-        sessionId,
-        userId: pair.userAId,
-        matched: true,
-        partnerId: pair.userBId,
-        receivedVotes: voteCountMap[pair.userAId] || 0,
-        status: 'pending',
-        approvedAt: null,
-        updatedAt: Timestamp.now()
-      });
-      
-      batch.set(adminDb.collection('matchingResults').doc(idB), {
-        sessionId,
-        userId: pair.userBId,
-        matched: true,
-        partnerId: pair.userAId,
-        receivedVotes: voteCountMap[pair.userBId] || 0,
-        status: 'pending',
-        approvedAt: null,
-        updatedAt: Timestamp.now()
-      });
-    });
-
-    // Unmatched
-    unmatchedUserIds.forEach((uid: string) => {
-      const id = `${sessionId}_${uid}`;
       batch.set(adminDb.collection('matchingResults').doc(id), {
         sessionId,
-        userId: uid,
-        matched: false,
-        partnerId: null,
-        receivedVotes: voteCountMap[uid] || 0,
+        userId: p.id,
+        matched: partners.length > 0,
+        partnerId: partners[0] || null, // Keep for backward compatibility
+        partnerIds: partners,           // Multiple partners support
+        receivedVotes: voteCountMap[p.id] || 0,
         status: 'pending',
         approvedAt: null,
         updatedAt: Timestamp.now()
@@ -162,13 +117,13 @@ export async function POST(
       success: true,
       stats: {
         totalParticipants: participants.length,
-        matchedCount: matchedPairs.length * 2,
+        matchedCount: participants.filter(p => userPartners[p.id].length > 0).length,
         coupleCount: matchedPairs.length,
-        unmatchedCount: unmatchedUserIds.length
+        unmatchedCount: participants.filter(p => userPartners[p.id].length === 0).length
       },
       result: {
         matchedPairs,
-        unmatchedUserIds,
+        unmatchedUserIds: participants.filter(p => userPartners[p.id].length === 0).map(p => p.id),
         voteCountMap,
       }
     });

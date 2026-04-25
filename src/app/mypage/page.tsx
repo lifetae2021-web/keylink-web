@@ -932,8 +932,13 @@ function ApplicationStatusBlock({ application, session, userId, hasVoted }: Stat
               <VoteIcon size={20} /> 상대방 투표하러 가기
             </Link>
           ) : (
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '16px 28px', borderRadius: '14px', background: '#F3F4F6', color: '#9CA3AF', fontWeight: '700', fontSize: '0.85rem' }}>
-              <Lock size={16} /> 행사 당일에 투표가 활성화됩니다
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '16px 28px', borderRadius: '14px', background: '#F3F4F6', color: '#9CA3AF', fontWeight: '700', fontSize: '0.85rem' }}>
+                <Lock size={16} /> 행사 당일에 투표가 활성화됩니다
+              </div>
+              {session?.eventDate && (
+                <CountdownTimer targetDate={session.eventDate instanceof Date ? session.eventDate : (session.eventDate as any).toDate()} />
+              )}
             </div>
           )}
 
@@ -1025,19 +1030,27 @@ function ReceivedHeartsFeed({ session, userId }: { session: Session, userId: str
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         {displayedVoters.map(voter => {
           const isMutual = myVote?.choices.some(c => c.targetUserId === voter.id);
+          // 본인이 익명 모드면 나에게 온 호감도 무조건 익명 처리
+          const isAnonymous = voter.voteData?.disclosureMode === 'anonymous' || myVote?.disclosureMode === 'anonymous';
+          
+          // 실명 대신 호수 공개
+          const displayName = isAnonymous ? '익명' : (voter.voteData?.myAlias ? `${voter.voteData.myAlias}호` : '공개');
+          const displayPhoto = isAnonymous ? '/images/placeholder-user.png' : ((voter.photos && voter.photos[0]) || '/images/placeholder-user.png');
+          const displaySubtext = isAnonymous ? '비공개' : `${voter.birthDate ? calcAge(voter.birthDate) : ''} · ${voter.residence || ''}`;
+
           return (
             <div key={voter.id} style={{ display: 'flex', alignItems: 'center', gap: '14px', background: isMutual ? '#FFF5F4' : '#fff', padding: '12px 16px', borderRadius: '16px', border: isMutual ? '1.5px solid #FFDBE9' : '1.5px solid #F1F5F9', boxShadow: isMutual ? '0 4px 12px rgba(255,111,97,0.1)' : 'none' }}>
               <div style={{ width: '52px', height: '52px', borderRadius: '12px', overflow: 'hidden', flexShrink: 0, background: '#FFE8E5' }}>
-                <img src={(voter.photos && voter.photos[0]) || '/images/placeholder-user.png'} alt={voter.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <img src={displayPhoto} alt={displayName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ fontSize: '0.9rem', fontWeight: '800', color: '#1E293B' }}>{voter.name}</span>
+                  <span style={{ fontSize: '0.9rem', fontWeight: '800', color: '#1E293B' }}>{displayName}</span>
                   {isMutual && (
                     <span style={{ fontSize: '0.7rem', fontWeight: '900', background: '#FF6F61', color: '#fff', padding: '3px 8px', borderRadius: '6px', letterSpacing: '-0.02em' }}>매칭 성공(맞호감)</span>
                   )}
                 </div>
-                <p style={{ fontSize: '0.75rem', color: '#64748B', marginTop: '2px' }}>{voter.birthDate ? calcAge(voter.birthDate) : ''} · {voter.residence}</p>
+                <p style={{ fontSize: '0.75rem', color: '#64748B', marginTop: '2px' }}>{displaySubtext}</p>
               </div>
             </div>
           );
@@ -1121,6 +1134,51 @@ function ApplicationHistoryBlock({ history, sessionsMap, showAll, setShowAll }: 
           전체 신청 내역 더 보기 ({history.length - 5}개 더 있음)
         </button>
       )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CountdownTimer — 투표 활성화까지 남은 시간 표시
+// ─────────────────────────────────────────────────────────────────────────────
+function CountdownTimer({ targetDate }: { targetDate: Date }) {
+  const [timeLeft, setTimeLeft] = useState<string>('');
+
+  useEffect(() => {
+    const target = new Date(targetDate);
+    target.setHours(0, 0, 0, 0); // 행사 당일 자정 기준
+
+    const updateTimer = () => {
+      const now = new Date();
+      const diff = target.getTime() - now.getTime();
+
+      if (diff <= 0) {
+        setTimeLeft(''); 
+        return;
+      }
+
+      const d = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const h = Math.floor((diff / (1000 * 60 * 60)) % 24);
+      const m = Math.floor((diff / 1000 / 60) % 60);
+      const s = Math.floor((diff / 1000) % 60);
+
+      if (d > 0) {
+        setTimeLeft(`${d}일 ${h}시간 ${m}분 남음`);
+      } else {
+        setTimeLeft(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')} 남음`);
+      }
+    };
+
+    updateTimer();
+    const timerId = setInterval(updateTimer, 1000);
+    return () => clearInterval(timerId);
+  }, [targetDate]);
+
+  if (!timeLeft) return null;
+
+  return (
+    <div style={{ marginTop: '12px', fontSize: '0.85rem', color: '#FF6F61', fontWeight: '800', background: '#FFF5F4', padding: '8px 16px', borderRadius: '100px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+      ⏳ 투표 오픈까지 {timeLeft}
     </div>
   );
 }
