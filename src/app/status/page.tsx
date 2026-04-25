@@ -152,7 +152,7 @@ export default function StatusListPage() {
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#FF6F61', fontWeight: '800', fontSize: '0.9rem', marginTop: '4px' }}>
-                    현황 상세 보기 <ArrowRight size={16} />
+                    라인업 상세보기 <ArrowRight size={16} />
                   </div>
                 </div>
               </Link>
