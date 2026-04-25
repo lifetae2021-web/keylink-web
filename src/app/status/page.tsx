@@ -33,9 +33,10 @@ export default function StatusListPage() {
     const totalFilled = currentMale + currentFemale;
     const totalMax = (event.maxMale || 8) + (event.maxFemale || 8);
     const ratio = totalFilled / totalMax;
+    const isPast = event.eventDate < new Date();
 
-    if (event.status === 'completed') {
-      return { label: '매칭 완료', color: '#666', bg: '#f1f1f1' };
+    if (isPast || event.status === 'completed') {
+      return { label: '종료', color: '#666', bg: '#f1f1f1' };
     }
     if (event.status === 'voting' || event.status === 'matching') {
       return { label: '진행 중', color: '#111', bg: '#EBF3FF' };
