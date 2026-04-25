@@ -35,10 +35,11 @@ export interface Session {
   // v8.1.1: 호감도 투표 상세 설정
   voteConfig?: {
     maxSelection: number;          // 최대 선택 인원 (기본 3)
+    slotCount?: number;            // 호수 선택 범위 (기본 8)
     questionText: string;          // 유저에게 보여줄 질문
     showReason: boolean;           // 선택 사유 입력 여부
     resultVisibility: 'all' | 'mutual'; // 결과 공개 범위
-    
+
     // v8.1.7: 네이버 폼 스타일 질문 커스터마이징
     q1Label?: string;              // 실명 확인 문구
     q2Label?: string;              // 본인 호수 선택 문구
