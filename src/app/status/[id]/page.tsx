@@ -88,7 +88,7 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
       
       return {
         birthYear: `${year}년생`,
-        job: u.job || '직장인',
+        job: u.admin_job || u.job || '검토 중',
         height: u.height ? `${u.height}cm` : '160cm대',
       };
     }).sort((a, b) => b.birthYear.localeCompare(a.birthYear));

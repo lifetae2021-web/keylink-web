@@ -170,7 +170,8 @@ export default function UsersPage() {
     try {
       const userRef = doc(db, 'users', userId);
       await updateDoc(userRef, {
-        job: value,
+        admin_job: value,
+        job: value, // for backwards compatibility
         isJobReviewed: true,
         updatedAt: Timestamp.now()
       });
@@ -249,7 +250,7 @@ export default function UsersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0F172A' }}>회원 관리</h2>
-          <p style={{ fontSize: '0.8rem', color: '#64748B', marginTop: 2 }}>실시간 데이터 동기화 활성화됨 <span className="text-[10px] font-bold text-[#FF7E7E] ml-2">v8.8.8</span></p>
+          <p style={{ fontSize: '0.8rem', color: '#64748B', marginTop: 2 }}>실시간 데이터 동기화 활성화됨 <span className="text-[10px] font-bold text-[#FF7E7E] ml-2">v8.8.9</span></p>
         </div>
         <button
           onClick={downloadCSV}
@@ -441,18 +442,18 @@ export default function UsersPage() {
                               />
                             ) : (
                               <>
-                                <p className={`text-[0.82rem] font-bold tracking-tight flex items-center flex-wrap gap-1 ${u.job ? 'text-blue-600' : 'text-slate-800'}`}>
-                                  <span>{u.job || u.occupation || <span className="text-slate-300 font-normal">-</span>}</span>
-                                  {!u.isJobReviewed && u.profile_change_logs?.length > 0 && (
+                                <p className={`text-[0.82rem] font-bold tracking-tight flex items-center flex-wrap gap-1 ${u.admin_job || u.job ? 'text-blue-600' : 'text-slate-800'}`}>
+                                  <span>{u.admin_job || u.job || u.occupation || <span className="text-slate-300 font-normal">-</span>}</span>
+                                  {!u.isJobReviewed && u.user_logs?.length > 0 && (
                                     <span className="text-[9px] bg-rose-50 border border-rose-200 text-rose-500 px-1.5 py-0.5 rounded font-black tracking-tighter whitespace-nowrap">
-                                      정보 수정됨
+                                      [NEW] 정보 수정됨
                                     </span>
                                   )}
                                 </p>
                                 <button 
                                   onClick={() => {
                                     setEditingJobId(u.id);
-                                    setTempJobValue(u.job || u.occupation || '');
+                                    setTempJobValue(u.admin_job || u.job || u.occupation || '');
                                   }}
                                   className="p-1.5 rounded-lg bg-slate-100 text-slate-400 opacity-0 group-hover/job:opacity-100 hover:bg-blue-50 hover:text-blue-500 transition-all"
                                 >

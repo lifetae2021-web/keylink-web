@@ -22,7 +22,8 @@ service cloud.firestore {
     // users 컬렉션
     // ─────────────────────────────────────
     match /users/{userId} {
-      allow read: if isUser(userId) || isAdmin();
+      // v8.8.9: 라인업 데이터 조회를 위해 public read 허용 (클라이언트에서 노출 필터링)
+      allow read: if true;
       // v7.3.3: 신규 가입(create) 허용 - 본인 UID로 생성하되, role은 반드시 'user'여야 함
       allow create: if isUser(userId) && request.resource.data.role == 'user';
       // 기존 문서 수정: 본인 수정 가능하되 role 필드 변경 불가 (관리자만 role 변경 가능)
@@ -45,9 +46,8 @@ service cloud.firestore {
     // applications (신청서) 컬렉션
     // ─────────────────────────────────────
     match /applications/{applicationId} {
-      // 본인 신청서만 읽기 가능
-      allow read: if isSignedIn() &&
-        resource.data.userId == request.auth.uid;
+      // v8.8.9: 라인업(실시간 현황) 조회를 위해 public read 허용 (클라이언트에서 표출 필터링)
+      allow read: if true;
       // 관리자: 모든 신청서 읽기/쓰기
       allow read, write: if isAdmin();
       // 신규 신청: 본인 UID로만 생성 가능

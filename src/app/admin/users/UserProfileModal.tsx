@@ -86,7 +86,7 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose }:
     setIsUpdating(true);
     try {
       const userRef = doc(db, 'users', user.uid || user.id);
-      const updateData: any = { job: latestWorkplace, isJobReviewed: true };
+      const updateData: any = { admin_job: latestWorkplace, job: latestWorkplace, isJobReviewed: true };
       
       await updateDoc(userRef, updateData);
       setUser((prev: any) => ({ ...prev, ...updateData }));
@@ -174,7 +174,7 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose }:
               <div className="px-8 pt-8 space-y-10">
                 
                 {/* v8.8.8: Audit Logs & Master Data Reflection */}
-                {(!user.isJobReviewed && user.profile_change_logs && user.profile_change_logs.length > 0) && (
+                {(!user.isJobReviewed && user.user_logs && user.user_logs.length > 0) && (
                   <div className="bg-rose-50 border border-rose-200 rounded-3xl p-5 mb-6">
                     <div className="flex items-center gap-2 mb-3">
                       <AlertCircle size={18} className="text-rose-500" />
@@ -184,7 +184,7 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose }:
                       유저가 본인의 프로필 정보를 수정했습니다. 변경된 '회사명/직무'를 확인하시고, 라인업 화면에 공개할 마스터 직업에 편입시켜 주세요.
                     </p>
                     <div className="space-y-2 mb-4">
-                      {[...user.profile_change_logs].reverse().slice(0, 3).map((log: any, idx: number) => (
+                      {[...user.user_logs].reverse().slice(0, 3).map((log: any, idx: number) => (
                         <div key={idx} className="bg-white rounded-xl p-3 shadow-sm border border-rose-100 flex items-center justify-between">
                           <div>
                             <span className="text-[10px] font-bold text-slate-400 block mb-0.5 max-w-[200px] truncate">{log.changedAt ? new Date(log.changedAt).toLocaleString() : '최근'}</span>
@@ -199,7 +199,7 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose }:
                     </div>
                     
                     <button 
-                      onClick={() => handleApproveWorkplace(user.profile_change_logs[user.profile_change_logs.length - 1].newValue)}
+                      onClick={() => handleApproveWorkplace(user.user_logs[user.user_logs.length - 1].newValue)}
                       disabled={isUpdating}
                       className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-black text-[0.85rem] transition-all shadow-md shadow-rose-200"
                     >
