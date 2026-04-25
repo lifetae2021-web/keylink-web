@@ -69,6 +69,7 @@ export default function AdminDashboard() {
   const [chartData, setChartData] = useState<any[]>([]);
   const [upcomingEvents, setUpcomingEvents] = useState<any[]>([]);
   const [recentUsers, setRecentUsers] = useState<any[]>([]);
+  const [recentApps, setRecentApps] = useState<any[]>([]);
 
   useEffect(() => {
     async function fetchData() {
@@ -193,6 +194,22 @@ export default function AdminDashboard() {
         setUpcomingEvents(upcoming);
         setRecentUsers(recentSnap.docs.map(d => ({ id: d.id, ...d.data() })));
 
+        // 7. 최근 신청자 가공
+        const sessionMap: Record<string, string> = {};
+        sessionsSnap.docs.forEach(doc => {
+          const s = doc.data();
+          sessionMap[doc.id] = `${s.region === 'busan' ? '부산' : '창원'} ${s.episodeNumber}기`;
+        });
+
+        const recentAppsData = allApps
+          .sort((a: any, b: any) => (toDate(b.appliedAt)?.getTime() || 0) - (toDate(a.appliedAt)?.getTime() || 0))
+          .slice(0, 5)
+          .map((app: any) => ({
+            ...app,
+            sessionName: sessionMap[app.sessionId] || '알 수 없음'
+          }));
+        setRecentApps(recentAppsData);
+
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
       } finally {
@@ -216,6 +233,12 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-400">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 900, letterSpacing: '-0.03em', color: '#0F172A' }}>대시보드</h2>
+          <p style={{ fontSize: '0.85rem', color: '#64748B', marginTop: 2 }}>실시간 데이터와 서비스 현황을 한눈에 확인합니다. <span className="text-[10px] font-bold text-[#FF6F61] ml-2">v8.10.0 Premium</span></p>
+        </div>
+      </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -258,11 +281,132 @@ export default function AdminDashboard() {
         ))}
       </div>
 
-      {/* Charts row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Row 2: Recent Users & Recent Applicants */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        {/* 최근 가입자 */}
+        <div style={{ ...panel, padding: 0, overflow: 'hidden' }}>
+          <div className="flex items-center justify-between px-6 py-5" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+            <h3 style={{ fontSize: '0.95rem', fontWeight: 600 }}>최근 가입자</h3>
+            <Link href="/admin/users" className="flex items-center gap-1 transition-colors hover:text-white" style={{ fontSize: '0.78rem', color: '#555' }}>
+              전체 보기 <ChevronRight size={12} />
+            </Link>
+          </div>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>
+                  {['이름', '이메일', '상태', '가입일'].map(h => (
+                    <th key={h} style={{ padding: '10px 24px', textAlign: 'left', fontSize: '0.72rem', fontWeight: 600, color: '#444', borderBottom: '1px solid rgba(255,255,255,0.06)', whiteSpace: 'nowrap' }}>
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {isLoading ? (
+                  [1, 2, 3, 4, 5].map(i => (
+                    <tr key={i}>
+                      <td colSpan={4} style={{ padding: '12px 24px' }}><Skeleton className="h-6 w-full" /></td>
+                    </tr>
+                  ))
+                ) : recentUsers.length > 0 ? (
+                  recentUsers.map((m: any) => {
+                    const s = STATUS[m.status as keyof typeof STATUS] || STATUS.pending;
+                    const d = toDate(m.createdAt);
+                    return (
+                      <tr key={m.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }} className="hover:bg-white/[0.02] transition-colors">
+                        <td style={{ padding: '12px 24px', fontSize: '0.85rem', fontWeight: 600 }}>{m.name || '미입력'}</td>
+                        <td style={{ padding: '12px 24px', fontSize: '0.83rem', color: '#666' }}>{m.email}</td>
+                        <td style={{ padding: '12px 24px' }}>
+                          <span style={{ fontSize: '0.72rem', fontWeight: 600, padding: '4px 10px', borderRadius: 20, color: s.color, background: s.bg }}>
+                            {s.label}
+                          </span>
+                        </td>
+                        <td style={{ padding: '12px 24px', fontSize: '0.78rem', color: '#555' }}>
+                          {d ? format(d, 'yyyy-MM-dd') : '-'}
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan={4} style={{ padding: '40px 24px', textAlign: 'center', color: '#555', fontSize: '0.85rem' }}>가입자가 없습니다.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
 
+        {/* 최근 신청자 */}
+        <div style={{ ...panel, padding: 0, overflow: 'hidden' }}>
+          <div className="flex items-center justify-between px-6 py-5" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+            <h3 style={{ fontSize: '0.95rem', fontWeight: 600 }}>최근 신청자</h3>
+            <Link href="/admin/applications" className="flex items-center gap-1 transition-colors hover:text-white" style={{ fontSize: '0.78rem', color: '#555' }}>
+              전체 보기 <ChevronRight size={12} />
+            </Link>
+          </div>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>
+                  {['이름', '신청 기수', '상태', '신청일'].map(h => (
+                    <th key={h} style={{ padding: '10px 24px', textAlign: 'left', fontSize: '0.72rem', fontWeight: 600, color: '#444', borderBottom: '1px solid rgba(255,255,255,0.06)', whiteSpace: 'nowrap' }}>
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {isLoading ? (
+                  [1, 2, 3, 4, 5].map(i => (
+                    <tr key={i}>
+                      <td colSpan={4} style={{ padding: '12px 24px' }}><Skeleton className="h-6 w-full" /></td>
+                    </tr>
+                  ))
+                ) : recentApps.length > 0 ? (
+                  recentApps.map((a: any) => {
+                    const d = toDate(a.appliedAt);
+                    const isConfirmed = a.status === 'confirmed' || a.paymentConfirmed === true;
+                    return (
+                      <tr key={a.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }} className="hover:bg-white/[0.02] transition-colors">
+                        <td style={{ padding: '12px 24px', fontSize: '0.85rem', fontWeight: 600 }}>{a.name}</td>
+                        <td style={{ padding: '12px 24px', fontSize: '0.83rem', color: '#666' }}>{a.sessionName}</td>
+                        <td style={{ padding: '12px 24px' }}>
+                          <span style={{ 
+                            fontSize: '0.72rem', 
+                            fontWeight: 600, 
+                            padding: '4px 10px', 
+                            borderRadius: 20, 
+                            color: isConfirmed ? '#4ade80' : '#facc15', 
+                            background: isConfirmed ? 'rgba(74,222,128,0.1)' : 'rgba(250,204,21,0.1)' 
+                          }}>
+                            {isConfirmed ? '확정' : (a.status === 'applied' ? '검토 중' : '대기')}
+                          </span>
+                        </td>
+                        <td style={{ padding: '12px 24px', fontSize: '0.78rem', color: '#555' }}>
+                          {d ? format(d, 'MM-dd HH:mm') : '-'}
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan={4} style={{ padding: '40px 24px', textAlign: 'center', color: '#555', fontSize: '0.85rem' }}>신청자가 없습니다.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+      {/* Row 3: Trends (3/5) & Gender (2/5) */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         {/* 주간 신청 추이 */}
-        <div style={{ ...panel, padding: '24px' }} className="lg:col-span-2">
+        <div style={{ ...panel, padding: '24px' }} className="lg:col-span-4">
           <div className="flex items-center justify-between mb-6">
             <h3 style={{ fontSize: '0.95rem', fontWeight: 600 }}>주간 신청 및 확정 추이</h3>
             <span style={{ fontSize: '0.75rem', color: '#444' }}>최근 7일</span>
@@ -352,11 +496,10 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Bottom row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
+      {/* Bottom row (Upcoming Events) */}
+      <div className="grid grid-cols-1 gap-6">
         {/* 예정 행사 */}
-        <div style={{ ...panel, padding: '24px' }} className="lg:col-span-2">
+        <div style={{ ...panel, padding: '24px' }}>
           <div className="flex items-center justify-between mb-5">
             <h3 className="flex items-center gap-2" style={{ fontSize: '0.95rem', fontWeight: 600 }}>
               <CalendarCheck size={15} style={{ color: '#facc15' }} /> 진행 예정 기수
@@ -365,7 +508,7 @@ export default function AdminDashboard() {
               전체 보기 <ChevronRight size={12} />
             </Link>
           </div>
-          <div className="space-y-2.5">
+          <div className="flex flex-col gap-3">
             {isLoading ? (
               [1, 2, 3].map(i => <Skeleton key={i} className="h-16 w-full" />)
             ) : upcomingEvents.length > 0 ? (
@@ -397,99 +540,12 @@ export default function AdminDashboard() {
                 );
               })
             ) : (
-              <div className="text-center py-10 text-gray-600 text-sm">진행 예정인 기수가 없습니다.</div>
+              <div className="col-span-3 text-center py-10 text-gray-600 text-sm">진행 예정인 기수가 없습니다.</div>
             )}
           </div>
         </div>
-
-        {/* 빠른 메뉴 */}
-        <div className="space-y-4">
-          <div style={{ ...panel, padding: '24px' }}>
-            <h3 className="flex items-center gap-2 mb-4" style={{ fontSize: '0.95rem', fontWeight: 600 }}>
-              <Zap size={15} style={{ color: '#FF6F61' }} /> 빠른 메뉴
-            </h3>
-            <div className="space-y-1.5">
-              {[
-                { label: '신청자 승인', desc: '대기 명단 확인',  href: '/admin/applications', color: '#60a5fa', icon: ClipboardList },
-                { label: '행사/매칭',   desc: '기수 관리',       href: '/admin/events',       color: '#4ade80', icon: Calendar },
-                { label: '매출 관리',   desc: '결제 내역 확인',  href: '/admin/revenue',      color: '#facc15', icon: TrendingUp },
-              ].map(a => (
-                <Link
-                  key={a.label}
-                  href={a.href}
-                  className="flex items-center gap-3 rounded-lg transition-colors hover:bg-white/[0.04]"
-                  style={{ padding: '11px 14px', border: '1px solid rgba(255,255,255,0.06)', background: 'transparent' }}
-                >
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${a.color}14` }}>
-                    <a.icon size={15} style={{ color: a.color }} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p style={{ fontSize: '0.83rem', fontWeight: 600 }}>{a.label}</p>
-                    <p style={{ fontSize: '0.72rem', color: '#555' }}>{a.desc}</p>
-                  </div>
-                  <ChevronRight size={13} style={{ color: '#444' }} />
-                </Link>
-              ))}
-            </div>
-          </div>
-        </div>
       </div>
 
-      {/* 최근 가입자 */}
-      <div style={{ ...panel, padding: 0, overflow: 'hidden' }}>
-        <div className="flex items-center justify-between px-6 py-5" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-          <h3 style={{ fontSize: '0.95rem', fontWeight: 600 }}>최근 가입자</h3>
-          <Link href="/admin/users" className="flex items-center gap-1 transition-colors hover:text-white" style={{ fontSize: '0.78rem', color: '#555' }}>
-            전체 보기 <ChevronRight size={12} />
-          </Link>
-        </div>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr>
-                {['이름', '이메일', '직업', '상태', '가입일'].map(h => (
-                  <th key={h} style={{ padding: '10px 24px', textAlign: 'left', fontSize: '0.72rem', fontWeight: 600, color: '#444', borderBottom: '1px solid rgba(255,255,255,0.06)', whiteSpace: 'nowrap' }}>
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {isLoading ? (
-                [1, 2, 3, 4, 5].map(i => (
-                  <tr key={i}>
-                    <td colSpan={5} style={{ padding: '12px 24px' }}><Skeleton className="h-6 w-full" /></td>
-                  </tr>
-                ))
-              ) : recentUsers.length > 0 ? (
-                recentUsers.map((m: any) => {
-                  const s = STATUS[m.status as keyof typeof STATUS] || STATUS.pending;
-                  const d = toDate(m.createdAt);
-                  return (
-                    <tr key={m.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }} className="hover:bg-white/[0.02] transition-colors">
-                      <td style={{ padding: '12px 24px', fontSize: '0.85rem', fontWeight: 600 }}>{m.name || '미입력'}</td>
-                      <td style={{ padding: '12px 24px', fontSize: '0.83rem', color: '#666' }}>{m.email}</td>
-                      <td style={{ padding: '12px 24px', fontSize: '0.83rem', color: '#888' }}>{m.job || '-'}</td>
-                      <td style={{ padding: '12px 24px' }}>
-                        <span style={{ fontSize: '0.72rem', fontWeight: 600, padding: '4px 10px', borderRadius: 20, color: s.color, background: s.bg }}>
-                          {s.label}
-                        </span>
-                      </td>
-                      <td style={{ padding: '12px 24px', fontSize: '0.78rem', color: '#555' }}>
-                        {d ? format(d, 'yyyy-MM-dd') : '-'}
-                      </td>
-                    </tr>
-                  );
-                })
-              ) : (
-                <tr>
-                  <td colSpan={5} style={{ padding: '40px 24px', textAlign: 'center', color: '#555', fontSize: '0.85rem' }}>가입자가 없습니다.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
 
     </div>
   );
