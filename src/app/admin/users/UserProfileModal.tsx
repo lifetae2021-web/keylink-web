@@ -144,7 +144,7 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose }:
             <div className="overflow-y-auto kl-scrollbar pb-12">
               
               {/* Profile Image & Name Section */}
-              <div className="relative h-72 bg-slate-100 border-b border-slate-100 overflow-hidden">
+              <div className="relative h-96 bg-slate-100 border-b border-slate-100 overflow-hidden">
                 {currentPhoto ? (
                   <img
                     src={currentPhoto}
