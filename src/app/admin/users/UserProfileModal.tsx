@@ -156,7 +156,6 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose }:
                     <User size={80} strokeWidth={1} className="text-slate-200" />
                   </div>
                 )}
-                <div className="absolute inset-0 bg-gradient-to-t from-white via-white/10 to-transparent" />
 
                 {/* 슬라이더 화살표 */}
                 {photos.length > 1 && (
