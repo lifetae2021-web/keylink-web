@@ -858,8 +858,12 @@ export default function EventDetailPage() {
 
                 <div style={{ marginTop: '24px' }}>
                   {step === 0 ? (
-                    <button className="kl-btn-primary" style={{ width: '100%', padding: '18px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }} onClick={handleStep1Entry} disabled={soldOutM && soldOutF}>
-                      {soldOutM && soldOutF ? '마감되었습니다' : <>신청서 작성하기 <ChevronRight size={18} /></>}
+                    <button 
+                      className="kl-btn-primary" 
+                      style={{ width: '100%', padding: '18px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }} 
+                      onClick={handleStep1Entry}
+                    >
+                      {soldOutM && soldOutF ? <>대기 신청하기 <ChevronRight size={18} /></> : <>신청서 작성하기 <ChevronRight size={18} /></>}
                     </button>
                   ) : (
                     <>
@@ -887,8 +891,12 @@ export default function EventDetailPage() {
  {/* 모바일 Sticky Bottom CTA */}
       <div className="mobile-sticky-cta" style={{ display: 'none', position: 'fixed', bottom: 0, left: 0, right: 0, padding: '16px', background: 'var(--color-surface)', borderTop: '1px solid var(--color-border)', zIndex: 1000, boxShadow: '0 -4px 16px rgba(0,0,0,0.05)' }}>
           {step === 0 && (
-            <button className="kl-btn-primary" style={{ width: '100%', padding: '16px', fontSize: '1.1rem', fontWeight: '800' }} onClick={() => { handleStep1Entry(); window.scrollTo({top: 0}); }} disabled={soldOutM && soldOutF}>
-              {soldOutM && soldOutF ? '마감되었습니다' : '지금 신청하기'}
+            <button 
+              className="kl-btn-primary" 
+              style={{ width: '100%', padding: '16px', fontSize: '1.1rem', fontWeight: '800' }} 
+              onClick={() => { handleStep1Entry(); window.scrollTo({top: 0}); }}
+            >
+              {soldOutM && soldOutF ? '대기 신청하기' : '지금 신청하기'}
             </button>
           )}
           {step === 1 && (

@@ -60,12 +60,18 @@ export function EventsSection({ standalone = false }: { standalone?: boolean }) 
     return () => unsubscribe();
   }, []);
 
-  // 카드 리스트용 필터링 및 정렬 (v8.4.6: 마감된 기수는 뒤로 배치)
+  // 카드 리스트용 필터링 및 정렬 (v1.9.9: 마감 기수 노출 유지)
+  const now = new Date();
   const filtered = liveEvents
     .filter((e) => {
       const dateMatch = selectedDate ? isSameDay(e.date, selectedDate) : true;
       const regionMatch = e.region === selectedRegion;
-      return dateMatch && regionMatch;
+      
+      const twoHoursAfter = new Date(e.date.getTime() + 2 * 60 * 60 * 1000);
+      const isFinished = now >= twoHoursAfter;
+      
+      // v1.9.8: 종료된 기수만 숨기고 마감 기수는 대기 신청을 위해 노출 유지
+      return dateMatch && regionMatch && !isFinished;
     })
     .sort((a, b) => a.date.getTime() - b.date.getTime());
 
@@ -125,9 +131,10 @@ export function EventsSection({ standalone = false }: { standalone?: boolean }) 
             ))}
           </div>
         ) : filtered.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '80px 20px', color: 'var(--color-text-muted)' }}>
-            <p style={{ fontSize: '3rem', marginBottom: '16px' }}>😢</p>
-            <p>해당 조건의 일정이 없습니다.</p>
+          <div style={{ textAlign: 'center', padding: '100px 20px', color: 'var(--color-text-muted)', gridColumn: '1 / -1' }}>
+            <div style={{ fontSize: '3.5rem', marginBottom: '24px', opacity: 0.8 }}>🌸</div>
+            <p style={{ fontSize: '1.1rem', fontWeight: '700', color: '#1A1A1A', marginBottom: '8px' }}>현재 준비 중인 기수가 없습니다.</p>
+            <p style={{ fontSize: '0.9rem' }}>곧 새로운 기수로 찾아뵐게요!</p>
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '24px' }}>
@@ -232,9 +239,24 @@ function EventCard({ event }: { event: KeylinkEvent }) {
   const soldOutF = event.currentFemale >= event.maxFemale;
   const isSoldOut = soldOutM && soldOutF;
 
-  // 배지 상태 결정
-  const badgeStatus = isSoldOut ? 'closed' : event.status === 'open' ? 'open' : 'upcoming';
-  const badgeLabel = isSoldOut ? '모집 마감' : '모집 중';
+  // 배지 상태 및 레이블 결정 (v1.9.7: Admin-UI Sync)
+  const now = new Date();
+  const twoHoursAfter = new Date(event.date.getTime() + 2 * 60 * 60 * 1000);
+  const isFinished = now >= twoHoursAfter;
+  
+  let badgeStatus = 'open';
+  let badgeLabel = '모집 중';
+
+  if (isFinished) {
+    badgeStatus = 'finished';
+    badgeLabel = '종료';
+  } else if (isSoldOut) {
+    badgeStatus = 'closed';
+    badgeLabel = '모집 마감';
+  } else if (now >= event.date) {
+    badgeStatus = 'upcoming'; // '진행 중' 스타일 (blue)
+    badgeLabel = '진행 중';
+  }
 
   return (
     <Link href={`/events/${event.id}`} className="event-card" style={{ 

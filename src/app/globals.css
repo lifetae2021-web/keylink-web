@@ -173,29 +173,35 @@ body {
 .kl-badge {
   display: inline-flex;
   align-items: center;
-  padding: 4px 12px;
-  border-radius: 100px;
+  padding: 5px 12px;
+  border-radius: 8px;
   font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
+  font-weight: 800;
+  letter-spacing: -0.02em;
 }
 
 .kl-badge-open {
-  background: rgba(110, 174, 124, 0.2);
-  color: #6EAE7C;
-  border: 1px solid rgba(110, 174, 124, 0.3);
+  background: #ECFDF5;
+  color: #047857;
+  border: none;
 }
 
 .kl-badge-closed {
-  background: rgba(200, 106, 106, 0.2);
-  color: #C86A6A;
-  border: 1px solid rgba(200, 106, 106, 0.3);
+  background: #FEF2F2;
+  color: #DC2626;
+  border: none;
+}
+
+.kl-badge-finished {
+  background: #F1F5F9;
+  color: #64748B;
+  border: none;
 }
 
 .kl-badge-upcoming {
-  background: rgba(200, 145, 106, 0.15);
-  color: var(--color-primary-light);
-  border: 1px solid rgba(200, 145, 106, 0.3);
+  background: #EFF6FF;
+  color: #1D4ED8;
+  border: none;
 }
 
 .kl-input {
