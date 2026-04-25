@@ -106,7 +106,7 @@ export default function EventsPage() {
   const [formData, setFormData] = useState(initialFormData);
 
   // v8.1.7: 투표 설정 모달 상태
-  const [isMigrating, setIsMigrating] = useState(false);
+
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const [isConfigSaving, setIsConfigSaving] = useState(false);
   const [configFormData, setConfigFormData] = useState({
@@ -494,29 +494,6 @@ ${user.name || app.name || "참가자"}님은 ${fDate} ${fDay} ${fTime} 소개�
     }
   };
 
-  const runSlotMigration = async () => {
-    if (
-      !window.confirm(
-        "기존 확정 참가자 전체에게 호수를 일괄 배정합니다. 계속할까요?",
-      )
-    )
-      return;
-    setIsMigrating(true);
-    try {
-      const token = await auth.currentUser?.getIdToken();
-      const res = await fetch("/api/admin/migrate/slot-numbers", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      toast.success(`호수 배정 완료: ${data.migrated}명 업데이트됨`);
-    } catch (e: any) {
-      toast.error(e.message);
-    } finally {
-      setIsMigrating(false);
-    }
-  };
 
   const runMatching = async () => {
     if (!selectedId) return;
@@ -1230,18 +1207,6 @@ ${user.name || app.name || "참가자"}님은 ${fDate} ${fDay} ${fTime} 소개�
                               size={16}
                             />
                           )}
-                          <button
-                            onClick={runSlotMigration}
-                            disabled={isMigrating}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-200 bg-white text-slate-500 hover:bg-amber-50 hover:text-amber-600 hover:border-amber-200 transition-all"
-                          >
-                            {isMigrating ? (
-                              <Loader2 size={12} className="animate-spin" />
-                            ) : (
-                              <RefreshCw size={12} />
-                            )}
-                            호수 일괄 배정
-                          </button>
                         </div>
                       </div>
 
