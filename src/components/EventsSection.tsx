@@ -67,15 +67,7 @@ export function EventsSection({ standalone = false }: { standalone?: boolean }) 
       const regionMatch = e.region === selectedRegion;
       return dateMatch && regionMatch;
     })
-    .sort((a, b) => {
-      const isSoldOutA = (a.currentMale >= a.maxMale) || (a.currentFemale >= a.maxFemale);
-      const isSoldOutB = (b.currentMale >= b.maxMale) || (b.currentFemale >= b.maxFemale);
-      
-      if (isSoldOutA !== isSoldOutB) {
-        return isSoldOutA ? 1 : -1;
-      }
-      return a.date.getTime() - b.date.getTime();
-    });
+    .sort((a, b) => a.date.getTime() - b.date.getTime());
 
   // 달력용 필터링 (지역만 유지, 날짜 필터 제거하여 상시 노출)
   const calendarEvents = liveEvents.filter(e => e.region === selectedRegion);
@@ -94,7 +86,7 @@ export function EventsSection({ standalone = false }: { standalone?: boolean }) 
           <span className="kl-gradient-text">{selectedRegion === 'busan' ? '부산' : '창원'} 참여 신청</span>
         </h2>
         <p style={{ color: 'var(--color-text-secondary)', fontSize: '1rem', marginBottom: '32px' }}>
-          {selectedRegion === 'busan' ? '부산' : '창원'} 로테이션 소개팅 일정을 확인하고 신청하세요. <span style={{ fontSize: '0.7rem', color: 'var(--color-primary-dark)', marginLeft: '4px' }}>v8.4.6</span>
+          {selectedRegion === 'busan' ? '부산' : '창원'} 로테이션 소개팅 일정을 확인하고 신청하세요. <span style={{ fontSize: '0.7rem', color: 'var(--color-primary-dark)', marginLeft: '4px' }}>v8.8.5</span>
         </p>
 
         {/* Region Filter */}
@@ -242,10 +234,15 @@ function EventCard({ event }: { event: KeylinkEvent }) {
 
   // 배지 상태 결정
   const badgeStatus = isSoldOut ? 'closed' : event.status === 'open' ? 'open' : 'upcoming';
-  const badgeLabel = isSoldOut ? '마감' : event.status === 'open' ? '모집중' : '오픈예정';
+  const badgeLabel = isSoldOut ? '모집 마감' : '모집 중';
 
   return (
-    <Link href={`/events/${event.id}`} className="event-card" style={{ pointerEvents: isSoldOut ? 'none' : 'auto', opacity: isSoldOut ? 0.85 : 1 }}>
+    <Link href={`/events/${event.id}`} className="event-card" style={{ 
+      pointerEvents: isSoldOut ? 'none' : 'auto', 
+      opacity: isSoldOut ? 0.6 : 1,
+      filter: isSoldOut ? 'grayscale(0.5)' : 'none',
+      cursor: isSoldOut ? 'not-allowed' : 'pointer'
+    }}>
       <div style={{
         height: '180px',
         background: event.region === 'busan'
@@ -323,8 +320,8 @@ function EventCard({ event }: { event: KeylinkEvent }) {
             </p>
           </div>
           {isSoldOut ? (
-            <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#C86A6A', fontSize: '0.85rem', fontWeight: '700', paddingBottom: '4px', background: 'rgba(200,106,106,0.08)', padding: '6px 12px', borderRadius: '8px' }}>
-              마감되었습니다
+            <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#999', fontSize: '0.85rem', fontWeight: '700', padding: '6px 12px', borderRadius: '8px', border: '1px solid #ddd' }}>
+              모집 마감
             </span>
           ) : (
             <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#FF6F61', fontSize: '0.85rem', fontWeight: '700', paddingBottom: '4px' }}>
