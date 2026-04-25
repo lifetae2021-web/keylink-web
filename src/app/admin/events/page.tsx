@@ -389,7 +389,7 @@ export default function EventsPage() {
     if (!session) return toast.error("세션 정보를 찾을 수 없습니다.");
     const user = userMap[app.userId] || {};
 
-    const eventTime = session.eventDate instanceof Date ? session.eventDate : session.eventDate.toDate();
+    const eventTime = session.eventDate instanceof Date ? session.eventDate : (session.eventDate as any).toDate();
     const formatter = new Intl.DateTimeFormat("ko-KR", {
       timeZone: "Asia/Seoul",
       month: "numeric", day: "numeric", weekday: "short",
