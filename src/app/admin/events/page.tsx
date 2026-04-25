@@ -1587,8 +1587,8 @@ export default function EventsPage() {
       {/* v8.1.7: 호감도 신청폼 세부 설정 모달 */}
       {isConfigModalOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
+            <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between shrink-0">
               <h3 className="text-lg font-black text-slate-800">
                 호감도 신청폼 세부 설정
               </h3>
@@ -1600,7 +1600,7 @@ export default function EventsPage() {
               </button>
             </div>
 
-            <div className="p-6 space-y-8">
+            <div className="p-6 space-y-8 overflow-y-auto">
               {/* 모집 정원 및 제한 */}
               <section className="space-y-4">
                 <div className="flex items-center justify-between">
@@ -1759,7 +1759,7 @@ export default function EventsPage() {
               </section>
             </div>
 
-            <div className="p-6 bg-slate-50 flex gap-3">
+            <div className="p-6 bg-slate-50 flex gap-3 shrink-0 border-t border-slate-100">
               <button
                 onClick={() => setIsConfigModalOpen(false)}
                 className="flex-1 h-12 rounded-xl border border-slate-200 bg-white text-slate-600 font-bold hover:bg-slate-100 transition-colors"
