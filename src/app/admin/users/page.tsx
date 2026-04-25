@@ -5,7 +5,7 @@ import {
   Search, CheckCircle, XCircle, Eye,
   Download, ShieldCheck, ChevronLeft, ChevronRight, Loader2,
   Filter, ArrowUpDown, ArrowUp, ArrowDown, Ticket,
-  UserPlus, Award, AlertCircle, Coins
+  UserPlus, Award, AlertCircle, Coins, Edit3
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { db } from '@/lib/firebase';
@@ -64,6 +64,10 @@ export default function UsersPage() {
   // Modal states
   const [selectedUserForAsset, setSelectedUserForAsset] = useState<any>(null);
   const [selectedUserForProfile, setSelectedUserForProfile] = useState<any>(null);
+
+  // v8.8.6: 직업 검토 상태 추가
+  const [editingJobId, setEditingJobId] = useState<string | null>(null);
+  const [tempJobValue, setTempJobValue] = useState<string>('');
 
   useEffect(() => {
     setIsLoading(true);
@@ -145,17 +149,47 @@ export default function UsersPage() {
     }
   };
 
-  const approve = async (id: string, name: string) => {
+  const approve = async (u: any) => {
     try {
-      const userRef = doc(db, 'users', id);
+      if (!u.isJobReviewed) {
+        return toast.error('먼저 직업 정보를 확인/수정하고 승인(Job Reviewed)해 주세요.');
+      }
+      const userRef = doc(db, 'users', u.id);
       await updateDoc(userRef, { 
         status: 'verified',
         updatedAt: Timestamp.now()
       });
-      toast.success(`${name} 승인 완료`);
+      toast.success(`${u.name} 승인 완료`);
     } catch (error) {
       console.error('Approval error:', error);
       toast.error('승인 처리 중 오류가 발생했습니다.');
+    }
+  };
+
+  const handleJobUpdate = async (userId: string, value: string) => {
+    try {
+      const userRef = doc(db, 'users', userId);
+      await updateDoc(userRef, {
+        job: value,
+        isJobReviewed: true,
+        updatedAt: Timestamp.now()
+      });
+      setEditingJobId(null);
+      toast.success('직업 정보가 수정 및 승인되었습니다.');
+    } catch (e) {
+      toast.error('직업 정보 업데이트에 실패했습니다.');
+    }
+  };
+
+  const toggleJobReviewed = async (userId: string, checked: boolean) => {
+    try {
+      const userRef = doc(db, 'users', userId);
+      await updateDoc(userRef, {
+        isJobReviewed: checked,
+        updatedAt: Timestamp.now()
+      });
+    } catch (e) {
+      toast.error('승인 상태 변경에 실패했습니다.');
     }
   };
 
@@ -215,7 +249,7 @@ export default function UsersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0F172A' }}>회원 관리</h2>
-          <p style={{ fontSize: '0.8rem', color: '#64748B', marginTop: 2 }}>실시간 데이터 동기화 활성화됨 <span className="text-[10px] font-bold text-[#FF7E7E] ml-2">v8.1.7 Integrated Auth</span></p>
+          <p style={{ fontSize: '0.8rem', color: '#64748B', marginTop: 2 }}>실시간 데이터 동기화 활성화됨 <span className="text-[10px] font-bold text-[#FF7E7E] ml-2">v8.8.6</span></p>
         </div>
         <button
           onClick={downloadCSV}
@@ -389,11 +423,50 @@ export default function UsersPage() {
                         </div>
                       </td>
 
-                      {/* 직업 */}
+                      {/* 3. 직업 (인라인 편집 + 검토 체크박스 이관 v8.8.6) */}
                       <td style={{ padding: '0 20px', verticalAlign: 'middle' }}>
-                        <p style={{ fontSize: '0.82rem', fontWeight: 500, color: (u.job || u.occupation) ? '#334155' : '#94A3B8' }}>
-                          {u.job || u.occupation || <span style={{ color: '#94A3B8' }}>-</span>}
-                        </p>
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-center gap-2 group/job relative">
+                            {editingJobId === u.id ? (
+                              <input 
+                                autoFocus
+                                value={tempJobValue}
+                                onChange={(e) => setTempJobValue(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') handleJobUpdate(u.id, tempJobValue);
+                                  if (e.key === 'Escape') setEditingJobId(null);
+                                }}
+                                onBlur={() => setEditingJobId(null)}
+                                className="w-full h-8 px-2 rounded border-2 border-blue-400 text-[0.8rem] font-bold outline-none"
+                              />
+                            ) : (
+                              <>
+                                <p className={`text-[0.82rem] font-bold tracking-tight ${u.job ? 'text-blue-600' : 'text-slate-800'}`}>
+                                  {u.job || u.occupation || <span className="text-slate-300 font-normal">-</span>}
+                                </p>
+                                <button 
+                                  onClick={() => {
+                                    setEditingJobId(u.id);
+                                    setTempJobValue(u.job || u.occupation || '');
+                                  }}
+                                  className="p-1.5 rounded-lg bg-slate-100 text-slate-400 opacity-0 group-hover/job:opacity-100 hover:bg-blue-50 hover:text-blue-500 transition-all"
+                                >
+                                  <Edit3 size={12} />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                          
+                          <label className={`flex items-center gap-1.5 w-fit cursor-pointer select-none px-2 py-1 rounded-lg border transition-all ${u.isJobReviewed ? 'bg-blue-50 border-blue-100 text-blue-600' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>
+                            <input 
+                              type="checkbox" 
+                              checked={!!u.isJobReviewed} 
+                              onChange={(e) => toggleJobReviewed(u.id, e.target.checked)}
+                              className="w-3 h-3 rounded"
+                            />
+                            <span className="text-[10px] font-black uppercase tracking-tight">Job Reviewed</span>
+                          </label>
+                        </div>
                       </td>
 
                       {/* 나이 */}
@@ -455,13 +528,19 @@ export default function UsersPage() {
                           >
                             <Coins size={12} /> 자산 관리
                           </button>
-                          
+  
                           {(u.status || 'pending') === 'pending' && (
                             <>
-
+                              <button
+                                onClick={() => approve(u)}
+                                className="flex items-center gap-1.5 rounded-lg transition-all hover:bg-emerald-500 hover:text-white"
+                                style={{ padding: '5px 10px', fontSize: '0.75rem', fontWeight: 700, background: '#ECFDF5', color: '#10B981', border: '1px solid #D1FAE5' }}
+                              >
+                                <CheckCircle size={12} /> 승인
+                              </button>
                               <button
                                 onClick={() => reject(u.id, u.name)}
-                                className="flex items-center gap-1.5 rounded-lg transition-all hover:shadow-sm"
+                                className="flex items-center gap-1.5 rounded-lg transition-all hover:bg-rose-500 hover:text-white"
                                 style={{ padding: '5px 10px', fontSize: '0.75rem', fontWeight: 700, background: '#FEF2F2', color: '#EF4444', border: '1px solid #FEE2E2' }}
                               >
                                 <XCircle size={12} /> 반려
