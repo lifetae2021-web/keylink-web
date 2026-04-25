@@ -91,27 +91,49 @@ export async function POST(
       });
     });
 
-    // 5. Persistence to Firestore
-    const batch = adminDb.batch();
-    
-    participants.forEach(p => {
-      const partners = userPartners[p.id] || [];
-      const id = `${sessionId}_${p.id}`;
-      
-      batch.set(adminDb.collection('matchingResults').doc(id), {
-        sessionId,
-        userId: p.id,
-        matched: partners.length > 0,
-        partnerId: partners[0] || null, // Keep for backward compatibility
-        partnerIds: partners,           // Multiple partners support
-        receivedVotes: voteCountMap[p.id] || 0,
-        status: 'pending',
-        approvedAt: null,
-        updatedAt: Timestamp.now()
-      });
+    // 5. Delete votes from non-confirmed participants
+    const confirmedUserIds = new Set(participants.map(p => p.id));
+    const orphanVoteDocs = votesSnap.docs.filter(d => {
+      const userId = d.data().userId as string;
+      return userId && !userId.startsWith('system_') && !confirmedUserIds.has(userId);
+    });
+    if (orphanVoteDocs.length > 0) {
+      const deleteBatch = adminDb.batch();
+      orphanVoteDocs.forEach(d => deleteBatch.delete(d.ref));
+      await deleteBatch.commit();
+    }
+
+    // 6. Delete stale matchingResults from previous runs
+    const oldResultsSnap = await adminDb.collection('matchingResults')
+      .where('sessionId', '==', sessionId)
+      .get();
+    if (!oldResultsSnap.empty) {
+      const cleanBatch = adminDb.batch();
+      oldResultsSnap.docs.forEach(d => cleanBatch.delete(d.ref));
+      await cleanBatch.commit();
+    }
+
+    // 7. Save summary document for admin drawer (single source of truth)
+    const unmatchedUserIds = participants.filter(p => userPartners[p.id].length === 0).map(p => p.id);
+    await adminDb.collection('matchingSummaries').doc(sessionId).set({
+      sessionId,
+      matchedPairs,
+      unmatchedUserIds,
+      voteCountMap,
+      status: 'pending',
+      approvedAt: null,
+      calculatedAt: Timestamp.now(),
     });
 
-    await batch.commit();
+    // 8. Delete stale per-participant matchingResults (legacy)
+    const oldPerParticipantSnap = await adminDb.collection('matchingResults')
+      .where('sessionId', '==', sessionId)
+      .get();
+    if (!oldPerParticipantSnap.empty) {
+      const cleanBatch = adminDb.batch();
+      oldPerParticipantSnap.docs.forEach(d => cleanBatch.delete(d.ref));
+      await cleanBatch.commit();
+    }
 
     return NextResponse.json({
       success: true,

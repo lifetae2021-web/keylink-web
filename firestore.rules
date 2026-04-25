@@ -68,19 +68,26 @@ service cloud.firestore {
       // (중복 방지는 복합 ID와 서버 로직으로 처리)
       allow create: if isSignedIn() &&
         request.resource.data.userId == request.auth.uid;
-      // 제출 후 수정 불가
-      allow update, delete: if false;
+      allow create, update, delete: if isAdmin();
     }
 
     // ─────────────────────────────────────
-    // matchingResults (매칭 결과) 컬렉션
+    // matchingResults (매칭 결과) 컬렉션 — legacy, 삭제 예정
     // ─────────────────────────────────────
     match /matchingResults/{resultId} {
-      // 승인된(approved) 결과만 본인이 읽기 가능
       allow read: if isSignedIn() &&
         resource.data.userId == request.auth.uid &&
         resource.data.status == 'approved';
-      // 관리자: 모든 결과 읽기/쓰기 (알고리즘 실행 및 승인)
+      allow read, write: if isAdmin();
+    }
+
+    // ─────────────────────────────────────
+    // matchingSummaries (매칭 요약) 컬렉션
+    // ─────────────────────────────────────
+    match /matchingSummaries/{sessionId} {
+      // 승인된 결과는 로그인한 유저 누구나 읽기 가능 (본인 결과 필터링은 클라이언트에서)
+      allow read: if isSignedIn() && resource.data.status == 'approved';
+      // 관리자: 모든 읽기/쓰기
       allow read, write: if isAdmin();
     }
 

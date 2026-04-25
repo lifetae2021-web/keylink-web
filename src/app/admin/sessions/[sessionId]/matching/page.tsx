@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc, collection, getDocs, query, where, setDoc, updateDoc, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, collection, getDocs, query, where, setDoc, updateDoc, Timestamp, orderBy } from 'firebase/firestore';
 import { getSession } from '@/lib/firestore/sessions';
 import { getAllVotesBySession } from '@/lib/firestore/votes';
 import { Session, Vote, Application, MatchingAlgorithmResult } from '@/lib/types';
@@ -94,6 +94,34 @@ export default function MatchingAdminPage() {
       confirmed.forEach(a => { map[a.userId] = a; });
       setParticipantMap(map);
       setVotes(fetchedVotes);
+
+      // 기존 매칭 결과 복원
+      const existingResultsSnap = await getDocs(query(
+        collection(db, 'matchingResults'),
+        where('sessionId', '==', sessionId)
+      ));
+      if (!existingResultsSnap.empty) {
+        const docs = existingResultsSnap.docs.map(d => ({ id: d.id, ...d.data() as any }));
+        const seenPairs = new Set<string>();
+        const matchedPairs: { userAId: string; userBId: string }[] = [];
+        const unmatchedUserIds: string[] = [];
+        const voteCountMap: Record<string, number> = {};
+
+        docs.forEach(d => {
+          voteCountMap[d.userId] = d.receivedVotes || 0;
+          if (d.matched && d.partnerId) {
+            const key = [d.userId, d.partnerId].sort().join('_');
+            if (!seenPairs.has(key)) {
+              seenPairs.add(key);
+              matchedPairs.push({ userAId: d.userId, userBId: d.partnerId });
+            }
+          } else if (!d.matched) {
+            unmatchedUserIds.push(d.userId);
+          }
+        });
+
+        setResult({ sessionId, matchedPairs, unmatchedUserIds, voteCountMap, calculatedAt: new Date() });
+      }
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
@@ -358,29 +386,44 @@ export default function MatchingAdminPage() {
           </div>
         )}
 
-        {/* 알고리즘 실행 카드 */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-          <h2 className="text-base font-extrabold text-slate-800 flex items-center gap-2 mb-1">
-            <Play size={17} className="text-[#FF6F61]" /> 매칭 알고리즘 실행
-          </h2>
-          <p className="text-slate-400 text-sm mb-5 leading-relaxed">
-            투표 데이터를 기반으로 <strong className="text-slate-600">상호 선택 (어느 순위든 서로 선택)</strong> 방식으로 매칭 쌍을 계산합니다.<br />
-            결과는 '대기(pending)' 상태로 저장되며, 검토 후 최종 승인 시 참가자에게 공개됩니다.
-          </p>
-          <button
-            onClick={runAlgorithm}
-            disabled={running || session?.status === 'completed'}
-            className="flex items-center gap-3 px-8 py-3.5 bg-[#FF6F61] hover:bg-[#ff5746] text-white rounded-xl font-black text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-orange-100"
-          >
-            <Play size={18} fill="white" />
-            {running ? '알고리즘 실행 중...' : '매칭 알고리즘 실행'}
-          </button>
-          {session?.status === 'completed' && (
-            <p className="mt-3 text-emerald-600 text-sm font-semibold flex items-center gap-2">
-              <CheckCircle2 size={16} /> 이 기수는 이미 최종 승인되었습니다.
+        {/* 알고리즘 실행 카드 — 결과가 없을 때만 메인으로, 있으면 재실행으로 */}
+        {!result ? (
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+            <h2 className="text-base font-extrabold text-slate-800 flex items-center gap-2 mb-1">
+              <Play size={17} className="text-[#FF6F61]" /> 매칭 알고리즘 실행
+            </h2>
+            <p className="text-slate-400 text-sm mb-5 leading-relaxed">
+              투표 데이터를 기반으로 <strong className="text-slate-600">상호 선택 (어느 순위든 서로 선택)</strong> 방식으로 매칭 쌍을 계산합니다.<br />
+              결과는 '대기(pending)' 상태로 저장되며, 검토 후 최종 승인 시 참가자에게 공개됩니다.
             </p>
-          )}
-        </div>
+            <button
+              onClick={runAlgorithm}
+              disabled={running || session?.status === 'completed'}
+              className="flex items-center gap-3 px-8 py-3.5 bg-[#FF6F61] hover:bg-[#ff5746] text-white rounded-xl font-black text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-orange-100"
+            >
+              <Play size={18} fill="white" />
+              {running ? '알고리즘 실행 중...' : '매칭 알고리즘 실행'}
+            </button>
+            {session?.status === 'completed' && (
+              <p className="mt-3 text-emerald-600 text-sm font-semibold flex items-center gap-2">
+                <CheckCircle2 size={16} /> 이 기수는 이미 최종 승인되었습니다.
+              </p>
+            )}
+          </div>
+        ) : (
+          session?.status !== 'completed' && (
+            <div className="flex justify-end">
+              <button
+                onClick={runAlgorithm}
+                disabled={running}
+                className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-500 text-xs font-bold rounded-xl hover:bg-slate-50 transition-colors shadow-sm disabled:opacity-50"
+              >
+                <RefreshCw size={13} className={running ? 'animate-spin' : ''} />
+                {running ? '실행 중...' : '알고리즘 재실행 (덮어쓰기)'}
+              </button>
+            </div>
+          )
+        )}
 
         {/* 결과 미리보기 */}
         {result && (

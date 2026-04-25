@@ -7,12 +7,12 @@ import { compressImage } from '@/lib/utils';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { 
   doc, getDoc, updateDoc, serverTimestamp, deleteField, 
-  collection, query, where, getDocs, orderBy, arrayUnion 
+  collection, query, where, getDocs, arrayUnion
 } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import {
-  LogOut, ArrowLeft, Camera, ChevronDown, ChevronUp, X, Check, Edit3, Package, Upload,
-  Clock, Banknote, CheckCircle2, XCircle, Vote as VoteIcon, Lock, ShieldCheck, FileText, History,
+  LogOut, Camera, ChevronDown, ChevronUp, X, Check, Edit3, Package, Upload,
+  Clock, Banknote, CheckCircle2, XCircle, Vote as VoteIcon, Lock, ShieldCheck, FileText,
   ChevronRight, Heart
 } from 'lucide-react';
 import Link from 'next/link';
@@ -77,9 +77,6 @@ export default function MyPage() {
   const [applications, setApplications] = useState<Application[]>([]);
   const [hasVoted, setHasVoted] = useState(false);
   
-  // v7.9.5: 내 신청 히스토리
-  const [history, setHistory] = useState<any[]>([]);
-  const [showAllHistory, setShowAllHistory] = useState(false);
   const [sessionsMap, setSessionsMap] = useState<Record<string, Session>>({});
 
   // Edit Form State
@@ -162,34 +159,6 @@ export default function MyPage() {
           }
         });
       });
-
-      // v7.9.5: 내 신청 내역 일시불 오프라인 패치 (실시간까지는 필요X)
-      const fetchHistory = async () => {
-        try {
-          const q = query(
-            collection(db, 'applications'), 
-            where('userId', '==', currentUser.uid), 
-            orderBy('appliedAt', 'desc')
-          );
-          const hSnap = await getDocs(q);
-          const apps = hSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          setHistory(apps);
-
-          // 세션 정보 캐싱 (제목 표시용)
-          const sessionIds = Array.from(new Set(apps.map((a: any) => a.sessionId)));
-          const newMap: any = { ...sessionsMap };
-          for (const sId of sessionIds) {
-            if (!newMap[sId]) {
-              const sSnap = await getDoc(doc(db, 'sessions', sId));
-              if (sSnap.exists()) newMap[sId] = { id: sSnap.id, ...sSnap.data() };
-            }
-          }
-          setSessionsMap(newMap);
-        } catch (e) {
-          console.error("Error fetching history:", e);
-        }
-      };
-      fetchHistory();
 
       return () => { unsubApps(); };
     });
@@ -573,11 +542,6 @@ export default function MyPage() {
 
       <div style={{ maxWidth: '460px', margin: '0 auto', padding: '0 16px' }}>
 
-        {/* Back */}
-        <Link href="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#bbb', textDecoration: 'none', fontSize: '0.85rem', fontWeight: '600', marginBottom: '20px' }}>
-          <ArrowLeft size={16} /> 홈으로
-        </Link>
-
         {/* ─── PROFILE CARD ─── */}
         <div style={{ background: '#FFFFFF', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 10px 40px rgba(255,111,97,0.08)', border: '1px solid #FFE8E5', marginBottom: '16px' }}>
 
@@ -669,19 +633,35 @@ export default function MyPage() {
           )}
         </div>
 
+        {/* ─── 매칭 결과 목록 이동 버튼 ─── */}
+        <Link
+          href="/matching-results"
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            background: '#FFFFFF', borderRadius: '24px', padding: '20px 24px',
+            boxShadow: '0 10px 40px rgba(255,111,97,0.08)', border: '1px solid #FFE8E5',
+            textDecoration: 'none', marginBottom: '20px', transition: 'background 0.2s'
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.background = '#FFFAFA'}
+          onMouseLeave={(e) => e.currentTarget.style.background = '#FFFFFF'}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ width: '44px', height: '44px', borderRadius: '14px', background: '#FFF0EE', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Heart size={22} color="#FF6F61" fill="#FF6F61" />
+            </div>
+            <div>
+              <p style={{ fontSize: '1rem', fontWeight: '900', color: '#111', marginBottom: '2px' }}>내 매칭 결과 히스토리</p>
+              <p style={{ fontSize: '0.8rem', color: '#9CA3AF', fontWeight: '600' }}>참여 기수별 결과 모아보기</p>
+            </div>
+          </div>
+          <ChevronRight size={20} color="#CBD5E1" />
+        </Link>
+
         {/* ─── v8.1.7: 신청 현황 상태 블록 (다중 카드 지원) ─── */}
         <ApplicationStatusSection
           applications={applications}
           sessionsMap={sessionsMap}
           userId={user?.uid || ''}
-        />
-
-        {/* ─── v7.9.5: 내 신청 히스토리 ─── */}
-        <ApplicationHistoryBlock 
-          history={history} 
-          sessionsMap={sessionsMap}
-          showAll={showAllHistory}
-          setShowAll={setShowAllHistory}
         />
 
         {/* ─── LOGOUT ─── */}
@@ -693,7 +673,7 @@ export default function MyPage() {
         </button>
 
         <div style={{ textAlign: 'center', marginTop: '32px', color: '#BBB', fontSize: '0.8rem', fontWeight: '500' }}>
-          매칭을 위한 모든 정보는 암호화되어 보호됩니다. <span style={{ marginLeft: 8, fontSize: '0.7rem', color: '#DDD' }}>v8.8.9</span>
+          매칭을 위한 모든 정보는 암호화되어 보호됩니다. <span style={{ marginLeft: 8, fontSize: '0.7rem', color: '#DDD' }}>v1.9.1</span>
         </div>
       </div>
 
@@ -950,9 +930,6 @@ function ApplicationStatusBlock({ application, session, userId, hasVoted }: Stat
             />
           )}
 
-          <Link href="/matching/result/my" style={{ display: 'block', marginTop: '16px', color: '#FF6F61', fontWeight: '700', fontSize: '0.85rem', textDecoration: 'none' }}>
-            내 매칭 리포트 보기 →
-          </Link>
         </div>
       </>
     );
@@ -991,8 +968,12 @@ function ReceivedHeartsFeed({ session, userId }: { session: Session, userId: str
         setMyVote(mine);
 
         const profiles = await Promise.all(received.map(async (v) => {
-          const userSnap = await getDoc(doc(db, 'users', v.userId));
-          return { id: v.userId, voteData: v, ...(userSnap.data() || {}) };
+          const [userSnap, appSnap] = await Promise.all([
+            getDoc(doc(db, 'users', v.userId)),
+            getDocs(query(collection(db, 'applications'), where('userId', '==', v.userId), where('sessionId', '==', session.id), where('status', '==', 'confirmed')))
+          ]);
+          const appData = !appSnap.empty ? appSnap.docs[0].data() : {};
+          return { id: v.userId, voteData: v, ...(userSnap.data() || {}), gender: appData.gender, slotNumber: appData.slotNumber };
         }));
 
         setVoters(profiles);
@@ -1034,15 +1015,13 @@ function ReceivedHeartsFeed({ session, userId }: { session: Session, userId: str
           const isAnonymous = voter.voteData?.disclosureMode === 'anonymous' || myVote?.disclosureMode === 'anonymous';
           
           // 실명 대신 호수 공개
-          const displayName = isAnonymous ? '익명' : (voter.voteData?.myAlias ? `${voter.voteData.myAlias}호` : '공개');
+          const genderPrefix = voter.gender === 'male' ? '키링남' : voter.gender === 'female' ? '키링녀' : '';
+          const displayName = isAnonymous ? '익명' : (voter.voteData?.myAlias ? `${genderPrefix} ${voter.voteData.myAlias}호` : '공개');
           const displayPhoto = isAnonymous ? '/images/placeholder-user.png' : ((voter.photos && voter.photos[0]) || '/images/placeholder-user.png');
-          const displaySubtext = isAnonymous ? '비공개' : `${voter.birthDate ? calcAge(voter.birthDate) : ''} · ${voter.residence || ''}`;
+          const displaySubtext = isAnonymous ? '비공개' : '';
 
           return (
             <div key={voter.id} style={{ display: 'flex', alignItems: 'center', gap: '14px', background: isMutual ? '#FFF5F4' : '#fff', padding: '12px 16px', borderRadius: '16px', border: isMutual ? '1.5px solid #FFDBE9' : '1.5px solid #F1F5F9', boxShadow: isMutual ? '0 4px 12px rgba(255,111,97,0.1)' : 'none' }}>
-              <div style={{ width: '52px', height: '52px', borderRadius: '12px', overflow: 'hidden', flexShrink: 0, background: '#FFE8E5' }}>
-                <img src={displayPhoto} alt={displayName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              </div>
               <div style={{ flex: 1 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <span style={{ fontSize: '0.9rem', fontWeight: '800', color: '#1E293B' }}>{displayName}</span>
@@ -1056,84 +1035,6 @@ function ReceivedHeartsFeed({ session, userId }: { session: Session, userId: str
           );
         })}
       </div>
-    </div>
-  );
-}
-function ApplicationHistoryBlock({ history, sessionsMap, showAll, setShowAll }: { 
-  history: any[], 
-  sessionsMap: Record<string, Session>,
-  showAll: boolean,
-  setShowAll: (v: boolean) => void 
-}) {
-  if (history.length === 0) return null;
-
-  const displayList = showAll ? history : history.slice(0, 5);
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'confirmed': return { text: '선발 확정', bg: '#10B981', color: '#fff' };
-      case 'selected': return { text: '입금 대기', bg: '#F59E0B', color: '#fff' };
-      case 'applied': return { text: '검토 중', bg: '#FDE047', color: '#92400E' };
-      case 'cancelled': return { text: '취소됨', bg: '#E5E7EB', color: '#9CA3AF' };
-      default: return { text: '미선발', bg: '#F3F4F6', color: '#9CA3AF' };
-    }
-  };
-
-  return (
-    <div style={{ background: '#FFFFFF', borderRadius: '24px', boxShadow: '0 10px 40px rgba(255,111,97,0.08)', border: '1px solid #FFE8E5', marginBottom: '20px', overflow: 'hidden' }}>
-      <div style={{ padding: '20px 24px', borderBottom: '1px solid #FFF0EE', display: 'flex', alignItems: 'center', gap: '10px' }}>
-        <History size={18} color="#FF6F61" />
-        <span style={{ fontSize: '1rem', fontWeight: '900', color: '#111' }}>내 신청 히스토리</span>
-        <span style={{ marginLeft: 'auto', fontSize: '0.75rem', fontWeight: '700', color: '#AAA' }}>총 {history.length}건</span>
-      </div>
-      
-      <div style={{ padding: '8px 0' }}>
-        {displayList.map((app, i) => {
-          const session = sessionsMap[app.sessionId];
-          const sessionTitle = session ? `${session.region === 'busan' ? '부산' : '창원'} ${session.episodeNumber}기` : '알 수 없는 기수';
-          const appliedDate = app.appliedAt?.toDate ? app.appliedAt.toDate() : new Date(app.appliedAt);
-          const dateStr = appliedDate.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
-          const status = getStatusBadge(app.status);
-
-          return (
-            <Link 
-              key={app.id}
-              href={app.status === 'confirmed' ? '/matching/result/my' : `/events/${app.sessionId}`}
-              style={{ 
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', 
-                borderBottom: i === displayList.length - 1 ? 'none' : '1px solid #FFF9F8',
-                textDecoration: 'none', transition: 'background 0.2s'
-              }}
-              onMouseEnter={e => e.currentTarget.style.background = '#FFFAFA'}
-              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-            >
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <span style={{ fontSize: '0.9rem', fontWeight: '800', color: '#334155' }}>{sessionTitle}</span>
-                <span style={{ fontSize: '0.75rem', color: '#94A3B8', fontWeight: '600' }}>신청일: {dateStr}</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span style={{ 
-                  padding: '4px 10px', borderRadius: '100px', background: status.bg, 
-                  fontSize: '0.7rem', fontWeight: '800', color: status.color 
-                }}>{status.text}</span>
-                <ChevronRight size={14} color="#CBD5E1" />
-              </div>
-            </Link>
-          );
-        })}
-      </div>
-
-      {!showAll && history.length > 5 && (
-        <button 
-          onClick={() => setShowAll(true)}
-          style={{ 
-            width: '100%', padding: '14px', background: '#F8FAFC', border: 'none', borderTop: '1px solid #FFF0EE',
-            color: '#64748B', fontSize: '0.85rem', fontWeight: '700', cursor: 'pointer' 
-          }}
-        >
-          전체 신청 내역 더 보기 ({history.length - 5}개 더 있음)
-        </button>
-      )}
     </div>
   );
 }
