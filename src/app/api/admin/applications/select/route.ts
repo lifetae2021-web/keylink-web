@@ -64,25 +64,22 @@ export async function POST(req: NextRequest) {
           return; // 성공으로 간주하거나 중단
         }
 
-        // v8.1.7: 쿼리(get query)는 트랜잭션 내에서 지원되지 않으므로 세션 카운터를 활용
-        const currentCount = gender === 'male' ? (sessionData.currentMale || 0) : (sessionData.currentFemale || 0);
-        const maxCount = gender === 'male' ? (sessionData.maxMale || 8) : (sessionData.maxFemale || 8);
-
-        if (currentCount >= maxCount) {
-          throw new Error(`해당 성별의 모집 정원이 이미 충족되었습니다. (현재 ${currentCount}/${maxCount}명)`);
-        }
-
-        // 상태 업데이트 및 카운터 증가
+        // 선발(selected)은 정원 초과 여부 관계없이 허용 (확정 시 슬롯/대기자 분기)
         transaction.update(appRef, {
           status: 'selected',
           updatedAt: FieldValue.serverTimestamp(),
         });
 
+        const currentCount = gender === 'male' ? (sessionData.currentMale || 0) : (sessionData.currentFemale || 0);
+        const maxCount = gender === 'male' ? (sessionData.maxMale || 8) : (sessionData.maxFemale || 8);
         const counterField = gender === 'male' ? 'currentMale' : 'currentFemale';
-        transaction.update(sessionRef, {
-          [counterField]: FieldValue.increment(1),
-          updatedAt: FieldValue.serverTimestamp(),
-        });
+
+        if (currentCount < maxCount) {
+          transaction.update(sessionRef, {
+            [counterField]: FieldValue.increment(1),
+            updatedAt: FieldValue.serverTimestamp(),
+          });
+        }
       });
     } catch (txnError: any) {
       console.error('Selection Transaction Failed:', txnError);

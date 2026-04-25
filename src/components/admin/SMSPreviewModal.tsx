@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, MessageSquare, Send, User, Calendar, MapPin, CreditCard } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 interface SMSPreviewModalProps {
   isOpen: boolean;
@@ -8,6 +9,8 @@ interface SMSPreviewModalProps {
   applicant: any;
   session: any;
   defaultMessage: string;
+  recipientLabel?: string;
+  confirmLabel?: string;
 }
 
 const SMSPreviewModal: React.FC<SMSPreviewModalProps> = ({
@@ -17,6 +20,8 @@ const SMSPreviewModal: React.FC<SMSPreviewModalProps> = ({
   applicant,
   session,
   defaultMessage,
+  recipientLabel,
+  confirmLabel,
 }) => {
   const [message, setMessage] = useState(defaultMessage);
   const [isSending, setIsSending] = useState(false);
@@ -34,8 +39,9 @@ const SMSPreviewModal: React.FC<SMSPreviewModalProps> = ({
     try {
       await onConfirm(message);
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
+      toast.error(error?.message || '문자 발송 중 오류가 발생했습니다.');
     } finally {
       setIsSending(false);
     }
@@ -81,8 +87,14 @@ const SMSPreviewModal: React.FC<SMSPreviewModalProps> = ({
                     <User size={20} />
                   </div>
                   <div className="truncate">
-                    <p className="text-sm font-black text-slate-800 truncate">{applicant?.name}님</p>
-                    <p className="text-[10px] font-bold text-slate-500 tracking-tight">{applicant?.phone || '번호 없음'}</p>
+                    {recipientLabel ? (
+                      <p className="text-sm font-black text-slate-800 truncate">{recipientLabel}</p>
+                    ) : (
+                      <>
+                        <p className="text-sm font-black text-slate-800 truncate">{applicant?.name}님</p>
+                        <p className="text-[10px] font-bold text-slate-500 tracking-tight">{applicant?.phone || '번호 없음'}</p>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -96,7 +108,7 @@ const SMSPreviewModal: React.FC<SMSPreviewModalProps> = ({
                   </div>
                   <div className="flex items-center gap-3 text-slate-600">
                     <MapPin size={14} className="text-[#FF7E7E]" />
-                    <span className="text-xs font-bold truncate">{session?.location || '장소 미정'}</span>
+                    <span className="text-xs font-bold truncate">{session?.venue || session?.location || '장소 미정'}</span>
                   </div>
                   <div className="flex items-center gap-3 text-slate-600">
                     <CreditCard size={14} className="text-[#FF7E7E]" />
@@ -105,11 +117,13 @@ const SMSPreviewModal: React.FC<SMSPreviewModalProps> = ({
                 </div>
               </div>
 
-              <div className="p-4 bg-blue-50 rounded-2xl border border-blue-100/50">
-                <p className="text-[10px] font-semibold text-blue-600/80 leading-relaxed">
-                  💡 발송 버튼을 누르면 상태가 <b className="text-blue-700">'선발'</b>로 변경되며 수정한 메시지가 솔라피를 통해 즉시 발송됩니다.
-                </p>
-              </div>
+              {!confirmLabel && (
+                <div className="p-4 bg-blue-50 rounded-2xl border border-blue-100/50">
+                  <p className="text-[10px] font-semibold text-blue-600/80 leading-relaxed">
+                    💡 발송 버튼을 누르면 상태가 <b className="text-blue-700">'선발'</b>로 변경되며 수정한 메시지가 솔라피를 통해 즉시 발송됩니다.
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Right Side: Editor */}
@@ -150,7 +164,7 @@ const SMSPreviewModal: React.FC<SMSPreviewModalProps> = ({
               ) : (
                 <Send size={16} />
               )}
-              메시지 발송 및 선발 완료
+              {confirmLabel ?? '메시지 발송 및 선발 완료'}
             </button>
           </div>
         </div>

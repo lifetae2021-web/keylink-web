@@ -75,10 +75,11 @@ export interface Session {
 // Applications (신청서) 컬렉션
 // ─────────────────────────────────────────────
 export type ApplicationStatus =
-  | 'applied'    // 신청 완료 (검토 중)
-  | 'selected'   // 선발됨 (입금 대기)
-  | 'confirmed'  // 입금 확인 → 참가 확정
-  | 'cancelled'; // 취소
+  | 'applied'     // 신청 완료 (검토 중)
+  | 'selected'    // 선발됨 (입금 대기)
+  | 'confirmed'   // 입금 확인 → 참가 확정
+  | 'waitlisted'  // 정원 초과 → 대기자
+  | 'cancelled';  // 취소
 
 export interface Application {
   id: string;
@@ -112,6 +113,9 @@ export interface Application {
   // v8.3.8: 직업 검토 프로세스용 필드
   displayJob?: string;         // 대외 노출용 정제된 직업명 (예: 대기업 직장인)
   isJobReviewed?: boolean;     // 관리자 직업 확인 완료 여부
+
+  // v8.5.4: 고정 호수 (정원 내 확정 시 빈 슬롯 순서대로 배정)
+  slotNumber?: number;
 }
 
 // ─────────────────────────────────────────────

@@ -87,9 +87,7 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
       return {
         birthYear: `${year}년생`,
         job: p.displayJob || p.job || u.job || '직장인',
-        mbti: p.mbti || u.mbti || '미표기',
         height: u.height ? `${u.height}cm` : '160cm대',
-        status: 'confirmed'
       };
     }).sort((a, b) => b.birthYear.localeCompare(a.birthYear));
   }, [activeTab, maleApplicants, femaleApplicants, userMap]);
@@ -342,7 +340,7 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
             padding: '24px 60px', fontSize: '1.2rem', fontWeight: '900', borderRadius: '100px',
             boxShadow: '0 20px 40px rgba(255,111,97,0.3)', transition: 'transform 0.3s ease'
           }} onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'} onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}>
-            지금 참여 신청하기 <ArrowRight size={22} />
+            {progressMale >= 1 && progressFemale >= 1 ? '대기자로 신청하기' : '지금 참여 신청하기'} <ArrowRight size={22} />
           </Link>
           <p style={{ marginTop: '20px', color: '#888', fontWeight: '500', fontSize: '0.9rem' }}>
             * 실시간 상황에 따라 인원이 빠르게 마감될 수 있습니다.

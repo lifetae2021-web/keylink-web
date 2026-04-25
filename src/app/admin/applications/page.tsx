@@ -822,16 +822,25 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                             <button onClick={() => updateAppStatus(app, 'confirmed')} className="px-3 py-1.5 rounded-xl text-[0.75rem] font-bold bg-[#FFD700]/10 text-[#B8860B] border border-[#FFD700]/30 hover:bg-[#FFD700] hover:text-white transition-all shadow-sm">입금확정</button>
                           )}
                           
-                          <button 
-                            onClick={() => {
-                              if (window.confirm('정말 취소하시겠습니까? (확정된 참가자의 경우 정원 카운트도 줄어듭니다)')) {
-                                updateAppStatus(app, app.status === 'cancelled' ? 'confirmed' : 'cancelled');
-                              }
-                            }} 
-                            className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${app.status === 'cancelled' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100 shadow-sm' : 'bg-rose-50 text-rose-400 opacity-0 group-hover:opacity-100 border border-rose-100 hover:bg-rose-500 hover:text-white shadow-sm'}`}
-                          >
-                            {app.status === 'cancelled' ? <span className="text-[0.7rem] font-bold">복구</span> : <XCircle size={18} />}
-                          </button>
+                          {app.status === 'cancelled' ? (
+                            <button
+                              onClick={() => updateAppStatus(app, 'confirmed')}
+                              className="px-3 py-1.5 rounded-xl text-[0.75rem] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100 hover:bg-emerald-500 hover:text-white transition-all shadow-sm"
+                            >
+                              복구
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => {
+                                if (window.confirm('정말 취소하시겠습니까? (확정된 참가자의 경우 정원 카운트도 줄어듭니다)')) {
+                                  updateAppStatus(app, 'cancelled');
+                                }
+                              }}
+                              className="w-9 h-9 rounded-xl flex items-center justify-center transition-all bg-rose-50 text-rose-400 opacity-0 group-hover:opacity-100 border border-rose-100 hover:bg-rose-500 hover:text-white shadow-sm"
+                            >
+                              <XCircle size={18} />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
