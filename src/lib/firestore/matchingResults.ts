@@ -29,6 +29,7 @@ function fromDoc(snap: DocumentSnapshot): MatchingResult | null {
     userId: d.userId,
     matched: d.matched,
     partnerId: d.partnerId ?? null,
+    partnerIds: d.partnerIds ?? [],
     partnerProfile: d.partnerProfile ?? undefined,
     receivedVotes: d.receivedVotes ?? 0,
     status: d.status as MatchingResultStatus,
