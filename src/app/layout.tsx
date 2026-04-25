@@ -31,6 +31,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ko">
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+      </head>
       <body className="antialiased">
         <PublicLayout>{children}</PublicLayout>
         <div className="fixed bottom-4 right-4 z-[9999] pointer-events-none select-none text-black font-black text-lg bg-white/80 px-3 py-1 rounded-md shadow-sm">
