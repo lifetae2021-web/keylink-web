@@ -1279,7 +1279,7 @@ export default function EventsPage() {
                                                 </span>
                                               </div>
                                             </div>
-                                            <div className="flex items-center gap-1">
+                                            <div className="flex items-center gap-2">
                                               <button
                                                 onClick={() => {
                                                   setSmsTargets([{ phone: app.phone, name: app.name || '참가자', gender: app.gender, slotNumber: app.slotNumber, userId: app.userId }]);
