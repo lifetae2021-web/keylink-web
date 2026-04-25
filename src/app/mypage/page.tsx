@@ -736,7 +736,7 @@ export default function MyPage() {
         </button>
 
         <div style={{ textAlign: 'center', marginTop: '32px', color: '#BBB', fontSize: '0.8rem', fontWeight: '500' }}>
-          매칭을 위한 모든 정보는 암호화되어 보호됩니다. <span style={{ marginLeft: 8, fontSize: '0.7rem', color: '#DDD' }}>v1.9.7</span>
+          매칭을 위한 모든 정보는 암호화되어 보호됩니다. <span style={{ marginLeft: 8, fontSize: '0.7rem', color: '#DDD' }}>v1.9.8</span>
         </div>
       </div>
 

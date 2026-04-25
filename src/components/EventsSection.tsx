@@ -48,9 +48,9 @@ export function EventsSection({ standalone = false }: { standalone?: boolean }) 
   // Firestore 실시간 구독
   useEffect(() => {
     const unsubscribe = subscribeAllSessions((sessions) => {
-      // open, closed, voting, matching 상태 세션을 카드에 표시 (v6.8.0)
+      // v1.9.8: 완료(completed) 상태를 제외한 모든 기수를 불러와 마감 기수 누락 방지
       const displayable = sessions.filter(
-        (s) => ['open', 'closed', 'voting', 'matching'].includes(s.status)
+        (s) => s.status !== 'completed'
       );
       
       const mappedEvents = displayable.map(sessionToEvent);
@@ -60,18 +60,15 @@ export function EventsSection({ standalone = false }: { standalone?: boolean }) 
     return () => unsubscribe();
   }, []);
 
-  // 카드 리스트용 필터링 및 정렬 (v1.9.9: 마감 기수 노출 유지)
-  const now = new Date();
+  // 카드 리스트용 필터링 및 정렬 (v1.9.8: 마감 기수 노출 24시간 유지)
+  // v1.9.8: 날짜 기반 필터 제거 → status 기반으로만 처리
+  // completed(종료) 기수는 구독 레벨에서 이미 제외됨
+  // 따라서 여기서는 지역/날짜 필터만 적용하여 마감 기수도 정상 노출
   const filtered = liveEvents
     .filter((e) => {
       const dateMatch = selectedDate ? isSameDay(e.date, selectedDate) : true;
       const regionMatch = e.region === selectedRegion;
-      
-      const twoHoursAfter = new Date(e.date.getTime() + 2 * 60 * 60 * 1000);
-      const isFinished = now >= twoHoursAfter;
-      
-      // v1.9.8: 종료된 기수만 숨기고 마감 기수는 대기 신청을 위해 노출 유지
-      return dateMatch && regionMatch && !isFinished;
+      return dateMatch && regionMatch;
     })
     .sort((a, b) => a.date.getTime() - b.date.getTime());
 
