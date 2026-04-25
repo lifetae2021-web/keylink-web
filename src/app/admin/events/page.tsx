@@ -1014,8 +1014,8 @@ export default function EventsPage() {
                                 className={`flex-1 h-9 rounded-lg text-[0.75rem] font-black transition-all ${active.status === "voting" ? "bg-indigo-600 text-white hover:bg-indigo-700" : "bg-white border border-indigo-200 text-indigo-600 hover:bg-indigo-50"}`}
                               >
                                 {active.status === "voting"
-                                  ? "투표 종료"
-                                  : "투표 시작"}
+                                  ? "투표 닫기"
+                                  : "투표 열기"}
                               </button>
                               <button
                                 onClick={() => openConfigModal(active)}
