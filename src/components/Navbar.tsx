@@ -110,143 +110,147 @@ export default function Navbar() {
   };
 
   return (
-    <header
-      style={{
-        position: 'fixed',
-        top: 0, left: 0, right: 0,
-        zIndex: 1000,
-        transition: 'all 0.4s ease',
-        background: isScrolled ? 'rgba(253, 253, 253, 0.95)' : 'transparent',
-        backdropFilter: isScrolled ? 'blur(20px)' : 'none',
-        borderBottom: isScrolled ? '1px solid rgba(255, 219, 233, 0.5)' : '1px solid transparent',
-      }}
-    >
-      <div className="kl-nav-container" style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '85px' }}>
-          {/* Logo */}
-          <Link href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', height: '85px', overflow: 'hidden' }}>
-            <div style={{ position: 'relative', height: '260px', width: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Image
-                src="/logo.png"
-                alt="키링크 로고"
-                width={260}
-                height={260}
-                style={{ height: '260px', width: 'auto', objectFit: 'contain' }}
-                priority
-              />
-            </div>
-          </Link>
-
-          {/* Desktop Nav */}
-          <nav style={{ display: 'flex', alignItems: 'center', gap: '4px' }} className="desktop-nav">
-            {navLinks.map((link) => {
-              const active = isLinkActive(link);
-              const isConversionMenu = link.href === '/events';
-              const activeColor = isConversionMenu ? '#FF4D3D' : '#FF6F61';
-              const activeBg = isConversionMenu ? 'rgba(255, 77, 61, 0.12)' : 'rgba(255, 111, 97, 0.1)';
-              
-              return link.anchor ? (
-                <a
-                  key={link.href}
-                  href={link.href}
-                  onClick={(e) => handleAnchorClick(e, link.anchor)}
-                  style={{
-                    padding: '8px 16px', borderRadius: '8px', fontSize: '0.88rem', fontWeight: active ? '900' : '600',
-                    color: active ? activeColor : '#333333', textDecoration: 'none', transition: 'all 0.2s',
-                    letterSpacing: '0.02em', background: active ? activeBg : 'transparent',
-                    cursor: 'pointer',
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.color = '#FF6F61'; e.currentTarget.style.background = 'rgba(255, 111, 97, 0.15)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.color = active ? activeColor : '#333333'; e.currentTarget.style.background = active ? activeBg : 'transparent'; }}
-                >
-                  {link.label}
-                </a>
-              ) : (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  style={{
-                    padding: '8px 16px', borderRadius: '8px', fontSize: '0.88rem', fontWeight: active ? '900' : '600',
-                    color: active ? activeColor : '#333333', textDecoration: 'none', transition: 'all 0.2s',
-                    letterSpacing: '0.02em', background: active ? activeBg : 'transparent',
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.color = '#FF6F61'; e.currentTarget.style.background = 'rgba(255, 111, 97, 0.15)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.color = active ? activeColor : '#333333'; e.currentTarget.style.background = active ? activeBg : 'transparent'; }}
-                >
-                  {link.label}
-                </Link>
-              );
-            })}
-          </nav>
-
-          {/* CTA + Mobile Menu */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            {user ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <Link href="/mypage" className="kl-btn-outline kl-mypage-btn" style={{ padding: '10px 18px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '100px' }}>
-                  <UserIcon size={16} className="kl-btn-icon" /> 마이페이지
-                </Link>
-                {/* PC 전용 로그아웃 버튼 (v3.5.3) */}
-                <button 
-                  onClick={handleLogout} 
-                  className="desktop-only-btn"
-                  style={{ 
-                    padding: '10px 18px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px', 
-                    borderRadius: '100px', background: 'transparent', border: '1px solid #EDEDED', 
-                    color: '#888888', cursor: 'pointer', transition: 'all 0.2s', fontWeight: '500'
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = '#FFDBE9'; e.currentTarget.style.color = '#FF6F61'; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = '#EDEDED'; e.currentTarget.style.color = '#888888'; }}
-                >
-                  로그아웃
-                </button>
+    <>
+      <header
+        style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0,
+          zIndex: 1000,
+          transition: 'all 0.4s ease',
+          background: isScrolled ? 'rgba(253, 253, 253, 0.95)' : 'transparent',
+          backdropFilter: isScrolled ? 'blur(20px)' : 'none',
+          borderBottom: isScrolled ? '1px solid rgba(255, 219, 233, 0.5)' : '1px solid transparent',
+        }}
+      >
+        <div className="kl-nav-container" style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '85px' }}>
+            {/* Logo */}
+            <Link href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', height: '85px' }}>
+              <div style={{ position: 'relative', height: '100%', width: '160px', display: 'flex', alignItems: 'center' }}>
+                <Image
+                  src="/logo.png"
+                  alt="키링크 로고"
+                  width={160}
+                  height={60}
+                  style={{ height: 'auto', width: '160px', objectFit: 'contain' }}
+                  priority
+                />
               </div>
-            ) : (
-              <Link href="/login" className="kl-btn-primary kl-mypage-btn" style={{ padding: '10px 20px', fontSize: '0.85rem' }}>
-                로그인/회원가입
-              </Link>
-            )}
-            <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              style={{ 
-                background: 'none', border: 'none', cursor: 'pointer', color: '#333333', padding: '8px',
-                display: user ? 'flex' : 'none' 
-              }}
-              className="mobile-menu-btn"
-            >
-              {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
-            </button>
+            </Link>
+
+            {/* Desktop Nav */}
+            <nav style={{ display: 'flex', alignItems: 'center', gap: '4px' }} className="desktop-nav">
+              {navLinks.map((link) => {
+                const active = isLinkActive(link);
+                const isConversionMenu = link.href === '/events';
+                const activeColor = isConversionMenu ? '#FF4D3D' : '#FF6F61';
+                const activeBg = isConversionMenu ? 'rgba(255, 77, 61, 0.12)' : 'rgba(255, 111, 97, 0.1)';
+                
+                return link.anchor ? (
+                  <a
+                    key={link.href}
+                    href={link.href}
+                    onClick={(e) => handleAnchorClick(e, link.anchor)}
+                    style={{
+                      padding: '8px 16px', borderRadius: '8px', fontSize: '0.88rem', fontWeight: active ? '900' : '600',
+                      color: active ? activeColor : '#333333', textDecoration: 'none', transition: 'all 0.2s',
+                      letterSpacing: '0.02em', background: active ? activeBg : 'transparent',
+                      cursor: 'pointer',
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.color = '#FF6F61'; e.currentTarget.style.background = 'rgba(255, 111, 97, 0.15)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.color = active ? activeColor : '#333333'; e.currentTarget.style.background = active ? activeBg : 'transparent'; }}
+                  >
+                    {link.label}
+                  </a>
+                ) : (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    style={{
+                      padding: '8px 16px', borderRadius: '8px', fontSize: '0.88rem', fontWeight: active ? '900' : '600',
+                      color: active ? activeColor : '#333333', textDecoration: 'none', transition: 'all 0.2s',
+                      letterSpacing: '0.02em', background: active ? activeBg : 'transparent',
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.color = '#FF6F61'; e.currentTarget.style.background = 'rgba(255, 111, 97, 0.15)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.color = active ? activeColor : '#333333'; e.currentTarget.style.background = active ? activeBg : 'transparent'; }}
+                  >
+                    {link.label}
+                  </Link>
+                );
+              })}
+            </nav>
+
+            {/* CTA + Mobile Menu */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              {user ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <Link href="/mypage" className="kl-btn-outline kl-mypage-btn" style={{ padding: '10px 18px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '100px' }}>
+                    <UserIcon size={16} className="kl-btn-icon" /> 마이페이지
+                  </Link>
+                  {/* PC 전용 로그아웃 버튼 (v3.5.3) */}
+                  <button 
+                    onClick={handleLogout} 
+                    className="desktop-only-btn"
+                    style={{ 
+                      padding: '10px 18px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px', 
+                      borderRadius: '100px', background: 'transparent', border: '1px solid #EDEDED', 
+                      color: '#888888', cursor: 'pointer', transition: 'all 0.2s', fontWeight: '500'
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = '#FFDBE9'; e.currentTarget.style.color = '#FF6F61'; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = '#EDEDED'; e.currentTarget.style.color = '#888888'; }}
+                  >
+                    로그아웃
+                  </button>
+                </div>
+              ) : (
+                <Link href="/login" className="kl-btn-primary kl-mypage-btn" style={{ padding: '10px 20px', fontSize: '0.85rem' }}>
+                  로그인/회원가입
+                </Link>
+              )}
+              <button
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                style={{ 
+                  background: 'none', border: 'none', cursor: 'pointer', color: '#333333', padding: '8px',
+                  display: user ? 'flex' : 'none' 
+                }}
+                className="mobile-menu-btn"
+              >
+                {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      </header>
 
       {/* Mobile Side Panel Overlay */}
       <div
         onClick={() => setIsMenuOpen(false)}
         style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 998,
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 2000,
           opacity: isMenuOpen ? 1 : 0,
           pointerEvents: isMenuOpen ? 'auto' : 'none',
           transition: 'opacity 0.3s ease',
+          backdropFilter: 'blur(4px)',
         }}
       />
       <div
         style={{
-          position: 'fixed', top: 0, right: 0, bottom: 0, width: '80%', maxWidth: '320px',
-          background: '#FDFDFD', zIndex: 999, display: 'flex', flexDirection: 'column',
+          position: 'fixed', top: 0, right: 0, bottom: 0, width: '85%', maxWidth: '340px',
+          background: '#FFFFFF', zIndex: 2001, display: 'flex', flexDirection: 'column',
           transform: isMenuOpen ? 'translateX(0)' : 'translateX(100%)',
-          transition: 'transform 0.35s cubic-bezier(0.32, 0, 0.15, 1)',
-          boxShadow: '-8px 0 40px rgba(0,0,0,0.12)',
+          transition: 'transform 0.4s cubic-bezier(0.32, 0, 0.15, 1)',
+          boxShadow: '-10px 0 50px rgba(0,0,0,0.15)',
+          paddingTop: 'env(safe-area-inset-top)',
         }}
       >
         {/* Panel Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '1px solid #FFF0EE' }}>
-          <span style={{ fontSize: '1rem', fontWeight: '900', color: '#111' }}>메뉴</span>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '24px 24px', borderBottom: '1px solid #F5F5F5' }}>
+          <span style={{ fontSize: '1.1rem', fontWeight: '900', color: '#111', letterSpacing: '-0.02em' }}>메뉴</span>
           <button
             onClick={() => setIsMenuOpen(false)}
-            style={{ background: '#F5F5F5', border: 'none', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+            style={{ background: '#F8F8F8', border: 'none', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s' }}
           >
-            <X size={18} color="#555" />
+            <X size={20} color="#333" />
           </button>
         </div>
 
@@ -289,7 +293,7 @@ export default function Navbar() {
         </nav>
 
         {/* Bottom Actions */}
-        <div style={{ padding: '16px 20px', borderTop: '1px solid #FFF0EE', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <div style={{ padding: '16px 20px', borderTop: '1px solid #F5F5F5', display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <Link
             href={user ? "/events" : "/login"}
             onClick={() => setIsMenuOpen(false)}
@@ -351,6 +355,6 @@ export default function Navbar() {
           .desktop-only-btn { display: flex !important; }
         }
       `}</style>
-    </header>
+    </>
   );
 }

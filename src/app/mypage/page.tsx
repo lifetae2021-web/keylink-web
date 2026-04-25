@@ -323,19 +323,45 @@ export default function MyPage() {
       
       {/* ─── EDIT MODAL (Synchronization with Application Form) ─── */}
       {isEditing && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 9000, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9000, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(20px)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
           onClick={(e) => { if (e.target === e.currentTarget) setIsEditing(false); }}>
-          <div style={{ background: '#FFFFFF', borderRadius: '32px', padding: '32px', maxWidth: '540px', width: '100%', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 30px 70px rgba(255,111,97,0.2)' }} className="kl-scrollbar">
+          <div style={{ 
+            background: '#FFFFFF', 
+            width: '100%', 
+            maxWidth: '540px', 
+            height: '100%', 
+            maxHeight: '92vh', 
+            display: 'flex', 
+            flexDirection: 'column',
+            borderRadius: '32px 32px 0 0',
+            boxShadow: '0 -20px 60px rgba(255,111,97,0.15)',
+            overflow: 'hidden',
+            position: 'relative'
+          }}>
             
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px', position: 'sticky', top: 0, background: '#fff', zIndex: 10, paddingBottom: '16px', borderBottom: '1px solid #FFF0EE' }}>
+            {/* [1] Fixed Header */}
+            <div style={{ 
+              padding: '24px 32px', 
+              background: '#FFFFFF', 
+              zIndex: 100, 
+              borderBottom: '1px solid #FFF0EE',
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center',
+              flexShrink: 0
+            }}>
               <div>
-                <h2 style={{ fontSize: '1.4rem', fontWeight: '900', color: '#111' }}>신뢰 기반 프로필 편집</h2>
-                <p style={{ fontSize: '0.8rem', color: '#888', marginTop: '4px' }}>상대에게 보여지는 정보를 신청서와 동일하게 관리하세요.</p>
+                <h2 style={{ fontSize: '1.3rem', fontWeight: '900', color: '#111', letterSpacing: '-0.02em' }}>신뢰 기반 프로필 편집</h2>
+                <p style={{ fontSize: '0.78rem', color: '#888', marginTop: '4px' }}>신청서와 동일한 정보를 관리하세요.</p>
               </div>
-              <button onClick={() => setIsEditing(false)} style={{ background: '#FFF5F4', border: 'none', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'transform 0.2s' }} onMouseEnter={e => e.currentTarget.style.transform = 'rotate(90deg)'} onMouseLeave={e => e.currentTarget.style.transform = 'none'}>
+              <button onClick={() => setIsEditing(false)} style={{ background: '#FFF5F4', border: 'none', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
                 <X size={20} color="#FF6F61" />
               </button>
             </div>
+
+            {/* [2] Scrollable Body */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '32px' }} className="kl-scrollbar">
+
 
             {/* Photo Section (Unified v3.5.1) */}
             <div style={{ marginBottom: '40px' }}>
@@ -530,10 +556,47 @@ export default function MyPage() {
                </div>
              </EditRow>
 
-            <div style={{ display: 'flex', gap: '12px', marginTop: '16px', position: 'sticky', bottom: 0, background: '#fff', paddingTop: '20px', borderTop: '1px solid #FFF0EE' }}>
-              <button onClick={() => setIsEditing(false)} disabled={isSaving} style={{ flex: 1, padding: '18px', borderRadius: '100px', border: '1.5px solid #FFDBE9', background: 'transparent', color: '#FF6F61', fontWeight: '700', cursor: 'pointer', fontSize: '1rem' }}>취소</button>
-              <button onClick={handleSave} disabled={isSaving} style={{ flex: 1.5, padding: '18px', borderRadius: '100px', border: 'none', background: 'linear-gradient(135deg, #FF6F61, #FF9A9E)', color: '#fff', fontWeight: '800', cursor: 'pointer', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', boxShadow: '0 8px 20px rgba(255,111,97,0.3)' }}>
-                {isSaving ? '저장 중...' : <><Check size={20} /> 프로필 수정 완료</>}
+            </div>
+
+            {/* [3] Fixed Footer */}
+            <div style={{ 
+              padding: '16px 24px calc(16px + env(safe-area-inset-bottom))', 
+              background: '#FFFFFF', 
+              borderTop: '1px solid #FFF0EE',
+              display: 'flex', 
+              gap: '12px',
+              flexShrink: 0,
+              zIndex: 100
+            }}>
+              <button 
+                onClick={() => setIsEditing(false)} 
+                disabled={isSaving} 
+                style={{ flex: 1, padding: '16px', borderRadius: '16px', border: '1.5px solid #FFDBE9', background: 'transparent', color: '#FF6F61', fontWeight: '700', cursor: 'pointer', fontSize: '0.95rem' }}
+              >
+                취소
+              </button>
+              <button 
+                onClick={handleSave} 
+                disabled={isSaving} 
+                style={{ 
+                  flex: 2, 
+                  padding: '16px', 
+                  borderRadius: '16px', 
+                  border: 'none', 
+                  background: 'linear-gradient(135deg, #FF6F61, #FF9A9E)', 
+                  color: '#fff', 
+                  fontWeight: '900', 
+                  cursor: 'pointer', 
+                  fontSize: '1rem', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  gap: '8px', 
+                  boxShadow: '0 8px 20px rgba(255,111,97,0.25)',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                {isSaving ? '저장 중...' : <><Check size={18} /> 프로필 수정 완료</>}
               </button>
             </div>
           </div>
@@ -600,7 +663,7 @@ export default function MyPage() {
                 <InfoRow label="연락처" value={userData?.phone} />
                 <InfoRow label="인스타그램" value={userData?.instaId} />
                 <InfoRow label="거주지" value={userData?.residence} />
-                <InfoRow label="회사명/직무" value={userData?.workplace} />
+                <InfoRow label="회사명/직무" value={userData?.admin_job || userData?.job || userData?.workplace} />
                 <InfoRow label="지인 회피" value={userData?.avoidAcquaintance} />
                 <InfoRow label="음주 빈도" value={userData?.drinking} />
                 <InfoRow label="흡연 유무" value={userData?.smoking} />
@@ -673,7 +736,7 @@ export default function MyPage() {
         </button>
 
         <div style={{ textAlign: 'center', marginTop: '32px', color: '#BBB', fontSize: '0.8rem', fontWeight: '500' }}>
-          매칭을 위한 모든 정보는 암호화되어 보호됩니다. <span style={{ marginLeft: 8, fontSize: '0.7rem', color: '#DDD' }}>v1.9.1</span>
+          매칭을 위한 모든 정보는 암호화되어 보호됩니다. <span style={{ marginLeft: 8, fontSize: '0.7rem', color: '#DDD' }}>v1.9.7</span>
         </div>
       </div>
 

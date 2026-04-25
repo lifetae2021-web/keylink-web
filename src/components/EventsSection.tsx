@@ -86,7 +86,7 @@ export function EventsSection({ standalone = false }: { standalone?: boolean }) 
           <span className="kl-gradient-text">{selectedRegion === 'busan' ? '부산' : '창원'} 참여 신청</span>
         </h2>
         <p style={{ color: 'var(--color-text-secondary)', fontSize: '1rem', marginBottom: '32px' }}>
-          {selectedRegion === 'busan' ? '부산' : '창원'} 로테이션 소개팅 일정을 확인하고 신청하세요. <span style={{ fontSize: '0.7rem', color: 'var(--color-primary-dark)', marginLeft: '4px' }}>v8.8.5</span>
+          {selectedRegion === 'busan' ? '부산' : '창원'} 로테이션 소개팅 일정을 확인하고 신청하세요.
         </p>
 
         {/* Region Filter */}
