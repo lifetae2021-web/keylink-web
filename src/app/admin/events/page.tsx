@@ -1606,32 +1606,51 @@ ${user.name || app.name || "참가자"}님은 ${fDate} ${fDay} ${fTime} 소개�
                                           )}
                                         </div>
                                         <div className="flex items-center gap-1">
-                                        <button
-                                          onClick={() => handleWaitlistSelect(app)}
-                                          disabled={isGenderFull[app.gender as "male" | "female"]}
-                                          className="px-2 py-1 rounded-lg text-[0.65rem] font-black bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-500 hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-blue-50 disabled:hover:text-blue-600"
-                                        >
-                                          선발
-                                        </button>
-                                        <button
-                                          onClick={() => handleWaitlistHold(app)}
-                                          className="px-2 py-1 rounded-lg text-[0.65rem] font-black bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-400 hover:text-white transition-all"
-                                        >
-                                          보류
-                                        </button>
-                                        <button
-                                          onClick={() => handleWaitlistConfirm(app)}
-                                          disabled={isGenderFull[app.gender as "male" | "female"]}
-                                          className="px-2 py-1 rounded-lg text-[0.65rem] font-black bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-500 hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-emerald-50 disabled:hover:text-emerald-600"
-                                        >
-                                          선발확정
-                                        </button>
-                                        <button
-                                          onClick={() => handleWaitlistDelete(app)}
-                                          className="px-2 py-1 rounded-lg text-[0.65rem] font-black bg-rose-50 text-rose-400 border border-rose-100 hover:bg-rose-500 hover:text-white transition-all"
-                                        >
-                                          삭제
-                                        </button>
+                                        {app.status === "selected" ? (
+                                          <>
+                                            <button
+                                              onClick={() => handleWaitlistConfirm(app)}
+                                              className="px-2 py-1 rounded-lg text-[0.65rem] font-black bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-400 hover:text-white transition-all"
+                                            >
+                                              입금확정
+                                            </button>
+                                            <button
+                                              onClick={() => handleWaitlistDelete(app)}
+                                              className="px-2 py-1 rounded-lg text-[0.65rem] font-black bg-rose-50 text-rose-400 border border-rose-100 hover:bg-rose-500 hover:text-white transition-all"
+                                            >
+                                              삭제
+                                            </button>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <button
+                                              onClick={() => handleWaitlistSelect(app)}
+                                              disabled={isGenderFull[app.gender as "male" | "female"]}
+                                              className="px-2 py-1 rounded-lg text-[0.65rem] font-black bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-500 hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-blue-50 disabled:hover:text-blue-600"
+                                            >
+                                              선발
+                                            </button>
+                                            <button
+                                              onClick={() => handleWaitlistHold(app)}
+                                              className="px-2 py-1 rounded-lg text-[0.65rem] font-black bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-400 hover:text-white transition-all"
+                                            >
+                                              보류
+                                            </button>
+                                            <button
+                                              onClick={() => handleWaitlistConfirm(app)}
+                                              disabled={isGenderFull[app.gender as "male" | "female"]}
+                                              className="px-2 py-1 rounded-lg text-[0.65rem] font-black bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-500 hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-emerald-50 disabled:hover:text-emerald-600"
+                                            >
+                                              선발확정
+                                            </button>
+                                            <button
+                                              onClick={() => handleWaitlistDelete(app)}
+                                              className="px-2 py-1 rounded-lg text-[0.65rem] font-black bg-rose-50 text-rose-400 border border-rose-100 hover:bg-rose-500 hover:text-white transition-all"
+                                            >
+                                              삭제
+                                            </button>
+                                          </>
+                                        )}
                                         </div>
                                       </div>
                                     </div>
