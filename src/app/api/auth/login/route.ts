@@ -9,31 +9,25 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '아이디를 입력해 주세요.' }, { status: 400 });
     }
 
-    // username 또는 email로 조회
-    let userDoc = null;
-
+    // username으로 조회
     const byUsername = await adminDb.collection('users')
       .where('username', '==', username)
       .limit(1)
       .get();
 
-    if (!byUsername.empty) {
-      userDoc = byUsername.docs[0].data();
-    } else {
-      const byEmail = await adminDb.collection('users')
-        .where('email', '==', username)
-        .limit(1)
-        .get();
-      if (!byEmail.empty) {
-        userDoc = byEmail.docs[0].data();
-      }
-    }
-
-    if (!userDoc) {
+    if (byUsername.empty) {
       return NextResponse.json({ error: '아이디 또는 비밀번호가 일치하지 않습니다.' }, { status: 404 });
     }
 
-    return NextResponse.json({ email: userDoc.email });
+    const userDoc = byUsername.docs[0].data();
+
+    // 이메일 가입 계정은 내부 가상 이메일 사용, 소셜 계정은 실제 이메일 사용 불가
+    if (userDoc.provider !== 'email') {
+      return NextResponse.json({ error: '소셜 계정(카카오/구글)으로 가입된 아이디입니다. 해당 소셜 로그인을 이용해 주세요.' }, { status: 400 });
+    }
+
+    const internalEmail = `${username}@keylink.user`;
+    return NextResponse.json({ email: internalEmail });
 
   } catch (error: any) {
     console.error('[Login API] Error:', error.message);
