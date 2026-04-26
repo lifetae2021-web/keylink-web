@@ -4,8 +4,9 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { Menu, X, LogOut, User as UserIcon } from 'lucide-react';
-import { auth } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
+import { doc, onSnapshot } from 'firebase/firestore';
 import toast from 'react-hot-toast';
 // v8.1.7: Premium Navigation Bar
 
@@ -23,6 +24,7 @@ export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [activeAnchor, setActiveAnchor] = useState<string | null>(null);
   const isManualScrolling = useRef(false);
   const pathname = usePathname();
@@ -71,13 +73,24 @@ export default function Navbar() {
     };
     window.addEventListener('scroll', handleScroll, { passive: true });
 
+    let unsubDoc: (() => void) | null = null;
+
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
+      if (unsubDoc) { unsubDoc(); unsubDoc = null; }
+      if (currentUser) {
+        unsubDoc = onSnapshot(doc(db, 'users', currentUser.uid), (snap) => {
+          setIsAdmin(snap.exists() && snap.data()?.role === 'admin');
+        });
+      } else {
+        setIsAdmin(false);
+      }
     });
 
     return () => {
       window.removeEventListener('scroll', handleScroll);
       unsubscribe();
+      if (unsubDoc) unsubDoc();
     };
   }, [pathname]);
 
@@ -188,6 +201,11 @@ export default function Navbar() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               {user ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  {isAdmin && (
+                    <Link href="/admin" className="kl-mypage-btn" style={{ padding: '10px 18px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '100px', background: '#111', color: '#fff', textDecoration: 'none', fontWeight: '700' }}>
+                      관리자페이지
+                    </Link>
+                  )}
                   <Link href="/mypage" className="kl-btn-outline kl-mypage-btn" style={{ padding: '10px 18px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '100px' }}>
                     <UserIcon size={16} className="kl-btn-icon" /> 마이페이지
                   </Link>
