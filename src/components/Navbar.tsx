@@ -212,7 +212,7 @@ export default function Navbar() {
               {user && pathname !== '/register/social-profile' ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   {isAdmin && (
-                    <Link href="/admin" className="kl-mypage-btn" style={{ padding: '10px 18px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '100px', background: '#111', color: '#fff', textDecoration: 'none', fontWeight: '700' }}>
+                    <Link href="/admin" className="kl-mypage-btn kl-admin-btn" style={{ padding: '10px 18px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '100px', background: '#111', color: '#fff', textDecoration: 'none', fontWeight: '700' }}>
                       관리자페이지
                     </Link>
                   )}
@@ -342,25 +342,36 @@ export default function Navbar() {
             {user ? "지금 신청하기" : "로그인하고 신청하기"}
           </Link>
           {user && (
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <Link
-                href="/mypage"
-                onClick={() => setIsMenuOpen(false)}
-                className="kl-btn-outline"
-                style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px' }}
-              >
-                <UserIcon size={15} /> 마이페이지
-              </Link>
-              <button
-                onClick={handleLogout}
-                style={{
-                  flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px',
-                  background: 'transparent', border: '1px solid #EDEDED', borderRadius: '100px',
-                  color: '#9CA3AF', fontSize: '0.88rem', fontWeight: '600', cursor: 'pointer', padding: '10px'
-                }}
-              >
-                <LogOut size={15} /> 로그아웃
-              </button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {isAdmin && (
+                <Link
+                  href="/admin"
+                  onClick={() => setIsMenuOpen(false)}
+                  style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '12px', borderRadius: '100px', background: '#111', color: '#fff', textDecoration: 'none', fontSize: '0.88rem', fontWeight: '700' }}
+                >
+                  관리자페이지
+                </Link>
+              )}
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <Link
+                  href="/mypage"
+                  onClick={() => setIsMenuOpen(false)}
+                  className="kl-btn-outline"
+                  style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px' }}
+                >
+                  <UserIcon size={15} /> 마이페이지
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  style={{
+                    flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px',
+                    background: 'transparent', border: '1px solid #EDEDED', borderRadius: '100px',
+                    color: '#9CA3AF', fontSize: '0.88rem', fontWeight: '600', cursor: 'pointer', padding: '10px'
+                  }}
+                >
+                  <LogOut size={15} /> 로그아웃
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -372,10 +383,11 @@ export default function Navbar() {
           .desktop-only-btn { display: none !important; }
           .mobile-menu-btn { display: flex !important; }
           .kl-nav-container { padding: 0 10px !important; }
-          .kl-mypage-btn { 
-            padding: 8px 14px !important; 
-            font-size: 0.78rem !important; 
+          .kl-mypage-btn {
+            padding: 8px 14px !important;
+            font-size: 0.78rem !important;
           }
+          .kl-admin-btn { display: none !important; }
         }
         @media (max-width: 480px) {
           .kl-mypage-btn {
