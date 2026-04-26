@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Toaster } from "react-hot-toast";
 import PublicLayout from "@/components/PublicLayout";
-import { version } from "../../package.json";
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -37,10 +36,7 @@ export default function RootLayout({
       </head>
       <body className="antialiased">
         <PublicLayout>{children}</PublicLayout>
-        <div className="fixed bottom-4 right-4 z-[9999] pointer-events-none select-none text-black font-black text-lg bg-white/80 px-3 py-1 rounded-md shadow-sm">
-          v{version}
-        </div>
-        <Toaster
+<Toaster
           position="bottom-center"
           toastOptions={{
             duration: 3000,
