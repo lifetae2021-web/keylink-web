@@ -192,39 +192,41 @@ export default function SocialProfilePage() {
           <div style={{ height: '1px', background: '#f0f0f0', margin: '32px 0' }} />
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
-            {/* 1. Email */}
-            <div>
-              <label className="kl-label" style={{ fontWeight: '800', marginBottom: '10px' }}>이메일</label>
-              <input
-                className="kl-input"
-                style={{
-                  borderRadius: '12px',
-                  height: '54px',
-                  border: emailError ? '1.5px solid #FF6F61' : '1px solid var(--color-border)',
-                  background: isKakao ? '#fff' : '#F8F9FA',
-                  color: isKakao ? '#111' : '#888',
-                  cursor: isKakao ? 'text' : 'not-allowed',
-                }}
-                type="email"
-                placeholder={isKakao ? 'example@gmail.com (선택)' : ''}
-                value={form.email}
-                onChange={isKakao ? e => update('email', e.target.value) : undefined}
-                readOnly={!isKakao}
-              />
-              <p style={{ fontSize: '0.75rem', color: '#999', marginTop: '6px', marginLeft: '4px' }}>
-                {isKakao ? '입력하지 않아도 가입 가능합니다.' : '소셜 계정 이메일은 변경할 수 없습니다.'}
-              </p>
-              {emailError && (
-                <p style={{ color: '#FF6F61', fontSize: '0.8rem', fontWeight: '700', marginTop: '8px', marginLeft: '4px' }}>
-                  {emailError}
-                </p>
-              )}
-              {!emailError && (
-                <p style={{ fontSize: '0.75rem', color: '#999', marginTop: '6px', marginLeft: '4px' }}>
-                  계정 분실 시 찾기 및 주요 공지 수신용으로 사용
-                </p>
-              )}
-            </div>
+            {/* 1. 가입 방식 표시 */}
+            {isKakao ? (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: '12px',
+                padding: '16px 20px', borderRadius: '14px',
+                background: '#FEF9C3', border: '1px solid #FDE68A',
+              }}>
+                <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#FEE500', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="#3c1e1e">
+                    <path d="M12 2C6.48 2 2 5.92 2 10.8c0 3.12 1.75 5.87 4.38 7.53L5.44 22l4.35-2.3c.72.2 1.45.3 2.21.3 5.52 0 10-3.93 10-8.8S17.52 2 12 2z" />
+                  </svg>
+                </div>
+                <div>
+                  <p style={{ fontSize: '0.82rem', fontWeight: '800', color: '#92400E' }}>카카오 계정으로 회원가입</p>
+                  <p style={{ fontSize: '0.75rem', color: '#A16207', marginTop: '2px' }}>카카오톡으로 로그인이 가능한 계정입니다.</p>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <label className="kl-label" style={{ fontWeight: '800', marginBottom: '10px' }}>이메일</label>
+                <input
+                  className="kl-input"
+                  style={{ borderRadius: '12px', height: '54px', background: '#F8F9FA', color: '#888', cursor: 'not-allowed' }}
+                  type="email"
+                  value={form.email}
+                  readOnly
+                />
+                {emailError && (
+                  <p style={{ color: '#FF6F61', fontSize: '0.8rem', fontWeight: '700', marginTop: '8px', marginLeft: '4px' }}>{emailError}</p>
+                )}
+                {!emailError && (
+                  <p style={{ fontSize: '0.75rem', color: '#999', marginTop: '6px', marginLeft: '4px' }}>소셜 계정 이메일은 변경할 수 없습니다.</p>
+                )}
+              </div>
+            )}
 
             {/* 2. Name */}
             <div>
