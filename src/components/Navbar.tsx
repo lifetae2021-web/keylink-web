@@ -329,6 +329,20 @@ export default function Navbar() {
               </Link>
             );
           })}
+          {isAdmin && (
+            <Link
+              href="/admin"
+              onClick={() => setIsMenuOpen(false)}
+              style={{
+                display: 'block', padding: '14px 16px', fontSize: '1rem', fontWeight: '700',
+                color: '#fff', textDecoration: 'none',
+                borderRadius: '12px', marginBottom: '4px', background: '#111',
+                marginTop: '8px',
+              }}
+            >
+              관리자페이지
+            </Link>
+          )}
         </nav>
 
         {/* Bottom Actions */}
@@ -343,15 +357,6 @@ export default function Navbar() {
           </Link>
           {user && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {isAdmin && (
-                <Link
-                  href="/admin"
-                  onClick={() => setIsMenuOpen(false)}
-                  style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '12px', borderRadius: '100px', background: '#111', color: '#fff', textDecoration: 'none', fontSize: '0.88rem', fontWeight: '700' }}
-                >
-                  관리자페이지
-                </Link>
-              )}
               <div style={{ display: 'flex', gap: '8px' }}>
                 <Link
                   href="/mypage"
