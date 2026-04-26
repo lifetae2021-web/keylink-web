@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Calendar,
   MapPin,
@@ -59,10 +60,11 @@ import MatchingDrawer from "@/components/admin/MatchingDrawer";
 const card = "bg-white border border-slate-200 rounded-xl shadow-sm";
 
 export default function EventsPage() {
+  const searchParams = useSearchParams();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [matchingHistory, setMatchingHistory] = useState<any[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const selectedIdRef = useRef<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(searchParams.get('session'));
+  const selectedIdRef = useRef<string | null>(searchParams.get('session'));
   const isInitialSelectRef = useRef(true);
   const [isLoading, setIsLoading] = useState(true);
   const [isMatching, setIsMatching] = useState(false);
@@ -257,6 +259,9 @@ export default function EventsPage() {
               etc: d.data().etc,
               slotNumber: d.data().slotNumber ?? null,
               price: d.data().price,
+              femaleOption: d.data().femaleOption ?? null,
+              groupPartnerName: d.data().groupPartnerName ?? null,
+              groupPartnerBirthYear: d.data().groupPartnerBirthYear ?? null,
             }) as Application,
         );
         list.sort((a, b) => a.appliedAt.getTime() - b.appliedAt.getTime());
@@ -1426,6 +1431,12 @@ ${user.name || app.name || "참가자"}님은 ${fDate} ${fDay} ${fTime} 소개�
                                                 <span>
                                                   {app.residence || "-"}
                                                 </span>
+                                                {app.gender === 'female' && app.femaleOption === 'group' && (
+                                                  <>
+                                                    <span>·</span>
+                                                    <span className="text-pink-500 font-bold">{app.groupPartnerName ? `동반할인 (${app.groupPartnerName} ${app.groupPartnerBirthYear}년생)` : '동반할인'}</span>
+                                                  </>
+                                                )}
                                               </div>
                                             </div>
                                             <div className="flex items-center gap-2">
@@ -1500,6 +1511,12 @@ ${user.name || app.name || "참가자"}님은 ${fDate} ${fDay} ${fTime} 소개�
                                                 <span>
                                                   {app.residence || "-"}
                                                 </span>
+                                                {app.gender === 'female' && app.femaleOption === 'group' && (
+                                                  <>
+                                                    <span>·</span>
+                                                    <span className="text-pink-500 font-bold">{app.groupPartnerName ? `동반할인 (${app.groupPartnerName} ${app.groupPartnerBirthYear}년생)` : '동반할인'}</span>
+                                                  </>
+                                                )}
                                               </div>
                                             </div>
                                             <button
@@ -1639,6 +1656,12 @@ ${user.name || app.name || "참가자"}님은 ${fDate} ${fDay} ${fTime} 소개�
                                           </span>
                                           <span>·</span>
                                           <span>{app.residence || "-"}</span>
+                                          {app.gender === 'female' && app.femaleOption === 'group' && (
+                                            <>
+                                              <span>·</span>
+                                              <span className="text-pink-500 font-bold">{app.groupPartnerName ? `동반할인 (${app.groupPartnerName} ${app.groupPartnerBirthYear}년생)` : '동반할인'}</span>
+                                            </>
+                                          )}
                                         </div>
                                       </div>
                                       <div className="shrink-0 flex items-center gap-6">

@@ -667,21 +667,22 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                       {/* 상태 (Unified) */}
                       <td style={{ padding: '0 16px', textAlign: 'center' }}>
                         <div className="flex flex-col items-center gap-1">
-                          <span style={{ 
-                            fontSize: '0.72rem', 
-                            fontWeight: 900, 
-                            padding: '4px 10px', 
-                            borderRadius: 6, 
-                            color: aStatus.color, 
+                          <span style={{
+                            fontSize: '0.72rem',
+                            fontWeight: 900,
+                            padding: '4px 10px',
+                            borderRadius: 6,
+                            color: aStatus.color,
                             background: aStatus.bg,
                             border: `1px solid ${aStatus.color}20`
                           }}>
                             {aStatus.label}
                           </span>
-                          <div className="flex items-center gap-1">
-                            <div className="w-1 h-1 rounded-full" style={{ background: dStatus.color }} />
-                            <span style={{ fontSize: '0.65rem', fontWeight: 700, color: dStatus.color }}>{dStatus.label}</span>
-                          </div>
+                          {app.femaleOption === 'group' && (
+                            <p className="text-[0.68rem] font-bold text-pink-500 whitespace-nowrap">
+                              {app.groupPartnerName ? `동반할인 (${app.groupPartnerName} ${app.groupPartnerBirthYear}년생)` : '동반할인'}
+                            </p>
+                          )}
                         </div>
                       </td>
 

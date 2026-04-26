@@ -101,6 +101,9 @@ export interface Application {
   // 추가 프로필 정보 (v5.1.0 데이터 연동 강화)
   price?: number;
   maleOption?: string;
+  femaleOption?: string;
+  groupPartnerName?: string;
+  groupPartnerBirthYear?: string;
   instaId?: string;
   mbti?: string;
   smoking?: string;

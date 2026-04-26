@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useSearchParams } from 'next/navigation';
 import { Calendar, MapPin, ChevronLeft, ChevronRight } from 'lucide-react';
 
@@ -239,7 +240,7 @@ function EventCalendar({ events, onDateSelect, selectedDate }: { events: Keylink
 }
 
 function EventCard({ event }: { event: KeylinkEvent }) {
-  // /status 페이지와 동일한 로직 — totalMax > 0 조건으로 maxMale/maxFemale=0 오판 방지
+  const router = useRouter();
   const isSoldOut = (event.maxMale > 0 && event.currentMale >= event.maxMale) && (event.maxFemale > 0 && event.currentFemale >= event.maxFemale);
 
   // 배지 상태 및 레이블 결정 (v1.9.7: Admin-UI Sync)
@@ -362,19 +363,18 @@ function EventCard({ event }: { event: KeylinkEvent }) {
           </span>
         </div>
         {!isFinished && (
-          <Link
-            href={`/events/${event.id}`}
-            onClick={e => e.stopPropagation()}
+          <button
+            onClick={e => { e.preventDefault(); e.stopPropagation(); router.push(`/events/${event.id}`); }}
             style={{
               display: 'flex', alignItems: 'center', gap: '4px',
               background: '#FF6F61', color: '#fff',
               fontSize: '0.8rem', fontWeight: '800',
               padding: '8px 16px', borderRadius: '100px',
-              textDecoration: 'none',
+              border: 'none', cursor: 'pointer',
             }}
           >
             {isSoldOut ? '대기자 신청하기' : '신청하기'}
-          </Link>
+          </button>
         )}
       </div>
     </Link>

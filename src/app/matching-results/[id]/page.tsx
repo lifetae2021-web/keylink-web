@@ -207,7 +207,7 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
             
             <div className="grid gap-3">
               {myChoices.map((choice) => (
-                <div key={choice.priority} className="flex items-center justify-between p-5 bg-gray-50 rounded-2xl border border-gray-100 hover:bg-white hover:border-pink-200 transition-all group">
+                <div key={choice.targetUserId || choice.priority} className="flex items-center justify-between p-5 bg-gray-50 rounded-2xl border border-gray-100 hover:bg-white hover:border-pink-200 transition-all group">
                   <div className="flex items-center gap-4">
                     <span className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-white text-xs ${choice.priority === 1 ? 'bg-pink-500' : 'bg-gray-300'}`}>
                       {choice.priority}

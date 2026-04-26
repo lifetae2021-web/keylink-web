@@ -5,7 +5,7 @@ import Link from 'next/link';
 import {
   Calendar, MapPin, Users, ArrowLeft, AlertCircle,
   CheckCircle, Clock, Shield, Camera, X, CreditCard, ChevronRight, Upload, ShieldCheck, FileText,
-  CheckCircle2
+  CheckCircle2, WalletCards, Sparkles
 } from 'lucide-react';
 import { getSession } from '@/lib/firestore/sessions';
 import { Session } from '@/lib/types';
@@ -63,9 +63,14 @@ export default function EventDetailPage() {
     drink: [] as string[], etc: '',
     agreeTerms: true, agreeRule: true, // Auto-checked on load
     maleOption: 'normal', // 'normal' | 'safe'
+    femaleOption: 'normal', // 'normal' | 'group'
+    groupPartnerName: '',
+    groupPartnerBirthYear: '',
     employmentProof: '',
   });
 
+  const [safeOptionOpen, setSafeOptionOpen] = useState(false);
+  const [policyOpenIdx, setPolicyOpenIdx] = useState<number | null>(null);
   const [verificationFile, setVerificationFile] = useState<File | null>(null);
   const [verificationPreview, setVerificationPreview] = useState<string>('');
   const [verificationFileName, setVerificationFileName] = useState<string>('');
@@ -154,7 +159,9 @@ export default function EventDetailPage() {
 
   // 성별 및 옵션 기반 가격 로직
   let displayBasePrice = form.gender === 'female' ? 40000 : (form.maleOption === 'safe' ? 60000 : 49000);
-  let finalPrice = form.gender === 'female' ? 29000 : displayBasePrice;
+  let finalPrice = form.gender === 'female'
+    ? (form.femaleOption === 'group' ? 24000 : 29000)
+    : displayBasePrice;
   let isDiscounted = form.gender === 'female';
 
   const handleStep1Entry = () => {
@@ -305,6 +312,9 @@ export default function EventDetailPage() {
         // v5.1.0 추가 필드 통합 (관리자/매칭용 스냅샷)
         price: finalPrice,
         maleOption: form.gender === 'male' ? form.maleOption : null,
+        femaleOption: form.gender === 'female' ? form.femaleOption : null,
+        groupPartnerName: form.gender === 'female' && form.femaleOption === 'group' ? form.groupPartnerName : null,
+        groupPartnerBirthYear: form.gender === 'female' && form.femaleOption === 'group' ? form.groupPartnerBirthYear : null,
         instaId: form.instaId || '',
         smoking: form.smoking || '',
         drinking: form.drinking || '',
@@ -522,20 +532,36 @@ export default function EventDetailPage() {
                 {/* Policies */}
                 <div className="kl-card">
                   <h2 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '20px', color: '#1A1A1A' }}>환불 & 보장 정책 (키링크의 약속)</h2>
-                  {[
-                    { icon: '💸', title: '중복 만남 100% 환불', desc: '과거 만났던 분과 재회 시 이유 불문 전액 환불', color: '#FF6F61' },
-                    { icon: '🛡️', title: '안심 매칭 보장', desc: '남성 안심 패키지 선택 시, 미매칭 30% 환불', color: '#A98FD5' },
-                    { icon: '💌', title: '매칭 성공 혜택', desc: '오픈채팅방 즉시 연결', color: '#6EAE7C' },
-                    { icon: '⚠️', title: '취소 정책', desc: '결제 후 개인 사유 취소 불가', color: '#C86A6A' },
-                  ].map((p) => (
-                    <div key={p.title} style={{ display: 'flex', gap: '14px', alignItems: 'flex-start', marginBottom: '16px' }}>
-                      <div style={{ width: '32px', height: '32px', flexShrink: 0, background: 'var(--color-surface-2)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem' }}>{p.icon}</div>
-                      <div>
-                        <p style={{ fontWeight: '800', color: p.color, marginBottom: '4px', fontSize: '0.95rem' }}>{p.title}</p>
-                        <p style={{ fontSize: '0.85rem', color: '#555', lineHeight: 1.5 }}>{p.desc}</p>
-                      </div>
-                    </div>
-                  ))}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px' }}>
+                    {[
+                      { Icon: ShieldCheck, title: '중복 만남 100% 환불', subtitle: 'ZERO REPEAT GUARANTEE', desc: '과거 만났던 분과 재회 시 이유 불문 전액 환불', color: '#FF6F61', rgb: '255,111,97' },
+                      { Icon: WalletCards, title: '안심 매칭 보장', subtitle: 'SAFE MATCH GUARANTEE', desc: '남성 안심 패키지 선택 시, 미매칭 30% 환불', color: '#A98FD5', rgb: '169,143,213' },
+                      { Icon: Sparkles, title: '매칭 성공 혜택', subtitle: 'MATCH SUCCESS BONUS', desc: '오픈채팅방 즉시 연결', color: '#6EAE7C', rgb: '110,174,124' },
+                      { Icon: AlertCircle, title: '취소 정책', subtitle: 'CANCELLATION POLICY', desc: '결제 후 개인 사유 취소 불가', color: '#C86A6A', rgb: '200,106,106' },
+                    ].map((p, idx) => {
+                      const isOpen = policyOpenIdx === idx;
+                      return (
+                        <div key={p.title} style={{ padding: '16px', background: 'var(--color-surface-2)', borderRadius: '16px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <div style={{ width: '40px', height: '40px', flexShrink: 0, borderRadius: '12px', background: `rgba(${p.rgb}, 0.12)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <p.Icon size={20} color={p.color} />
+                            </div>
+                            <p style={{ flex: 1, fontSize: '0.95rem', fontWeight: '800', color: '#1A1A1A' }}>{p.title}</p>
+                            <button
+                              onClick={() => setPolicyOpenIdx(isOpen ? null : idx)}
+                              style={{ flexShrink: 0, fontSize: '0.75rem', fontWeight: '700', color: p.color, background: `rgba(${p.rgb}, 0.08)`, border: `1px solid rgba(${p.rgb}, 0.2)`, borderRadius: '100px', padding: '5px 14px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
+                            >
+                              {isOpen ? '접기' : '자세히 보기'}
+                              <ChevronRight size={11} style={{ transform: isOpen ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }} />
+                            </button>
+                          </div>
+                          {isOpen && (
+                            <p style={{ fontSize: '0.8rem', color: '#555', lineHeight: 1.6, marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--color-border)' }}>{p.desc}</p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </>
             )}
@@ -847,7 +873,7 @@ export default function EventDetailPage() {
                               key={opt}
                               onClick={() => setForm(f => ({ ...f, maleOption: opt }))}
                               style={{
-                                padding: '16px', borderRadius: '12px', 
+                                padding: '16px', borderRadius: '12px',
                                 border: form.maleOption === opt ? '2px solid #FF6F61' : '1px solid #ddd',
                                 background: form.maleOption === opt ? '#FFF5F4' : '#fff', cursor: 'pointer'
                               }}
@@ -857,9 +883,67 @@ export default function EventDetailPage() {
                                 <span style={{ fontSize: '0.9rem', fontWeight: '800' }}>{opt === 'normal' ? '49,000원' : '60,000원'}</span>
                               </div>
                               <p style={{ fontSize: '0.75rem', color: opt === 'normal' ? '#888' : '#FF6F61' }}>{opt === 'normal' ? '매칭 실패 시 환불 없음' : '미매칭 시 30% 환불 보장'}</p>
+                              {opt === 'safe' && (
+                                <div style={{ marginTop: '8px' }}>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); setSafeOptionOpen(v => !v); }}
+                                    style={{ fontSize: '0.75rem', color: '#FF6F61', fontWeight: '700', background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: '4px' }}
+                                  >
+                                    안심 매칭 패키지 특약 {safeOptionOpen ? '▲' : '▼'}
+                                  </button>
+                                  {safeOptionOpen && (
+                                    <p style={{ marginTop: '8px', fontSize: '0.75rem', color: '#555', lineHeight: 1.7, background: 'rgba(255,111,97,0.06)', borderRadius: '8px', padding: '10px' }}>
+                                      해당 패키지 이용자가 호감도 투표에서 1명 이상의 이성을 선택했음에도 매칭에 실패할 경우 30%를 환불합니다. 단, 행사 당일 지각 시에는 해당 환불 혜택이 소멸됩니다.
+                                    </p>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           ))}
                         </div>
+                      </div>
+                    )}
+                    {form.gender === 'female' && (
+                      <div>
+                        <p style={{ fontSize: '0.85rem', fontWeight: '700', color: '#333', marginBottom: '12px' }}>매칭 옵션 선택</p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                          {['normal', 'group'].map(opt => (
+                            <div
+                              key={opt}
+                              onClick={() => setForm(f => ({ ...f, femaleOption: opt }))}
+                              style={{
+                                padding: '16px', borderRadius: '12px',
+                                border: form.femaleOption === opt ? '2px solid #FF6F61' : '1px solid #ddd',
+                                background: form.femaleOption === opt ? '#FFF5F4' : '#fff', cursor: 'pointer'
+                              }}
+                            >
+                              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                                <span style={{ fontSize: '0.9rem', fontWeight: '700' }}>{opt === 'normal' ? '일반 매칭' : '동반할인'}</span>
+                                <span style={{ fontSize: '0.9rem', fontWeight: '800' }}>{opt === 'normal' ? '29,000원' : '5,000원'}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        {form.femaleOption === 'group' && (
+                          <div style={{ marginTop: '12px', padding: '14px', borderRadius: '12px', background: 'var(--color-surface-2)', border: '1px solid var(--color-border)' }}>
+                            <p style={{ fontSize: '0.8rem', fontWeight: '700', color: '#555', marginBottom: '10px' }}>동반 참여자 정보</p>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                              <input
+                                className="kl-input"
+                                placeholder="이름"
+                                value={form.groupPartnerName}
+                                onChange={(e) => setForm(f => ({ ...f, groupPartnerName: e.target.value }))}
+                              />
+                              <input
+                                className="kl-input"
+                                placeholder="년생 (ex. 1998)"
+                                value={form.groupPartnerBirthYear}
+                                onChange={(e) => setForm(f => ({ ...f, groupPartnerBirthYear: e.target.value }))}
+                              />
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

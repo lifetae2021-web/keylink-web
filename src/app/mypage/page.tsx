@@ -1053,9 +1053,15 @@ function ReceivedHeartsFeed({ session, userId }: { session: Session, userId: str
 
   // v8.1.7: 결과 공개 로직 필터링
   const visibility = session.voteConfig?.resultVisibility || 'all';
-  const displayedVoters = visibility === 'mutual' 
+  const filteredVoters = visibility === 'mutual'
     ? voters.filter(v => myVote?.choices.some(c => c.targetUserId === v.id))
     : voters;
+  // 맞호감 먼저, 나머지 아래
+  const displayedVoters = [...filteredVoters].sort((a, b) => {
+    const aMutual = myVote?.choices.some(c => c.targetUserId === a.id) ? 0 : 1;
+    const bMutual = myVote?.choices.some(c => c.targetUserId === b.id) ? 0 : 1;
+    return aMutual - bMutual;
+  });
 
   if (displayedVoters.length === 0) return (
     <div style={{ marginTop: '24px', padding: '24px', background: '#F8FAFC', borderRadius: '18px', textAlign: 'center' }}>
@@ -1076,12 +1082,15 @@ function ReceivedHeartsFeed({ session, userId }: { session: Session, userId: str
           const isMutual = myVote?.choices.some(c => c.targetUserId === voter.id);
           // 본인이 익명 모드면 나에게 온 호감도 무조건 익명 처리
           const isAnonymous = voter.voteData?.disclosureMode === 'anonymous' || myVote?.disclosureMode === 'anonymous';
-          
-          // 실명 대신 호수 공개
+
+          // 실명 대신 호수 공개, 맞호감+익명이면 호수 표시
           const genderPrefix = voter.gender === 'male' ? '키링남' : voter.gender === 'female' ? '키링녀' : '';
-          const displayName = isAnonymous ? '익명' : (voter.voteData?.myAlias ? `${genderPrefix} ${voter.voteData.myAlias}호` : '공개');
+          const slotLabel = voter.slotNumber ? `${genderPrefix} ${voter.slotNumber}호` : '익명';
+          const displayName = isAnonymous
+            ? (isMutual && voter.slotNumber ? slotLabel : '익명')
+            : (voter.voteData?.myAlias ? `${genderPrefix} ${voter.voteData.myAlias}호` : '공개');
           const displayPhoto = isAnonymous ? '/images/placeholder-user.png' : ((voter.photos && voter.photos[0]) || '/images/placeholder-user.png');
-          const displaySubtext = isAnonymous ? '비공개' : '';
+          const displaySubtext = '';
 
           return (
             <div key={voter.id} style={{ display: 'flex', alignItems: 'center', gap: '14px', background: isMutual ? '#FFF5F4' : '#fff', padding: '12px 16px', borderRadius: '16px', border: isMutual ? '1.5px solid #FFDBE9' : '1.5px solid #F1F5F9', boxShadow: isMutual ? '0 4px 12px rgba(255,111,97,0.1)' : 'none' }}>
@@ -1089,7 +1098,7 @@ function ReceivedHeartsFeed({ session, userId }: { session: Session, userId: str
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <span style={{ fontSize: '0.9rem', fontWeight: '800', color: '#1E293B' }}>{displayName}</span>
                   {isMutual && (
-                    <span style={{ fontSize: '0.7rem', fontWeight: '900', background: '#FF6F61', color: '#fff', padding: '3px 8px', borderRadius: '6px', letterSpacing: '-0.02em' }}>매칭 성공(맞호감)</span>
+                    <span style={{ fontSize: '0.7rem', fontWeight: '900', background: '#FF6F61', color: '#fff', padding: '3px 8px', borderRadius: '6px', letterSpacing: '-0.02em' }}>매칭 성공</span>
                   )}
                 </div>
                 <p style={{ fontSize: '0.75rem', color: '#64748B', marginTop: '2px' }}>{displaySubtext}</p>
