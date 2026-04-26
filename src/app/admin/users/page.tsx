@@ -581,7 +581,7 @@ export default function UsersPage() {
 
                       {/* 관리 */}
                       <td style={{ padding: '0 20px', verticalAlign: 'middle', textAlign: 'right' }}>
-                        <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex items-center justify-end gap-1.5">
                           <button
                             onClick={() => setSelectedUserForAsset(u)}
                             className="flex items-center gap-1.5 rounded-lg transition-all hover:shadow-md"
