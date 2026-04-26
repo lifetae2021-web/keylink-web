@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { auth, db } from '@/lib/firebase';
 import { signInWithCustomToken } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
-import { Loader2, AlertCircle, Heart } from 'lucide-react';
+import { Loader2, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 function KakaoCallbackContent() {
@@ -75,19 +75,9 @@ function KakaoCallbackContent() {
     <div className="min-h-screen flex items-center justify-center bg-white px-4">
       <div className="w-full max-w-sm text-center">
         {status === 'loading' ? (
-          <div className="space-y-6">
-            <div className="flex justify-center">
-              <div className="relative">
-                <div className="w-20 h-20 border-4 border-[#FF6F61]/20 border-t-[#FF6F61] rounded-full animate-spin"></div>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <Heart className="text-[#FF6F61] animate-pulse" size={24} fill="#FF6F61" />
-                </div>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <h2 className="text-xl font-black text-[#111] tracking-tight">키링크 로그인 중</h2>
-              <p className="text-gray-500 text-sm font-medium">안전하게 본인 인증을 마무리하고 있습니다.</p>
-            </div>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '16px' }}>
+            <Loader2 size={40} color="#FF6F61" className="animate-spin" />
+            <p style={{ fontSize: '0.9rem', fontWeight: '700', color: '#FF6F61' }}>로그인 중...</p>
           </div>
         ) : (
           <div className="space-y-6">
@@ -116,13 +106,9 @@ function KakaoCallbackContent() {
 export default function KakaoCallbackPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-white px-4">
-        <div className="relative">
-          <div className="w-20 h-20 border-4 border-[#FF6F61]/20 border-t-[#FF6F61] rounded-full animate-spin"></div>
-          <div className="absolute inset-0 flex items-center justify-center">
-            <Heart className="text-[#FF6F61] animate-pulse" size={24} fill="#FF6F61" />
-          </div>
-        </div>
+      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '16px' }}>
+        <Loader2 size={40} color="#FF6F61" className="animate-spin" />
+        <p style={{ fontSize: '0.9rem', fontWeight: '700', color: '#FF6F61' }}>로그인 중...</p>
       </div>
     }>
       <KakaoCallbackContent />
