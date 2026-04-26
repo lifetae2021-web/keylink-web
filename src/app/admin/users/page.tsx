@@ -5,7 +5,7 @@ import {
   Search, CheckCircle, XCircle, Eye,
   Download, ShieldCheck, ChevronLeft, ChevronRight, Loader2,
   Filter, ArrowUpDown, ArrowUp, ArrowDown, Ticket,
-  UserPlus, Award, AlertCircle, Coins, Edit3
+  UserPlus, Award, AlertCircle, Coins, Edit3, Trash2, X
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { db } from '@/lib/firebase';
@@ -69,6 +69,29 @@ export default function UsersPage() {
   // v8.8.6: 직업 검토 상태 추가
   const [editingJobId, setEditingJobId] = useState<string | null>(null);
   const [tempJobValue, setTempJobValue] = useState<string>('');
+
+  // 회원 삭제
+  const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDeleteUser = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
+    try {
+      const res = await fetch('/api/admin/users/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uid: deleteTarget.id }),
+      });
+      if (!res.ok) throw new Error();
+      toast.success(`${deleteTarget.name} 회원이 삭제되었습니다.`);
+      setDeleteTarget(null);
+    } catch {
+      toast.error('삭제 중 오류가 발생했습니다.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   useEffect(() => {
     setIsLoading(true);
@@ -591,6 +614,14 @@ export default function UsersPage() {
                           >
                             <Eye size={14} />
                           </button>
+                          <button
+                            onClick={() => setDeleteTarget(u)}
+                            className="flex items-center justify-center rounded-lg hover:bg-rose-50 transition-all text-slate-300 hover:text-rose-500"
+                            style={{ width: 32, height: 32 }}
+                            title="회원 삭제"
+                          >
+                            <Trash2 size={14} />
+                          </button>
                         </div>
                       </td>
 
@@ -627,11 +658,68 @@ export default function UsersPage() {
       </div>
       
       {/* Modals */}
-      <UserProfileModal 
-        user={selectedUserForProfile} 
-        isOpen={!!selectedUserForProfile} 
-        onClose={() => setSelectedUserForProfile(null)} 
+      <UserProfileModal
+        user={selectedUserForProfile}
+        isOpen={!!selectedUserForProfile}
+        onClose={() => setSelectedUserForProfile(null)}
       />
+
+      {/* 회원 삭제 확인 모달 */}
+      {deleteTarget && (
+        <div
+          onClick={() => !isDeleting && setDeleteTarget(null)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ background: '#fff', borderRadius: '20px', width: '100%', maxWidth: '400px', padding: '32px 28px' }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#FEF2F2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Trash2 size={18} color="#EF4444" />
+                </div>
+                <div>
+                  <h2 style={{ fontSize: '1rem', fontWeight: '900', color: '#111' }}>회원 삭제</h2>
+                  <p style={{ fontSize: '0.78rem', color: '#888', marginTop: '2px' }}>이 작업은 되돌릴 수 없습니다.</p>
+                </div>
+              </div>
+              <button onClick={() => !isDeleting && setDeleteTarget(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#999' }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <div style={{ background: '#F8FAFC', borderRadius: '12px', padding: '16px', marginBottom: '20px' }}>
+              <p style={{ fontSize: '0.88rem', color: '#334155', fontWeight: '600' }}>
+                <strong style={{ color: '#EF4444' }}>{deleteTarget.name}</strong> ({deleteTarget.username || deleteTarget.id}) 회원을 삭제하시겠습니까?
+              </p>
+              <p style={{ fontSize: '0.78rem', color: '#94A3B8', marginTop: '8px', lineHeight: 1.6 }}>
+                • Firestore 회원 문서 삭제<br />
+                • Firebase Auth 계정 삭제<br />
+                • 신청 내역 삭제<br />
+                • 프로필 이미지 삭제
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                onClick={() => setDeleteTarget(null)}
+                disabled={isDeleting}
+                style={{ flex: 1, padding: '12px', borderRadius: '100px', border: '1px solid #E2E8F0', background: '#fff', color: '#64748B', fontWeight: '700', fontSize: '0.88rem', cursor: 'pointer' }}
+              >
+                취소
+              </button>
+              <button
+                onClick={handleDeleteUser}
+                disabled={isDeleting}
+                style={{ flex: 1, padding: '12px', borderRadius: '100px', border: 'none', background: '#EF4444', color: '#fff', fontWeight: '800', fontSize: '0.88rem', cursor: isDeleting ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+              >
+                {isDeleting ? <><Loader2 size={15} className="animate-spin" /> 삭제 중...</> : '삭제하기'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
