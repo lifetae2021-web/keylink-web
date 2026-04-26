@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
-  Search, CheckCircle, XCircle, Eye,
+  Search, CheckCircle, XCircle,
   Download, ShieldCheck, ChevronLeft, ChevronRight, Loader2,
   Filter, ArrowUpDown, ArrowUp, ArrowDown, Ticket,
   UserPlus, Award, AlertCircle, Edit3, Trash2, X
@@ -598,12 +598,6 @@ export default function UsersPage() {
                               </button>
                             </>
                           )}
-                          <button
-                            className="flex items-center justify-center rounded-lg hover:bg-slate-100 transition-all text-slate-300 hover:text-slate-600"
-                            style={{ width: 32, height: 32 }}
-                          >
-                            <Eye size={14} />
-                          </button>
                           <button
                             onClick={() => setDeleteTarget(u)}
                             className="flex items-center justify-center rounded-lg hover:bg-rose-50 transition-all text-slate-300 hover:text-rose-500"
