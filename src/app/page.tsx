@@ -387,27 +387,38 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── CTA BANNER ── */}
-      <section style={{
-        padding: '80px 20px',
-        background: 'linear-gradient(135deg, rgba(255,219,233,0.3) 0%, rgba(253,248,250,1) 50%, rgba(255,219,233,0.3) 100%)',
-        borderTop: '1px solid var(--color-border)',
-      }}>
-        <div style={{ maxWidth: '700px', margin: '0 auto', textAlign: 'center' }}>
-          <h2 className="kl-heading-lg" style={{ marginBottom: '20px' }}>
-            지금 바로 <span className="kl-gradient-text">신청하세요</span>
-          </h2>
-          <p style={{ color: 'var(--color-text-secondary)', fontSize: '1rem', lineHeight: 1.8, marginBottom: '40px' }}>
-            자리는 매우 빠르게 마감됩니다.<br/>
-            오늘 신청해서 다음 주말 새로운 인연을 만나보세요.
-          </p>
-          <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Link href="/events?region=busan" className="kl-btn-primary" style={{ fontSize: '0.95rem', padding: '16px 40px' }}>
-              📍 지금 바로 신청하기
-            </Link>
-          </div>
-        </div>
-      </section>
+      {/* ── FLOATING CTA ── */}
+      <Link
+        href="/events"
+        style={{
+          position: 'fixed',
+          bottom: '32px',
+          right: '32px',
+          zIndex: 200,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          background: '#FF6F61',
+          color: '#fff',
+          fontWeight: '900',
+          fontSize: '1rem',
+          padding: '16px 28px',
+          borderRadius: '100px',
+          textDecoration: 'none',
+          boxShadow: '0 8px 24px rgba(255,111,97,0.4)',
+          transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+        }}
+        onMouseEnter={e => {
+          e.currentTarget.style.transform = 'scale(1.05)';
+          e.currentTarget.style.boxShadow = '0 12px 32px rgba(255,111,97,0.5)';
+        }}
+        onMouseLeave={e => {
+          e.currentTarget.style.transform = 'scale(1)';
+          e.currentTarget.style.boxShadow = '0 8px 24px rgba(255,111,97,0.4)';
+        }}
+      >
+        참여 신청하기 <ArrowRight size={18} />
+      </Link>
     </div>
   );
 }

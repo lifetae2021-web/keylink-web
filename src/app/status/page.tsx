@@ -153,10 +153,8 @@ export default function StatusListPage() {
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span style={{ fontSize: '0.85rem', color: '#999', textDecoration: 'line-through' }}>
-                        {(event as any).originalPrice ? `${((event as any).originalPrice).toLocaleString()}원` : '39,000원'}
-                      </span>
-                      <span style={{ fontSize: '0.75rem', fontWeight: '800', color: '#FF6F61', background: 'rgba(255,111,97,0.1)', padding: '1px 6px', borderRadius: '4px' }}>26% OFF</span>
+                      <span style={{ fontSize: '0.85rem', color: '#999', textDecoration: 'line-through' }}>40,000원</span>
+                      <span style={{ fontSize: '0.75rem', fontWeight: '800', color: '#FF6F61', background: 'rgba(255,111,97,0.1)', padding: '1px 6px', borderRadius: '4px' }}>28% OFF</span>
                     </div>
                     <span style={{ fontSize: '1.3rem', fontWeight: '900', color: '#FF6F61' }}>
                       {(event as any).price ? `${((event as any).price).toLocaleString()}원` : '29,000원'}

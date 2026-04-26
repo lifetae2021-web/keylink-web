@@ -157,7 +157,6 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
       }}>
         <div className="pulse-circle" />
         <span>현재 {watchers}명이 이 기수를 같이 보고 있어요</span>
-        <span style={{ fontSize: '0.7rem', opacity: 0.6, marginLeft: '10px' }}>v8.8.4</span>
       </div>
 
       <div className="kl-container" style={{ paddingTop: '100px' }}>
@@ -193,7 +192,7 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
                   <MapPin size={18} /> <span style={{ fontWeight: '600' }}>{session.region === 'busan' ? '부산' : '창원'} {session.location}</span>
                 </div>
-                <h2 style={{ fontSize: '1.8rem', fontWeight: '900', letterSpacing: '-0.02em' }}>{session.episodeNumber}기 {session.title}</h2>
+                <h2 style={{ fontSize: '1.8rem', fontWeight: '900', letterSpacing: '-0.02em' }}>{session.title}</h2>
               </div>
             </div>
 

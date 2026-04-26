@@ -157,7 +157,20 @@ export function EventsSection({ standalone = false }: { standalone?: boolean }) 
 }
 
 function EventCalendar({ events, onDateSelect, selectedDate }: { events: KeylinkEvent[], onDateSelect: (d: Date | null) => void, selectedDate: Date | null }) {
-  const [currentDate, setCurrentDate] = useState(new Date('2026-04-01T00:00:00'));
+  const [currentDate, setCurrentDate] = useState(startOfMonth(new Date()));
+  const [autoMoved, setAutoMoved] = useState(false);
+
+  // 현재 달에 이벤트가 없으면 가장 빠른 이벤트가 있는 달로 자동 이동
+  useEffect(() => {
+    if (autoMoved || events.length === 0) return;
+    const thisMonth = startOfMonth(new Date());
+    const hasEventThisMonth = events.some(e => isSameMonth(e.date, thisMonth));
+    if (!hasEventThisMonth) {
+      const sorted = [...events].sort((a, b) => a.date.getTime() - b.date.getTime());
+      setCurrentDate(startOfMonth(sorted[0].date));
+    }
+    setAutoMoved(true);
+  }, [events, autoMoved]);
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
@@ -353,10 +366,8 @@ function EventCard({ event }: { event: KeylinkEvent }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ fontSize: '0.85rem', color: '#999', textDecoration: 'line-through' }}>
-              {event.originalPrice ? `${event.originalPrice.toLocaleString()}원` : '39,000원'}
-            </span>
-            <span style={{ fontSize: '0.75rem', fontWeight: '800', color: '#FF6F61', background: 'rgba(255,111,97,0.1)', padding: '1px 6px', borderRadius: '4px' }}>26% OFF</span>
+            <span style={{ fontSize: '0.85rem', color: '#999', textDecoration: 'line-through' }}>40,000원</span>
+            <span style={{ fontSize: '0.75rem', fontWeight: '800', color: '#FF6F61', background: 'rgba(255,111,97,0.1)', padding: '1px 6px', borderRadius: '4px' }}>28% OFF</span>
           </div>
           <span style={{ fontSize: '1.3rem', fontWeight: '900', color: '#FF6F61' }}>
             {(event.currentPrice || event.price).toLocaleString()}원
