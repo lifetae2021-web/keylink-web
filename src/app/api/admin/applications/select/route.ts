@@ -64,22 +64,11 @@ export async function POST(req: NextRequest) {
           return; // 성공으로 간주하거나 중단
         }
 
-        // 선발(selected)은 정원 초과 여부 관계없이 허용 (확정 시 슬롯/대기자 분기)
+        // 선발(selected)은 카운터 변경 없이 상태만 업데이트 (카운터는 confirmed 시에만 변경)
         transaction.update(appRef, {
           status: 'selected',
           updatedAt: FieldValue.serverTimestamp(),
         });
-
-        const currentCount = gender === 'male' ? (sessionData.currentMale || 0) : (sessionData.currentFemale || 0);
-        const maxCount = gender === 'male' ? (sessionData.maxMale || 8) : (sessionData.maxFemale || 8);
-        const counterField = gender === 'male' ? 'currentMale' : 'currentFemale';
-
-        if (currentCount < maxCount) {
-          transaction.update(sessionRef, {
-            [counterField]: FieldValue.increment(1),
-            updatedAt: FieldValue.serverTimestamp(),
-          });
-        }
       });
     } catch (txnError: any) {
       console.error('Selection Transaction Failed:', txnError);

@@ -141,6 +141,12 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
   const currentMale = session.currentMale || 0;
   const currentFemale = session.currentFemale || 0;
 
+  const now = new Date();
+  const twoHoursAfter = new Date(session.eventDate.getTime() + 2 * 60 * 60 * 1000);
+  const isFinished = now >= twoHoursAfter;
+  const isSoldOut = (session.maxMale > 0 && currentMale >= session.maxMale) && (session.maxFemale > 0 && currentFemale >= session.maxFemale);
+  const showApplyButton = !isFinished;
+
   return (
     <div style={{ paddingBottom: '100px', background: 'var(--color-bg)' }}>
       <div style={{ 
@@ -383,20 +389,42 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
           </div>
         </div>
 
-        {/* Bottom CTA */}
-        <section style={{ textAlign: 'center' }}>
-          <Link href="/events" className="kl-btn-primary" style={{ 
-            display: 'inline-flex', alignItems: 'center', gap: '12px',
-            padding: '24px 60px', fontSize: '1.2rem', fontWeight: '900', borderRadius: '100px',
-            boxShadow: '0 20px 40px rgba(255,111,97,0.3)', transition: 'transform 0.3s ease'
-          }} onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'} onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}>
-            {progressMale >= 1 && progressFemale >= 1 ? '대기자로 신청하기' : '지금 참여 신청하기'} <ArrowRight size={22} />
-          </Link>
-          <p style={{ marginTop: '20px', color: '#888', fontWeight: '500', fontSize: '0.9rem' }}>
-            * 실시간 상황에 따라 인원이 빠르게 마감될 수 있습니다.
-          </p>
-        </section>
       </div>
+
+      {/* 플로팅 신청 버튼 */}
+      {showApplyButton && (
+        <Link
+          href={`/events/${sessionId}`}
+          style={{
+            position: 'fixed',
+            bottom: '32px',
+            right: '32px',
+            zIndex: 200,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            background: '#FF6F61',
+            color: '#fff',
+            fontWeight: '900',
+            fontSize: '1rem',
+            padding: '16px 28px',
+            borderRadius: '100px',
+            textDecoration: 'none',
+            boxShadow: '0 8px 24px rgba(255,111,97,0.4)',
+            transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.transform = 'scale(1.05)';
+            e.currentTarget.style.boxShadow = '0 12px 32px rgba(255,111,97,0.5)';
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.transform = 'scale(1)';
+            e.currentTarget.style.boxShadow = '0 8px 24px rgba(255,111,97,0.4)';
+          }}
+        >
+          {isSoldOut ? '대기자 신청하기' : '신청하기'} <ArrowRight size={18} />
+        </Link>
+      )}
 
       <style jsx>{`
         .pulse-circle { width: 8px; height: 8px; background-color: #fff; border-radius: 50%; animation: pulse 1.5s infinite; }

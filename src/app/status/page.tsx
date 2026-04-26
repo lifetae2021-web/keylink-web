@@ -33,11 +33,11 @@ export default function StatusListPage() {
     const totalMax = (event.maxMale || 0) + (event.maxFemale || 0);
     const now = new Date();
     const twoHoursAfter = new Date(event.eventDate.getTime() + 2 * 60 * 60 * 1000);
-    const isFull = totalMax > 0 && totalFilled >= totalMax;
+    const isFull = (event.maxMale > 0 && currentMale >= event.maxMale) && (event.maxFemale > 0 && currentFemale >= event.maxFemale);
 
     if (now >= twoHoursAfter) return { label: '종료', color: '#64748b', bg: '#f1f5f9' };
     if (now >= event.eventDate) return { label: '진행 중', color: '#1d4ed8', bg: '#dbeafe' };
-    if (isFull) return { label: '마감', color: '#dc2626', bg: '#fee2e2' };
+    if (isFull) return { label: '모집 마감', color: '#dc2626', bg: '#fee2e2' };
     return { label: '모집 중', color: '#047857', bg: '#d1fae5' };
   };
 
@@ -51,19 +51,19 @@ export default function StatusListPage() {
 
   return (
     <div style={{ paddingBottom: '100px', background: 'var(--color-bg)', minHeight: '100vh' }}>
-      <div className="kl-container" style={{ paddingTop: '60px' }}>
-        <header style={{ textAlign: 'center', marginBottom: '50px' }}>
+      <div className="kl-container" style={{ paddingTop: '120px' }}>
+        <header className="status-header" style={{ textAlign: 'center', marginBottom: '50px' }}>
           <h1 style={{ fontSize: '2.8rem', fontWeight: '900', marginBottom: '16px', letterSpacing: '-0.04em' }}>
             전체 기수 <span style={{ color: '#FF6F61' }}>현황 라인업</span>
           </h1>
           <p style={{ color: 'var(--color-text-secondary)', fontSize: '1.1rem', fontWeight: '500' }}>
-            진행 중인 기수부터 종료된 기수까지 모든 실시간 명단을 확인하세요. <span style={{ fontSize: '0.7rem', color: '#CCC' }}>v8.5.0 Premium</span>
+            진행 중인 기수부터 종료된 기수까지 모든 실시간 명단을 확인하세요.
           </p>
         </header>
 
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', 
+        <div className="status-grid" style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))',
           gap: '30px'
         }}>
           {sessions.map((event) => {
@@ -74,12 +74,11 @@ export default function StatusListPage() {
             const progressFemale = currentFemale / event.maxFemale;
 
             return (
-              <Link 
+              <Link
                 key={event.id}
                 href={`/status/${event.id}`}
-                style={{ textDecoration: 'none', color: 'inherit' }}
-              >
-                <div style={{ 
+                className="status-card"
+                style={{
                   background: '#fff',
                   borderRadius: '32px',
                   padding: '32px',
@@ -89,7 +88,8 @@ export default function StatusListPage() {
                   display: 'flex',
                   flexDirection: 'column',
                   gap: '24px',
-                  cursor: 'pointer'
+                  textDecoration: 'none',
+                  color: 'inherit',
                 }}
                 onMouseEnter={e => {
                   e.currentTarget.style.transform = 'translateY(-8px)';
@@ -101,27 +101,32 @@ export default function StatusListPage() {
                   e.currentTarget.style.borderColor = '#eee';
                   e.currentTarget.style.boxShadow = 'none';
                 }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div style={{ 
+              >
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div style={{
+                      alignSelf: 'flex-start',
                       padding: '6px 16px', borderRadius: '100px', fontSize: '0.8rem', fontWeight: '800',
                       background: status.bg, color: status.color,
-                      boxShadow: status.label === '마감 임박' ? '0 4px 12px rgba(255,111,97,0.3)' : 'none'
                     }}>
                       {status.label}
                     </div>
+                    <h3 style={{ fontSize: '1.2rem', fontWeight: '900', color: '#111', margin: 0, lineHeight: 1.3 }}>
+                      {event.title}
+                    </h3>
                   </div>
 
                   <div>
-                    <h3 style={{ fontSize: '1.4rem', fontWeight: '900', marginBottom: '12px', color: '#111' }}>
-                      {event.title}
-                    </h3>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', color: '#666', fontSize: '0.9rem', fontWeight: '600' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <MapPin size={16} /> {event.region === 'busan' ? '부산' : '창원'}
+                    {(event as any).targetMaleAge && (
+                      <div style={{ display: 'inline-flex', marginBottom: '12px', background: '#FFF5F4', border: '1px solid rgba(255,111,97,0.2)', padding: '4px 8px', borderRadius: '8px' }}>
+                        <span style={{ fontSize: '0.75rem', fontWeight: '800', color: '#FF6F61' }}>남성 연령 : {(event as any).targetMaleAge}</span>
                       </div>
+                    )}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', color: '#666', fontSize: '0.9rem', fontWeight: '600' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <Calendar size={16} /> {event.eventDate.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' })} {event.eventDate.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <MapPin size={16} /> {(event as any).venue ?? (event.region === 'busan' ? '부산' : '창원')}
                       </div>
                     </div>
                   </div>
@@ -143,10 +148,38 @@ export default function StatusListPage() {
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#FF6F61', fontWeight: '800', fontSize: '0.9rem', marginTop: '4px' }}>
-                    라인업 상세보기 <ArrowRight size={16} />
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ fontSize: '0.85rem', color: '#999', textDecoration: 'line-through' }}>
+                        {(event as any).originalPrice ? `${((event as any).originalPrice).toLocaleString()}원` : '39,000원'}
+                      </span>
+                      <span style={{ fontSize: '0.75rem', fontWeight: '800', color: '#FF6F61', background: 'rgba(255,111,97,0.1)', padding: '1px 6px', borderRadius: '4px' }}>26% OFF</span>
+                    </div>
+                    <span style={{ fontSize: '1.3rem', fontWeight: '900', color: '#FF6F61' }}>
+                      {(event as any).price ? `${((event as any).price).toLocaleString()}원` : '29,000원'}
+                    </span>
                   </div>
-                </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
+                    <Link href={`/status/${event.id}`} style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#FF6F61', fontWeight: '800', fontSize: '0.9rem', textDecoration: 'none' }}>
+                      라인업 상세보기 <ArrowRight size={16} />
+                    </Link>
+                    {(status.label === '모집 중' || status.label === '모집 마감') && (
+                      <Link
+                        href={`/events/${event.id}`}
+                        onClick={e => e.stopPropagation()}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: '4px',
+                          background: '#FF6F61', color: '#fff',
+                          fontSize: '0.8rem', fontWeight: '800',
+                          padding: '8px 16px', borderRadius: '100px',
+                          textDecoration: 'none',
+                        }}
+                      >
+                        {status.label === '모집 마감' ? '대기자 신청하기' : '신청하기'}
+                      </Link>
+                    )}
+                  </div>
               </Link>
             );
           })}
@@ -161,9 +194,12 @@ export default function StatusListPage() {
       </div>
 
       <style jsx>{`
-        @media (max-width: 480px) {
-          h1 { font-size: 2rem !important; }
-          .kl-container { padding: 0 20px; }
+        @media (max-width: 640px) {
+          h1 { font-size: 1.8rem !important; }
+          .kl-container { padding: 0 16px !important; padding-top: 100px !important; }
+          .status-grid { grid-template-columns: 1fr !important; gap: 16px !important; }
+          .status-card { padding: 20px !important; border-radius: 20px !important; }
+          .status-header { margin-bottom: 30px !important; }
         }
       `}</style>
     </div>

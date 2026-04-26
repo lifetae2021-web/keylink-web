@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { ArrowRight, Calendar, MapPin, Users, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar, MapPin, ChevronLeft, ChevronRight } from 'lucide-react';
 
 import { KeylinkEvent } from '@/types';
 import { Session } from '@/lib/types';
@@ -49,9 +49,16 @@ export function EventsSection({ standalone = false }: { standalone?: boolean }) 
   useEffect(() => {
     const unsubscribe = subscribeAllSessions((sessions) => {
       // v1.9.8: 완료(completed) 상태를 제외한 모든 기수를 불러와 마감 기수 누락 방지
-      const displayable = sessions.filter(
-        (s) => s.status !== 'completed'
-      );
+      const displayable = sessions.filter((s) => {
+        const twoHoursAfter = new Date(s.eventDate.getTime() + 2 * 60 * 60 * 1000);
+        const isFinished = new Date() >= twoHoursAfter;
+        if (isFinished) return false;
+        // 종료 전이면: completed는 isSoldOut인 경우만, 나머지 status는 모두 표시
+        if (s.status === 'completed') {
+          return (s.maxMale > 0 && (s.currentMale || 0) >= s.maxMale) && (s.maxFemale > 0 && (s.currentFemale || 0) >= s.maxFemale);
+        }
+        return true;
+      });
       
       const mappedEvents = displayable.map(sessionToEvent);
       setLiveEvents(mappedEvents);
@@ -64,6 +71,7 @@ export function EventsSection({ standalone = false }: { standalone?: boolean }) 
   // v1.9.8: 날짜 기반 필터 제거 → status 기반으로만 처리
   // completed(종료) 기수는 구독 레벨에서 이미 제외됨
   // 따라서 여기서는 지역/날짜 필터만 적용하여 마감 기수도 정상 노출
+  const now = new Date();
   const filtered = liveEvents
     .filter((e) => {
       const dateMatch = selectedDate ? isSameDay(e.date, selectedDate) : true;
@@ -231,10 +239,8 @@ function EventCalendar({ events, onDateSelect, selectedDate }: { events: Keylink
 }
 
 function EventCard({ event }: { event: KeylinkEvent }) {
-  // 남성 AND 여성 모두 정원이 찼을 때만 마감
-  const soldOutM = event.currentMale >= event.maxMale;
-  const soldOutF = event.currentFemale >= event.maxFemale;
-  const isSoldOut = soldOutM && soldOutF;
+  // /status 페이지와 동일한 로직 — totalMax > 0 조건으로 maxMale/maxFemale=0 오판 방지
+  const isSoldOut = (event.maxMale > 0 && event.currentMale >= event.maxMale) && (event.maxFemale > 0 && event.currentFemale >= event.maxFemale);
 
   // 배지 상태 및 레이블 결정 (v1.9.7: Admin-UI Sync)
   const now = new Date();
@@ -244,110 +250,132 @@ function EventCard({ event }: { event: KeylinkEvent }) {
   let badgeStatus = 'open';
   let badgeLabel = '모집 중';
 
-  if (isFinished) {
-    badgeStatus = 'finished';
-    badgeLabel = '종료';
-  } else if (isSoldOut) {
+  if (isSoldOut) {
     badgeStatus = 'closed';
     badgeLabel = '모집 마감';
+  } else if (isFinished) {
+    badgeStatus = 'finished';
+    badgeLabel = '종료';
   } else if (now >= event.date) {
     badgeStatus = 'upcoming'; // '진행 중' 스타일 (blue)
     badgeLabel = '진행 중';
   }
 
+  const badgeColor = isSoldOut
+    ? { color: '#dc2626', bg: '#fee2e2' }
+    : isFinished
+    ? { color: '#64748b', bg: '#f1f5f9' }
+    : now >= event.date
+    ? { color: '#1d4ed8', bg: '#dbeafe' }
+    : { color: '#047857', bg: '#d1fae5' };
+
+  const progressMale = event.maxMale > 0 ? event.currentMale / event.maxMale : 0;
+  const progressFemale = event.maxFemale > 0 ? event.currentFemale / event.maxFemale : 0;
+
   return (
-    <Link href={`/events/${event.id}`} className="event-card" style={{ 
-      pointerEvents: isSoldOut ? 'none' : 'auto', 
-      opacity: isSoldOut ? 0.6 : 1,
-      filter: isSoldOut ? 'grayscale(0.5)' : 'none',
-      cursor: isSoldOut ? 'not-allowed' : 'pointer'
-    }}>
-      <div style={{
-        height: '180px',
-        background: event.region === 'busan'
-          ? 'linear-gradient(135deg, #FFF0F5, #FFE4E1)'
-          : 'linear-gradient(135deg, #F8F8FF, #F0F0FF)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        position: 'relative', overflow: 'hidden',
-      }}>
+    <Link
+      href={`/events/${event.id}`}
+      style={{
+        background: '#fff',
+        borderRadius: '32px',
+        padding: '32px',
+        border: '1.5px solid #eee',
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '24px',
+        cursor: 'pointer',
+        textDecoration: 'none',
+        color: 'inherit',
+      }}
+      onMouseEnter={e => {
+        e.currentTarget.style.transform = 'translateY(-8px)';
+        e.currentTarget.style.borderColor = '#FF6F61';
+        e.currentTarget.style.boxShadow = '0 20px 40px rgba(255,111,97,0.12)';
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.transform = 'translateY(0)';
+        e.currentTarget.style.borderColor = '#eee';
+        e.currentTarget.style.boxShadow = 'none';
+      }}
+    >
+      {/* 배지 + 타이틀 */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
         <div style={{
-          position: 'absolute', inset: 0,
-          background: event.region === 'busan'
-            ? 'radial-gradient(circle at 50% 50%, rgba(255,111,97,0.15), transparent 70%)'
-            : 'radial-gradient(circle at 50% 50%, rgba(169,143,213,0.15), transparent 70%)',
-        }} />
-        <div style={{ textAlign: 'center', position: 'relative' }}>
-          <p style={{
-            fontSize: '0.7rem', fontWeight: '700', letterSpacing: '0.12em',
-            color: event.region === 'busan' ? '#E6E6FA' : '#C9A0E8',
-            textTransform: 'uppercase', marginBottom: '8px',
-          }}>
-            {event.region === 'busan' ? '📍 부산' : '📍 창원'}
-          </p>
-          <p style={{ fontSize: '3rem', fontWeight: '900', color: '#333333', lineHeight: 1 }}>
-            {event.episode}<span style={{ fontSize: '1.1rem' }}>기</span>
-          </p>
+          alignSelf: 'flex-start',
+          padding: '6px 16px', borderRadius: '100px', fontSize: '0.8rem', fontWeight: '800',
+          background: badgeColor.bg, color: badgeColor.color,
+        }}>
+          {badgeLabel}
         </div>
-        <div style={{ position: 'absolute', top: '12px', right: '12px' }}>
-          <span className={`kl-badge kl-badge-${badgeStatus}`}>
-            {badgeLabel}
-          </span>
+        <h3 style={{ fontSize: '1.2rem', fontWeight: '900', color: '#111', margin: 0, lineHeight: 1.3 }}>
+          {event.title}
+        </h3>
+      </div>
+
+      {/* 남성 연령 + 날짜/장소 */}
+      <div>
+        {event.targetMaleAge && (
+          <div style={{ display: 'inline-flex', marginBottom: '12px', background: '#FFF5F4', border: '1px solid rgba(255,111,97,0.2)', padding: '4px 8px', borderRadius: '8px' }}>
+            <span style={{ fontSize: '0.75rem', fontWeight: '800', color: '#FF6F61' }}>남성 연령 : {event.targetMaleAge}</span>
+          </div>
+        )}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', color: '#666', fontSize: '0.9rem', fontWeight: '600' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Calendar size={16} /> {format(event.date, 'M월 d일 (EEEE) · HH:mm', { locale: ko })}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <MapPin size={16} /> {event.venue}
+          </div>
         </div>
       </div>
 
-      <div style={{ padding: '22px' }}>
-        <h3 style={{ fontSize: '1.05rem', fontWeight: '700', marginBottom: '12px', color: 'var(--color-text-primary)' }}>
-          {event.title}
-        </h3>
-        {event.targetMaleAge && (
-            <div style={{ display: 'inline-flex', marginBottom: '12px', background: '#FFF5F4', border: '1px solid rgba(255,111,97,0.2)', padding: '4px 8px', borderRadius: '8px' }}>
-                <span style={{ fontSize: '0.75rem', fontWeight: '800', color: '#FF6F61' }}>🎯 타겟 남성 연령: {event.targetMaleAge}년생</span>
-            </div>
-        )}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Calendar size={14} color="var(--color-text-muted)" />
-            <span style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
-              {format(event.date, 'M월 d일 (EEEE) · HH:mm', { locale: ko })}
-            </span>
+      {/* 프로그레스 바 */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', background: '#fcfcfc', padding: '16px', borderRadius: '16px' }}>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          <span style={{ fontSize: '0.8rem', fontWeight: '800', color: '#666', width: '30px' }}>남성</span>
+          <div style={{ flex: 1, height: '6px', background: '#eee', borderRadius: '3px', overflow: 'hidden' }}>
+            <div style={{ width: `${Math.min(progressMale * 100, 100)}%`, height: '100%', background: '#007AFF', borderRadius: '3px' }} />
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <MapPin size={14} color="var(--color-text-muted)" />
-            <span style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>{event.venue}</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Users size={14} color="var(--color-text-muted)" />
-            <span style={{ fontSize: '0.85rem', color: isSoldOut ? '#C86A6A' : 'var(--color-text-secondary)', fontWeight: isSoldOut ? '700' : '400' }}>
-              남 {event.currentMale}/{event.maxMale} · 여 {event.currentFemale}/{event.maxFemale}
-              {isSoldOut && ' · 정원 마감'}
-            </span>
-          </div>
+          <span style={{ fontSize: '0.8rem', fontWeight: '800', color: progressMale >= 1 ? '#007AFF' : '#666' }}>{event.currentMale}/{event.maxMale}</span>
         </div>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          <span style={{ fontSize: '0.8rem', fontWeight: '800', color: '#666', width: '30px' }}>여성</span>
+          <div style={{ flex: 1, height: '6px', background: '#eee', borderRadius: '3px', overflow: 'hidden' }}>
+            <div style={{ width: `${Math.min(progressFemale * 100, 100)}%`, height: '100%', background: '#FF4D8D', borderRadius: '3px' }} />
+          </div>
+          <span style={{ fontSize: '0.8rem', fontWeight: '800', color: progressFemale >= 1 ? '#FF4D8D' : '#666' }}>{event.currentFemale}/{event.maxFemale}</span>
+        </div>
+      </div>
 
-        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
-              <span style={{ fontSize: '0.85rem', color: '#999999', textDecoration: 'line-through' }}>
-                {event.originalPrice ? `${event.originalPrice.toLocaleString()}원` : '39,000원'}
-              </span>
-              <span style={{ fontSize: '0.75rem', fontWeight: '800', color: '#FF6F61', background: 'rgba(255,111,97,0.1)', padding: '1px 6px', borderRadius: '4px' }}>
-                26% OFF
-              </span>
-            </div>
-            <p style={{ fontSize: '1.4rem', fontWeight: '900', color: '#FF6F61', lineHeight: 1.2 }}>
-              {(event.currentPrice || event.price).toLocaleString()}원
-            </p>
+      {/* 가격 + 신청 버튼 */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ fontSize: '0.85rem', color: '#999', textDecoration: 'line-through' }}>
+              {event.originalPrice ? `${event.originalPrice.toLocaleString()}원` : '39,000원'}
+            </span>
+            <span style={{ fontSize: '0.75rem', fontWeight: '800', color: '#FF6F61', background: 'rgba(255,111,97,0.1)', padding: '1px 6px', borderRadius: '4px' }}>26% OFF</span>
           </div>
-          {isSoldOut ? (
-            <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#999', fontSize: '0.85rem', fontWeight: '700', padding: '6px 12px', borderRadius: '8px', border: '1px solid #ddd' }}>
-              모집 마감
-            </span>
-          ) : (
-            <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#FF6F61', fontSize: '0.85rem', fontWeight: '700', paddingBottom: '4px' }}>
-              신청하기 <ArrowRight size={14} />
-            </span>
-          )}
+          <span style={{ fontSize: '1.3rem', fontWeight: '900', color: '#FF6F61' }}>
+            {(event.currentPrice || event.price).toLocaleString()}원
+          </span>
         </div>
+        {!isFinished && (
+          <Link
+            href={`/events/${event.id}`}
+            onClick={e => e.stopPropagation()}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '4px',
+              background: '#FF6F61', color: '#fff',
+              fontSize: '0.8rem', fontWeight: '800',
+              padding: '8px 16px', borderRadius: '100px',
+              textDecoration: 'none',
+            }}
+          >
+            {isSoldOut ? '대기자 신청하기' : '신청하기'}
+          </Link>
+        )}
       </div>
     </Link>
   );
