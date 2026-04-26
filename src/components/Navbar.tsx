@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Menu, X, LogOut, User as UserIcon } from 'lucide-react';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
@@ -28,6 +28,7 @@ export default function Navbar() {
   const [activeAnchor, setActiveAnchor] = useState<string | null>(null);
   const isManualScrolling = useRef(false);
   const pathname = usePathname();
+  const router = useRouter();
 
   // Smooth scroll to anchor, handle cross-page navigation
   const handleAnchorClick = useCallback((e: React.MouseEvent, anchor: string | null) => {
@@ -225,9 +226,16 @@ export default function Navbar() {
                   </button>
                 </div>
               ) : (
-                <Link href="/login" className="kl-btn-primary kl-mypage-btn" style={{ padding: '10px 20px', fontSize: '0.85rem' }}>
+                <button
+                  onClick={async () => {
+                    if (pathname === '/register/social-profile') await auth.signOut();
+                    router.push('/login');
+                  }}
+                  className="kl-btn-primary kl-mypage-btn"
+                  style={{ padding: '10px 20px', fontSize: '0.85rem', border: 'none', cursor: 'pointer' }}
+                >
                   로그인/회원가입
-                </Link>
+                </button>
               )}
               <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
