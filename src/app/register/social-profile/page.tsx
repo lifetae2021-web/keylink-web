@@ -170,7 +170,9 @@ export default function SocialProfilePage() {
         }}>
           {/* Header */}
           <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-            <h1 style={{ fontSize: '1.8rem', fontWeight: '900', color: '#111', letterSpacing: '-0.02em' }}>카톡 회원가입</h1>
+            <h1 style={{ fontSize: '1.8rem', fontWeight: '900', color: '#111', letterSpacing: '-0.02em' }}>
+              {user?.uid.startsWith('kakao_') ? '카카오 회원가입' : '구글 회원가입'}
+            </h1>
           </div>
 
           <div style={{ height: '1px', background: '#f0f0f0', margin: '32px 0' }} />
