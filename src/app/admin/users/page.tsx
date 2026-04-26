@@ -457,11 +457,11 @@ export default function UsersPage() {
                               const p = providerMap[u.id];
                               if (!p) return null;
                               const cfg: Record<string, { label: string; bg: string; color: string }> = {
-                                'password':   { label: '이메일', bg: '#F1F5F9', color: '#64748B' },
-                                'google.com': { label: 'Google', bg: '#FEF2F2', color: '#EF4444' },
-                                'oidc.kakao': { label: 'Kakao',  bg: '#FEF9C3', color: '#CA8A04' },
-                                'kakao':      { label: 'Kakao',  bg: '#FEF9C3', color: '#CA8A04' },
-                                'google':     { label: 'Google', bg: '#FEF2F2', color: '#EF4444' },
+                                'password':   { label: '기본회원', bg: '#F1F5F9', color: '#64748B' },
+                                'google.com': { label: 'Google',  bg: '#FEF2F2', color: '#EF4444' },
+                                'oidc.kakao': { label: 'Kakao',   bg: '#FEF9C3', color: '#CA8A04' },
+                                'kakao':      { label: 'Kakao',   bg: '#FEF9C3', color: '#CA8A04' },
+                                'google':     { label: 'Google',  bg: '#FEF2F2', color: '#EF4444' },
                               };
                               const c = cfg[p] || { label: p, bg: '#F1F5F9', color: '#64748B' };
                               return (
