@@ -705,3 +705,13 @@ body {
     margin-bottom: 8px;
   }
 }
+@keyframes slideInFromRight {
+  from { transform: translateX(80px); opacity: 0; }
+  to   { transform: translateX(0);   opacity: 1; }
+}
+@keyframes slideInFromLeft {
+  from { transform: translateX(-80px); opacity: 0; }
+  to   { transform: translateX(0);     opacity: 1; }
+}
+.review-slide-left  { animation: slideInFromRight 0.3s ease; }
+.review-slide-right { animation: slideInFromLeft  0.3s ease; }
