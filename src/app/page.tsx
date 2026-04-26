@@ -99,11 +99,12 @@ export default function HomePage() {
 
   // Auto-advance reviews
   useEffect(() => {
+    if (!reviews.length) return;
     const interval = setInterval(() => {
-      setCurrentReview((prev) => (prev + 1) % (reviews.length || 1));
+      setCurrentReview((prev) => (prev + 1) % reviews.length);
     }, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [reviews.length]);
 
   const stats = [
     { value: '120기+', label: '누적 진행 회차', icon: Sparkles },
