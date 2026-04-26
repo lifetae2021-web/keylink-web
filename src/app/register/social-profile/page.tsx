@@ -62,9 +62,8 @@ export default function SocialProfilePage() {
       }
 
       setUser(u);
-      setForm(prev => ({ 
-        ...prev, 
-        name: u.displayName || '',
+      setForm(prev => ({
+        ...prev,
         email: u.email || ''
       }));
       setIsLoading(false);
