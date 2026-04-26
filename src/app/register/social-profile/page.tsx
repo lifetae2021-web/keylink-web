@@ -180,19 +180,23 @@ export default function SocialProfilePage() {
             {/* 1. Email */}
             <div>
               <label className="kl-label" style={{ fontWeight: '800', marginBottom: '10px' }}>이메일</label>
-              <input 
-                className="kl-input" 
-                style={{ 
-                  borderRadius: '12px', 
+              <input
+                className="kl-input"
+                style={{
+                  borderRadius: '12px',
                   height: '54px',
-                  border: emailError ? '1.5px solid #FF6F61' : '1px solid var(--color-border)',
-                  background: emailError ? '#FFF5F4' : '#fff'
-                }} 
+                  border: '1px solid var(--color-border)',
+                  background: '#F8F9FA',
+                  color: '#888',
+                  cursor: 'not-allowed',
+                }}
                 type="email"
-                placeholder="example@gmail.com"
-                value={form.email} 
-                onChange={e => update('email', e.target.value)} 
+                value={form.email}
+                readOnly
               />
+              <p style={{ fontSize: '0.75rem', color: '#999', marginTop: '6px', marginLeft: '4px' }}>
+                소셜 계정 이메일은 변경할 수 없습니다.
+              </p>
               {emailError && (
                 <p style={{ color: '#FF6F61', fontSize: '0.8rem', fontWeight: '700', marginTop: '8px', marginLeft: '4px' }}>
                   {emailError}
