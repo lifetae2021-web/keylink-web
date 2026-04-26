@@ -127,7 +127,7 @@ export default function HomePage() {
       icon: ShieldCheck,
       title: '중복 만남 100% 환불',
       subtitle: 'ZERO REPEAT GUARANTEE',
-      desc: '과거 만났던 분과 재회 시 이유 불문 전액 환불',
+      desc: '최근 6개월 이내의 행사에서 만났던 인원을 다시 만나게 될 경우, 이용약관 제5조에 의거하여 100% 환불해 드립니다.',
       color: '#FF6F61',
     },
     {

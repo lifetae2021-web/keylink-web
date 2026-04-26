@@ -201,7 +201,12 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
                 <Timer size={14} /> 실시간 모집 진행률
               </div>
               <h1 style={{ fontSize: '2.4rem', fontWeight: '900', marginBottom: '24px', letterSpacing: '-0.03em' }}>
-                {progressMale >= 1 && progressFemale >= 1 ? '남녀 마감 완료!' : '곧 마감됩니다!'} <br/>현재 <span style={{ color: '#FF6F61' }}>참가 확정</span> 명단
+                {progressMale >= 1 && progressFemale >= 1 ? (
+                  <>남녀 마감 완료! <br/></>
+                ) : (progressMale >= 0.7 || progressFemale >= 0.7) ? (
+                  <>곧 마감됩니다! <br/></>
+                ) : null}
+                현재 <span style={{ color: '#FF6F61' }}>참가 확정</span> 명단
               </h1>
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
