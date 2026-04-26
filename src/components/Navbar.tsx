@@ -386,8 +386,8 @@ export default function Navbar() {
       {isAdmin && (
         <div style={{
           position: 'fixed', bottom: '16px', right: '16px', zIndex: 999,
-          background: 'rgba(0,0,0,0.55)', color: '#fff',
-          fontSize: '0.7rem', fontWeight: '700', padding: '4px 10px',
+          background: '#111', color: '#fff',
+          fontSize: '0.82rem', fontWeight: '700', padding: '5px 12px',
           borderRadius: '100px', pointerEvents: 'none',
           backdropFilter: 'blur(6px)',
         }}>
