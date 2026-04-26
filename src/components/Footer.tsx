@@ -1,9 +1,8 @@
 'use client';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Heart, MessageCircle, Camera, X } from 'lucide-react';
-import { useRef } from 'react';
 import { getContent } from '@/lib/firestore/cms';
 import { auth, db, storage } from '@/lib/firebase';
 import { deleteUser, onAuthStateChanged, User } from 'firebase/auth';
@@ -14,8 +13,6 @@ import { useEffect, useState } from 'react';
 
 export default function Footer() {
   const pathname = usePathname();
-  const router = useRouter();
-  const lastTapTime = useRef<number>(0);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [modal, setModal] = useState<{ title: string; body: string } | null>(null);
 
@@ -32,16 +29,7 @@ export default function Footer() {
 
   if (pathname === '/register') return null;
 
-  const handleHiddenAdminLink = () => {
-    const now = Date.now();
-    const gap = now - lastTapTime.current;
-    if (gap > 0 && gap < 2000) {
-      router.push('/admin');
-    }
-    lastTapTime.current = now;
-  };
-
-  const handleDeleteAccount = async () => {
+const handleDeleteAccount = async () => {
     if (!currentUser) return toast.error('로그인 후 이용 가능합니다.');
 
     const confirmed = window.confirm(
@@ -247,12 +235,8 @@ export default function Footer() {
             justifyContent: 'space-between',
             alignItems: 'center',
           }}>
-            <div 
-              style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', cursor: 'default', userSelect: 'none' }}
-              onDoubleClick={handleHiddenAdminLink}
-              onTouchStart={handleHiddenAdminLink}
-            >
-              © 2026 키링크. All rights reserved. | <span className="text-black text-sm font-semibold">v2.0.1</span>
+            <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', userSelect: 'none' }}>
+              © 2026 키링크. All rights reserved.
             </div>
             <div style={{ display: 'flex', gap: '20px' }}>
               <button onClick={() => openModal('terms')} style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: '500', padding: 0 }}>이용약관</button>
