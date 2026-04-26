@@ -199,7 +199,7 @@ export default function Navbar() {
 
             {/* CTA + Mobile Menu */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              {user ? (
+              {user && pathname !== '/register/social-profile' ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   {isAdmin && (
                     <Link href="/admin" className="kl-mypage-btn" style={{ padding: '10px 18px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '100px', background: '#111', color: '#fff', textDecoration: 'none', fontWeight: '700' }}>
