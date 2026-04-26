@@ -147,6 +147,7 @@ export default function EventsPage() {
   const [globalCounts, setGlobalCounts] = useState<
     Record<string, { male: number; female: number }>
   >({});
+  const [avgMatchingRate, setAvgMatchingRate] = useState<number>(0);
 
   useEffect(() => {
     // 확정 및 입금 대기 상태인 신청자만 실시간 집계하여 사이드바와 대시보드 동기화
@@ -171,6 +172,29 @@ export default function EventsPage() {
       (err) => console.error("Global counts sync error:", err),
     );
     return () => unsub();
+  }, []);
+
+  // 평균 매칭률 계산 (matchingSummaries 기반)
+  useEffect(() => {
+    const fetchMatchingRate = async () => {
+      const { getDocs } = await import('firebase/firestore');
+      const snap = await getDocs(collection(db, 'matchingSummaries'));
+      if (snap.empty) { setAvgMatchingRate(0); return; }
+      let totalRate = 0;
+      let count = 0;
+      snap.docs.forEach(d => {
+        const data = d.data();
+        const pairs: any[] = data.matchedPairs || [];
+        const unmatched: any[] = data.unmatchedUserIds || [];
+        const total = pairs.length * 2 + unmatched.length;
+        if (total > 0) {
+          totalRate += (pairs.length * 2) / total * 100;
+          count++;
+        }
+      });
+      setAvgMatchingRate(count > 0 ? Math.round(totalRate / count) : 0);
+    };
+    fetchMatchingRate();
   }, []);
 
   // 1. 실시간 데이터 구독 (기수 목록)
@@ -334,9 +358,9 @@ export default function EventsPage() {
       total: sessions.length,
       open: openCount,
       participants: totalParticipants,
-      rate: 75,
+      rate: avgMatchingRate,
     };
-  }, [sessions, globalCounts]);
+  }, [sessions, globalCounts, avgMatchingRate]);
 
   // v8.1.7: 투표 폼 상태 퀵 토글
   const toggleVotingForm = async (newStatus: SessionStatus) => {
