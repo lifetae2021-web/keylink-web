@@ -382,6 +382,19 @@ export default function Navbar() {
         </div>
       </div>
 
+      {/* Admin version badge */}
+      {isAdmin && (
+        <div style={{
+          position: 'fixed', bottom: '16px', right: '16px', zIndex: 999,
+          background: 'rgba(0,0,0,0.55)', color: '#fff',
+          fontSize: '0.7rem', fontWeight: '700', padding: '4px 10px',
+          borderRadius: '100px', pointerEvents: 'none',
+          backdropFilter: 'blur(6px)',
+        }}>
+          v2.2.6
+        </div>
+      )}
+
       <style>{`
         @media (max-width: 1024px) {
           .desktop-nav { display: none !important; }
