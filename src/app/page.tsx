@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import {
   Heart, MapPin, ArrowRight, Star,
@@ -88,6 +88,7 @@ function ProcessSection() {
 export default function HomePage() {
   const [currentReview, setCurrentReview] = useState(0);
   const [reviews, setReviews] = useState<ReviewItem[]>([]);
+  const [reviewVisible, setReviewVisible] = useState(true);
 
   useEffect(() => { getReviews().then(setReviews); }, []);
   const [heroVisible, setHeroVisible] = useState(false);
@@ -97,11 +98,20 @@ export default function HomePage() {
     return () => clearTimeout(t);
   }, []);
 
+  const currentReviewRef = useRef(currentReview);
+  useEffect(() => { currentReviewRef.current = currentReview; }, [currentReview]);
+
+  const changeReview = (next: number) => {
+    setReviewVisible(false);
+    setTimeout(() => { setCurrentReview(next); setReviewVisible(true); }, 200);
+  };
+
   // Auto-advance reviews
   useEffect(() => {
     if (!reviews.length) return;
     const interval = setInterval(() => {
-      setCurrentReview((prev) => (prev + 1) % reviews.length);
+      const next = (currentReviewRef.current + 1) % reviews.length;
+      changeReview(next);
     }, 3000);
     return () => clearInterval(interval);
   }, [reviews.length]);
@@ -293,7 +303,8 @@ export default function HomePage() {
               borderRadius: 'var(--radius-xl)',
               padding: '40px 48px',
               minHeight: '220px',
-              transition: 'all 0.5s ease',
+              transition: 'opacity 0.2s ease',
+              opacity: reviewVisible ? 1 : 0,
             }}>
               <div style={{ display: 'flex', gap: '4px', marginBottom: '20px' }}>
                 {[1,2,3,4,5].map((s) => <Star key={s} size={18} fill="#FF6F61" color="#FF6F61" />)}
@@ -330,7 +341,7 @@ export default function HomePage() {
                 </div>
 
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <button onClick={() => setCurrentReview((prev) => (prev - 1 + (reviews.length || 1)) % (reviews.length || 1))}
+                  <button onClick={() => changeReview((currentReview - 1 + reviews.length) % reviews.length)}
                     style={{
                       width: '40px', height: '40px', borderRadius: '50%',
                       background: 'var(--color-surface-2)', border: '1px solid var(--color-border)',
@@ -339,7 +350,7 @@ export default function HomePage() {
                     }}>
                     <ChevronLeft size={18} />
                   </button>
-                  <button onClick={() => setCurrentReview((prev) => (prev + 1) % (reviews.length || 1))}
+                  <button onClick={() => changeReview((currentReview + 1) % reviews.length)}
                     style={{
                       width: '40px', height: '40px', borderRadius: '50%',
                       background: 'var(--color-surface-2)', border: '1px solid var(--color-border)',
@@ -354,7 +365,7 @@ export default function HomePage() {
 
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginTop: '20px' }}>
               {reviews.map((_, i) => (
-                <button key={i} onClick={() => setCurrentReview(i)}
+                <button key={i} onClick={() => changeReview(i)}
                   style={{
                     width: i === currentReview ? '24px' : '8px',
                     height: '8px', borderRadius: '4px', border: 'none', cursor: 'pointer',
