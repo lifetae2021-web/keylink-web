@@ -88,7 +88,6 @@ function ProcessSection() {
 export default function HomePage() {
   const [currentReview, setCurrentReview] = useState(0);
   const [reviews, setReviews] = useState<ReviewItem[]>([]);
-  const [slideDir, setSlideDir] = useState<'left' | 'right'>('left');
 
   useEffect(() => { getReviews().then(setReviews); }, []);
   const [heroVisible, setHeroVisible] = useState(false);
@@ -103,7 +102,6 @@ export default function HomePage() {
 
   const changeReview = (next: number) => {
     if (next === currentReviewRef.current) return;
-    setSlideDir(next > currentReviewRef.current ? 'left' : 'right');
     setCurrentReview(next);
   };
 
@@ -298,71 +296,80 @@ export default function HomePage() {
           </div>
 
           <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 'var(--radius-xl)' }}>
-            <div
-              key={currentReview}
-              className={slideDir === 'left' ? 'review-slide-left' : 'review-slide-right'}
-              style={{
-                background: 'var(--gradient-card)',
-                border: '1px solid var(--color-border)',
-                borderRadius: 'var(--radius-xl)',
-                padding: '40px 48px',
-                minHeight: '220px',
-              }}>
-              <div style={{ display: 'flex', gap: '4px', marginBottom: '20px' }}>
-                {[1,2,3,4,5].map((s) => <Star key={s} size={18} fill="#FF6F61" color="#FF6F61" />)}
-              </div>
-              {reviews[currentReview]?.imageUrl && (
-                <div style={{ marginBottom: '24px', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--color-border)', background: 'rgba(0,0,0,0.03)', display: 'flex', alignItems: 'center', justifyContent: 'center', maxHeight: '400px' }}>
-                  <img src={reviews[currentReview].imageUrl} alt="Review attachment" style={{ maxWidth: '100%', maxHeight: '400px', objectFit: 'contain' }} />
-                </div>
-              )}
-              <p style={{
-                fontSize: 'clamp(0.95rem, 2vw, 1.05rem)',
-                color: 'var(--color-text-secondary)',
-                lineHeight: 1.9,
-                marginBottom: '28px',
-                fontStyle: 'italic',
-              }}>
-                &ldquo;{reviews[currentReview]?.text}&rdquo;
-              </p>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            {/* 슬라이드 strip - 모든 카드를 DOM에 유지 */}
+            <div style={{
+              display: 'flex',
+              transform: `translateX(-${currentReview * 100}%)`,
+              transition: 'transform 0.35s ease',
+              willChange: 'transform',
+            }}>
+              {reviews.map((review, i) => (
+                <div key={i} style={{ flex: '0 0 100%', minWidth: '100%' }}>
                   <div style={{
-                    width: '44px', height: '44px', borderRadius: '50%',
-                    background: 'linear-gradient(135deg, #FF6F61, #FFDBE9)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: 'var(--gradient-card)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: 'var(--radius-xl)',
+                    padding: '40px 48px',
+                    minHeight: '220px',
                   }}>
-                    <Heart size={18} fill="#FFFFFF" color="#FFFFFF" />
-                  </div>
-                  <div>
-                    <p style={{ fontWeight: '700', color: 'var(--color-text-primary)', fontSize: '0.95rem' }}>{reviews[currentReview]?.couple}</p>
-                    <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
-                      {reviews[currentReview]?.region} {reviews[currentReview]?.episode}
+                    <div style={{ display: 'flex', gap: '4px', marginBottom: '20px' }}>
+                      {[1,2,3,4,5].map((s) => <Star key={s} size={18} fill="#FF6F61" color="#FF6F61" />)}
+                    </div>
+                    {review.imageUrl && (
+                      <div style={{ marginBottom: '24px', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--color-border)', background: 'rgba(0,0,0,0.03)', display: 'flex', alignItems: 'center', justifyContent: 'center', maxHeight: '400px' }}>
+                        <img src={review.imageUrl} alt="Review attachment" style={{ maxWidth: '100%', maxHeight: '400px', objectFit: 'contain' }} />
+                      </div>
+                    )}
+                    <p style={{
+                      fontSize: 'clamp(0.95rem, 2vw, 1.05rem)',
+                      color: 'var(--color-text-secondary)',
+                      lineHeight: 1.9,
+                      marginBottom: '28px',
+                      fontStyle: 'italic',
+                    }}>
+                      &ldquo;{review.text}&rdquo;
                     </p>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{
+                          width: '44px', height: '44px', borderRadius: '50%',
+                          background: 'linear-gradient(135deg, #FF6F61, #FFDBE9)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}>
+                          <Heart size={18} fill="#FFFFFF" color="#FFFFFF" />
+                        </div>
+                        <div>
+                          <p style={{ fontWeight: '700', color: 'var(--color-text-primary)', fontSize: '0.95rem' }}>{review.couple}</p>
+                          <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+                            {review.region} {review.episode}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button onClick={() => changeReview((currentReview - 1 + reviews.length) % reviews.length)}
+                          style={{
+                            width: '40px', height: '40px', borderRadius: '50%',
+                            background: 'var(--color-surface-2)', border: '1px solid var(--color-border)',
+                            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            color: 'var(--color-text-secondary)', transition: 'all 0.2s',
+                          }}>
+                          <ChevronLeft size={18} />
+                        </button>
+                        <button onClick={() => changeReview((currentReview + 1) % reviews.length)}
+                          style={{
+                            width: '40px', height: '40px', borderRadius: '50%',
+                            background: 'var(--color-surface-2)', border: '1px solid var(--color-border)',
+                            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            color: 'var(--color-text-secondary)', transition: 'all 0.2s',
+                          }}>
+                          <ChevronRight size={18} />
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
-
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <button onClick={() => changeReview((currentReview - 1 + reviews.length) % reviews.length)}
-                    style={{
-                      width: '40px', height: '40px', borderRadius: '50%',
-                      background: 'var(--color-surface-2)', border: '1px solid var(--color-border)',
-                      cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      color: 'var(--color-text-secondary)', transition: 'all 0.2s',
-                    }}>
-                    <ChevronLeft size={18} />
-                  </button>
-                  <button onClick={() => changeReview((currentReview + 1) % reviews.length)}
-                    style={{
-                      width: '40px', height: '40px', borderRadius: '50%',
-                      background: 'var(--color-surface-2)', border: '1px solid var(--color-border)',
-                      cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      color: 'var(--color-text-secondary)', transition: 'all 0.2s',
-                    }}>
-                    <ChevronRight size={18} />
-                  </button>
-                </div>
-              </div>
+              ))}
             </div>
 
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginTop: '20px' }}>
