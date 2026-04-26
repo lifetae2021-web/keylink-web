@@ -113,7 +113,7 @@ export function EventsSection({ standalone = false }: { standalone?: boolean }) 
               style={{
                 padding: '10px 24px', borderRadius: '10px', fontSize: '0.9rem', fontWeight: '800', border: 'none', cursor: 'pointer', transition: 'all 0.2s',
                 background: selectedRegion === r.id ? '#FFF' : 'transparent',
-                color: selectedRegion === r.id ? '#FF6F61' : '#888',
+                color: selectedRegion === r.id ? '#FF6F61' : 'var(--color-text-muted)',
                 boxShadow: selectedRegion === r.id ? '0 4px 12px rgba(0,0,0,0.05)' : 'none'
               }}
             >
@@ -139,7 +139,7 @@ export function EventsSection({ standalone = false }: { standalone?: boolean }) 
         ) : filtered.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '100px 20px', color: 'var(--color-text-muted)', gridColumn: '1 / -1' }}>
             <div style={{ fontSize: '3.5rem', marginBottom: '24px', opacity: 0.8 }}>🌸</div>
-            <p style={{ fontSize: '1.1rem', fontWeight: '700', color: '#1A1A1A', marginBottom: '8px' }}>현재 준비 중인 기수가 없습니다.</p>
+            <p style={{ fontSize: '1.1rem', fontWeight: '700', color: 'var(--color-text-primary)', marginBottom: '8px' }}>현재 준비 중인 기수가 없습니다.</p>
             <p style={{ fontSize: '0.9rem' }}>곧 새로운 기수로 찾아뵐게요!</p>
           </div>
         ) : (
@@ -174,11 +174,11 @@ function EventCalendar({ events, onDateSelect, selectedDate }: { events: Keylink
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <button onClick={prevMonth} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '8px' }}>
-           <ChevronLeft color="#333" />
+           <ChevronLeft color="var(--color-text-secondary)" />
         </button>
-        <h3 style={{ fontSize: '1.2rem', fontWeight: '800', color: '#1A1A1A' }}>{format(currentDate, 'yyyy년 M월')}</h3>
+        <h3 style={{ fontSize: '1.2rem', fontWeight: '800', color: 'var(--color-text-primary)' }}>{format(currentDate, 'yyyy년 M월')}</h3>
         <button onClick={nextMonth} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '8px' }}>
-           <ChevronRight color="#333" />
+           <ChevronRight color="var(--color-text-secondary)" />
         </button>
       </div>
 
@@ -215,7 +215,7 @@ function EventCalendar({ events, onDateSelect, selectedDate }: { events: Keylink
                 className="kl-calendar-date-badge"
                 style={{ 
                   background: eventsOnDay.length > 0 ? '#FF6F61' : 'transparent',
-                  color: eventsOnDay.length > 0 ? '#fff' : (isSameMonth(day, monthStart) ? '#333' : '#aaa'),
+                  color: eventsOnDay.length > 0 ? '#fff' : (isSameMonth(day, monthStart) ? 'var(--color-text-secondary)' : '#aaa'),
               }}>
                 {format(day, 'd')}
               </span>
@@ -309,7 +309,7 @@ function EventCard({ event }: { event: KeylinkEvent }) {
         }}>
           {badgeLabel}
         </div>
-        <h3 style={{ fontSize: '1.2rem', fontWeight: '900', color: '#111', margin: 0, lineHeight: 1.3 }}>
+        <h3 style={{ fontSize: '1.2rem', fontWeight: '900', color: 'var(--color-text-primary)', margin: 0, lineHeight: 1.3 }}>
           {event.title}
         </h3>
       </div>
@@ -321,12 +321,12 @@ function EventCard({ event }: { event: KeylinkEvent }) {
             <span style={{ fontSize: '0.75rem', fontWeight: '800', color: '#FF6F61' }}>남성 연령 : {event.targetMaleAge}</span>
           </div>
         )}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', color: '#666', fontSize: '0.9rem', fontWeight: '600' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', color: 'var(--color-text-muted)', fontSize: '0.9rem', fontWeight: '600' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <Calendar size={16} /> {format(event.date, 'M월 d일 (EEEE) · HH:mm', { locale: ko })}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <MapPin size={16} /> {event.venue}
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', whiteSpace: 'pre-wrap' }}>
+            <MapPin size={16} style={{ marginTop: '2px', flexShrink: 0 }} /> {event.venue}
           </div>
         </div>
       </div>
@@ -334,18 +334,18 @@ function EventCard({ event }: { event: KeylinkEvent }) {
       {/* 프로그레스 바 */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', background: '#fcfcfc', padding: '16px', borderRadius: '16px' }}>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-          <span style={{ fontSize: '0.8rem', fontWeight: '800', color: '#666', width: '30px' }}>남성</span>
+          <span style={{ fontSize: '0.8rem', fontWeight: '800', color: 'var(--color-text-muted)', width: '30px' }}>남성</span>
           <div style={{ flex: 1, height: '6px', background: '#eee', borderRadius: '3px', overflow: 'hidden' }}>
             <div style={{ width: `${Math.min(progressMale * 100, 100)}%`, height: '100%', background: '#007AFF', borderRadius: '3px' }} />
           </div>
-          <span style={{ fontSize: '0.8rem', fontWeight: '800', color: progressMale >= 1 ? '#007AFF' : '#666' }}>{event.currentMale}/{event.maxMale}</span>
+          <span style={{ fontSize: '0.8rem', fontWeight: '800', color: progressMale >= 1 ? '#007AFF' : 'var(--color-text-muted)' }}>{event.currentMale}/{event.maxMale}</span>
         </div>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-          <span style={{ fontSize: '0.8rem', fontWeight: '800', color: '#666', width: '30px' }}>여성</span>
+          <span style={{ fontSize: '0.8rem', fontWeight: '800', color: 'var(--color-text-muted)', width: '30px' }}>여성</span>
           <div style={{ flex: 1, height: '6px', background: '#eee', borderRadius: '3px', overflow: 'hidden' }}>
             <div style={{ width: `${Math.min(progressFemale * 100, 100)}%`, height: '100%', background: '#FF4D8D', borderRadius: '3px' }} />
           </div>
-          <span style={{ fontSize: '0.8rem', fontWeight: '800', color: progressFemale >= 1 ? '#FF4D8D' : '#666' }}>{event.currentFemale}/{event.maxFemale}</span>
+          <span style={{ fontSize: '0.8rem', fontWeight: '800', color: progressFemale >= 1 ? '#FF4D8D' : 'var(--color-text-muted)' }}>{event.currentFemale}/{event.maxFemale}</span>
         </div>
       </div>
 

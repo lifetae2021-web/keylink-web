@@ -78,6 +78,7 @@ export interface ReviewItem {
   episode: string;
   region: string;
   order: number;
+  imageUrl?: string;
 }
 
 export async function getReviews(): Promise<ReviewItem[]> {

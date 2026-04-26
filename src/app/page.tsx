@@ -72,7 +72,7 @@ function ProcessSection() {
               position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: '10px'
             }}>
               <div style={{ position: 'absolute', top: '12px', right: '14px', fontSize: '3rem', fontWeight: '900', color: 'rgba(255,111,97,0.06)', lineHeight: 1, userSelect: 'none' }}>{step.num}</div>
-              <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: 'linear-gradient(135deg, #FFDBE9, #E6E6FA)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', color: '#1A1A1A', fontSize: '0.9rem' }}>
+              <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: 'linear-gradient(135deg, #FFDBE9, #E6E6FA)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', color: 'var(--color-text-primary)', fontSize: '0.9rem' }}>
                 {step.num}
               </div>
               <h3 style={{ fontWeight: '800', fontSize: '1.1rem', color: 'var(--color-text-primary)', marginTop: '6px' }}>{step.title}</h3>
@@ -211,7 +211,7 @@ export default function HomePage() {
             ].map((s) => (
               <div key={s.label} style={{ textAlign: 'center' }}>
                 <p style={{ fontSize: '1.4rem', fontWeight: '800', color: '#FF6F61', whiteSpace: 'nowrap' }}>{s.num}</p>
-                <p style={{ fontSize: '0.8rem', color: '#1A1A1A', fontWeight: '600', marginTop: '4px', whiteSpace: 'nowrap' }}>{s.label}</p>
+                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-primary)', fontWeight: '600', marginTop: '4px', whiteSpace: 'nowrap' }}>{s.label}</p>
               </div>
             ))}
           </div>
@@ -223,10 +223,10 @@ export default function HomePage() {
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: '56px' }}>
             <p style={{ fontSize: '0.8rem', fontWeight: '700', color: '#FF6F61', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '12px' }}>ABOUT 키링크</p>
-            <h2 className="kl-heading-lg" style={{ color: '#1A1A1A', marginBottom: '16px' }}>
+            <h2 className="kl-heading-lg" style={{ color: 'var(--color-text-primary)', marginBottom: '16px' }}>
               왜 <span style={{ color: '#FF6F61' }}>키링크</span>인가요?
             </h2>
-            <p style={{ color: '#4A4A4A', fontSize: '1rem', maxWidth: '500px', margin: '0 auto', lineHeight: 1.8 }}>
+            <p style={{ color: 'var(--color-text-secondary)', fontSize: '1rem', maxWidth: '500px', margin: '0 auto', lineHeight: 1.8 }}>
               2025년 2월 론칭 후 단 11개월 만에 120기 돌파.<br/>입소문만으로 성장한 부산의 신뢰받는 소개팅 서비스
             </p>
           </div>
@@ -297,6 +297,11 @@ export default function HomePage() {
               <div style={{ display: 'flex', gap: '4px', marginBottom: '20px' }}>
                 {[1,2,3,4,5].map((s) => <Star key={s} size={18} fill="#FF6F61" color="#FF6F61" />)}
               </div>
+              {reviews[currentReview]?.imageUrl && (
+                <div style={{ marginBottom: '24px', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--color-border)', background: 'rgba(0,0,0,0.03)', display: 'flex', alignItems: 'center', justifyContent: 'center', maxHeight: '400px' }}>
+                  <img src={reviews[currentReview].imageUrl} alt="Review attachment" style={{ maxWidth: '100%', maxHeight: '400px', objectFit: 'contain' }} />
+                </div>
+              )}
               <p style={{
                 fontSize: 'clamp(0.95rem, 2vw, 1.05rem)',
                 color: 'var(--color-text-secondary)',

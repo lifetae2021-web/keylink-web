@@ -21,10 +21,10 @@ export default function SocialProfilePage() {
     terms: false,
     privacy: false,
     thirdParty: false,
-    location: false,
+    photoConsent: false,
   });
 
-  const isAllAgreed = Object.values(agreements).every(Boolean);
+  const isAllAgreed = agreements.terms && agreements.privacy && agreements.thirdParty && agreements.photoConsent;
 
   const [form, setForm] = useState({
     email: '',
@@ -98,7 +98,7 @@ export default function SocialProfilePage() {
   const toggleAll = () => {
     if (error) setError(null);
     const nextVal = !isAllAgreed;
-    setAgreements({ terms: nextVal, privacy: nextVal, thirdParty: nextVal, location: nextVal });
+    setAgreements({ terms: nextVal, privacy: nextVal, thirdParty: nextVal, photoConsent: nextVal });
   };
 
   const handleSubmit = async () => {
@@ -127,6 +127,7 @@ export default function SocialProfilePage() {
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         socialLogin: true,
+        photoConsent: agreements.photoConsent,
         photoURL: user.photoURL || null,
       });
 
@@ -168,13 +169,7 @@ export default function SocialProfilePage() {
         }}>
           {/* Header */}
           <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-            <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: '#FFF5F4', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-              <Heart size={30} color="#FF6F61" fill="#FF6F61" />
-            </div>
-            <h1 style={{ fontSize: '1.6rem', fontWeight: '900', color: '#111', letterSpacing: '-0.02em' }}>반갑습니다!</h1>
-            <p style={{ fontSize: '0.95rem', color: '#666', marginTop: '8px', lineHeight: 1.5 }}>
-              원활한 매칭을 위해 필수 정보를 입력해 주세요.
-            </p>
+            <h1 style={{ fontSize: '1.8rem', fontWeight: '900', color: '#111', letterSpacing: '-0.02em' }}>카톡 회원가입</h1>
           </div>
 
           <div style={{ height: '1px', background: '#f0f0f0', margin: '32px 0' }} />
@@ -203,7 +198,7 @@ export default function SocialProfilePage() {
               )}
               {!emailError && (
                 <p style={{ fontSize: '0.75rem', color: '#999', marginTop: '6px', marginLeft: '4px' }}>
-                  비밀번호 분실 시 찾기 및 주요 공지 수신용으로 사용됩니다.
+                  계정 분실 시 찾기 및 주요 공지 수신용으로 사용
                 </p>
               )}
             </div>
@@ -256,7 +251,7 @@ export default function SocialProfilePage() {
                   { key: 'terms', label: '서비스 이용약관 동의 (필수)' },
                   { key: 'privacy', label: '개인정보 수집 및 이용 동의 (필수)' },
                   { key: 'thirdParty', label: '개인정보 제3자 제공 동의 (필수)' },
-                  { key: 'location', label: '위치 기반 서비스 약관 동의 (필수)' },
+                  { key: 'photoConsent', label: '마케팅 활용 모자이크 촬영 동의 (필수)' },
                 ].map(({ key, label }) => (
                   <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
                     onClick={() => setAgreements(a => ({ ...a, [key]: !a[key as keyof typeof agreements] }))}>

@@ -493,26 +493,21 @@ export default function EventDetailPage() {
                   marginBottom: '28px', position: 'relative', overflow: 'hidden',
                 }}>
                   <div style={{ textAlign: 'center', position: 'relative' }}>
-                    <p style={{ fontSize: '0.8rem', fontWeight: '700', letterSpacing: '0.1em', color: event.region === 'busan' ? '#FF6F61' : '#A98FD5', textTransform: 'uppercase', marginBottom: '12px' }}>
-                      {event.region === 'busan' ? 'BUSAN' : 'CHANGWON'}
-                    </p>
-                    <p style={{ fontSize: '4rem', fontWeight: '900', color: '#1A1A1A', lineHeight: 1 }}>
+
+                    <p style={{ fontSize: '4rem', fontWeight: '900', color: 'var(--color-text-primary)', lineHeight: 1 }}>
                       {event.episodeNumber}<span style={{ fontSize: '1.5rem' }}>기</span>
                     </p>
-                    <p style={{ fontSize: '1rem', color: '#333333', marginTop: '8px' }}>{event.title}</p>
+                    <p style={{ fontSize: '1.05rem', color: '#475569', marginTop: '8px', fontWeight: '500', wordBreak: 'keep-all', letterSpacing: '-0.02em' }}>{event.title.replace(/ \d+기$/, '')}</p>
                   </div>
                 </div>
 
                 {/* Description */}
                 <div className="kl-card" style={{ marginBottom: '24px' }}>
-                  <h2 style={{ fontSize: '1.2rem', fontWeight: '700', marginBottom: '16px', color: '#1A1A1A' }}>행사 안내</h2>
-                  <p style={{ color: '#333333', lineHeight: 1.8 }}>
-                    {event.region === 'busan' ? '부산' : '창원'} {event.episodeNumber}기 로테이션 소개팅입니다. 매칭을 통해 설레는 첫 만남을 경험해 보세요.
-                  </p>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '24px' }}>
+                  <h2 style={{ fontSize: '1.2rem', fontWeight: '700', marginBottom: '16px', color: 'var(--color-text-primary)' }}>행사 안내</h2>
+                  <div className="event-info-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '24px' }}>
                     {[
                       { Icon: Calendar, label: '일시', value: format(event.eventDate, 'M월 d일 (EEEE) HH:mm', { locale: ko }) },
-                      { Icon: MapPin, label: '장소', value: event.location },
+                      { Icon: MapPin, label: '장소', value: event.venue },
                       { Icon: Users, label: '정원', value: `남 ${event.maxMale}명 · 여 ${event.maxFemale}명` },
                       { Icon: Clock, label: '1회 대화', value: '약 15분' },
                     ].map(({ Icon, label, value }) => (
@@ -522,7 +517,7 @@ export default function EventDetailPage() {
                         </div>
                         <div>
                           <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '2px' }}>{label}</p>
-                          <p style={{ fontSize: '0.9rem', color: '#1A1A1A', fontWeight: '700' }}>{value}</p>
+                          <p style={{ fontSize: '0.9rem', color: 'var(--color-text-primary)', fontWeight: '700', whiteSpace: 'pre-wrap' }}>{value}</p>
                         </div>
                       </div>
                     ))}
@@ -531,32 +526,46 @@ export default function EventDetailPage() {
                 
                 {/* Policies */}
                 <div className="kl-card">
-                  <h2 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '20px', color: '#1A1A1A' }}>환불 & 보장 정책 (키링크의 약속)</h2>
+                  <h2 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '20px', color: 'var(--color-text-primary)' }}>환불 & 보장 정책 (키링크의 약속)</h2>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px' }}>
                     {[
-                      { Icon: ShieldCheck, title: '중복 만남 100% 환불', subtitle: 'ZERO REPEAT GUARANTEE', desc: '과거 만났던 분과 재회 시 이유 불문 전액 환불', color: '#FF6F61', rgb: '255,111,97' },
+                      { Icon: ShieldCheck, title: '중복 만남 100% 환불', subtitle: 'ZERO REPEAT GUARANTEE', desc: '최근 6개월 이내의 행사에서 만났던 인원을 다시 만나게 될 경우, 이용약관 제5조에 의거하여 100% 환불해 드립니다.', color: '#FF6F61', rgb: '255,111,97' },
                       { Icon: WalletCards, title: '안심 매칭 보장', subtitle: 'SAFE MATCH GUARANTEE', desc: '남성 안심 패키지 선택 시, 미매칭 30% 환불', color: '#A98FD5', rgb: '169,143,213' },
                       { Icon: Sparkles, title: '매칭 성공 혜택', subtitle: 'MATCH SUCCESS BONUS', desc: '오픈채팅방 즉시 연결', color: '#6EAE7C', rgb: '110,174,124' },
                       { Icon: AlertCircle, title: '취소 정책', subtitle: 'CANCELLATION POLICY', desc: '결제 후 개인 사유 취소 불가', color: '#C86A6A', rgb: '200,106,106' },
                     ].map((p, idx) => {
                       const isOpen = policyOpenIdx === idx;
                       return (
-                        <div key={p.title} style={{ padding: '16px', background: 'var(--color-surface-2)', borderRadius: '16px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <div style={{ width: '40px', height: '40px', flexShrink: 0, borderRadius: '12px', background: `rgba(${p.rgb}, 0.12)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <div 
+                          key={p.title} 
+                          onClick={() => setPolicyOpenIdx(isOpen ? null : idx)}
+                          style={{ 
+                            padding: '16px', 
+                            background: isOpen ? '#fff' : 'var(--color-surface-2)', 
+                            border: isOpen ? `1.5px solid ${p.color}` : '1.5px solid transparent', 
+                            borderRadius: '16px', 
+                            cursor: 'pointer', 
+                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', 
+                            boxShadow: isOpen ? `0 8px 24px rgba(${p.rgb}, 0.12)` : 'none' 
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                            <div style={{ width: '42px', height: '42px', flexShrink: 0, borderRadius: '12px', background: `rgba(${p.rgb}, 0.1)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                               <p.Icon size={20} color={p.color} />
                             </div>
-                            <p style={{ flex: 1, fontSize: '0.95rem', fontWeight: '800', color: '#1A1A1A' }}>{p.title}</p>
-                            <button
-                              onClick={() => setPolicyOpenIdx(isOpen ? null : idx)}
-                              style={{ flexShrink: 0, fontSize: '0.75rem', fontWeight: '700', color: p.color, background: `rgba(${p.rgb}, 0.08)`, border: `1px solid rgba(${p.rgb}, 0.2)`, borderRadius: '100px', padding: '5px 14px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
-                            >
-                              {isOpen ? '접기' : '자세히 보기'}
-                              <ChevronRight size={11} style={{ transform: isOpen ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }} />
-                            </button>
+                            <div style={{ flex: 1 }}>
+                              <p style={{ fontSize: '0.95rem', fontWeight: '800', color: 'var(--color-text-primary)' }}>{p.title}</p>
+                              <p style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', fontWeight: '700', marginTop: '2px', letterSpacing: '0.05em' }}>{p.subtitle}</p>
+                            </div>
+                            <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: isOpen ? p.color : `rgba(${p.rgb}, 0.08)`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.3s' }}>
+                              <ChevronRight size={16} color={isOpen ? '#fff' : p.color} style={{ transform: isOpen ? 'rotate(90deg)' : 'none', transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }} />
+                            </div>
                           </div>
+                          
                           {isOpen && (
-                            <p style={{ fontSize: '0.8rem', color: '#555', lineHeight: 1.6, marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--color-border)' }}>{p.desc}</p>
+                            <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px dashed var(--color-border)', animation: 'fadeIn 0.3s ease' }}>
+                              <p style={{ fontSize: '0.9rem', color: '#475569', lineHeight: 1.65, fontWeight: '400', wordBreak: 'keep-all', letterSpacing: '-0.02em' }}>{p.desc}</p>
+                            </div>
                           )}
                         </div>
                       );
@@ -569,30 +578,30 @@ export default function EventDetailPage() {
             {step === 1 && (
               <div>
                 <div style={{ marginBottom: '24px' }}>
-                  <h2 style={{ fontSize: '1.4rem', fontWeight: '800', marginBottom: '8px', color: '#111' }}>신뢰 기반 상세 신청서</h2>
-                  <p style={{ fontSize: '0.9rem', color: '#555' }}>건강한 호감과 신뢰를 위해 정확하게 기입해주세요.</p>
+                  <h2 style={{ fontSize: '1.4rem', fontWeight: '800', marginBottom: '8px', color: 'var(--color-text-primary)' }}>신뢰 기반 상세 신청서</h2>
+                  <p style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)' }}>건강한 호감과 신뢰를 위해 정확하게 기입해주세요.</p>
                 </div>
                 
-                <form id="bookingForm" onSubmit={handleFormSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                  <div className="kl-card" style={{ padding: '24px' }}>
+                <form id="bookingForm" onSubmit={handleFormSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div className="kl-card">
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px', borderBottom: '1px solid var(--color-border)', paddingBottom: '12px' }}>
                       <CheckCircle size={18} color="#6EAE7C" />
-                      <span style={{ fontSize: '1rem', fontWeight: '800', color: '#111' }}>연락처 정보</span>
+                      <span style={{ fontSize: '1rem', fontWeight: '800', color: 'var(--color-text-primary)' }}>연락처 정보</span>
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', background: 'var(--color-surface-2)', padding: '20px', borderRadius: '12px' }}>
-                        <div style={{ fontSize: '0.95rem' }}><span style={{ color: '#888', marginRight: '12px', fontWeight: '600' }}>이름</span><span style={{ fontWeight: '700' }}>{form.name}</span> <span style={{ fontSize: '0.8rem', color: '#aaa', marginLeft: '4px' }}>({form.gender === 'male' ? '남성' : '여성'})</span></div>
-                        <div style={{ fontSize: '0.95rem' }}><span style={{ color: '#888', marginRight: '12px', fontWeight: '600' }}>연락처</span><span style={{ fontWeight: '700' }}>{form.phone}</span></div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', background: 'var(--color-surface-2)', padding: '16px', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
+                        <div style={{ fontSize: '0.9rem' }}><span style={{ color: 'var(--color-text-muted)', marginRight: '10px', fontWeight: '600' }}>이름</span><span style={{ fontWeight: '700' }}>{form.name}</span> <span style={{ fontSize: '0.8rem', color: '#aaa', marginLeft: '4px' }}>({form.gender === 'male' ? '남성' : '여성'})</span></div>
+                        <div style={{ fontSize: '0.9rem' }}><span style={{ color: 'var(--color-text-muted)', marginRight: '10px', fontWeight: '600' }}>연락처</span><span style={{ fontWeight: '700' }}>{form.phone}</span></div>
                       </div>
                       <div>
-                        <input className="kl-input" placeholder="인스타 계정 입력 (ex. @keylink_official)" value={form.instaId} onChange={(e) => setForm(f => ({...f, instaId: e.target.value}))} />
-                        <p style={{ fontSize: '0.8rem', color: '#FF6F61', marginTop: '8px' }}> 번호 오기입이나 카톡 친구 추가 안 될 시 인스타로 연락드림 (선택)</p>
+                        <input className="kl-input" placeholder="인스타 계정 입력 (선택)" value={form.instaId} onChange={(e) => setForm(f => ({...f, instaId: e.target.value}))} />
+                        <p style={{ fontSize: '0.75rem', color: '#FF6F61', marginTop: '8px', fontWeight: '600', lineHeight: 1.4 }}>* 번호 오기입 시 인스타로 연락을 드릴 수 있습니다.</p>
                       </div>
                     </div>
                   </div>
 
                   <div className="kl-card" style={{ padding: '24px' }}>
-                    <h3 style={{ fontSize: '1rem', fontWeight: '800', color: '#111', marginBottom: '16px', borderBottom: '1px solid var(--color-border)', paddingBottom: '12px' }}>신체 및 거주 정보</h3>
+                    <h3 style={{ fontSize: '1rem', fontWeight: '800', color: 'var(--color-text-primary)', marginBottom: '16px', borderBottom: '1px solid var(--color-border)', paddingBottom: '12px' }}>신체 및 거주 정보</h3>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '20px' }}>
                       <div>
                         <label className="kl-label">생년월일 *</label>
@@ -616,8 +625,8 @@ export default function EventDetailPage() {
                     </div>
                   </div>
 
-                  <div className="kl-card" style={{ padding: '24px' }}>
-                    <h3 style={{ fontSize: '1rem', fontWeight: '800', color: '#111', marginBottom: '16px', borderBottom: '1px solid var(--color-border)', paddingBottom: '12px' }}>직장 및 신원</h3>
+                  <div className="kl-card">
+                    <h3 style={{ fontSize: '1rem', fontWeight: '800', color: 'var(--color-text-primary)', marginBottom: '16px', borderBottom: '1px solid var(--color-border)', paddingBottom: '12px' }}>직장 및 신원</h3>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '20px' }}>
                       <div>
                         <label className="kl-label">회사명 / 직무 *</label>
@@ -638,8 +647,8 @@ export default function EventDetailPage() {
                     </div>
                   </div>
 
-                  <div className="kl-card" style={{ padding: '24px' }}>
-                    <h3 style={{ fontSize: '1rem', fontWeight: '800', color: '#111', marginBottom: '16px', borderBottom: '1px solid var(--color-border)', paddingBottom: '12px' }}>나의 성향과 이상형</h3>
+                  <div className="kl-card">
+                    <h3 style={{ fontSize: '1rem', fontWeight: '800', color: 'var(--color-text-primary)', marginBottom: '16px', borderBottom: '1px solid var(--color-border)', paddingBottom: '12px' }}>나의 성향과 이상형</h3>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '24px' }}>
                       <div>
                         <label className="kl-label">이상형 (중요도 순 최대 5가지)</label>
@@ -674,8 +683,8 @@ export default function EventDetailPage() {
                   </div>
 
                       {/* v7.8.5 재직 증명 업로드 섹션 (미리보기 강화) */}
-                      <div className="kl-card" style={{ padding: '24px' }}>
-                        <h3 style={{ fontSize: '1rem', fontWeight: '800', color: '#111', marginBottom: '16px', borderBottom: '1px solid var(--color-border)', paddingBottom: '12px' }}>재직 증명 (필수)</h3>
+                      <div className="kl-card">
+                        <h3 style={{ fontSize: '1rem', fontWeight: '800', color: 'var(--color-text-primary)', marginBottom: '16px', borderBottom: '1px solid var(--color-border)', paddingBottom: '12px' }}>재직 증명 (필수)</h3>
                         <p style={{ fontSize: '0.8rem', color: '#64748B', lineHeight: 1.6, marginBottom: '16px' }}>
                           신뢰할 수 있는 모임을 위해 서류(재직증명서, 급여명세서, 건강보험 등) 중 하나를 반드시 업로드해 주세요.
                         </p>
@@ -738,8 +747,8 @@ export default function EventDetailPage() {
                       />
                   </div>
 
-                  <div className="kl-card" style={{ padding: '24px' }}>
-                    <h3 style={{ fontSize: '1rem', fontWeight: '800', color: '#111', marginBottom: '16px', borderBottom: '1px solid var(--color-border)', paddingBottom: '12px' }}>행사 간식 및 본인 인증</h3>
+                  <div className="kl-card">
+                    <h3 style={{ fontSize: '1rem', fontWeight: '800', color: 'var(--color-text-primary)', marginBottom: '16px', borderBottom: '1px solid var(--color-border)', paddingBottom: '12px' }}>행사 간식 및 본인 인증</h3>
                     <div style={{ marginBottom: '24px' }}>
                       <label className="kl-label">희망 음료 (중복 선택 가능)</label>
                       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '10px' }}>
@@ -756,7 +765,7 @@ export default function EventDetailPage() {
                               }}
                               style={{ 
                                 padding: '10px 16px', borderRadius: '12px', fontSize: '0.82rem', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s',
-                                background: selected ? '#FF6F61' : '#fff', color: selected ? '#fff' : '#64748B', border: selected ? '2.5px solid #FF6F61' : '1.5px solid #E2E8F0'
+                                background: selected ? '#FF6F61' : '#fff', color: selected ? '#fff' : 'var(--color-text-secondary)', border: selected ? '2.5px solid #FF6F61' : '1.5px solid #E2E8F0'
                               }}
                             >
                               {d}
@@ -768,7 +777,7 @@ export default function EventDetailPage() {
                     <div>
                       <label className="kl-label" style={{ marginBottom: '12px' }}>본인 사진 업로드 ({photos.length}/5) *</label>
                       <div style={{ background: '#FFFDFD', border: '1.5px dashed #FFDBE9', borderRadius: '16px', padding: '24px', marginBottom: '16px' }}>
-                         <p style={{ fontSize: '0.82rem', color: '#666', lineHeight: 1.6, marginBottom: '20px', fontWeight: '500' }}>
+                         <p style={{ fontSize: '0.82rem', color: 'var(--color-text-secondary)', lineHeight: 1.6, marginBottom: '20px', fontWeight: '500' }}>
                           과도한 보정이나 마스크 착용 사진은 지양해주세요.<br/>
                           <strong style={{ color: '#FF6F61' }}>얼굴과 전신 사진이 포함되도록 자유롭게 총 5장까지 등록해 주세요.</strong>
                         </p>
@@ -818,8 +827,8 @@ export default function EventDetailPage() {
                 <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(110,174,124,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
                   <CheckCircle size={32} color="#6EAE7C" />
                 </div>
-                <h2 style={{ fontSize: '1.5rem', fontWeight: '800', color: '#111', marginBottom: '10px' }}>신청서 제출 완료!</h2>
-                <p style={{ fontSize: '0.95rem', color: '#555', marginBottom: '32px', lineHeight: 1.6 }}>신청서 및 인증 내역 검토하고 선발된 인원에게만 순차적으로 연락드립니다.</p>
+                <h2 style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--color-text-primary)', marginBottom: '10px' }}>신청서 제출 완료!</h2>
+                <p style={{ fontSize: '0.95rem', color: 'var(--color-text-secondary)', marginBottom: '32px', lineHeight: 1.6 }}>신청서 및 인증 내역 검토하고 선발된 인원에게만 순차적으로 연락드립니다.</p>
                 <Link href="/mypage" className="kl-btn-primary" style={{ width: '100%', padding: '18px', fontSize: '1.1rem', textAlign: 'center', display: 'block' }}>
                   마이페이지에서 확인하기
                 </Link>
@@ -834,8 +843,8 @@ export default function EventDetailPage() {
                 <div style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: '20px' }}>
                   <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginBottom: '8px', fontWeight: '600' }}>최종 결제 금액</p>
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-                    <p style={{ fontSize: '2.2rem', fontWeight: '900', color: '#1A1A1A' }}>
-                      {finalPrice.toLocaleString()}<span style={{ fontSize: '1.2rem', fontWeight: '600', color: '#666', marginLeft: '4px' }}>원</span>
+                    <p style={{ fontSize: '2.2rem', fontWeight: '900', color: 'var(--color-text-primary)' }}>
+                      {finalPrice.toLocaleString()}<span style={{ fontSize: '1.2rem', fontWeight: '600', color: 'var(--color-text-muted)', marginLeft: '4px' }}>원</span>
                     </p>
                     {isDiscounted && (
                       <p style={{ fontSize: '1rem', color: '#999', textDecoration: 'line-through' }}>{displayBasePrice.toLocaleString()}원</p>
@@ -846,7 +855,7 @@ export default function EventDetailPage() {
                 {step === 0 && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                     <div>
-                      <p style={{ fontSize: '0.85rem', fontWeight: '700', color: '#333', marginBottom: '12px' }}>성별 선택</p>
+                      <p style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--color-text-secondary)', marginBottom: '12px' }}>성별 선택</p>
                       <div style={{ display: 'flex', gap: '10px' }}>
                         {['male', 'female'].map((g) => (
                           <button
@@ -855,7 +864,7 @@ export default function EventDetailPage() {
                             style={{
                               flex: 1, padding: '12px', borderRadius: '10px', 
                               border: form.gender === g ? '2px solid #FF6F61' : '1px solid #ddd',
-                              background: form.gender === g ? '#FFF5F4' : '#fff', color: form.gender === g ? '#FF6F61' : '#555',
+                              background: form.gender === g ? '#FFF5F4' : '#fff', color: form.gender === g ? '#FF6F61' : 'var(--color-text-secondary)',
                               fontWeight: '700', cursor: 'pointer'
                             }}
                           >
@@ -866,7 +875,7 @@ export default function EventDetailPage() {
                     </div>
                     {form.gender === 'male' && (
                       <div>
-                        <p style={{ fontSize: '0.85rem', fontWeight: '700', color: '#333', marginBottom: '12px' }}>매칭 옵션 선택</p>
+                        <p style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--color-text-secondary)', marginBottom: '12px' }}>매칭 옵션 선택</p>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                           {['normal', 'safe'].map(opt => (
                             <div
@@ -882,7 +891,7 @@ export default function EventDetailPage() {
                                 <span style={{ fontSize: '0.9rem', fontWeight: '700' }}>{opt === 'normal' ? '일반 매칭' : '안심 매칭 패키지'}</span>
                                 <span style={{ fontSize: '0.9rem', fontWeight: '800' }}>{opt === 'normal' ? '49,000원' : '60,000원'}</span>
                               </div>
-                              <p style={{ fontSize: '0.75rem', color: opt === 'normal' ? '#888' : '#FF6F61' }}>{opt === 'normal' ? '매칭 실패 시 환불 없음' : '미매칭 시 30% 환불 보장'}</p>
+                              <p style={{ fontSize: '0.75rem', color: opt === 'normal' ? 'var(--color-text-muted)' : '#FF6F61' }}>{opt === 'normal' ? '매칭 실패 시 환불 없음' : '미매칭 시 30% 환불 보장'}</p>
                               {opt === 'safe' && (
                                 <div style={{ marginTop: '8px' }}>
                                   <button
@@ -893,7 +902,7 @@ export default function EventDetailPage() {
                                     안심 매칭 패키지 특약 {safeOptionOpen ? '▲' : '▼'}
                                   </button>
                                   {safeOptionOpen && (
-                                    <p style={{ marginTop: '8px', fontSize: '0.75rem', color: '#555', lineHeight: 1.7, background: 'rgba(255,111,97,0.06)', borderRadius: '8px', padding: '10px' }}>
+                                    <p style={{ marginTop: '8px', fontSize: '0.75rem', color: 'var(--color-text-secondary)', lineHeight: 1.7, background: 'rgba(255,111,97,0.06)', borderRadius: '8px', padding: '10px' }}>
                                       해당 패키지 이용자가 호감도 투표에서 1명 이상의 이성을 선택했음에도 매칭에 실패할 경우 30%를 환불합니다. 단, 행사 당일 지각 시에는 해당 환불 혜택이 소멸됩니다.
                                     </p>
                                   )}
@@ -906,7 +915,7 @@ export default function EventDetailPage() {
                     )}
                     {form.gender === 'female' && (
                       <div>
-                        <p style={{ fontSize: '0.85rem', fontWeight: '700', color: '#333', marginBottom: '12px' }}>매칭 옵션 선택</p>
+                        <p style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--color-text-secondary)', marginBottom: '12px' }}>매칭 옵션 선택</p>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                           {['normal', 'group'].map(opt => (
                             <div
@@ -927,7 +936,7 @@ export default function EventDetailPage() {
                         </div>
                         {form.femaleOption === 'group' && (
                           <div style={{ marginTop: '12px', padding: '14px', borderRadius: '12px', background: 'var(--color-surface-2)', border: '1px solid var(--color-border)' }}>
-                            <p style={{ fontSize: '0.8rem', fontWeight: '700', color: '#555', marginBottom: '10px' }}>동반 참여자 정보</p>
+                            <p style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--color-text-secondary)', marginBottom: '10px' }}>동반 참여자 정보</p>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                               <input
                                 className="kl-input"
@@ -980,7 +989,7 @@ export default function EventDetailPage() {
                         </button>
                       )}
                       {step > 0 && (
-                        <button type="button" onClick={() => setStep(step - 1)} style={{ width: '100%', background: 'none', border: 'none', marginTop: '12px', color: '#888', fontWeight: '600', fontSize: '0.9rem', cursor: 'pointer' }}>이전으로 돌아가기</button>
+                        <button type="button" onClick={() => setStep(step - 1)} style={{ width: '100%', background: 'none', border: 'none', marginTop: '12px', color: 'var(--color-text-muted)', fontWeight: '600', fontSize: '0.9rem', cursor: 'pointer' }}>이전으로 돌아가기</button>
                       )}
                     </>
                   )}

@@ -41,8 +41,8 @@ function InfoRow({ label, value }: { label: string; value?: string | null }) {
   const isEmpty = !value;
   return (
     <div style={{ display: 'flex', borderBottom: '1px solid #FFF0EE', padding: '14px 0', gap: '12px' }}>
-      <span style={{ minWidth: '90px', fontSize: '0.85rem', color: '#AAA', fontWeight: '600', flexShrink: 0 }}>{label}</span>
-      <span style={{ fontSize: '0.9rem', color: isEmpty ? '#CCC' : '#222', fontWeight: isEmpty ? '400' : '600', fontStyle: isEmpty ? 'italic' : 'normal', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+      <span style={{ minWidth: '90px', fontSize: '0.85rem', color: 'var(--color-text-muted)', fontWeight: '600', flexShrink: 0 }}>{label}</span>
+      <span style={{ fontSize: '0.9rem', color: isEmpty ? 'var(--color-text-muted)' : 'var(--color-text-primary)', fontWeight: isEmpty ? '400' : '600', fontStyle: isEmpty ? 'italic' : 'normal', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
         {isEmpty ? EMPTY : value}
       </span>
     </div>
@@ -351,8 +351,8 @@ export default function MyPage() {
               flexShrink: 0
             }}>
               <div>
-                <h2 style={{ fontSize: '1.3rem', fontWeight: '900', color: '#111', letterSpacing: '-0.02em' }}>신뢰 기반 프로필 편집</h2>
-                <p style={{ fontSize: '0.78rem', color: '#888', marginTop: '4px' }}>신청서와 동일한 정보를 관리하세요.</p>
+                <h2 style={{ fontSize: '1.3rem', fontWeight: '900', color: 'var(--color-text-primary)', letterSpacing: '-0.02em' }}>신뢰 기반 프로필 편집</h2>
+                <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>신청서와 동일한 정보를 관리하세요.</p>
               </div>
               <button onClick={() => setIsEditing(false)} style={{ background: '#FFF5F4', border: 'none', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
                 <X size={20} color="#FF6F61" />
@@ -367,7 +367,7 @@ export default function MyPage() {
             <div style={{ marginBottom: '40px' }}>
               <EditRow label={`본인 사진 업로드 (${photos.length}/5)`} required>
                 <div style={{ background: '#FFFDFD', border: '1.5px dashed #FFDBE9', borderRadius: '16px', padding: '24px', marginBottom: '16px' }}>
-                   <p style={{ fontSize: '0.82rem', color: '#666', lineHeight: 1.6, marginBottom: '20px', fontWeight: '500' }}>
+                   <p style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)', lineHeight: 1.6, marginBottom: '20px', fontWeight: '500' }}>
                     과도한 보정이나 마스크 착용 사진은 지양해주세요.<br/>
                     <strong style={{ color: '#FF6F61' }}>얼굴과 전신 사진이 포함되도록 자유롭게 총 5장까지 등록해 주세요.</strong>
                   </p>
@@ -512,7 +512,7 @@ export default function MyPage() {
              {/* v7.8.5 재직 증명 업로드 섹션 (미리보기 강화) */}
              <EditRow label="재직 증명 (필수)" required>
                <div style={{ background: '#F8FAFC', border: '1.5px solid #E2E8F0', borderRadius: '16px', padding: '20px', marginBottom: '24px' }}>
-                 <p style={{ fontSize: '0.8rem', color: '#64748B', lineHeight: 1.6, marginBottom: '16px' }}>
+                 <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', lineHeight: 1.6, marginBottom: '16px' }}>
                    신뢰할 수 있는 모임을 위해 서류(재직증명서, 급여명세서, 건강보험 등) 중 하나를 반드시 업로드해 주세요.
                  </p>
                  
@@ -610,7 +610,7 @@ export default function MyPage() {
 
           {/* Title bar */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '24px 24px 0' }}>
-            <h2 style={{ fontSize: '1.1rem', fontWeight: '900', color: '#111' }}>나의 프로필</h2>
+            <h2 style={{ fontSize: '1.1rem', fontWeight: '900', color: 'var(--color-text-primary)' }}>나의 프로필</h2>
             <button onClick={() => setIsEditing(true)} style={{ background: '#FFF5F4', border: 'none', color: '#FF6F61', fontWeight: '800', fontSize: '0.8rem', cursor: 'pointer', padding: '8px 16px', borderRadius: '100px', display: 'flex', alignItems: 'center', gap: '6px' }}>
               <Edit3 size={14} /> 편집
             </button>
@@ -636,7 +636,7 @@ export default function MyPage() {
             <InfoRow label="성별" value={genderLabel !== '-' ? (userData?.gender === 'male' ? '남성 (M)' : '여성 (F)') : null} />
             <InfoRow label="키 / 몸무게" value={physique} />
             <div style={{ display: 'flex', borderBottom: '1px solid #FFF0EE', padding: '14px 0', gap: '12px', alignItems: 'center' }}>
-              <span style={{ minWidth: '90px', fontSize: '0.85rem', color: '#AAA', fontWeight: '600', flexShrink: 0 }}>인증 상태</span>
+              <span style={{ minWidth: '90px', fontSize: '0.85rem', color: 'var(--color-text-muted)', fontWeight: '600', flexShrink: 0 }}>인증 상태</span>
               {userData?.isVerified ? (
                 <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#10B981', fontSize: '0.85rem', fontWeight: '800', background: '#ECFDF5', padding: '4px 10px', borderRadius: '100px' }}>
                   <ShieldCheck size={14} fill="#10B981" color="#fff" /> 인증 완료
@@ -672,15 +672,15 @@ export default function MyPage() {
                 <InfoRow label="이상형" value={userData?.idealType} />
                 <InfoRow label="비선호형" value={userData?.nonIdealType} />
                 <div style={{ borderBottom: '1px solid #FFF0EE', padding: '16px 0' }}>
-                  <span style={{ fontSize: '0.85rem', color: '#AAA', fontWeight: '600', display: 'block', marginBottom: '8px' }}>기타 / 특이사항</span>
-                  <span style={{ fontSize: '0.9rem', color: userData?.etc ? '#222' : '#CCC', fontWeight: userData?.etc ? '700' : '400', fontStyle: !userData?.etc ? 'italic' : 'normal', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', fontWeight: '600', display: 'block', marginBottom: '8px' }}>기타 / 특이사항</span>
+                  <span style={{ fontSize: '0.9rem', color: userData?.etc ? 'var(--color-text-primary)' : 'var(--color-text-muted)', fontWeight: userData?.etc ? '700' : '400', fontStyle: !userData?.etc ? 'italic' : 'normal', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>
                     {userData?.etc || EMPTY}
                   </span>
                 </div>
 
                 {/* Consolidated Photo Gallery */}
                 <div style={{ paddingTop: '20px' }}>
-                  <p style={{ fontSize: '0.8rem', color: '#AAA', fontWeight: '700', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontWeight: '700', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <Camera size={14} color="#FF6F61" /> 본인 사진 갤러리 ({photos.length}/5)
                   </p>
                   <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '12px' }} className="kl-scrollbar">
@@ -713,7 +713,7 @@ export default function MyPage() {
               <Heart size={22} color="#FF6F61" fill="#FF6F61" />
             </div>
             <div>
-              <p style={{ fontSize: '1rem', fontWeight: '900', color: '#111', marginBottom: '2px' }}>내 매칭 결과 히스토리</p>
+              <p style={{ fontSize: '1rem', fontWeight: '900', color: 'var(--color-text-primary)', marginBottom: '2px' }}>내 매칭 결과 히스토리</p>
               <p style={{ fontSize: '0.8rem', color: '#9CA3AF', fontWeight: '600' }}>참여 기수별 결과 모아보기</p>
             </div>
           </div>
@@ -777,7 +777,7 @@ function ApplicationStatusSection({ applications, sessionsMap, userId }: { appli
         <div style={{ padding: '20px 24px', borderBottom: '1px solid #FFF0EE', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <Package size={20} color="#FF6F61" />
-            <span style={{ fontSize: '1.05rem', fontWeight: '900', color: '#111' }}>참여 신청 현황</span>
+            <span style={{ fontSize: '1.05rem', fontWeight: '900', color: 'var(--color-text-primary)' }}>참여 신청 현황</span>
           </div>
           <span style={{ padding: '5px 14px', borderRadius: '100px', background: '#DDD', fontSize: '0.75rem', fontWeight: '800', color: '#fff' }}>신청 없음</span>
         </div>

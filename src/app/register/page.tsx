@@ -22,14 +22,14 @@ function RegisterForm() {
     terms: false,
     privacy: false,
     thirdParty: false,
-    location: false,
+    photoConsent: false,
   });
 
-  const isAllAgreed = Object.values(agreements).every(Boolean);
+  const isAllAgreed = agreements.terms && agreements.privacy && agreements.thirdParty && agreements.photoConsent;
 
   const toggleAllAgreements = () => {
     const nextVal = !isAllAgreed;
-    setAgreements({ terms: nextVal, privacy: nextVal, thirdParty: nextVal, location: nextVal });
+    setAgreements({ terms: nextVal, privacy: nextVal, thirdParty: nextVal, photoConsent: nextVal });
   };
 
   // Form State
@@ -40,7 +40,6 @@ function RegisterForm() {
     passwordConfirm: '',
     name: '',
     gender: '',
-    interestedRegion: 'busan',
     phone: '',
     birthDate: '',
   });
@@ -165,9 +164,9 @@ function RegisterForm() {
         email: form.email,
         name: form.name,
         gender: form.gender,
-        interestedRegion: form.interestedRegion,
         phone: form.phone,
         birthDate: form.birthDate,
+        photoConsent: agreements.photoConsent,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
@@ -247,6 +246,11 @@ function RegisterForm() {
                     영문, 숫자, 일부 특수문자만 입력 가능합니다.
                   </div>
                 )}
+                {!emailError && (
+                  <p style={{ fontSize: '0.75rem', color: '#999', marginTop: '6px', marginLeft: '4px' }}>
+                    계정 분실 시 찾기 및 주요 공지 수신용으로 사용
+                  </p>
+                )}
               </div>
 
               {/* Password */}
@@ -300,6 +304,12 @@ function RegisterForm() {
                 </div>
               )}
 
+              {/* Name */}
+              <div>
+                <label className="kl-label" style={{ fontWeight: '800', marginBottom: '10px' }}>이름 (실명)</label>
+                <input className="kl-input" style={{ borderRadius: '12px', height: '54px' }} placeholder="이름을 입력해 주세요" value={form.name} onChange={e => update('name', e.target.value)} />
+              </div>
+
               {/* Gender */}
               <div>
                 <label className="kl-label" style={{ fontWeight: '800', marginBottom: '10px' }}>성별</label>
@@ -317,40 +327,16 @@ function RegisterForm() {
                 </div>
               </div>
 
-              {/* Interested Region */}
-              <div>
-                <label className="kl-label" style={{ fontWeight: '800', marginBottom: '10px' }}>관심 지역 (운영 지점)</label>
-                <div style={{ display: 'flex', gap: '12px' }}>
-                  {[{ v: 'busan', label: '부산점' }, { v: 'changwon', label: '창원점' }].map(({ v, label }) => (
-                    <button key={v} type="button" onClick={() => update('interestedRegion', v)}
-                      style={{
-                        flex: 1, padding: '15px', borderRadius: '14px', border: form.interestedRegion === v ? '2px solid #33C659' : '1px solid #ddd',
-                        background: form.interestedRegion === v ? '#F0FFF4' : '#FFFFFF', color: form.interestedRegion === v ? '#33C659' : '#333333',
-                        cursor: 'pointer', fontWeight: '800', fontSize: '0.95rem', transition: 'all 0.2s'
-                      }}>
-                      {label}
-                    </button>
-                  ))}
-                </div>
-                <p style={{ fontSize: '0.75rem', color: '#888', marginTop: '6px' }}>주로 활동하시는 지역을 선택해 주세요.</p>
-              </div>
-
-              {/* Name */}
-              <div>
-                <label className="kl-label" style={{ fontWeight: '800', marginBottom: '10px' }}>이름 (실명)</label>
-                <input className="kl-input" style={{ borderRadius: '12px', height: '54px' }} placeholder="이름을 입력해 주세요" value={form.name} onChange={e => update('name', e.target.value)} />
-              </div>
-
               {/* Birthdate */}
               <div>
                 <label className="kl-label" style={{ fontWeight: '800', marginBottom: '10px' }}>생년월일</label>
-                <input className="kl-input" style={{ borderRadius: '12px', height: '54px' }} type="text" placeholder="ex. 1995-05-18" value={form.birthDate} onChange={e => update('birthDate', e.target.value)} />
+                <input className="kl-input" style={{ borderRadius: '12px', height: '54px' }} type="text" placeholder="ex. 1994-05-30" value={form.birthDate} onChange={e => update('birthDate', e.target.value)} />
               </div>
 
               {/* Phone */}
               <div>
                 <label className="kl-label" style={{ fontWeight: '800', marginBottom: '10px' }}>연락처</label>
-                <input className="kl-input" style={{ borderRadius: '12px', height: '54px' }} type="tel" placeholder="ex. 010-1234-5678" value={form.phone} onChange={e => update('phone', e.target.value)} />
+                <input className="kl-input" style={{ borderRadius: '12px', height: '54px' }} type="tel" placeholder="ex. 010-0000-0000" value={form.phone} onChange={e => update('phone', e.target.value)} />
               </div>
 
               {/* Terms Section (Relocated) */}
@@ -366,7 +352,7 @@ function RegisterForm() {
                     { key: 'terms', label: '서비스 이용약관 동의 (필수)' },
                     { key: 'privacy', label: '개인정보 수집 및 이용 동의 (필수)' },
                     { key: 'thirdParty', label: '개인정보 제3자 소유 제공 동의 (필수)' },
-                    { key: 'location', label: '위치 기반 서비스 이용약관 동의 (필수)' },
+                    { key: 'photoConsent', label: '마케팅 활용 모자이크 촬영 동의 (필수)' },
                   ].map(({ key, label }) => (
                     <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
                       onClick={() => setAgreements(a => ({ ...a, [key]: !a[key as keyof typeof agreements] }))}>

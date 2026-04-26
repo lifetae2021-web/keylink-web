@@ -94,6 +94,9 @@ function LoginContent() {
       // 3. Perform Firebase Auth Login with retrieved email
       await signInWithEmailAndPassword(auth, userEmail, password);
       
+      // Save last login method
+      localStorage.setItem('keylink_last_login_method', 'email');
+
       // 4. Handle Remember ID
       if (rememberId) {
         localStorage.setItem('keylink_saved_id', userId);
@@ -111,6 +114,12 @@ function LoginContent() {
       setIsLoading(false);
     }
   };
+
+  const [lastMethod, setLastMethod] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLastMethod(localStorage.getItem('keylink_last_login_method'));
+  }, []);
 
   const handleInputChange = (setter: (val: string) => void, val: string) => {
     setter(val);
@@ -137,6 +146,7 @@ function LoginContent() {
 
           {/* Normal Login Form */}
           <form onSubmit={handleNormalLogin} style={{ marginBottom: '24px' }}>
+
             <div style={{ marginBottom: '16px' }}>
               <label style={{ fontSize: '0.85rem', fontWeight: '700', color: '#333', display: 'block', marginBottom: '8px' }}>아이디</label>
               <input
@@ -193,14 +203,19 @@ function LoginContent() {
               </label>
             </div>
 
-            <button
-              type="submit"
-              className="kl-btn-primary"
-              disabled={isLoading}
-              style={{ width: '100%', padding: '16px', borderRadius: '100px', fontWeight: '800', fontSize: '1rem' }}
-            >
-              {isLoading ? '로그인 중...' : '로그인'}
-            </button>
+            <div style={{ position: 'relative' }}>
+              {lastMethod === 'email' && (
+                <div style={{ position: 'absolute', top: '-8px', right: '12px', background: '#333', color: '#fff', fontSize: '0.6rem', padding: '2px 6px', borderRadius: '4px', fontWeight: '800', zIndex: 10 }}>마지막 이용 방법</div>
+              )}
+              <button
+                type="submit"
+                className="kl-btn-primary"
+                disabled={isLoading}
+                style={{ width: '100%', padding: '16px', borderRadius: '100px', fontWeight: '800', fontSize: '1rem' }}
+              >
+                {isLoading ? '로그인 중...' : '로그인'}
+              </button>
+            </div>
           </form>
 
           {/* Sub Links */}
@@ -225,7 +240,7 @@ function LoginContent() {
           </div>
 
           {/* Social Buttons Container */}
-          <SocialAuth isLoading={isLoading} setIsLoading={setIsLoading} />
+          <SocialAuth isLoading={isLoading} setIsLoading={setIsLoading} lastMethod={lastMethod} />
         </div>
 
 
