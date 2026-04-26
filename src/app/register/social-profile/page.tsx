@@ -34,12 +34,14 @@ export default function SocialProfilePage() {
     birthDate: '',
   });
 
+  const isKakao = user?.uid.startsWith('kakao_');
+
   // Validation: Enable button only when everything is filled
-  const isValid = 
-    isAllAgreed && 
-    form.email.includes('@') && 
-    form.name.length >= 2 && 
-    form.gender && 
+  const isValid =
+    isAllAgreed &&
+    (isKakao ? true : form.email.includes('@')) && // 카카오는 이메일 선택
+    form.name.length >= 2 &&
+    form.gender &&
     form.birthDate.length === 10 && // 1994-05-30 format (hyphened)
     form.phone.length >= 12;
 
@@ -198,17 +200,19 @@ export default function SocialProfilePage() {
                 style={{
                   borderRadius: '12px',
                   height: '54px',
-                  border: '1px solid var(--color-border)',
-                  background: '#F8F9FA',
-                  color: '#888',
-                  cursor: 'not-allowed',
+                  border: emailError ? '1.5px solid #FF6F61' : '1px solid var(--color-border)',
+                  background: isKakao ? '#fff' : '#F8F9FA',
+                  color: isKakao ? '#111' : '#888',
+                  cursor: isKakao ? 'text' : 'not-allowed',
                 }}
                 type="email"
+                placeholder={isKakao ? 'example@gmail.com (선택)' : ''}
                 value={form.email}
-                readOnly
+                onChange={isKakao ? e => update('email', e.target.value) : undefined}
+                readOnly={!isKakao}
               />
               <p style={{ fontSize: '0.75rem', color: '#999', marginTop: '6px', marginLeft: '4px' }}>
-                소셜 계정 이메일은 변경할 수 없습니다.
+                {isKakao ? '입력하지 않아도 가입 가능합니다.' : '소셜 계정 이메일은 변경할 수 없습니다.'}
               </p>
               {emailError && (
                 <p style={{ color: '#FF6F61', fontSize: '0.8rem', fontWeight: '700', marginTop: '8px', marginLeft: '4px' }}>
