@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -133,6 +133,18 @@ function LoginContent() {
       padding: '90px 20px 60px',
       background: 'radial-gradient(ellipse at 50% 30%, rgba(255,111,97,0.08) 0%, transparent 70%)',
     }}>
+      {/* 전체 화면 로딩 오버레이 */}
+      {isLoading && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(255,255,255,0.75)',
+          zIndex: 9999, display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center', gap: '16px',
+          backdropFilter: 'blur(4px)',
+        }}>
+          <Loader2 size={40} color="#FF6F61" className="animate-spin" />
+          <p style={{ fontSize: '0.9rem', fontWeight: '700', color: '#FF6F61' }}>로그인 중...</p>
+        </div>
+      )}
       <div style={{ maxWidth: '420px', width: '100%' }}>
         {/* Login Card */}
         <div style={{
