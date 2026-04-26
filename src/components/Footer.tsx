@@ -2,8 +2,9 @@
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Heart, MessageCircle, Camera } from 'lucide-react';
+import { Heart, MessageCircle, Camera, X } from 'lucide-react';
 import { useRef } from 'react';
+import { getContent } from '@/lib/firestore/cms';
 import { auth, db, storage } from '@/lib/firebase';
 import { deleteUser, onAuthStateChanged, User } from 'firebase/auth';
 import { collection, query, where, getDocs, deleteDoc, doc } from 'firebase/firestore';
@@ -16,6 +17,13 @@ export default function Footer() {
   const router = useRouter();
   const lastTapTime = useRef<number>(0);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [modal, setModal] = useState<{ title: string; body: string } | null>(null);
+
+  const openModal = async (key: 'terms' | 'privacy') => {
+    const title = key === 'terms' ? '이용약관' : '개인정보처리방침';
+    const body = await getContent(key);
+    setModal({ title, body: body || `${title}이 아직 등록되지 않았습니다.` });
+  };
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, u => setCurrentUser(u));
@@ -244,15 +252,38 @@ export default function Footer() {
               onDoubleClick={handleHiddenAdminLink}
               onTouchStart={handleHiddenAdminLink}
             >
-              © 2026 키링크. All rights reserved. | <span className="text-black text-sm font-semibold">v5.2.0</span>
+              © 2026 키링크. All rights reserved. | <span className="text-black text-sm font-semibold">v2.0.1</span>
             </div>
             <div style={{ display: 'flex', gap: '20px' }}>
-              <Link href="/notices?tab=terms" style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', textDecoration: 'none', fontWeight: '500' }}>이용약관</Link>
-              <Link href="/notices?tab=privacy" style={{ fontSize: '0.8rem', color: 'var(--color-text-primary)', textDecoration: 'none', fontWeight: '700' }}>개인정보처리방침</Link>
+              <button onClick={() => openModal('terms')} style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: '500', padding: 0 }}>이용약관</button>
+              <button onClick={() => openModal('privacy')} style={{ fontSize: '0.8rem', color: 'var(--color-text-primary)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: '700', padding: 0 }}>개인정보처리방침</button>
             </div>
           </div>
         </div>
       </div>
+
+      {/* 모달 */}
+      {modal && (
+        <div
+          onClick={() => setModal(null)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ background: '#fff', borderRadius: '20px', width: '100%', maxWidth: '600px', maxHeight: '80vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '1px solid #eee' }}>
+              <h2 style={{ fontSize: '1rem', fontWeight: '800', color: '#111' }}>{modal.title}</h2>
+              <button onClick={() => setModal(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#999' }}>
+                <X size={20} />
+              </button>
+            </div>
+            <div style={{ padding: '24px', overflowY: 'auto', fontSize: '0.85rem', color: '#555', lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>
+              {modal.body}
+            </div>
+          </div>
+        </div>
+      )}
     </footer>
   );
 }

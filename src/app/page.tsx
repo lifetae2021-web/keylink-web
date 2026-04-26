@@ -1,16 +1,95 @@
 'use client';
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   Heart, MapPin, ArrowRight, Star,
-  CheckCircle, Sparkles, ChevronLeft, ChevronRight
+  CheckCircle, Sparkles, ChevronLeft, ChevronRight,
+  ShieldCheck, WalletCards
 } from 'lucide-react';
-import { REVIEWS } from '@/lib/constants/reviews';
+import { getReviews, ReviewItem } from '@/lib/firestore/cms';
 import { EventsSection } from '@/components/EventsSection';
 import { Suspense } from 'react';
 
+const steps = [
+  { num: '01', title: '신청하기', desc: '원하는 날짜 선택 후 신청' },
+  { num: '02', title: '참가자 선발 및 입금', desc: '선발된 분들께 안내 문자 발송, 입금 확인 후 최종 참여 확정' },
+  { num: '03', title: '행사 당일 참석', desc: '신분증 지참 후 안내 된 장소에 방문' },
+  { num: '04', title: '신원 확인', desc: '신분증 확인 후 자리 안내' },
+  { num: '05', title: '1:1 로테이션 대화', desc: '모든 이성과 약 15분 집중 대화' },
+  { num: '06', title: '호감도 순위 입력', desc: '행사 종료 후 웹사이트에서 1~3순위 선택하여 제출' },
+  { num: '07', title: '매칭 결과 확인', desc: '상호 호감 매칭 시 오픈채팅방 초대' },
+  { num: '08', title: '새로운 시작 ✨', desc: '매칭 성공 시 카카오 오픈채팅방을 통해 자연스러운 만남 시작' },
+];
+
+function PolicyCards({ policies }: { policies: { icon: React.ElementType; title: string; subtitle: string; desc: string; color: string }[] }) {
+  const [openIdx, setOpenIdx] = useState<number | null>(null);
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px' }}>
+      {policies.map((policy, idx) => {
+        const isOpen = openIdx === idx;
+        const rgb = policy.color === '#FF6F61' ? '255,111,97' : policy.color === '#A98FD5' ? '169,143,213' : '110,174,124';
+        return (
+          <div key={policy.title} className="policy-card" style={{ textAlign: 'center', alignItems: 'center' }}>
+            <div style={{ width: '52px', height: '52px', borderRadius: '14px', background: `rgba(${rgb}, 0.12)`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+              <policy.icon size={26} color={policy.color} />
+            </div>
+            <p style={{ fontSize: '0.7rem', fontWeight: '700', letterSpacing: '0.1em', color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '8px' }}>{policy.subtitle}</p>
+            <h3 style={{ fontSize: '1.15rem', fontWeight: '800', color: 'var(--color-text-primary)', marginBottom: '16px' }}>{policy.title}</h3>
+            {isOpen && (
+              <p style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)', lineHeight: 1.8, marginBottom: '16px' }}>{policy.desc}</p>
+            )}
+            <button
+              onClick={() => setOpenIdx(isOpen ? null : idx)}
+              style={{ fontSize: '0.8rem', fontWeight: '700', color: policy.color, background: `rgba(${rgb}, 0.08)`, border: `1px solid rgba(${rgb}, 0.2)`, borderRadius: '100px', padding: '7px 18px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+            >
+              {isOpen ? '접기' : '자세히 보기'}
+              <ChevronRight size={13} style={{ transform: isOpen ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }} />
+            </button>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function ProcessSection() {
+  return (
+    <section style={{ padding: '80px 20px', background: 'var(--color-surface)', textAlign: 'center' }}>
+      <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
+        <p style={{ fontSize: '0.8rem', fontWeight: '700', color: '#FF6F61', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '12px' }}>SERVICE PROCESS</p>
+        <h2 className="kl-heading-lg" style={{ marginBottom: '16px' }}>
+          키링크 <span className="kl-gradient-text">진행 방식</span>
+        </h2>
+        <p style={{ color: 'var(--color-text-secondary)', fontSize: '1rem', lineHeight: 1.8, wordBreak: 'keep-all', marginBottom: '40px' }}>
+          신청부터 매칭까지, 키링크의 체계적이고 투명한 프로세스를 안내해 드립니다.<br/>
+          여러분의 소중한 만남을 위해 정성을 다해 준비합니다.
+        </p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '16px', textAlign: 'left' }}>
+          {steps.map((step, idx) => (
+            <div key={idx} style={{
+              background: 'var(--gradient-card)', border: '1px solid var(--color-border)',
+              borderRadius: 'var(--radius-lg)', padding: '28px 24px',
+              position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: '10px'
+            }}>
+              <div style={{ position: 'absolute', top: '12px', right: '14px', fontSize: '3rem', fontWeight: '900', color: 'rgba(255,111,97,0.06)', lineHeight: 1, userSelect: 'none' }}>{step.num}</div>
+              <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: 'linear-gradient(135deg, #FFDBE9, #E6E6FA)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', color: '#1A1A1A', fontSize: '0.9rem' }}>
+                {step.num}
+              </div>
+              <h3 style={{ fontWeight: '800', fontSize: '1.1rem', color: 'var(--color-text-primary)', marginTop: '6px' }}>{step.title}</h3>
+              <p style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)', lineHeight: 1.7, wordBreak: 'keep-all' }}>{step.desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function HomePage() {
   const [currentReview, setCurrentReview] = useState(0);
+  const [reviews, setReviews] = useState<ReviewItem[]>([]);
+
+  useEffect(() => { getReviews().then(setReviews); }, []);
   const [heroVisible, setHeroVisible] = useState(false);
 
   useEffect(() => {
@@ -21,7 +100,7 @@ export default function HomePage() {
   // Auto-advance reviews
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentReview((prev) => (prev + 1) % REVIEWS.length);
+      setCurrentReview((prev) => (prev + 1) % (reviews.length || 1));
     }, 5000);
     return () => clearInterval(interval);
   }, []);
@@ -35,21 +114,21 @@ export default function HomePage() {
 
   const policies = [
     {
-      icon: '💸',
+      icon: ShieldCheck,
       title: '중복 만남 100% 환불',
       subtitle: 'ZERO REPEAT GUARANTEE',
       desc: '이전에 매칭된 상대방과 같은 자리에서 재회할 경우 참가비 전액을 환불해 드립니다.',
       color: '#FF6F61',
     },
     {
-      icon: '🔄',
+      icon: WalletCards,
       title: '미매칭 30% 환불',
       subtitle: 'MATCH FAIL REFUND',
       desc: '최종 매칭이 성사되지 않을 경우 참가비의 30%를 환불해 드립니다. 도전을 응원합니다.',
       color: '#A98FD5',
     },
     {
-      icon: '💌',
+      icon: Sparkles,
       title: '매칭 성공 혜택',
       subtitle: 'MATCH SUCCESS BONUS',
       desc: '매칭 성공 시 오픈채팅방을 통해 즉시 연결. 어색함 없이 자연스러운 첫 대화를 시작하세요.',
@@ -177,34 +256,9 @@ export default function HomePage() {
       </Suspense>
 
       {/* ── SIMPLE PROCESS SUMMARY ── */}
-      <section style={{ padding: '80px 20px', background: 'var(--color-surface)', textAlign: 'center' }}>
-        <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
-          <div style={{ marginBottom: '48px' }}>
-            <p style={{ fontSize: '0.8rem', fontWeight: '700', color: '#FF6F61', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '12px' }}>SERVICE PROCESS</p>
-            <h2 className="kl-heading-lg">
-              세상의 모든 인연은<br/><span className="kl-gradient-text">세 단계</span>로 시작됩니다
-            </h2>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '40px', marginBottom: '48px' }}>
-            {[
-              { icon: '📝', title: '참여 신청', desc: '검증된 신분의 분들을 대상으로 엄격하게 선별합니다.' },
-              { icon: '🥂', title: '현장 미팅', desc: '자유롭고 편안한 분위기에서 1:1 대화를 나눕니다.' },
-              { icon: '💖', title: '매칭 및 연결', desc: '상호 호감 시 카카오톡 오픈채팅으로 바로 연결해 드립니다.' },
-            ].map((p, i) => (
-              <div key={i} style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '2.5rem', marginBottom: '16px' }}>{p.icon}</div>
-                <h3 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '10px' }}>{p.title}</h3>
-                <p style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>{p.desc}</p>
-              </div>
-            ))}
-          </div>
-
-          <Link href="/how-it-works" className="kl-btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-            전체 진행 과정 자세히 보기 <ArrowRight size={18} />
-          </Link>
-        </div>
-      </section>
+      <div id="how-it-works">
+        <ProcessSection />
+      </div>
 
       {/* ── POLICY (차별화 정책) ── */}
       <section className="kl-section">
@@ -218,29 +272,7 @@ export default function HomePage() {
           </p>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px' }}>
-          {policies.map((policy) => (
-            <div key={policy.title} className="policy-card">
-              <div style={{ fontSize: '3rem', marginBottom: '20px' }}>{policy.icon}</div>
-              <p style={{ fontSize: '0.7rem', fontWeight: '700', letterSpacing: '0.1em', color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '8px' }}>{policy.subtitle}</p>
-              <h3 style={{ fontSize: '1.15rem', fontWeight: '800', color: 'var(--color-text-primary)', marginBottom: '16px' }}>{policy.title}</h3>
-              <p style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)', lineHeight: 1.8 }}>{policy.desc}</p>
-              <div style={{
-                marginTop: '24px', padding: '12px 16px',
-                background: `rgba(${policy.color === '#FF6F61' ? '255,111,97' : policy.color === '#A98FD5' ? '169,143,213' : '110,174,124'}, 0.08)`,
-                borderRadius: '10px',
-                border: `1px solid rgba(${policy.color === '#FF6F61' ? '255,111,97' : policy.color === '#A98FD5' ? '169,143,213' : '110,174,124'}, 0.2)`,
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <CheckCircle size={15} color={policy.color} />
-                  <span style={{ fontSize: '0.8rem', color: policy.color, fontWeight: '600' }}>
-                    {policy.title.includes('100%') ? '전액 환불 보장' : policy.title.includes('30%') ? '부분 환불 보장' : '즉시 연결 지원'}
-                  </span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+        <PolicyCards policies={policies} />
       </section>
 
       {/* ── REVIEWS ── */}
@@ -272,7 +304,7 @@ export default function HomePage() {
                 marginBottom: '28px',
                 fontStyle: 'italic',
               }}>
-                &ldquo;{REVIEWS[currentReview]?.text}&rdquo;
+                &ldquo;{reviews[currentReview]?.text}&rdquo;
               </p>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -284,15 +316,15 @@ export default function HomePage() {
                     <Heart size={18} fill="#FFFFFF" color="#FFFFFF" />
                   </div>
                   <div>
-                    <p style={{ fontWeight: '700', color: 'var(--color-text-primary)', fontSize: '0.95rem' }}>{REVIEWS[currentReview]?.couple}</p>
+                    <p style={{ fontWeight: '700', color: 'var(--color-text-primary)', fontSize: '0.95rem' }}>{reviews[currentReview]?.couple}</p>
                     <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
-                      {REVIEWS[currentReview]?.region} {REVIEWS[currentReview]?.episode}
+                      {reviews[currentReview]?.region} {reviews[currentReview]?.episode}
                     </p>
                   </div>
                 </div>
 
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <button onClick={() => setCurrentReview((prev) => (prev - 1 + REVIEWS.length) % REVIEWS.length)}
+                  <button onClick={() => setCurrentReview((prev) => (prev - 1 + (reviews.length || 1)) % (reviews.length || 1))}
                     style={{
                       width: '40px', height: '40px', borderRadius: '50%',
                       background: 'var(--color-surface-2)', border: '1px solid var(--color-border)',
@@ -301,7 +333,7 @@ export default function HomePage() {
                     }}>
                     <ChevronLeft size={18} />
                   </button>
-                  <button onClick={() => setCurrentReview((prev) => (prev + 1) % REVIEWS.length)}
+                  <button onClick={() => setCurrentReview((prev) => (prev + 1) % (reviews.length || 1))}
                     style={{
                       width: '40px', height: '40px', borderRadius: '50%',
                       background: 'var(--color-surface-2)', border: '1px solid var(--color-border)',
@@ -315,7 +347,7 @@ export default function HomePage() {
             </div>
 
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginTop: '20px' }}>
-              {REVIEWS.map((_, i) => (
+              {reviews.map((_, i) => (
                 <button key={i} onClick={() => setCurrentReview(i)}
                   style={{
                     width: i === currentReview ? '24px' : '8px',

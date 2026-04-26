@@ -91,5 +91,34 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
+    // ─────────────────────────────────────
+    // cms_notices (공지사항) 컬렉션
+    // ─────────────────────────────────────
+    match /cms_notices/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ─────────────────────────────────────
+    // cms_faqs (FAQ) 컬렉션
+    // ─────────────────────────────────────
+    match /cms_faqs/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ─────────────────────────────────────
+    // cms_content (이용규정/약관/개인정보) 컬렉션
+    // ─────────────────────────────────────
+    match /cms_content/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /cms_reviews/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
   }
 }

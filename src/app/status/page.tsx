@@ -1,12 +1,14 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Calendar, MapPin, Users, ArrowRight, Timer, LayoutGrid, Loader2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { getAllSessions } from '@/lib/firestore/sessions';
 import { Session } from '@/lib/types';
 
 export default function StatusListPage() {
+  const router = useRouter();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -74,10 +76,10 @@ export default function StatusListPage() {
             const progressFemale = currentFemale / event.maxFemale;
 
             return (
-              <Link
+              <div
                 key={event.id}
-                href={`/status/${event.id}`}
                 className="status-card"
+                onClick={() => router.push(`/status/${event.id}`)}
                 style={{
                   background: '#fff',
                   borderRadius: '32px',
@@ -87,6 +89,7 @@ export default function StatusListPage() {
                   position: 'relative',
                   display: 'flex',
                   flexDirection: 'column',
+                  cursor: 'pointer',
                   gap: '24px',
                   textDecoration: 'none',
                   color: 'inherit',
@@ -161,7 +164,7 @@ export default function StatusListPage() {
                   </div>
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
-                    <Link href={`/status/${event.id}`} style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#FF6F61', fontWeight: '800', fontSize: '0.9rem', textDecoration: 'none' }}>
+                    <Link href={`/status/${event.id}`} onClick={e => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#FF6F61', fontWeight: '800', fontSize: '0.9rem', textDecoration: 'none' }}>
                       라인업 상세보기 <ArrowRight size={16} />
                     </Link>
                     {(status.label === '모집 중' || status.label === '모집 마감') && (
@@ -180,7 +183,7 @@ export default function StatusListPage() {
                       </Link>
                     )}
                   </div>
-              </Link>
+              </div>
             );
           })}
           

@@ -11,9 +11,9 @@ import toast from 'react-hot-toast';
 
 // '진행 과정' is a special anchor link pointing to /#how-it-works
 const navLinks = [
-  { href: '/', label: 'HOME', anchor: null },
+  { href: '/', label: 'HOME', anchor: 'top' },
   { href: '/notices', label: '공지 & FAQ', anchor: null },
-  { href: '/how-it-works', label: '진행 과정', anchor: null },
+  { href: '/#how-it-works', label: '진행 과정', anchor: null },
   { href: '/events', label: '참여 신청', anchor: null },
   { href: '/status', label: '실시간 현황', anchor: null },
   { href: '/matching/result', label: '매칭 결과', anchor: null },
@@ -32,8 +32,16 @@ export default function Navbar() {
     if (!anchor) return;
     e.preventDefault();
     setIsMenuOpen(false);
-    
-    // Set immediate active state to prevent flicker
+
+    if (anchor === 'top') {
+      if (pathname === '/') {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        window.location.href = '/';
+      }
+      return;
+    }
+
     setActiveAnchor(anchor);
     isManualScrolling.current = true;
 
@@ -41,16 +49,12 @@ export default function Navbar() {
       const el = document.getElementById(anchor);
       if (el) {
         el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        // Unlock scroll spy after smooth scroll completes
-        setTimeout(() => {
-          isManualScrolling.current = false;
-        }, 800);
+        setTimeout(() => { isManualScrolling.current = false; }, 800);
       } else {
         isManualScrolling.current = false;
       }
     };
 
-    // If already on homepage, scroll directly; otherwise navigate then scroll
     if (pathname === '/') {
       scrollTo();
     } else {
@@ -125,7 +129,7 @@ export default function Navbar() {
         <div className="kl-nav-container" style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '85px' }}>
             {/* Logo */}
-            <Link href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', height: '85px' }}>
+            <Link href="/" onClick={(e) => handleAnchorClick(e, 'top')} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', height: '85px' }}>
               <div style={{ position: 'relative', height: '100%', width: '160px', display: 'flex', alignItems: 'center' }}>
                 <Image
                   src="/logo.png"

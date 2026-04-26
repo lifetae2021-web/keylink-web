@@ -45,6 +45,9 @@ export default function EventDetailPage() {
   // 0: 상세페이지, 1: 신청 폼, 2: 결제 대기(모의)
   const [step, setStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitReady, setSubmitReady] = useState(false);
+  const [hasProfile, setHasProfile] = useState(false);
+  const [userGender, setUserGender] = useState<string>('');
   
   // 얼리버드 카운트다운 타이머 (가상)
   const [timeLeft, setTimeLeft] = useState(3600 * 5 + 1200); // 5h 20m
@@ -102,10 +105,8 @@ export default function EventDetailPage() {
           const proofUrl = data.employmentProof || data.verificationUrl || '';
           setVerificationPreview(proofUrl);
           
-          toast.success('기존 프로필 정보를 불러왔습니다. 수정이 필요한 부분만 고쳐주세요.', {
-            icon: 'ℹ️',
-            duration: 4000,
-          });
+          setHasProfile(true);
+          setUserGender(data.gender || '');
         }
       } else {
         setCurrentUser(null);
@@ -162,7 +163,15 @@ export default function EventDetailPage() {
       router.push('/login');
       return;
     }
+    setSubmitReady(false);
     setStep(1);
+    setTimeout(() => setSubmitReady(true), 500);
+    if (hasProfile) {
+      toast.success('기존 프로필 정보를 불러왔습니다. 수정이 필요한 부분만 고쳐주세요.', {
+        icon: 'ℹ️',
+        duration: 4000,
+      });
+    }
   };
 
   const handleFormSubmit = async (e: React.FormEvent) => {
@@ -784,7 +793,7 @@ export default function EventDetailPage() {
                   <CheckCircle size={32} color="#6EAE7C" />
                 </div>
                 <h2 style={{ fontSize: '1.5rem', fontWeight: '800', color: '#111', marginBottom: '10px' }}>신청서 제출 완료!</h2>
-                <p style={{ fontSize: '0.95rem', color: '#555', marginBottom: '32px', lineHeight: 1.6 }}>신청서 및 인증 내역 검토하고 매주 월요일부터 순차적으로 연락드립니다.</p>
+                <p style={{ fontSize: '0.95rem', color: '#555', marginBottom: '32px', lineHeight: 1.6 }}>신청서 및 인증 내역 검토하고 선발된 인원에게만 순차적으로 연락드립니다.</p>
                 <Link href="/mypage" className="kl-btn-primary" style={{ width: '100%', padding: '18px', fontSize: '1.1rem', textAlign: 'center', display: 'block' }}>
                   마이페이지에서 확인하기
                 </Link>
@@ -858,13 +867,21 @@ export default function EventDetailPage() {
 
                 <div style={{ marginTop: '24px' }}>
                   {step === 0 ? (
-                    <button 
-                      className="kl-btn-primary" 
-                      style={{ width: '100%', padding: '18px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }} 
-                      onClick={handleStep1Entry}
-                    >
-                      {soldOutM && soldOutF ? <>대기 신청하기 <ChevronRight size={18} /></> : <>신청서 작성하기 <ChevronRight size={18} /></>}
-                    </button>
+                    <>
+                      {userGender && form.gender && form.gender !== userGender && (
+                        <p style={{ textAlign: 'center', fontSize: '0.85rem', color: '#FF6F61', fontWeight: '700', marginBottom: '10px' }}>
+                          본인 성별로만 신청 가능합니다.
+                        </p>
+                      )}
+                      <button
+                        className="kl-btn-primary"
+                        style={{ width: '100%', padding: '18px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', opacity: (userGender && form.gender && form.gender !== userGender) ? 0.4 : 1 }}
+                        onClick={handleStep1Entry}
+                        disabled={!!(userGender && form.gender && form.gender !== userGender)}
+                      >
+                        {soldOutM && soldOutF ? <>대기 신청하기 <ChevronRight size={18} /></> : <>신청서 작성하기 <ChevronRight size={18} /></>}
+                      </button>
+                    </>
                   ) : (
                     <>
                       {step === 1 && (
@@ -873,7 +890,7 @@ export default function EventDetailPage() {
                           type="submit"
                           className="kl-btn-primary"
                           style={{ width: '100%', padding: '18px', fontSize: '1.1rem', fontWeight: '800' }}
-                          disabled={isSubmitting}
+                          disabled={isSubmitting || !submitReady}
                         >
                           {isSubmitting ? '제출 중...' : '신청서 제출 완료'}
                         </button>
@@ -900,7 +917,7 @@ export default function EventDetailPage() {
             </button>
           )}
           {step === 1 && (
-            <button form="bookingForm" type="submit" className="kl-btn-primary" style={{ width: '100%', padding: '16px', fontSize: '1.1rem', fontWeight: '800' }} disabled={isSubmitting}>
+            <button form="bookingForm" type="submit" className="kl-btn-primary" style={{ width: '100%', padding: '16px', fontSize: '1.1rem', fontWeight: '800' }} disabled={isSubmitting || !submitReady}>
               {isSubmitting ? '제출 중...' : '신청서 제출하기'}
             </button>
           )}
