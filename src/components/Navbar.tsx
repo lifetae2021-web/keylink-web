@@ -391,7 +391,7 @@ export default function Navbar() {
           borderRadius: '100px', pointerEvents: 'none',
           backdropFilter: 'blur(6px)',
         }}>
-          v2.2.6
+          v1.0.0
         </div>
       )}
 
