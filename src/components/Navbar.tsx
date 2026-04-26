@@ -30,6 +30,14 @@ export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
 
+  // 소셜 가입 미완료 상태에서 네비게이션 시 로그아웃 처리
+  const handleNavWithSignOut = useCallback(async (href: string) => {
+    if (pathname === '/register/social-profile') {
+      await auth.signOut();
+    }
+    router.push(href);
+  }, [pathname, router]);
+
   // Smooth scroll to anchor, handle cross-page navigation
   const handleAnchorClick = useCallback((e: React.MouseEvent, anchor: string | null) => {
     if (!anchor) return;
@@ -143,7 +151,7 @@ export default function Navbar() {
         <div className="kl-nav-container" style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '85px' }}>
             {/* Logo */}
-            <Link href="/" onClick={(e) => handleAnchorClick(e, 'top')} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', height: '85px' }}>
+            <Link href="/" onClick={(e) => { handleAnchorClick(e, 'top'); if (pathname === '/register/social-profile') { e.preventDefault(); handleNavWithSignOut('/'); } }} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', height: '85px' }}>
               <div style={{ position: 'relative', height: '100%', width: '160px', display: 'flex', alignItems: 'center' }}>
                 <Image
                   src="/logo.png"
@@ -168,7 +176,7 @@ export default function Navbar() {
                   <a
                     key={link.href}
                     href={link.href}
-                    onClick={(e) => handleAnchorClick(e, link.anchor)}
+                    onClick={(e) => { handleAnchorClick(e, link.anchor); if (pathname === '/register/social-profile') { e.preventDefault(); handleNavWithSignOut(link.href); } }}
                     style={{
                       padding: '8px 16px', borderRadius: '8px', fontSize: '0.88rem', fontWeight: active ? '900' : '600',
                       color: active ? activeColor : '#333333', textDecoration: 'none', transition: 'all 0.2s',
@@ -184,6 +192,7 @@ export default function Navbar() {
                   <Link
                     key={link.href}
                     href={link.href}
+                    onClick={(e) => { if (pathname === '/register/social-profile') { e.preventDefault(); handleNavWithSignOut(link.href); } }}
                     style={{
                       padding: '8px 16px', borderRadius: '8px', fontSize: '0.88rem', fontWeight: active ? '900' : '600',
                       color: active ? activeColor : '#333333', textDecoration: 'none', transition: 'all 0.2s',
