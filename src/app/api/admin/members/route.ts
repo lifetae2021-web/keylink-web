@@ -23,9 +23,10 @@ export async function GET(_req: NextRequest) {
       } catch {}
     }
 
-    const users = firestoreUsers.map((u) => ({
+    const users = firestoreUsers.map((u: any) => ({
       ...u,
-      authProvider: providerMap[u.id] || null,
+      // Firestore provider 필드 우선, 없으면 Firebase Auth providerData 사용
+      authProvider: u.provider || providerMap[u.id] || null,
     }));
 
     return NextResponse.json({ success: true, users });
