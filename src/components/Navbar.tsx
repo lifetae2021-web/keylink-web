@@ -335,8 +335,8 @@ export default function Navbar() {
               onClick={() => setIsMenuOpen(false)}
               style={{
                 display: 'block', padding: '14px 16px', fontSize: '1rem', fontWeight: '700',
-                color: '#fff', textDecoration: 'none',
-                borderRadius: '12px', marginBottom: '4px', background: '#111',
+                color: '#fff', textDecoration: 'none', textAlign: 'center',
+                borderRadius: '12px', marginBottom: '4px', background: '#FF6F61',
                 marginTop: '8px',
               }}
             >
