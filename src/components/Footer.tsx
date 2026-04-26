@@ -1,5 +1,5 @@
 'use client';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Heart, MessageCircle, Camera, X } from 'lucide-react';
@@ -13,6 +13,7 @@ import { useEffect, useState } from 'react';
 
 export default function Footer() {
   const pathname = usePathname();
+  const router = useRouter();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [modal, setModal] = useState<{ title: string; body: string } | null>(null);
 
