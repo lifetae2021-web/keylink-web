@@ -124,12 +124,19 @@ export default function SocialProfilePage() {
       }
 
       // 1. Setup Firestore Data
-      const emailPrefix = form.email.split('@')[0] || '';
-      const sanitizedPrefix = emailPrefix.replace(/[^a-z0-9]/g, '');
-      const uniqueSuffix = user.uid.slice(0, 4);
-      const generatedUsername = sanitizedPrefix ? `${sanitizedPrefix}_${uniqueSuffix}` : `user_${uniqueSuffix}_${Date.now().toString().slice(-4)}`;
-
       const provider = user.uid.startsWith('kakao_') ? 'kakao' : 'google';
+      let generatedUsername: string;
+      if (provider === 'kakao') {
+        // 카카오: UID 기반 고정 username (내부용, 노출 안 함)
+        generatedUsername = `kakao_${user.uid.replace('kakao_', '').slice(0, 8)}`;
+      } else {
+        // 구글: 이메일 prefix 기반
+        const emailPrefix = form.email.split('@')[0] || '';
+        const sanitizedPrefix = emailPrefix.replace(/[^a-z0-9]/g, '');
+        const uniqueSuffix = user.uid.slice(0, 4);
+        generatedUsername = sanitizedPrefix ? `${sanitizedPrefix}_${uniqueSuffix}` : `google_${user.uid.slice(0, 8)}`;
+      }
+
       await setDoc(doc(db, 'users', user.uid), {
         uid: user.uid,
         username: generatedUsername,
