@@ -130,8 +130,9 @@ export default function SocialAuth({ isAdmin, isLoading, setIsLoading, lastMetho
       return;
     }
 
+    setIsLoading(true);
     const kakaoAuthUrl = `https://kauth.kakao.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&state=${state}&scope=profile_nickname`;
-    window.location.href = kakaoAuthUrl;
+    setTimeout(() => { window.location.href = kakaoAuthUrl; }, 300);
   };
 
   return (
@@ -147,6 +148,7 @@ export default function SocialAuth({ isAdmin, isLoading, setIsLoading, lastMetho
               localStorage.setItem('keylink_last_login_method', 'kakao');
               handleKakaoLogin();
             }}
+
             disabled={isLoading}
             style={{ width: '54px', height: '54px', background: '#FEE500' }}
             className="flex items-center justify-center rounded-full hover:brightness-95 transition-all shadow-sm"
