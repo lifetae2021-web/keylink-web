@@ -102,7 +102,7 @@ export default function HomePage() {
     if (!reviews.length) return;
     const interval = setInterval(() => {
       setCurrentReview((prev) => (prev + 1) % reviews.length);
-    }, 5000);
+    }, 3000);
     return () => clearInterval(interval);
   }, [reviews.length]);
 
