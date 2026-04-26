@@ -88,7 +88,7 @@ function ProcessSection() {
 export default function HomePage() {
   const [currentReview, setCurrentReview] = useState(0);
   const [reviews, setReviews] = useState<ReviewItem[]>([]);
-  const [reviewVisible, setReviewVisible] = useState(true);
+  const [reviewSlide, setReviewSlide] = useState<'idle' | 'exit-left' | 'exit-right' | 'enter-left' | 'enter-right'>('idle');
 
   useEffect(() => { getReviews().then(setReviews); }, []);
   const [heroVisible, setHeroVisible] = useState(false);
@@ -102,8 +102,14 @@ export default function HomePage() {
   useEffect(() => { currentReviewRef.current = currentReview; }, [currentReview]);
 
   const changeReview = (next: number) => {
-    setReviewVisible(false);
-    setTimeout(() => { setCurrentReview(next); setReviewVisible(true); }, 200);
+    if (next === currentReviewRef.current) return;
+    const dir = next > currentReviewRef.current ? 'left' : 'right';
+    setReviewSlide(dir === 'left' ? 'exit-left' : 'exit-right');
+    setTimeout(() => {
+      setCurrentReview(next);
+      setReviewSlide(dir === 'left' ? 'enter-right' : 'enter-left');
+      setTimeout(() => setReviewSlide('idle'), 300);
+    }, 250);
   };
 
   // Auto-advance reviews
@@ -296,15 +302,16 @@ export default function HomePage() {
             </h2>
           </div>
 
-          <div style={{ position: 'relative' }}>
+          <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 'var(--radius-xl)' }}>
             <div style={{
               background: 'var(--gradient-card)',
               border: '1px solid var(--color-border)',
               borderRadius: 'var(--radius-xl)',
               padding: '40px 48px',
               minHeight: '220px',
-              transition: 'opacity 0.2s ease',
-              opacity: reviewVisible ? 1 : 0,
+              transition: 'transform 0.25s ease, opacity 0.25s ease',
+              transform: reviewSlide === 'exit-left' ? 'translateX(-60px)' : reviewSlide === 'exit-right' ? 'translateX(60px)' : reviewSlide === 'enter-right' ? 'translateX(60px)' : reviewSlide === 'enter-left' ? 'translateX(-60px)' : 'translateX(0)',
+              opacity: reviewSlide === 'idle' ? 1 : reviewSlide.startsWith('exit') ? 0 : 0,
             }}>
               <div style={{ display: 'flex', gap: '4px', marginBottom: '20px' }}>
                 {[1,2,3,4,5].map((s) => <Star key={s} size={18} fill="#FF6F61" color="#FF6F61" />)}
