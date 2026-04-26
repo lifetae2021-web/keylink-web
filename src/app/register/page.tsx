@@ -167,6 +167,8 @@ function RegisterForm() {
         phone: form.phone,
         birthDate: form.birthDate,
         photoConsent: agreements.photoConsent,
+        role: 'user',
+        provider: 'email',
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });

@@ -1,14 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminDb } from '@/lib/firebaseAdmin';
+import { adminDb, adminAuth } from '@/lib/firebaseAdmin';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(_req: NextRequest) {
   try {
     const usersSnapshot = await adminDb.collection('users').orderBy('createdAt', 'desc').get();
-    const users = usersSnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data()
+    const firestoreUsers = usersSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+
+    // Firebase Auth에서 providerData 조회 (100명씩 배치)
+    const uids = firestoreUsers.map((u) => ({ uid: u.id }));
+    const providerMap: Record<string, string> = {};
+
+    for (let i = 0; i < uids.length; i += 100) {
+      const batch = uids.slice(i, i + 100);
+      try {
+        const result = await adminAuth.getUsers(batch);
+        result.users.forEach((authUser) => {
+          const providerId = authUser.providerData?.[0]?.providerId || 'password';
+          providerMap[authUser.uid] = providerId;
+        });
+      } catch {}
+    }
+
+    const users = firestoreUsers.map((u) => ({
+      ...u,
+      authProvider: providerMap[u.id] || null,
     }));
 
     return NextResponse.json({ success: true, users });

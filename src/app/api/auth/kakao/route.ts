@@ -4,6 +4,54 @@ import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 const KAKAO_TOKEN_URL = 'https://kauth.kakao.com/oauth/token';
 const KAKAO_USER_PROFILE_URL = 'https://kapi.kakao.com/v2/user/me';
 
+async function getKakaoProfile(code: string, redirectUri: string) {
+  const tokenRes = await fetch(KAKAO_TOKEN_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8' },
+    body: new URLSearchParams({
+      grant_type: 'authorization_code',
+      client_id: process.env.NEXT_PUBLIC_KAKAO_CLIENT_ID || '',
+      client_secret: process.env.KAKAO_CLIENT_SECRET || '',
+      redirect_uri: redirectUri,
+      code,
+    }),
+  });
+  const tokenData = await tokenRes.json();
+  if (tokenData.error) throw new Error(tokenData.error_description);
+
+  const profileRes = await fetch(KAKAO_USER_PROFILE_URL, {
+    headers: { Authorization: `Bearer ${tokenData.access_token}` },
+  });
+  const profile = await profileRes.json();
+  if (profile.error) throw new Error('카카오 프로필 조회 실패');
+
+  return {
+    kakaoId: profile.id.toString(),
+    nickname: profile.properties?.nickname || profile.kakao_account?.profile?.nickname || '카카오 사용자',
+  };
+}
+
+async function getOrCreateFirebaseUser(kakaoId: string, nickname: string) {
+  const firebaseUid = `kakao_${kakaoId}`;
+
+  // Firebase Auth에 유저가 있는지 확인, 없으면 생성
+  try {
+    await adminAuth.getUser(firebaseUid);
+  } catch {
+    await adminAuth.instance.createUser({
+      uid: firebaseUid,
+      displayName: nickname,
+    });
+  }
+
+  // Firestore에 유저 문서 확인
+  const userDoc = await adminDb.collection('users').doc(firebaseUid).get();
+  const isNewUser = !userDoc.exists;
+
+  return { firebaseUid, isNewUser, existingData: userDoc.data() };
+}
+
+// GET: 리다이렉트 방식 (카카오에서 콜백)
 export async function GET(req: NextRequest) {
   const { searchParams, origin } = new URL(req.url);
   const KAKAO_REDIRECT_URI = `${origin}/api/auth/kakao`;
@@ -11,173 +59,51 @@ export async function GET(req: NextRequest) {
   const state = searchParams.get('state') || 'user';
   const isAdmin = state === 'admin';
 
-  if (!code) {
-    return NextResponse.redirect(`${origin}/login?error=code_missing`);
-  }
+  if (!code) return NextResponse.redirect(`${origin}/login?error=code_missing`);
 
   try {
-    // 1. Exchange code for access token
-    const tokenResponse = await fetch(KAKAO_TOKEN_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8' },
-      body: new URLSearchParams({
-        grant_type: 'authorization_code',
-        client_id: process.env.NEXT_PUBLIC_KAKAO_CLIENT_ID || '',
-        client_secret: process.env.KAKAO_CLIENT_SECRET || '',
-        redirect_uri: KAKAO_REDIRECT_URI,
-        code,
-      }),
-    });
+    const { kakaoId, nickname } = await getKakaoProfile(code, KAKAO_REDIRECT_URI);
+    const { firebaseUid, isNewUser, existingData } = await getOrCreateFirebaseUser(kakaoId, nickname);
 
-    const tokenData = await tokenResponse.json();
-    if (tokenData.error) throw new Error(tokenData.error_description);
-
-    const { access_token } = tokenData;
-
-    // 2. Get user profile
-    const userProfileResponse = await fetch(KAKAO_USER_PROFILE_URL, {
-      method: 'GET',
-      headers: { Authorization: `Bearer ${access_token}` },
-    });
-    const userData = await userProfileResponse.json();
-    if (userData.error) throw new Error('Failed to fetch user profile');
-
-    const kakaoId = userData.id.toString();
-    const nickname = userData.properties?.nickname || userData.kakao_account?.profile?.nickname || '카카오 사용자';
-
-    // 3. Firestore Logic - Purely Kakao ID based (No Email)
-    const usersRef = adminDb.collection('users');
-    const targetUid = `kakao_${kakaoId}`;
-    
-    const userDocRef = usersRef.doc(targetUid);
-    const userDocSnap = await userDocRef.get();
-
-    if (userDocSnap.exists) {
-      // User exists
-      if (isAdmin && userDocSnap.data()?.role !== 'admin') {
+    if (isAdmin) {
+      if (isNewUser || existingData?.role !== 'admin') {
         return NextResponse.redirect(`${origin}/login?error=not_admin`);
       }
-    } else {
-      // New User
-      if (isAdmin) return NextResponse.redirect(`${origin}/login?error=not_admin_registered`);
-      
-      const newUser = {
-        uid: targetUid,
-        name: nickname,
-        role: 'user',
-        kakaoId,
-        provider: 'kakao',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-      await userDocRef.set(newUser);
     }
 
-    // 4. Generate Token & Redirect
-    const customToken = await adminAuth.createCustomToken(targetUid);
+    const customToken = await adminAuth.createCustomToken(firebaseUid);
     const targetPath = isAdmin ? '/admin/callback' : '/login/callback';
-    return NextResponse.redirect(`${origin}${targetPath}?token=${customToken}&state=${state}`);
+    return NextResponse.redirect(`${origin}${targetPath}?token=${customToken}&state=${state}&isNew=${isNewUser}`);
 
   } catch (error: any) {
-    console.error('Kakao Redirect Auth Error:', error);
+    console.error('Kakao GET Auth Error:', error);
     return NextResponse.redirect(`${origin}/login?error=auth_failed&message=${encodeURIComponent(error.message)}`);
   }
 }
 
+// POST: 클라이언트에서 직접 호출 방식
 export async function POST(req: NextRequest) {
   try {
     const { code, isAdmin } = await req.json();
     const { origin } = new URL(req.url);
     const KAKAO_REDIRECT_URI = `${origin}/api/auth/kakao`;
 
-    if (!code) {
-      return NextResponse.json({ error: 'Authorization code is missing' }, { status: 400 });
-    }
+    if (!code) return NextResponse.json({ error: 'Authorization code is missing' }, { status: 400 });
 
-    // 1. Exchange code for access token
-    const tokenResponse = await fetch(KAKAO_TOKEN_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8',
-      },
-      body: new URLSearchParams({
-        grant_type: 'authorization_code',
-        client_id: process.env.NEXT_PUBLIC_KAKAO_CLIENT_ID || '',
-        client_secret: process.env.KAKAO_CLIENT_SECRET || '',
-        redirect_uri: KAKAO_REDIRECT_URI,
-        code,
-      }),
-    });
+    const { kakaoId, nickname } = await getKakaoProfile(code, KAKAO_REDIRECT_URI);
+    const { firebaseUid, isNewUser, existingData } = await getOrCreateFirebaseUser(kakaoId, nickname);
 
-    const tokenData = await tokenResponse.json();
-
-    if (tokenData.error) {
-      console.error('Kakao token exchange error:', tokenData);
-      return NextResponse.json({ error: tokenData.error_description || 'Failed to exchange token' }, { status: 400 });
-    }
-
-    const { access_token } = tokenData;
-
-    // 2. Get user profile from Kakao
-    const userProfileResponse = await fetch(KAKAO_USER_PROFILE_URL, {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${access_token}`,
-      },
-    });
-
-    const userData = await userProfileResponse.json();
-
-    if (userData.error) {
-      return NextResponse.json({ error: 'Failed to fetch user profile' }, { status: 400 });
-    }
-
-    const kakaoId = userData.id.toString();
-    const nickname = userData.properties?.nickname || userData.kakao_account?.profile?.nickname || '카카오 사용자';
-
-    // 3. Firestore Logic - Purely Kakao ID based (No Email)
-    const usersRef = adminDb.collection('users');
-    const targetUid = `kakao_${kakaoId}`;
-    
-    const userDocRef = usersRef.doc(targetUid);
-    const userDocSnap = await userDocRef.get();
-
-    if (userDocSnap.exists) {
-      if (isAdmin && userDocSnap.data()?.role !== 'admin') {
-        return NextResponse.json({ 
-          error: 'Admin authorization failed.',
-          details: '관리자 권한이 없는 계정입니다.'
-        }, { status: 403 });
+    if (isAdmin) {
+      if (isNewUser || existingData?.role !== 'admin') {
+        return NextResponse.json({ error: '관리자 권한이 없는 계정입니다.' }, { status: 403 });
       }
-    } else {
-      if (isAdmin) {
-        return NextResponse.json({ 
-          error: 'Admin authorization failed.',
-          details: '등록된 관리자 정보가 없습니다.'
-        }, { status: 403 });
-      }
-
-      // 4. Create new user
-      const newUser = {
-        uid: targetUid,
-        name: nickname,
-        role: 'user',
-        kakaoId,
-        provider: 'kakao',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-      
-      await userDocRef.set(newUser);
     }
 
-    // 5. Generate Firebase Custom Token
-    const customToken = await adminAuth.createCustomToken(targetUid);
-
-    return NextResponse.json({ token: customToken });
+    const customToken = await adminAuth.createCustomToken(firebaseUid);
+    return NextResponse.json({ token: customToken, isNewUser });
 
   } catch (error: any) {
-    console.error('Kakao Auth Error:', error);
+    console.error('Kakao POST Auth Error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

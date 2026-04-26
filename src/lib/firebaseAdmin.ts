@@ -61,6 +61,7 @@ export const adminAuth = {
   createUser: (props: admin.auth.CreateRequest) => getAdminAuth().createUser(props),
   updateUser: (uid: string, props: admin.auth.UpdateRequest) => getAdminAuth().updateUser(uid, props),
   deleteUser: (uid: string) => getAdminAuth().deleteUser(uid),
+  getUsers: (identifiers: { uid: string }[]) => getAdminAuth().getUsers(identifiers),
 };
 
 // adminDb: returns the full Firestore instance so all chaining works correctly with proper types

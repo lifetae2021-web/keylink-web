@@ -64,6 +64,7 @@ export default function UsersPage() {
   // Modal states
   const [selectedUserForAsset, setSelectedUserForAsset] = useState<any>(null);
   const [selectedUserForProfile, setSelectedUserForProfile] = useState<any>(null);
+  const [providerMap, setProviderMap] = useState<Record<string, string>>({});
 
   // v8.8.6: 직업 검토 상태 추가
   const [editingJobId, setEditingJobId] = useState<string | null>(null);
@@ -72,7 +73,7 @@ export default function UsersPage() {
   useEffect(() => {
     setIsLoading(true);
     const q = query(collection(db, 'users'), orderBy('createdAt', 'desc'));
-    
+
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const fetchedUsers = snapshot.docs.map(doc => ({
         id: doc.id,
@@ -85,6 +86,18 @@ export default function UsersPage() {
       toast.error('회원 데이터를 불러오는 중 오류가 발생했습니다.');
       setIsLoading(false);
     });
+
+    // 가입 방식 조회
+    fetch('/api/admin/members')
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          const map: Record<string, string> = {};
+          data.users.forEach((u: any) => { if (u.authProvider) map[u.id] = u.authProvider; });
+          setProviderMap(map);
+        }
+      })
+      .catch(() => {});
 
     return () => unsubscribe();
   }, []);
@@ -417,7 +430,26 @@ export default function UsersPage() {
                       {/* 2. 이름 */}
                       <td style={{ padding: '0 20px' }}>
                         <div className="flex flex-col cursor-pointer" onClick={() => setSelectedUserForProfile(u)}>
-                          <span className="text-[0.88rem] font-bold text-slate-800 hover:text-[#FF7E7E] transition-colors">{u.name || '미입력'}</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[0.88rem] font-bold text-slate-800 hover:text-[#FF7E7E] transition-colors">{u.name || '미입력'}</span>
+                            {(() => {
+                              const p = providerMap[u.id];
+                              if (!p) return null;
+                              const cfg: Record<string, { label: string; bg: string; color: string }> = {
+                                'password':   { label: '이메일', bg: '#F1F5F9', color: '#64748B' },
+                                'google.com': { label: 'Google', bg: '#FEF2F2', color: '#EF4444' },
+                                'oidc.kakao': { label: 'Kakao',  bg: '#FEF9C3', color: '#CA8A04' },
+                                'kakao':      { label: 'Kakao',  bg: '#FEF9C3', color: '#CA8A04' },
+                                'google':     { label: 'Google', bg: '#FEF2F2', color: '#EF4444' },
+                              };
+                              const c = cfg[p] || { label: p, bg: '#F1F5F9', color: '#64748B' };
+                              return (
+                                <span style={{ fontSize: '9px', fontWeight: 800, padding: '1px 5px', borderRadius: 4, background: c.bg, color: c.color }}>
+                                  {c.label}
+                                </span>
+                              );
+                            })()}
+                          </div>
                           <span className={`text-[10px] font-bold ${u.gender === 'male' ? 'text-blue-500' : 'text-rose-500'}`}>
                             {u.gender === 'male' ? '남성' : '여성'}
                           </span>

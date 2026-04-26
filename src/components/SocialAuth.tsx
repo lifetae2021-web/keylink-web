@@ -78,20 +78,6 @@ export default function SocialAuth({ isAdmin, isLoading, setIsLoading, lastMetho
     window.location.href = kakaoAuthUrl;
   };
 
-  const handleNaverLogin = () => {
-    const clientId = process.env.NEXT_PUBLIC_NAVER_CLIENT_ID;
-    const redirectUri = `${window.location.origin}/api/auth/naver`;
-    const state = isAdmin ? 'admin' : 'user';
-
-    if (!clientId) {
-      toast.error('네이버 클라이언트 ID가 설정되지 않았습니다.');
-      return;
-    }
-
-    const naverAuthUrl = `https://nid.naver.com/oauth2.0/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&state=${state}`;
-    window.location.href = naverAuthUrl;
-  };
-
   return (
     <div className="flex items-center justify-center gap-5 w-full pt-2">
       {/* Kakao Login */}
@@ -112,25 +98,6 @@ export default function SocialAuth({ isAdmin, isLoading, setIsLoading, lastMetho
           <svg width="24" height="24" viewBox="0 0 24 24" fill="#3c1e1e">
             <path d="M12 2C6.48 2 2 5.92 2 10.8c0 3.12 1.75 5.87 4.38 7.53L5.44 22l4.35-2.3c.72.2 1.45.3 2.21.3 5.52 0 10-3.93 10-8.8S17.52 2 12 2z" />
           </svg>
-        </button>
-      </div>
-
-      {/* Naver Login */}
-      <div style={{ position: 'relative' }}>
-        {lastMethod === 'naver' && (
-          <div style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', background: '#333', color: '#fff', fontSize: '0.55rem', padding: '1px 5px', borderRadius: '3px', fontWeight: '800', zIndex: 10, whiteSpace: 'nowrap' }}>마지막 이용</div>
-        )}
-        <button
-          onClick={() => {
-            localStorage.setItem('keylink_last_login_method', 'naver');
-            handleNaverLogin();
-          }}
-          disabled={isLoading}
-          style={{ width: '54px', height: '54px', background: '#03C75A' }}
-          className="flex items-center justify-center rounded-full hover:brightness-95 transition-all shadow-sm"
-          title="네이버 로그인"
-        >
-          <span className="font-black text-xl text-white font-sans">N</span>
         </button>
       </div>
 

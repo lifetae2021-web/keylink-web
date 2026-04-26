@@ -18,6 +18,7 @@ function KakaoCallbackContent() {
   useEffect(() => {
     const token = searchParams.get('token');
     const state = searchParams.get('state') || 'user';
+    const isNew = searchParams.get('isNew') === 'true';
     const error = searchParams.get('error');
 
     if (error) {
@@ -46,10 +47,11 @@ function KakaoCallbackContent() {
         if (state === 'admin') {
           toast.success('관리자 로그인 성공!');
           router.replace('/admin');
+        } else if (isNew) {
+          toast.success('환영합니다! 필수 정보를 입력해 주세요.');
+          router.replace('/register/social-profile');
         } else {
-          // Check if user exists in Firestore (v3.5.6)
           const userSnap = await getDoc(doc(db, 'users', user.uid));
-          
           if (userSnap.exists()) {
             toast.success('로그인에 성공했습니다!');
             router.replace('/');

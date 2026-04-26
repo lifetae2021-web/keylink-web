@@ -115,6 +115,7 @@ export default function SocialProfilePage() {
       const uniqueSuffix = user.uid.slice(0, 4);
       const generatedUsername = sanitizedPrefix ? `${sanitizedPrefix}_${uniqueSuffix}` : `user_${uniqueSuffix}_${Date.now().toString().slice(-4)}`;
 
+      const provider = user.uid.startsWith('kakao_') ? 'kakao' : 'google';
       await setDoc(doc(db, 'users', user.uid), {
         uid: user.uid,
         username: generatedUsername,
@@ -123,10 +124,10 @@ export default function SocialProfilePage() {
         gender: form.gender,
         phone: form.phone,
         birthDate: form.birthDate,
-        role: 'user', // v7.3.3: Firestore Rules allow create 조건 충족
+        role: 'user',
+        provider,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-        socialLogin: true,
         photoConsent: agreements.photoConsent,
         photoURL: user.photoURL || null,
       });
