@@ -134,8 +134,21 @@ function RegisterForm() {
   const handleSubmit = async () => {
     if (!validateAll()) return;
     setIsSubmitting(true);
-    
+
     try {
+      // 휴대폰 번호 중복 확인
+      const phoneRes = await fetch('/api/auth/check-phone', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: form.phone }),
+      });
+      const phoneData = await phoneRes.json();
+      if (!phoneData.available) {
+        toast.error(phoneData.message || '이미 가입된 연락처입니다.');
+        setIsSubmitting(false);
+        return;
+      }
+
       // 1. Firebase Auth - 내부 가상 이메일 사용 (구글/카카오 충돌 방지)
       const internalEmail = `${form.username}@keylink.user`;
       const userCredential = await createUserWithEmailAndPassword(auth, internalEmail, form.password);

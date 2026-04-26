@@ -108,6 +108,19 @@ export default function SocialProfilePage() {
     setEmailError(null);
 
     try {
+      // 휴대폰 번호 중복 확인
+      const phoneRes = await fetch('/api/auth/check-phone', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: form.phone, excludeUid: user.uid }),
+      });
+      const phoneData = await phoneRes.json();
+      if (!phoneData.available) {
+        toast.error(phoneData.message || '이미 가입된 연락처입니다.');
+        setIsSubmitting(false);
+        return;
+      }
+
       // 1. Setup Firestore Data
       const emailPrefix = form.email.split('@')[0] || '';
       const sanitizedPrefix = emailPrefix.replace(/[^a-z0-9]/g, '');
