@@ -88,7 +88,7 @@ function ProcessSection() {
 export default function HomePage() {
   const [currentReview, setCurrentReview] = useState(0);
   const [reviews, setReviews] = useState<ReviewItem[]>([]);
-  const [reviewSlide, setReviewSlide] = useState<'idle' | 'exit-left' | 'exit-right' | 'enter-left' | 'enter-right'>('idle');
+  const [slideDir, setSlideDir] = useState<'left' | 'right'>('left');
 
   useEffect(() => { getReviews().then(setReviews); }, []);
   const [heroVisible, setHeroVisible] = useState(false);
@@ -103,13 +103,8 @@ export default function HomePage() {
 
   const changeReview = (next: number) => {
     if (next === currentReviewRef.current) return;
-    const dir = next > currentReviewRef.current ? 'left' : 'right';
-    setReviewSlide(dir === 'left' ? 'exit-left' : 'exit-right');
-    setTimeout(() => {
-      setCurrentReview(next);
-      setReviewSlide(dir === 'left' ? 'enter-right' : 'enter-left');
-      setTimeout(() => setReviewSlide('idle'), 300);
-    }, 250);
+    setSlideDir(next > currentReviewRef.current ? 'left' : 'right');
+    setCurrentReview(next);
   };
 
   // Auto-advance reviews
@@ -303,16 +298,16 @@ export default function HomePage() {
           </div>
 
           <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 'var(--radius-xl)' }}>
-            <div style={{
-              background: 'var(--gradient-card)',
-              border: '1px solid var(--color-border)',
-              borderRadius: 'var(--radius-xl)',
-              padding: '40px 48px',
-              minHeight: '220px',
-              transition: 'transform 0.25s ease, opacity 0.25s ease',
-              transform: reviewSlide === 'exit-left' ? 'translateX(-60px)' : reviewSlide === 'exit-right' ? 'translateX(60px)' : reviewSlide === 'enter-right' ? 'translateX(60px)' : reviewSlide === 'enter-left' ? 'translateX(-60px)' : 'translateX(0)',
-              opacity: reviewSlide === 'idle' ? 1 : reviewSlide.startsWith('exit') ? 0 : 0,
-            }}>
+            <div
+              key={currentReview}
+              className={slideDir === 'left' ? 'review-slide-left' : 'review-slide-right'}
+              style={{
+                background: 'var(--gradient-card)',
+                border: '1px solid var(--color-border)',
+                borderRadius: 'var(--radius-xl)',
+                padding: '40px 48px',
+                minHeight: '220px',
+              }}>
               <div style={{ display: 'flex', gap: '4px', marginBottom: '20px' }}>
                 {[1,2,3,4,5].map((s) => <Star key={s} size={18} fill="#FF6F61" color="#FF6F61" />)}
               </div>
@@ -407,6 +402,18 @@ export default function HomePage() {
         </div>
       </section>
     </div>
+    <style>{`
+      @keyframes slideInFromRight {
+        from { transform: translateX(80px); opacity: 0; }
+        to   { transform: translateX(0);   opacity: 1; }
+      }
+      @keyframes slideInFromLeft {
+        from { transform: translateX(-80px); opacity: 0; }
+        to   { transform: translateX(0);     opacity: 1; }
+      }
+      .review-slide-left  { animation: slideInFromRight 0.3s ease; }
+      .review-slide-right { animation: slideInFromLeft  0.3s ease; }
+    `}</style>
   );
 }
 
