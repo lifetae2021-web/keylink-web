@@ -11,15 +11,16 @@ let initError: string | null = null;
 function initializeAdminApp() {
   if (admin.apps.length > 0) return;
 
-  const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+  const serviceAccountBase64 = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
 
-  if (!serviceAccountJson) {
+  if (!serviceAccountBase64) {
     initError = 'Missing env var: FIREBASE_SERVICE_ACCOUNT_KEY';
     console.warn(`⚠️ [Firebase Admin] ${initError}`);
     return;
   }
 
   try {
+    const serviceAccountJson = Buffer.from(serviceAccountBase64, 'base64').toString();
     const serviceAccount = JSON.parse(serviceAccountJson);
 
     admin.initializeApp({
