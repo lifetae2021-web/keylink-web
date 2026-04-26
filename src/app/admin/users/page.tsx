@@ -5,7 +5,7 @@ import {
   Search, CheckCircle, XCircle, Eye,
   Download, ShieldCheck, ChevronLeft, ChevronRight, Loader2,
   Filter, ArrowUpDown, ArrowUp, ArrowDown, Ticket,
-  UserPlus, Award, AlertCircle, Coins, Edit3, Trash2, X
+  UserPlus, Award, AlertCircle, Edit3, Trash2, X
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { db } from '@/lib/firebase';
@@ -13,7 +13,6 @@ import {
   collection, onSnapshot, doc, updateDoc, query, orderBy, Timestamp 
 } from 'firebase/firestore';
 import { format } from 'date-fns';
-import AssetModal from './AssetModal';
 import UserProfileModal from './UserProfileModal';
 
 type Status = 'all' | 'pending' | 'verified' | 'rejected';
@@ -62,7 +61,6 @@ export default function UsersPage() {
   const [pageSize, setPageSize] = useState(20);
   
   // Modal states
-  const [selectedUserForAsset, setSelectedUserForAsset] = useState<any>(null);
   const [selectedUserForProfile, setSelectedUserForProfile] = useState<any>(null);
   const [providerMap, setProviderMap] = useState<Record<string, string>>({});
 
@@ -582,14 +580,6 @@ export default function UsersPage() {
                       {/* 관리 */}
                       <td style={{ padding: '0 20px', verticalAlign: 'middle', textAlign: 'right' }}>
                         <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            onClick={() => setSelectedUserForAsset(u)}
-                            className="flex items-center gap-1.5 rounded-lg transition-all hover:shadow-md"
-                            style={{ padding: '5px 12px', fontSize: '0.75rem', fontWeight: 700, background: '#fff', color: '#FF7E7E', border: '1px solid #FF7E7E' }}
-                          >
-                            <Coins size={12} /> 자산 관리
-                          </button>
-  
                           {(u.status || 'pending') === 'pending' && (
                             <>
                               <button
