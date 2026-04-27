@@ -61,7 +61,7 @@ function ProcessSection() {
           키링크 <span className="kl-gradient-text">진행 방식</span>
         </h2>
         <p style={{ color: 'var(--color-text-secondary)', fontSize: '1rem', lineHeight: 1.8, wordBreak: 'keep-all', marginBottom: '40px' }}>
-          신청부터 매칭까지, 키링크의 체계적이고 투명한 프로세스를 안내해 드립니다.<br/>
+          신청부터 매칭까지, 키링크의 체계적이고 투명한 프로세스를 안내해 드립니다.<br />
           여러분의 소중한 만남을 위해 정성을 다해 준비합니다.
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '16px', textAlign: 'left' }}>
@@ -164,7 +164,7 @@ export default function HomePage() {
           top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
           animation: 'float 8s ease-in-out infinite',
         }} />
-        
+
         <div style={{
           textAlign: 'center',
           padding: '100px 20px 60px',
@@ -198,7 +198,7 @@ export default function HomePage() {
             margin: '0 auto 48px',
             wordBreak: 'keep-all',
           }}>
-            로테이션 소개팅 <strong style={{ color: 'var(--color-accent)' }}>키링크</strong>에서<br/>진짜 인연을 만나보세요.
+            로테이션 소개팅 <strong style={{ color: 'var(--color-accent)' }}>키링크</strong>에서<br />진짜 인연을 만나보세요.
           </p>
 
           <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -237,7 +237,7 @@ export default function HomePage() {
               왜 <span style={{ color: '#FF6F61' }}>키링크</span>인가요?
             </h2>
             <p style={{ color: 'var(--color-text-secondary)', fontSize: '1rem', maxWidth: '500px', margin: '0 auto', lineHeight: 1.8 }}>
-              2025년 2월 론칭 후 단 11개월 만에 120기 돌파.<br/>입소문만으로 성장한 부산의 신뢰받는 소개팅 서비스
+              2025년 2월 론칭 후 단 11개월 만에 120기 돌파.<br />입소문만으로 성장한 부산의 신뢰받는 소개팅 서비스
             </p>
           </div>
 
@@ -262,7 +262,7 @@ export default function HomePage() {
 
       {/* ── UPCOMING EVENTS ── */}
       <Suspense fallback={<div style={{ textAlign: 'center', padding: '80px', color: '#999' }}>로딩 중...</div>}>
-         <EventsSection />
+        <EventsSection />
       </Suspense>
 
       {/* ── SIMPLE PROCESS SUMMARY ── */}
@@ -278,7 +278,7 @@ export default function HomePage() {
             키링크만의 <span className="kl-gradient-text">차별화 보장</span>
           </h2>
           <p style={{ color: 'var(--color-text-secondary)', fontSize: '1rem', maxWidth: '480px', margin: '0 auto', lineHeight: 1.8 }}>
-            참가자 여러분의 소중한 시간과 마음을 보호하기 위한<br/>키링크의 약속입니다.
+            참가자 여러분의 소중한 시간과 마음을 보호하기 위한<br />키링크의 약속입니다.
           </p>
         </div>
 
@@ -313,7 +313,7 @@ export default function HomePage() {
                     minHeight: '220px',
                   }}>
                     <div style={{ display: 'flex', gap: '4px', marginBottom: '20px' }}>
-                      {[1,2,3,4,5].map((s) => <Star key={s} size={18} fill="#FF6F61" color="#FF6F61" />)}
+                      {[1, 2, 3, 4, 5].map((s) => <Star key={s} size={18} fill="#FF6F61" color="#FF6F61" />)}
                     </div>
                     {review.imageUrl && (
                       <div style={{ marginBottom: '24px', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--color-border)', background: 'rgba(0,0,0,0.03)', display: 'flex', alignItems: 'center', justifyContent: 'center', maxHeight: '400px' }}>
@@ -426,6 +426,6 @@ export default function HomePage() {
 // Missing variable restoration
 const Users = (props: any) => (
   <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-users">
-    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
   </svg>
 );

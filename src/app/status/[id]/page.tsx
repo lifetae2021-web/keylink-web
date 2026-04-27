@@ -95,6 +95,16 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
 
     if (baseData.length === 0) return [];
 
+    // v8.12.0: 1명 이하일 때는 셔플 무효화 및 데이터 블라인드 처리
+    if (baseData.length <= 1) {
+      return [{
+        birthYear: baseData[0].birthYear,
+        job: '정보 보호를 위해 2인부터 공개',
+        height: '-',
+        isBlind: true
+      }];
+    }
+
     const shuffle = <T,>(arr: T[], seed: number): T[] => {
       const result = [...arr];
       let s = seed;
@@ -113,6 +123,7 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
       birthYear: r.birthYear,
       job: jobs[i],
       height: heights[i],
+      isBlind: false
     }));
   }, [activeTab, maleApplicants, femaleApplicants, userMap, shuffleSeed]);
 
@@ -323,37 +334,46 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
                       <div style={{ fontWeight: '900', color: isFilled ? '#CCC' : '#EEE', fontSize: '1.2rem' }}>{idx + 1}</div>
                       
                       {isFilled ? (
-                        <>
-                          <div style={{ fontWeight: '800', color: '#111', fontSize: '1rem' }}>{row.birthYear}</div>
-                          <div style={{ fontWeight: '900', color: activeTab === 'male' ? '#3B82F6' : '#FF6F61', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                            <AnimatePresence mode="wait">
-                              <motion.span 
-                                key={row.job}
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                transition={{ duration: 0.4 }}
-                              >
-                                {row.job}
-                              </motion.span>
-                            </AnimatePresence>
-                            <span style={{ fontSize: '0.65rem', color: '#bbb', fontWeight: '500' }}>(랜덤)</span>
-                          </div>
-                          <div style={{ color: '#666', fontWeight: '800', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                            <AnimatePresence mode="wait">
-                              <motion.span 
-                                key={row.height}
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                transition={{ duration: 0.4 }}
-                              >
-                                {row.height}
-                              </motion.span>
-                            </AnimatePresence>
-                            <span style={{ fontSize: '0.65rem', color: '#bbb', fontWeight: '500' }}>(랜덤)</span>
-                          </div>
-                        </>
+                        row.isBlind ? (
+                          <>
+                            <div style={{ fontWeight: '800', color: '#111', fontSize: '1rem' }}>{row.birthYear}</div>
+                            <div style={{ gridColumn: 'span 2', color: '#9CA3AF', fontWeight: '700', fontSize: '0.95rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              정보 보호를 위해 2인부터 공개
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div style={{ fontWeight: '800', color: '#111', fontSize: '1rem' }}>{row.birthYear}</div>
+                            <div style={{ fontWeight: '900', color: activeTab === 'male' ? '#3B82F6' : '#FF6F61', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                              <AnimatePresence mode="wait">
+                                <motion.span 
+                                  key={row.job}
+                                  initial={{ opacity: 0 }}
+                                  animate={{ opacity: 1 }}
+                                  exit={{ opacity: 0 }}
+                                  transition={{ duration: 0.4 }}
+                                >
+                                  {row.job}
+                                </motion.span>
+                              </AnimatePresence>
+                              <span style={{ fontSize: '0.65rem', color: '#bbb', fontWeight: '500' }}>(랜덤)</span>
+                            </div>
+                            <div style={{ color: '#666', fontWeight: '800', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                              <AnimatePresence mode="wait">
+                                <motion.span 
+                                  key={row.height}
+                                  initial={{ opacity: 0 }}
+                                  animate={{ opacity: 1 }}
+                                  exit={{ opacity: 0 }}
+                                  transition={{ duration: 0.4 }}
+                                >
+                                  {row.height}
+                                </motion.span>
+                              </AnimatePresence>
+                              <span style={{ fontSize: '0.65rem', color: '#bbb', fontWeight: '500' }}>(랜덤)</span>
+                            </div>
+                          </>
+                        )
                       ) : (
                         <div style={{ gridColumn: 'span 3', color: '#bbb', fontWeight: '700', fontSize: '0.95rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
                           <Sparkles size={16} className="text-gray-200" /> 모집 중 / 새로운 인연을 기다리고 있어요!

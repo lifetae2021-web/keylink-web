@@ -9,8 +9,8 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { db } from '@/lib/firebase';
-import { 
-  collection, onSnapshot, doc, updateDoc, query, orderBy, Timestamp 
+import {
+  collection, onSnapshot, doc, updateDoc, query, orderBy, Timestamp
 } from 'firebase/firestore';
 import { format } from 'date-fns';
 import UserProfileModal from './UserProfileModal';
@@ -18,18 +18,18 @@ import UserProfileModal from './UserProfileModal';
 type Status = 'all' | 'pending' | 'verified' | 'rejected';
 
 const STATUS_CFG = {
-  verified: { label: '인증 완료', color: '#10B981', bg: '#ECFDF5'  },
-  pending:  { label: '승인 대기', color: '#F59E0B', bg: '#FFFBEB'  },
-  rejected: { label: '인증 반려', color: '#EF4444', bg: '#FEF2F2'  },
+  verified: { label: '인증 완료', color: '#10B981', bg: '#ECFDF5' },
+  pending: { label: '승인 대기', color: '#F59E0B', bg: '#FFFBEB' },
+  rejected: { label: '인증 반려', color: '#EF4444', bg: '#FEF2F2' },
 };
 
 const ROLES = ['일반회원', '신뢰회원', 'VIP회원', '블랙리스트', 'admin'];
 
 const TABS: { key: Status; label: string }[] = [
-  { key: 'all',      label: '전체'    },
-  { key: 'pending',  label: '승인 대기' },
+  { key: 'all', label: '전체' },
+  { key: 'pending', label: '승인 대기' },
   { key: 'verified', label: '인증 완료' },
-  { key: 'rejected', label: '반려'    },
+  { key: 'rejected', label: '반려' },
 ];
 
 const panel = { background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' };
@@ -56,10 +56,10 @@ export default function UsersPage() {
   const [filter, setFilter] = useState<Status>('all');
   const [genderFilter, setGenderFilter] = useState<'all' | 'male' | 'female'>('all');
   const [sortConfig, setSortConfig] = useState<{ key: 'age' | 'createdAt', direction: 'asc' | 'desc' | null }>({ key: 'createdAt', direction: 'desc' });
-  
+
   // Custom Pagination for performance
   const [pageSize, setPageSize] = useState(20);
-  
+
   // Modal states
   const [selectedUserForProfile, setSelectedUserForProfile] = useState<any>(null);
   const [providerMap, setProviderMap] = useState<Record<string, string>>({});
@@ -118,14 +118,14 @@ export default function UsersPage() {
           setProviderMap(map);
         }
       })
-      .catch(() => {});
+      .catch(() => { });
 
     return () => unsubscribe();
   }, []);
 
   const counts = useMemo(() => ({
-    all:      users.length,
-    pending:  users.filter(u => (u.status || 'pending') === 'pending').length,
+    all: users.length,
+    pending: users.filter(u => (u.status || 'pending') === 'pending').length,
     verified: users.filter(u => u.status === 'verified').length,
     rejected: users.filter(u => u.status === 'rejected').length,
   }), [users]);
@@ -133,9 +133,9 @@ export default function UsersPage() {
   const filtered = useMemo(() => {
     return users.filter(u => {
       const q = search.toLowerCase();
-      const matchSearch = 
-        (u.name || '').toLowerCase().includes(q) || 
-        (u.job || '').toLowerCase().includes(q) || 
+      const matchSearch =
+        (u.name || '').toLowerCase().includes(q) ||
+        (u.job || '').toLowerCase().includes(q) ||
         (u.email || '').toLowerCase().includes(q);
       const matchFilter = filter === 'all' || (u.status || 'pending') === filter;
       const matchGender = genderFilter === 'all' || u.gender === genderFilter;
@@ -189,7 +189,7 @@ export default function UsersPage() {
         return toast.error('먼저 직업 정보를 확인/수정하고 승인(Job Reviewed)해 주세요.');
       }
       const userRef = doc(db, 'users', u.id);
-      await updateDoc(userRef, { 
+      await updateDoc(userRef, {
         status: 'verified',
         updatedAt: Timestamp.now()
       });
@@ -231,8 +231,9 @@ export default function UsersPage() {
   const reject = async (id: string, name: string) => {
     try {
       const userRef = doc(db, 'users', id);
-      await updateDoc(userRef, { 
+      await updateDoc(userRef, {
         status: 'rejected',
+        isVerified: false,
         updatedAt: Timestamp.now()
       });
       toast.error(`${name} 반려 처리`);
@@ -252,7 +253,7 @@ export default function UsersPage() {
       u.email || '-',
       u.gender === 'male' ? '남성' : '여성',
       u.job || '-',
-      u.birthDate ? `${u.birthDate.includes('-') ? u.birthDate.slice(2,4) : u.birthDate.slice(0,2)}년생` : '-',
+      u.birthDate ? `${u.birthDate.includes('-') ? u.birthDate.slice(2, 4) : u.birthDate.slice(0, 2)}년생` : '-',
       STATUS_CFG[(u.status || 'pending') as keyof typeof STATUS_CFG].label,
       u.role || '일반회원',
       u.points || 0,
@@ -284,7 +285,7 @@ export default function UsersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0F172A' }}>회원 관리</h2>
-          <p style={{ fontSize: '0.8rem', color: '#64748B', marginTop: 2 }}>서비스의 모든 회원 정보를 통합 관리하고 활동 내역을 확인합니다. <span className="text-[10px] font-bold text-[#FF7E7E] ml-2">v8.11.0 Premium</span></p>
+          <p style={{ fontSize: '0.8rem', color: '#64748B', marginTop: 2 }}>서비스의 모든 회원 정보를 통합 관리하고 활동 내역을 확인합니다. <span className="text-[10px] font-bold text-[#FF7E7E] ml-2">v8.12.0 Premium</span></p>
         </div>
         <button
           onClick={downloadCSV}
@@ -436,14 +437,21 @@ export default function UsersPage() {
                     >
                       {/* 1. 프로필 (v7.8.2) */}
                       <td style={{ padding: '0 20px' }}>
-                        <div
-                          onClick={() => setSelectedUserForProfile(u)}
-                          className="w-10 h-10 rounded-full border-2 border-white shadow-sm flex items-center justify-center overflow-hidden bg-slate-100 shrink-0 cursor-pointer hover:scale-110 transition-transform"
-                        >
-                          {(u.photoUrl || u.photoURL || u.photos?.[0]) ? (
-                            <img src={u.photoUrl || u.photoURL || u.photos?.[0]} className="w-full h-full object-cover" />
-                          ) : (
-                            <span className="text-xs font-bold text-slate-400">{u.name?.[0] || 'U'}</span>
+                        <div className="relative w-fit">
+                          <div
+                            onClick={() => setSelectedUserForProfile(u)}
+                            className="w-10 h-10 rounded-full border-2 border-white shadow-sm flex items-center justify-center overflow-hidden bg-slate-100 shrink-0 cursor-pointer hover:scale-110 transition-transform"
+                          >
+                            {(u.photoUrl || u.photoURL || u.photos?.[0]) ? (
+                              <img src={u.photoUrl || u.photoURL || u.photos?.[0]} className="w-full h-full object-cover" />
+                            ) : (
+                              <span className="text-xs font-bold text-slate-400">{u.name?.[0] || 'U'}</span>
+                            )}
+                          </div>
+                          {u.isJobReviewed === false && (
+                            <div className="absolute -top-1.5 -right-3 z-10 bg-[#FF7E7E] text-white text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-md border-2 border-white animate-bounce whitespace-nowrap">
+                              정보수정
+                            </div>
                           )}
                         </div>
                       </td>
@@ -457,12 +465,12 @@ export default function UsersPage() {
                               const p = providerMap[u.id];
                               if (!p) return null;
                               const cfg: Record<string, { label: string; bg: string; color: string }> = {
-                                'email':      { label: '기본회원', bg: '#F1F5F9', color: '#64748B' },
-                                'password':   { label: '기본회원', bg: '#F1F5F9', color: '#64748B' },
-                                'google':     { label: 'Google',  bg: '#FEF2F2', color: '#EF4444' },
-                                'google.com': { label: 'Google',  bg: '#FEF2F2', color: '#EF4444' },
-                                'kakao':      { label: 'Kakao',   bg: '#FEF9C3', color: '#CA8A04' },
-                                'oidc.kakao': { label: 'Kakao',   bg: '#FEF9C3', color: '#CA8A04' },
+                                'email': { label: '기본회원', bg: '#F1F5F9', color: '#64748B' },
+                                'password': { label: '기본회원', bg: '#F1F5F9', color: '#64748B' },
+                                'google': { label: 'Google', bg: '#FEF2F2', color: '#EF4444' },
+                                'google.com': { label: 'Google', bg: '#FEF2F2', color: '#EF4444' },
+                                'kakao': { label: 'Kakao', bg: '#FEF9C3', color: '#CA8A04' },
+                                'oidc.kakao': { label: 'Kakao', bg: '#FEF9C3', color: '#CA8A04' },
                               };
                               const c = cfg[p] || { label: p, bg: '#F1F5F9', color: '#64748B' };
                               return (
@@ -483,7 +491,7 @@ export default function UsersPage() {
                         <div className="flex flex-col gap-2">
                           <div className="flex items-center gap-2 group/job relative">
                             {editingJobId === u.id ? (
-                              <input 
+                              <input
                                 autoFocus
                                 value={tempJobValue}
                                 onChange={(e) => setTempJobValue(e.target.value)}
@@ -498,13 +506,8 @@ export default function UsersPage() {
                               <>
                                 <p className={`text-[0.82rem] font-bold tracking-tight flex items-center flex-wrap gap-1 ${u.admin_job || u.job ? 'text-blue-600' : 'text-slate-800'}`}>
                                   <span>{u.admin_job || u.job || u.occupation || <span className="text-slate-300 font-normal">-</span>}</span>
-                                  {!u.isJobReviewed && u.user_logs?.length > 0 && (
-                                    <span className="text-[9px] bg-rose-50 border border-rose-200 text-rose-500 px-1.5 py-0.5 rounded font-black tracking-tighter whitespace-nowrap">
-                                      [NEW] 정보 수정됨
-                                    </span>
-                                  )}
                                 </p>
-                                <button 
+                                <button
                                   onClick={() => {
                                     setEditingJobId(u.id);
                                     setTempJobValue(u.admin_job || u.job || u.occupation || '');
@@ -516,15 +519,15 @@ export default function UsersPage() {
                               </>
                             )}
                           </div>
-                          
+
                           <label className={`flex items-center gap-1.5 w-fit cursor-pointer select-none px-2 py-1 rounded-lg border transition-all ${u.isJobReviewed ? 'bg-blue-50 border-blue-100 text-blue-600' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>
-                            <input 
-                              type="checkbox" 
-                              checked={!!u.isJobReviewed} 
+                            <input
+                              type="checkbox"
+                              checked={!!u.isJobReviewed}
                               onChange={(e) => toggleJobReviewed(u.id, e.target.checked)}
                               className="w-3 h-3 rounded"
                             />
-                            <span className="text-[10px] font-black uppercase tracking-tight">Job Reviewed</span>
+                            <span className="text-[10px] font-black uppercase tracking-tight">직업승인</span>
                           </label>
                         </div>
                       </td>
@@ -532,7 +535,7 @@ export default function UsersPage() {
                       {/* 나이 */}
                       <td style={{ padding: '0 20px', verticalAlign: 'middle', textAlign: 'center' }}>
                         <p style={{ fontSize: '0.88rem', fontWeight: 800, color: u.birthDate ? '#1E293B' : '#94A3B8', textAlign: 'center' }}>
-                          {u.birthDate ? `${u.birthDate.includes('-') ? u.birthDate.slice(2,4) : u.birthDate.slice(0,2)}년생` : <span style={{ color: '#94A3B8' }}>-</span>}
+                          {u.birthDate ? `${u.birthDate.includes('-') ? u.birthDate.slice(2, 4) : u.birthDate.slice(0, 2)}년생` : <span style={{ color: '#94A3B8' }}>-</span>}
                         </p>
                       </td>
 
@@ -546,9 +549,9 @@ export default function UsersPage() {
                             <span style={{ width: 5, height: 5, borderRadius: '50%', background: sc.color, display: 'inline-block' }} />
                             {sc.label}
                           </span>
-                          
-                          <select 
-                            value={u.role || '일반회원'} 
+
+                          <select
+                            value={u.role || '일반회원'}
                             onChange={(e) => updateRole(u.id, e.target.value)}
                             className="bg-slate-50 border border-slate-200 rounded-lg text-[10px] px-2 py-1 text-slate-700 outline-none focus:border-[#FF7E7E]/50 cursor-pointer shadow-sm"
                           >
@@ -581,23 +584,14 @@ export default function UsersPage() {
                       {/* 관리 */}
                       <td style={{ padding: '0 20px', verticalAlign: 'middle', textAlign: 'right' }}>
                         <div className="flex items-center justify-end gap-1.5">
-                          {(u.status || 'pending') === 'pending' && (
-                            <>
-                              <button
-                                onClick={() => approve(u)}
-                                className="flex items-center gap-1.5 rounded-lg transition-all hover:bg-emerald-500 hover:text-white"
-                                style={{ padding: '5px 10px', fontSize: '0.75rem', fontWeight: 700, background: '#ECFDF5', color: '#10B981', border: '1px solid #D1FAE5' }}
-                              >
-                                <CheckCircle size={12} /> 승인
-                              </button>
-                              <button
-                                onClick={() => reject(u.id, u.name)}
-                                className="flex items-center gap-1.5 rounded-lg transition-all hover:bg-rose-500 hover:text-white"
-                                style={{ padding: '5px 10px', fontSize: '0.75rem', fontWeight: 700, background: '#FEF2F2', color: '#EF4444', border: '1px solid #FEE2E2' }}
-                              >
-                                <XCircle size={12} /> 반려
-                              </button>
-                            </>
+                          {u.status !== 'rejected' && (
+                            <button
+                              onClick={() => reject(u.id, u.name)}
+                              className="flex items-center gap-1.5 rounded-lg transition-all hover:bg-rose-500 hover:text-white"
+                              style={{ padding: '5px 10px', fontSize: '0.75rem', fontWeight: 700, background: '#FEF2F2', color: '#EF4444', border: '1px solid #FEE2E2' }}
+                            >
+                              <XCircle size={12} /> 반려
+                            </button>
                           )}
                           <button
                             onClick={() => setDeleteTarget(u)}
@@ -612,9 +606,16 @@ export default function UsersPage() {
 
                       {/* 가입일 */}
                       <td style={{ padding: '0 20px', verticalAlign: 'middle', textAlign: 'center' }}>
-                        <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#64748B' }}>
-                          {u.createdAt?.seconds ? format(new Date(u.createdAt.seconds * 1000), 'yyyy-MM-dd') : <span style={{ color: '#94A3B8' }}>-</span>}
-                        </span>
+                        <div className="flex flex-col items-center">
+                          <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#64748B' }}>
+                            {u.createdAt?.seconds ? format(new Date(u.createdAt.seconds * 1000), 'yyyy-MM-dd') : <span style={{ color: '#94A3B8' }}>-</span>}
+                          </span>
+                          {u.createdAt?.seconds && (
+                            <span style={{ fontSize: '0.65rem', color: '#94A3B8', fontWeight: 500, marginTop: '1px' }}>
+                              {format(new Date(u.createdAt.seconds * 1000), 'HH:mm')}
+                            </span>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -630,18 +631,18 @@ export default function UsersPage() {
             프리미엄 대시보드: 현재 <strong style={{ color: '#0F172A' }}>{pagedItems.length}</strong>명 표시 중 (전체 {filtered.length}명)
           </p>
           <div className="flex items-center gap-1">
-             {filtered.length > pageSize && (
-               <button 
-                 onClick={() => setPageSize(prev => prev + 20)}
-                 className="px-6 py-2 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 hover:text-[#FF7E7E] transition-all shadow-sm"
-               >
-                 데이터 더 불러오기
-               </button>
-             )}
+            {filtered.length > pageSize && (
+              <button
+                onClick={() => setPageSize(prev => prev + 20)}
+                className="px-6 py-2 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 hover:text-[#FF7E7E] transition-all shadow-sm"
+              >
+                데이터 더 불러오기
+              </button>
+            )}
           </div>
         </div>
       </div>
-      
+
       {/* Modals */}
       <UserProfileModal
         user={selectedUserForProfile}

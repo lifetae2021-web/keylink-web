@@ -41,14 +41,14 @@ export default function EventDetailPage() {
 
   const [showRuleModal, setShowRuleModal] = useState(false);
   const [ruleAccepted, setRuleAccepted] = useState(false);
-  
+
   // 0: 상세페이지, 1: 신청 폼, 2: 결제 대기(모의)
   const [step, setStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitReady, setSubmitReady] = useState(false);
   const [hasProfile, setHasProfile] = useState(false);
   const [userGender, setUserGender] = useState<string>('');
-  
+
   // 얼리버드 카운트다운 타이머 (가상)
   const [timeLeft, setTimeLeft] = useState(3600 * 5 + 1200); // 5h 20m
 
@@ -92,13 +92,13 @@ export default function EventDetailPage() {
           const data = userSnap.data();
           setForm(prev => {
             const d = data;
-            return { 
-              ...prev, 
+            return {
+              ...prev,
               ...d,
               drink: Array.isArray(d.drink) ? d.drink : (d.drink ? [d.drink] : [])
             };
           });
-          
+
           // Consolidation migration for application form (v3.5.3)
           const savedPhotos = data.photos || data.profilePhotos || [];
           const legacyFace = data.facePhotos || [];
@@ -109,7 +109,7 @@ export default function EventDetailPage() {
           // v7.8.5: 재직 증명 미리보기 설정 (employmentProof 표준화)
           const proofUrl = data.employmentProof || data.verificationUrl || '';
           setVerificationPreview(proofUrl);
-          
+
           setHasProfile(true);
           setUserGender(data.gender || '');
         }
@@ -126,7 +126,7 @@ export default function EventDetailPage() {
     if (saved) {
       try {
         setForm(prev => ({ ...prev, ...JSON.parse(saved) }));
-      } catch(e) {}
+      } catch (e) { }
     }
   }, [id]);
 
@@ -187,7 +187,7 @@ export default function EventDetailPage() {
       toast.error('약관 및 운영 규정에 동의해주세요.');
       return;
     }
-    
+
     const requiredFields = [
       { key: 'birthDate', name: '생년월일' },
       { key: 'height', name: '키' },
@@ -199,7 +199,7 @@ export default function EventDetailPage() {
       { key: 'drinking', name: '음주 빈도' },
       { key: 'religion', name: '종교' },
     ];
-    
+
     for (const field of requiredFields) {
       if (!form[field.key as keyof typeof form]) {
         toast.error(`${field.name} 항목을 입력해주세요.`);
@@ -223,7 +223,7 @@ export default function EventDetailPage() {
     }
 
     setIsSubmitting(true);
-    
+
     try {
       // 1. 주의: 이 기수에 이미 신청한 경우 충돌 방지
       const sessionId = typeof id === 'string' ? id : '';
@@ -289,10 +289,10 @@ export default function EventDetailPage() {
       const now = Timestamp.now();
       const birthYear = form.birthDate
         ? (() => {
-            if (form.birthDate.includes('-')) return parseInt(form.birthDate.slice(0, 4));
-            const yy = parseInt(form.birthDate.slice(0, 2));
-            return yy > 30 ? 1900 + yy : 2000 + yy;
-          })()
+          if (form.birthDate.includes('-')) return parseInt(form.birthDate.slice(0, 4));
+          const yy = parseInt(form.birthDate.slice(0, 2));
+          return yy > 30 ? 1900 + yy : 2000 + yy;
+        })()
         : new Date().getFullYear();
       const age = new Date().getFullYear() - birthYear;
 
@@ -343,7 +343,7 @@ export default function EventDetailPage() {
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
     const files = Array.from(e.target.files);
-    
+
     if (photos.length + files.length > 5) {
       toast.error('사진은 최대 5장까지만 등록 가능합니다.');
       return;
@@ -438,41 +438,41 @@ export default function EventDetailPage() {
 
         {/* 4단계 프로세스 진행 바 (상세페이지 아닐 때 표출) */}
         {step > 0 && (
-            <div style={{ 
-                marginBottom: '32px', background: 'var(--gradient-card)', border: '1px solid var(--color-border)', 
-                borderRadius: 'var(--radius-lg)', padding: '24px',
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative'
-            }}>
-                {/* 배경 라인 */}
-                <div style={{ position: 'absolute', top: '50%', left: '40px', right: '40px', height: '2px', background: 'var(--color-surface-2)', zIndex: 0 }} />
-                
-                {[
-                    { state: 1, label: '신청서 작성' },
-                    { state: 2, label: '결제/승인' },
-                    { state: 3, label: '최종 확정' }
-                ].map((s, i) => (
-                    <div key={s.state} style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', background: 'var(--color-surface-1)', padding: '0 10px' }}>
-                        <div style={{ 
-                            width: '36px', height: '36px', borderRadius: '50%', 
-                            background: step >= s.state ? '#FF6F61' : 'var(--color-surface-2)',
-                            color: step >= s.state ? '#fff' : 'var(--color-text-muted)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '700',
-                            border: step >= s.state ? 'none' : '2px solid var(--color-border)',
-                            transition: 'all 0.3s'
-                        }}>
-                            {step > s.state ? <CheckCircle size={20} color="#fff" /> : s.state}
-                        </div>
-                        <span style={{ fontSize: '0.8rem', fontWeight: step >= s.state ? '700' : '500', color: step >= s.state ? '#111' : 'var(--color-text-muted)' }}>{s.label}</span>
-                    </div>
-                ))}
-            </div>
+          <div style={{
+            marginBottom: '32px', background: 'var(--gradient-card)', border: '1px solid var(--color-border)',
+            borderRadius: 'var(--radius-lg)', padding: '24px',
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative'
+          }}>
+            {/* 배경 라인 */}
+            <div style={{ position: 'absolute', top: '50%', left: '40px', right: '40px', height: '2px', background: 'var(--color-surface-2)', zIndex: 0 }} />
+
+            {[
+              { state: 1, label: '신청서 작성' },
+              { state: 2, label: '결제/승인' },
+              { state: 3, label: '최종 확정' }
+            ].map((s, i) => (
+              <div key={s.state} style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', background: 'var(--color-surface-1)', padding: '0 10px' }}>
+                <div style={{
+                  width: '36px', height: '36px', borderRadius: '50%',
+                  background: step >= s.state ? '#FF6F61' : 'var(--color-surface-2)',
+                  color: step >= s.state ? '#fff' : 'var(--color-text-muted)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '700',
+                  border: step >= s.state ? 'none' : '2px solid var(--color-border)',
+                  transition: 'all 0.3s'
+                }}>
+                  {step > s.state ? <CheckCircle size={20} color="#fff" /> : s.state}
+                </div>
+                <span style={{ fontSize: '0.8rem', fontWeight: step >= s.state ? '700' : '500', color: step >= s.state ? '#111' : 'var(--color-text-muted)' }}>{s.label}</span>
+              </div>
+            ))}
+          </div>
         )}
 
-        <div 
+        <div
           className="event-detail-grid"
-          style={{ 
-            display: 'grid', 
-            gridTemplateColumns: step === 2 ? '1fr' : '1fr 400px', 
+          style={{
+            display: 'grid',
+            gridTemplateColumns: step === 2 ? '1fr' : '1fr 400px',
             gap: '32px',
             maxWidth: step === 2 ? '600px' : '1100px',
             margin: '0 auto'
@@ -523,7 +523,7 @@ export default function EventDetailPage() {
                     ))}
                   </div>
                 </div>
-                
+
                 {/* Policies */}
                 <div className="kl-card">
                   <h2 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '20px', color: 'var(--color-text-primary)' }}>환불 & 보장 정책 (키링크의 약속)</h2>
@@ -536,17 +536,17 @@ export default function EventDetailPage() {
                     ].map((p, idx) => {
                       const isOpen = policyOpenIdx === idx;
                       return (
-                        <div 
-                          key={p.title} 
+                        <div
+                          key={p.title}
                           onClick={() => setPolicyOpenIdx(isOpen ? null : idx)}
-                          style={{ 
-                            padding: '16px', 
-                            background: isOpen ? '#fff' : 'var(--color-surface-2)', 
-                            border: isOpen ? `1.5px solid ${p.color}` : '1.5px solid transparent', 
-                            borderRadius: '16px', 
-                            cursor: 'pointer', 
-                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', 
-                            boxShadow: isOpen ? `0 8px 24px rgba(${p.rgb}, 0.12)` : 'none' 
+                          style={{
+                            padding: '16px',
+                            background: isOpen ? '#fff' : 'var(--color-surface-2)',
+                            border: isOpen ? `1.5px solid ${p.color}` : '1.5px solid transparent',
+                            borderRadius: '16px',
+                            cursor: 'pointer',
+                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                            boxShadow: isOpen ? `0 8px 24px rgba(${p.rgb}, 0.12)` : 'none'
                           }}
                         >
                           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
@@ -561,7 +561,7 @@ export default function EventDetailPage() {
                               <ChevronRight size={16} color={isOpen ? '#fff' : p.color} style={{ transform: isOpen ? 'rotate(90deg)' : 'none', transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }} />
                             </div>
                           </div>
-                          
+
                           {isOpen && (
                             <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px dashed var(--color-border)', animation: 'fadeIn 0.3s ease' }}>
                               <p style={{ fontSize: '0.9rem', color: '#475569', lineHeight: 1.65, fontWeight: '400', wordBreak: 'keep-all', letterSpacing: '-0.02em' }}>{p.desc}</p>
@@ -581,7 +581,7 @@ export default function EventDetailPage() {
                   <h2 style={{ fontSize: '1.4rem', fontWeight: '800', marginBottom: '8px', color: 'var(--color-text-primary)' }}>신뢰 기반 상세 신청서</h2>
                   <p style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)' }}>건강한 호감과 신뢰를 위해 정확하게 기입해주세요.</p>
                 </div>
-                
+
                 <form id="bookingForm" onSubmit={handleFormSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   <div className="kl-card">
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px', borderBottom: '1px solid var(--color-border)', paddingBottom: '12px' }}>
@@ -594,7 +594,7 @@ export default function EventDetailPage() {
                         <div style={{ fontSize: '0.9rem' }}><span style={{ color: 'var(--color-text-muted)', marginRight: '10px', fontWeight: '600' }}>연락처</span><span style={{ fontWeight: '700' }}>{form.phone}</span></div>
                       </div>
                       <div>
-                        <input className="kl-input" placeholder="인스타 계정 입력 (선택)" value={form.instaId} onChange={(e) => setForm(f => ({...f, instaId: e.target.value}))} />
+                        <input className="kl-input" placeholder="인스타 계정 입력 (선택)" value={form.instaId} onChange={(e) => setForm(f => ({ ...f, instaId: e.target.value }))} />
                         <p style={{ fontSize: '0.75rem', color: '#FF6F61', marginTop: '8px', fontWeight: '600', lineHeight: 1.4 }}>* 번호 오기입 시 인스타로 연락을 드릴 수 있습니다.</p>
                       </div>
                     </div>
@@ -605,22 +605,22 @@ export default function EventDetailPage() {
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '20px' }}>
                       <div>
                         <label className="kl-label">생년월일 *</label>
-                        <input className="kl-input" placeholder="ex. 940530" value={form.birthDate} onChange={(e) => setForm(f => ({...f, birthDate: e.target.value}))} />
+                        <input className="kl-input" placeholder="ex. 940530" value={form.birthDate} onChange={(e) => setForm(f => ({ ...f, birthDate: e.target.value }))} />
                       </div>
                       <div style={{ display: 'flex', gap: '16px' }}>
                         <div style={{ flex: 1 }}>
                           <label className="kl-label">키 (cm) *</label>
-                          <input className="kl-input" required placeholder="ex. 182" value={form.height} onChange={(e) => setForm(f => ({...f, height: e.target.value}))} />
+                          <input className="kl-input" required placeholder="ex. 182" value={form.height} onChange={(e) => setForm(f => ({ ...f, height: e.target.value }))} />
                         </div>
                         <div style={{ flex: 1 }}>
                           <label className="kl-label">체중 (kg) *</label>
-                          <input className="kl-input" required placeholder="ex. 75" value={form.weight} onChange={(e) => setForm(f => ({...f, weight: e.target.value}))} />
+                          <input className="kl-input" required placeholder="ex. 75" value={form.weight} onChange={(e) => setForm(f => ({ ...f, weight: e.target.value }))} />
                           <p style={{ fontSize: '0.75rem', color: '#FF6F61', marginTop: '6px', fontWeight: '600' }}> 체중은 상대에게 공개되지 않습니다</p>
                         </div>
                       </div>
                       <div>
                         <label className="kl-label">거주지 *</label>
-                        <input className="kl-input" placeholder="ex. 부산 수영구" value={form.residence} onChange={(e) => setForm(f => ({...f, residence: e.target.value}))} />
+                        <input className="kl-input" placeholder="ex. 부산 수영구" value={form.residence} onChange={(e) => setForm(f => ({ ...f, residence: e.target.value }))} />
                       </div>
                     </div>
                   </div>
@@ -635,15 +635,15 @@ export default function EventDetailPage() {
                           rows={3}
                           placeholder={`ex. 수액병원, 간호사 / 링크은행, 은행원 / 프리랜서, 영상편집 / 개인사업, 네일아트 / 키링초등학교, 초등교사 / 네이버(대기업), 사무직`}
                           value={form.workplace}
-                          onChange={(e) => setForm(f => ({...f, workplace: e.target.value}))}
+                          onChange={(e) => setForm(f => ({ ...f, workplace: e.target.value }))}
                         />
                         <p style={{ fontSize: '0.8rem', color: '#888', marginTop: '6px' }}><i><u>* 같은 직장 동료 만남 방지 목적으로만 사용되며 비공개입니다</u></i></p>
                       </div>
                       <div>
                         <label className="kl-label">겹치고 싶지 않은 지인 (선택)</label>
-                        <input className="kl-input" placeholder="이름 또는 연락처를 쉼표로 구분하여 입력" value={form.avoidAcquaintance} onChange={(e) => setForm(f => ({...f, avoidAcquaintance: e.target.value}))} />
+                        <input className="kl-input" placeholder="이름 또는 연락처를 쉼표로 구분하여 입력" value={form.avoidAcquaintance} onChange={(e) => setForm(f => ({ ...f, avoidAcquaintance: e.target.value }))} />
                       </div>
-                      
+
                     </div>
                   </div>
 
@@ -652,11 +652,11 @@ export default function EventDetailPage() {
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '24px' }}>
                       <div>
                         <label className="kl-label">이상형 (중요도 순 최대 5가지)</label>
-                        <textarea className="kl-input" rows={3} placeholder="1. 다정한 person&#10;2. 운동을 즐기는 person" value={form.idealType} onChange={(e) => setForm(f => ({...f, idealType: e.target.value}))} />
+                        <textarea className="kl-input" rows={3} placeholder="1. 다정한 person&#10;2. 운동을 즐기는 person" value={form.idealType} onChange={(e) => setForm(f => ({ ...f, idealType: e.target.value }))} />
                       </div>
                       <div>
                         <label className="kl-label">비선호형 (중요도 순 최대 5가지)</label>
-                        <textarea className="kl-input" rows={3} placeholder="1. 연락이 너무 안 되는 person&#10;2. 예의가 없는 person" value={form.nonIdealType} onChange={(e) => setForm(f => ({...f, nonIdealType: e.target.value}))} />
+                        <textarea className="kl-input" rows={3} placeholder="1. 연락이 너무 안 되는 person&#10;2. 예의가 없는 person" value={form.nonIdealType} onChange={(e) => setForm(f => ({ ...f, nonIdealType: e.target.value }))} />
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                         {[
@@ -670,8 +670,8 @@ export default function EventDetailPage() {
                               {radioGroup.options.map(opt => (
                                 <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', cursor: 'pointer' }}>
                                   <input type="radio" style={{ accentColor: '#FF6F61' }}
-                                    checked={form[radioGroup.key as keyof typeof form] === opt} 
-                                    onChange={() => setForm(f => ({ ...f, [radioGroup.key]: opt }))} /> 
+                                    checked={form[radioGroup.key as keyof typeof form] === opt}
+                                    onChange={() => setForm(f => ({ ...f, [radioGroup.key]: opt }))} />
                                   {opt}
                                 </label>
                               ))}
@@ -682,69 +682,69 @@ export default function EventDetailPage() {
                     </div>
                   </div>
 
-                      {/* v7.8.5 재직 증명 업로드 섹션 (미리보기 강화) */}
-                      <div className="kl-card">
-                        <h3 style={{ fontSize: '1rem', fontWeight: '800', color: 'var(--color-text-primary)', marginBottom: '16px', borderBottom: '1px solid var(--color-border)', paddingBottom: '12px' }}>재직 증명 (필수)</h3>
-                        <p style={{ fontSize: '0.8rem', color: '#64748B', lineHeight: 1.6, marginBottom: '16px' }}>
-                          신뢰할 수 있는 모임을 위해 서류(재직증명서, 급여명세서, 건강보험 등) 중 하나를 반드시 업로드해 주세요.
-                        </p>
+                  {/* v7.8.5 재직 증명 업로드 섹션 (미리보기 강화) */}
+                  <div className="kl-card">
+                    <h3 style={{ fontSize: '1rem', fontWeight: '800', color: 'var(--color-text-primary)', marginBottom: '16px', borderBottom: '1px solid var(--color-border)', paddingBottom: '12px' }}>재직 증명 (필수)</h3>
+                    <p style={{ fontSize: '0.8rem', color: '#64748B', lineHeight: 1.6, marginBottom: '16px' }}>
+                      신뢰할 수 있는 모임을 위해 서류(재직증명서, 급여명세서, 건강보험 등) 중 하나를 반드시 업로드해 주세요.
+                    </p>
 
-                        {/* 미리보기 영역 */}
-                        {(verificationPreview || form.employmentProof) && (
-                          <div style={{ marginBottom: '16px', padding: '12px', background: '#fff', borderRadius: '12px', border: '1px solid #FFE8E5', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            {verificationPreview.startsWith('data:image') || form.employmentProof ? (
-                              <div style={{ width: '60px', height: '60px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #eee' }}>
-                                <img src={verificationPreview || form.employmentProof} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                              </div>
-                            ) : (
-                              <div style={{ width: '60px', height: '60px', borderRadius: '8px', background: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <FileText size={24} className="text-slate-400" />
-                              </div>
-                            )}
-                            <div style={{ flex: 1 }}>
-                              <p style={{ fontSize: '0.8rem', fontWeight: '700', color: '#334155' }}>{verificationFileName || '등록된 증빙 서류'}</p>
-                              <p style={{ fontSize: '0.7rem', color: '#10B981', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
-                                <CheckCircle2 size={12} /> {verificationFile ? '업로드 준비 완료' : '기존 서류 확인됨'}
-                              </p>
-                            </div>
-                            <button type="button" onClick={() => { setVerificationFile(null); setVerificationPreview(''); setForm(f=>({...f, employmentProof:''})); }} style={{ padding: '8px', color: '#94A3B8', background: 'none', border: 'none', cursor: 'pointer' }}>
-                              <X size={18} />
-                            </button>
-                          </div>
-                        )}
-
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '20px' }}>
-                        <button 
-                          type="button"
-                          onClick={() => verifyInputRef.current?.click()} 
-                          style={{ padding: '10px 20px', borderRadius: '10px', background: '#fff', border: '1.5px solid #CBD5E1', color: '#475569', fontSize: '0.85rem', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
-                        >
-                          <Upload size={16} /> 서류 선택
-                        </button>
-                        {verificationPreview ? (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#10B981', fontSize: '0.82rem', fontWeight: '800' }}>
-                            <CheckCircle size={16} /> 업로드 완료
+                    {/* 미리보기 영역 */}
+                    {(verificationPreview || form.employmentProof) && (
+                      <div style={{ marginBottom: '16px', padding: '12px', background: '#fff', borderRadius: '12px', border: '1px solid #FFE8E5', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        {verificationPreview.startsWith('data:image') || form.employmentProof ? (
+                          <div style={{ width: '60px', height: '60px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #eee' }}>
+                            <img src={verificationPreview || form.employmentProof} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                           </div>
                         ) : (
-                          <span style={{ fontSize: '0.82rem', color: '#94A3B8' }}>선택된 파일 없음</span>
+                          <div style={{ width: '60px', height: '60px', borderRadius: '8px', background: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <FileText size={24} className="text-slate-400" />
+                          </div>
                         )}
+                        <div style={{ flex: 1 }}>
+                          <p style={{ fontSize: '0.8rem', fontWeight: '700', color: '#334155' }}>{verificationFileName || '등록된 증빙 서류'}</p>
+                          <p style={{ fontSize: '0.7rem', color: '#10B981', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
+                            <CheckCircle2 size={12} /> {verificationFile ? '업로드 준비 완료' : '기존 서류 확인됨'}
+                          </p>
+                        </div>
+                        <button type="button" onClick={() => { setVerificationFile(null); setVerificationPreview(''); setForm(f => ({ ...f, employmentProof: '' })); }} style={{ padding: '8px', color: '#94A3B8', background: 'none', border: 'none', cursor: 'pointer' }}>
+                          <X size={18} />
+                        </button>
                       </div>
-                      <input 
-                        ref={verifyInputRef} 
-                        type="file" 
-                        accept="image/*,.pdf" 
-                        style={{ display: 'none' }} 
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            if (file.size > 5 * 1024 * 1024) return toast.error('파일 크기는 5MB 이하여야 합니다.');
-                            setVerificationFile(file);
-                            const reader = new FileReader();
-                            reader.onload = (ev) => setVerificationPreview(ev.target?.result as string);
-                            reader.readAsDataURL(file);
-                          }
-                        }} 
-                      />
+                    )}
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '20px' }}>
+                      <button
+                        type="button"
+                        onClick={() => verifyInputRef.current?.click()}
+                        style={{ padding: '10px 20px', borderRadius: '10px', background: '#fff', border: '1.5px solid #CBD5E1', color: '#475569', fontSize: '0.85rem', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+                      >
+                        <Upload size={16} /> 서류 선택
+                      </button>
+                      {verificationPreview ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#10B981', fontSize: '0.82rem', fontWeight: '800' }}>
+                          <CheckCircle size={16} /> 업로드 완료
+                        </div>
+                      ) : (
+                        <span style={{ fontSize: '0.82rem', color: '#94A3B8' }}>선택된 파일 없음</span>
+                      )}
+                    </div>
+                    <input
+                      ref={verifyInputRef}
+                      type="file"
+                      accept="image/*,.pdf"
+                      style={{ display: 'none' }}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          if (file.size > 5 * 1024 * 1024) return toast.error('파일 크기는 5MB 이하여야 합니다.');
+                          setVerificationFile(file);
+                          const reader = new FileReader();
+                          reader.onload = (ev) => setVerificationPreview(ev.target?.result as string);
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                    />
                   </div>
 
                   <div className="kl-card">
@@ -755,15 +755,15 @@ export default function EventDetailPage() {
                         {['아이스 아메리카노', '제로 콜라', '복숭아 아이스티', '얼그레이', '페퍼민트', '카라멜 블랙티', '물', '따뜻한 음료'].map(d => {
                           const selected = (form.drink || []).includes(d);
                           return (
-                            <button 
-                              key={d} 
+                            <button
+                              key={d}
                               type="button"
                               onClick={() => {
                                 const current = form.drink || [];
                                 const next = selected ? current.filter((v: string) => v !== d) : [...current, d];
                                 setForm((p: any) => ({ ...p, drink: next }));
                               }}
-                              style={{ 
+                              style={{
                                 padding: '10px 16px', borderRadius: '12px', fontSize: '0.82rem', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s',
                                 background: selected ? '#FF6F61' : '#fff', color: selected ? '#fff' : 'var(--color-text-secondary)', border: selected ? '2.5px solid #FF6F61' : '1.5px solid #E2E8F0'
                               }}
@@ -777,11 +777,11 @@ export default function EventDetailPage() {
                     <div>
                       <label className="kl-label" style={{ marginBottom: '12px' }}>본인 사진 업로드 ({photos.length}/5) *</label>
                       <div style={{ background: '#FFFDFD', border: '1.5px dashed #FFDBE9', borderRadius: '16px', padding: '24px', marginBottom: '16px' }}>
-                         <p style={{ fontSize: '0.82rem', color: 'var(--color-text-secondary)', lineHeight: 1.6, marginBottom: '20px', fontWeight: '500' }}>
-                          과도한 보정이나 마스크 착용 사진은 지양해주세요.<br/>
+                        <p style={{ fontSize: '0.82rem', color: 'var(--color-text-secondary)', lineHeight: 1.6, marginBottom: '20px', fontWeight: '500' }}>
+                          과도한 보정이나 마스크 착용 사진은 지양해주세요.<br />
                           <strong style={{ color: '#FF6F61' }}>얼굴과 전신 사진이 포함되도록 자유롭게 총 5장까지 등록해 주세요.</strong>
                         </p>
-                        
+
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', justifyContent: 'center' }}>
                           {photos.map((src, i) => (
                             <div key={i} style={{ position: 'relative', width: '80px', height: '80px', borderRadius: '14px', overflow: 'hidden', border: '1px solid #FFDBE9', boxShadow: '0 4px 12px rgba(255,111,97,0.1)' }}>
@@ -791,10 +791,10 @@ export default function EventDetailPage() {
                               </button>
                             </div>
                           ))}
-                          
+
                           {photos.length < 5 && (
-                            <button 
-                              type="button" 
+                            <button
+                              type="button"
                               onClick={() => photoInputRef.current?.click()}
                               style={{ width: '80px', height: '80px', borderRadius: '14px', border: '1.5px dashed #FFDBE9', background: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '6px', cursor: 'pointer', transition: 'all 0.2s' }}
                             >
@@ -862,7 +862,7 @@ export default function EventDetailPage() {
                             key={g}
                             onClick={() => setForm(f => ({ ...f, gender: g as 'male' | 'female' }))}
                             style={{
-                              flex: 1, padding: '12px', borderRadius: '10px', 
+                              flex: 1, padding: '12px', borderRadius: '10px',
                               border: form.gender === g ? '2px solid #FF6F61' : '1px solid #ddd',
                               background: form.gender === g ? '#FFF5F4' : '#fff', color: form.gender === g ? '#FF6F61' : 'var(--color-text-secondary)',
                               fontWeight: '700', cursor: 'pointer'
@@ -998,13 +998,13 @@ export default function EventDetailPage() {
             </div>
           )}
         </div>
- {/* 모바일 Sticky Bottom CTA */}
-      <div className="mobile-sticky-cta" style={{ display: 'none', position: 'fixed', bottom: 0, left: 0, right: 0, padding: '16px', background: 'var(--color-surface)', borderTop: '1px solid var(--color-border)', zIndex: 1000, boxShadow: '0 -4px 16px rgba(0,0,0,0.05)' }}>
+        {/* 모바일 Sticky Bottom CTA */}
+        <div className="mobile-sticky-cta" style={{ display: 'none', position: 'fixed', bottom: 0, left: 0, right: 0, padding: '16px', background: 'var(--color-surface)', borderTop: '1px solid var(--color-border)', zIndex: 1000, boxShadow: '0 -4px 16px rgba(0,0,0,0.05)' }}>
           {step === 0 && (
-            <button 
-              className="kl-btn-primary" 
-              style={{ width: '100%', padding: '16px', fontSize: '1.1rem', fontWeight: '800' }} 
-              onClick={() => { handleStep1Entry(); window.scrollTo({top: 0}); }}
+            <button
+              className="kl-btn-primary"
+              style={{ width: '100%', padding: '16px', fontSize: '1.1rem', fontWeight: '800' }}
+              onClick={() => { handleStep1Entry(); window.scrollTo({ top: 0 }); }}
             >
               {soldOutM && soldOutF ? '대기 신청하기' : '지금 신청하기'}
             </button>
@@ -1014,14 +1014,14 @@ export default function EventDetailPage() {
               {isSubmitting ? '제출 중...' : '신청서 제출하기'}
             </button>
           )}
-           {step === 2 && (
+          {step === 2 && (
             <Link href="/mypage" className="kl-btn-primary" style={{ width: '100%', padding: '16px', fontSize: '1.1rem', fontWeight: '800', textAlign: 'center', display: 'block' }}>
               마이페이지에서 확인하기
             </Link>
           )}
-      </div>
+        </div>
 
-      <style>{`
+        <style>{`
         @media (max-width: 900px) {
           .event-detail-grid {
             grid-template-columns: 1fr !important;

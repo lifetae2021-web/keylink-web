@@ -352,10 +352,14 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
   const filtered = useMemo(() => {
     let result = applications.filter(app => {
       const user = userMap[app.userId] || {};
+      const normalizedQuery = searchQuery.replace(/[^0-9]/g, '');
+      const userPhoneDigits = (user.phone || '').replace(/[^0-9]/g, '');
+
       const matchesSearch = 
         (user.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
         (user.workplace || user.job || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (user.residence || user.location || '').toLowerCase().includes(searchQuery.toLowerCase());
+        (user.residence || user.location || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (normalizedQuery !== '' && userPhoneDigits.includes(normalizedQuery));
       const matchesGender = filterGender === 'all' || app.gender === filterGender;
       const matchesUnselected = !filterUnselectedOnly || app.status === 'applied';
       
@@ -437,7 +441,7 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
           </div>
           <input
             type="text"
-            placeholder="이름, 직업, 거주지로 검색..."
+            placeholder="이름, 직업, 거주지, 연락처로 검색..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full bg-white border-2 border-slate-100 rounded-2xl pr-4 text-sm font-bold text-slate-800 outline-none focus:border-[#FF7E7E]/30 focus:bg-slate-50/30 transition-all shadow-sm"

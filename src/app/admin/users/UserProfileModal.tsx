@@ -80,12 +80,14 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose }:
     try {
       const newStatus = !user.isVerified;
       const userRef = doc(db, 'users', user.uid || user.id);
-      const updateData: any = { isVerified: newStatus };
-      if (newStatus) updateData.status = 'verified'; // 승인 시 상태도 함께 변경
+      const updateData: any = { 
+        isVerified: newStatus,
+        status: newStatus ? 'verified' : 'rejected' 
+      };
       
       await updateDoc(userRef, updateData);
       setUser((prev: any) => ({ ...prev, ...updateData }));
-      toast.success(newStatus ? '재직 인증 및 승인이 완료되었습니다.' : '인증이 취소되었습니다.');
+      toast.success(newStatus ? '재직 인증 및 승인이 완료되었습니다.' : '반려 처리되었습니다.');
     } catch (error) {
       console.error(error);
       toast.error('상태 변경에 실패했습니다.');
@@ -302,7 +304,7 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose }:
                           : 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-md shadow-emerald-200'
                       }`}
                     >
-                      {isUpdating ? '처리 중...' : user.isVerified ? '인증 취소' : '인증 승인'}
+                      {isUpdating ? '처리 중...' : user.isVerified ? '반려' : '인증 승인'}
                     </button>
                   </div>
 

@@ -16,8 +16,21 @@ export default function StatusListPage() {
     async function fetchSessions() {
       try {
         const data = await getAllSessions();
-        // v8.4.8: 최신 기수가 맨 위에 오도록 정렬 (이미 episodeNumber로 정산되어 내려올 수 있으나 date로 재검증)
-        const sorted = data.sort((a, b) => b.eventDate.getTime() - a.eventDate.getTime());
+        // v8.4.9: 스마트 정렬 로직 적용
+        const now = new Date();
+        const sorted = data.sort((a, b) => {
+          const aFinished = now.getTime() >= (a.eventDate.getTime() + 2 * 60 * 60 * 1000);
+          const bFinished = now.getTime() >= (b.eventDate.getTime() + 2 * 60 * 60 * 1000);
+
+          // 1. 둘 다 진행 중인 경우: 날짜가 가까운 순 (오름차순)
+          if (!aFinished && !bFinished) return a.eventDate.getTime() - b.eventDate.getTime();
+
+          // 2. 둘 다 종료된 경우: 최근에 종료된 순 (내림차순)
+          if (aFinished && bFinished) return b.eventDate.getTime() - a.eventDate.getTime();
+
+          // 3. 하나만 종료된 경우: 진행 중인 것을 위로
+          return aFinished ? 1 : -1;
+        });
         setSessions(sorted);
       } catch (error) {
         console.error("Error fetching sessions:", error);
@@ -58,9 +71,6 @@ export default function StatusListPage() {
           <h1 style={{ fontSize: '2.8rem', fontWeight: '900', marginBottom: '16px', letterSpacing: '-0.04em' }}>
             전체 기수 <span style={{ color: '#FF6F61' }}>현황 라인업</span>
           </h1>
-          <p style={{ color: 'var(--color-text-secondary)', fontSize: '1.1rem', fontWeight: '500' }}>
-            진행 중인 기수부터 종료된 기수까지 모든 실시간 명단을 확인하세요.
-          </p>
         </header>
 
         <div className="status-grid" style={{
@@ -105,86 +115,86 @@ export default function StatusListPage() {
                   e.currentTarget.style.boxShadow = 'none';
                 }}
               >
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    <div style={{
-                      alignSelf: 'flex-start',
-                      padding: '6px 16px', borderRadius: '100px', fontSize: '0.8rem', fontWeight: '800',
-                      background: status.bg, color: status.color,
-                    }}>
-                      {status.label}
-                    </div>
-                    <h3 style={{ fontSize: '1.2rem', fontWeight: '900', color: '#111', margin: 0, lineHeight: 1.3 }}>
-                      {event.title}
-                    </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <div style={{
+                    alignSelf: 'flex-start',
+                    padding: '6px 16px', borderRadius: '100px', fontSize: '0.8rem', fontWeight: '800',
+                    background: status.bg, color: status.color,
+                  }}>
+                    {status.label}
                   </div>
+                  <h3 style={{ fontSize: '1.2rem', fontWeight: '900', color: '#111', margin: 0, lineHeight: 1.3 }}>
+                    {event.title}
+                  </h3>
+                </div>
 
-                  <div>
-                    {(event as any).targetMaleAge && (
-                      <div style={{ display: 'inline-flex', marginBottom: '12px', background: '#FFF5F4', border: '1px solid rgba(255,111,97,0.2)', padding: '4px 8px', borderRadius: '8px' }}>
-                        <span style={{ fontSize: '0.75rem', fontWeight: '800', color: '#FF6F61' }}>남성 연령 : {(event as any).targetMaleAge}</span>
-                      </div>
-                    )}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', color: '#666', fontSize: '0.9rem', fontWeight: '600' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <Calendar size={16} /> {event.eventDate.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' })} {event.eventDate.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })}
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <MapPin size={16} /> {(event as any).venue ?? (event.region === 'busan' ? '부산' : '창원')}
-                      </div>
+                <div>
+                  {(event as any).targetMaleAge && (
+                    <div style={{ display: 'inline-flex', marginBottom: '12px', background: '#FFF5F4', border: '1px solid rgba(255,111,97,0.2)', padding: '4px 8px', borderRadius: '8px' }}>
+                      <span style={{ fontSize: '0.75rem', fontWeight: '800', color: '#FF6F61' }}>남성 연령 : {(event as any).targetMaleAge}</span>
                     </div>
-                  </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', background: '#fcfcfc', padding: '16px', borderRadius: '16px' }}>
-                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                      <span style={{ fontSize: '0.8rem', fontWeight: '800', color: '#666', width: '30px' }}>남성</span>
-                      <div style={{ flex: 1, height: '6px', background: '#eee', borderRadius: '3px', overflow: 'hidden' }}>
-                        <div style={{ width: `${progressMale * 100}%`, height: '100%', background: '#007AFF', borderRadius: '3px' }} />
-                      </div>
-                      <span style={{ fontSize: '0.8rem', fontWeight: '800', color: progressMale >= 1 ? '#007AFF' : '#666' }}>{currentMale}/{event.maxMale}</span>
-                    </div>
-                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                      <span style={{ fontSize: '0.8rem', fontWeight: '800', color: '#666', width: '30px' }}>여성</span>
-                      <div style={{ flex: 1, height: '6px', background: '#eee', borderRadius: '3px', overflow: 'hidden' }}>
-                        <div style={{ width: `${progressFemale * 100}%`, height: '100%', background: '#FF4D8D', borderRadius: '3px' }} />
-                      </div>
-                      <span style={{ fontSize: '0.8rem', fontWeight: '800', color: progressFemale >= 1 ? '#FF4D8D' : '#666' }}>{currentFemale}/{event.maxFemale}</span>
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  )}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', color: '#666', fontSize: '0.9rem', fontWeight: '600' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span style={{ fontSize: '0.85rem', color: '#999', textDecoration: 'line-through' }}>40,000원</span>
-                      <span style={{ fontSize: '0.75rem', fontWeight: '800', color: '#FF6F61', background: 'rgba(255,111,97,0.1)', padding: '1px 6px', borderRadius: '4px' }}>28% OFF</span>
+                      <Calendar size={16} /> {event.eventDate.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' })} {event.eventDate.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })}
                     </div>
-                    <span style={{ fontSize: '1.3rem', fontWeight: '900', color: '#FF6F61' }}>
-                      {(event as any).price ? `${((event as any).price).toLocaleString()}원` : '29,000원'}
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <MapPin size={16} /> {(event as any).venue ?? (event.region === 'busan' ? '부산' : '창원')}
+                    </div>
                   </div>
+                </div>
 
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
-                    <Link href={`/status/${event.id}`} onClick={e => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#FF6F61', fontWeight: '800', fontSize: '0.9rem', textDecoration: 'none' }}>
-                      라인업 상세보기 <ArrowRight size={16} />
-                    </Link>
-                    {(status.label === '모집 중' || status.label === '모집 마감') && (
-                      <Link
-                        href={`/events/${event.id}`}
-                        onClick={e => e.stopPropagation()}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: '4px',
-                          background: '#FF6F61', color: '#fff',
-                          fontSize: '0.8rem', fontWeight: '800',
-                          padding: '8px 16px', borderRadius: '100px',
-                          textDecoration: 'none',
-                        }}
-                      >
-                        {status.label === '모집 마감' ? '대기자 신청하기' : '신청하기'}
-                      </Link>
-                    )}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', background: '#fcfcfc', padding: '16px', borderRadius: '16px' }}>
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.8rem', fontWeight: '800', color: '#666', width: '30px' }}>남성</span>
+                    <div style={{ flex: 1, height: '6px', background: '#eee', borderRadius: '3px', overflow: 'hidden' }}>
+                      <div style={{ width: `${progressMale * 100}%`, height: '100%', background: '#007AFF', borderRadius: '3px' }} />
+                    </div>
+                    <span style={{ fontSize: '0.8rem', fontWeight: '800', color: progressMale >= 1 ? '#007AFF' : '#666' }}>{currentMale}/{event.maxMale}</span>
                   </div>
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.8rem', fontWeight: '800', color: '#666', width: '30px' }}>여성</span>
+                    <div style={{ flex: 1, height: '6px', background: '#eee', borderRadius: '3px', overflow: 'hidden' }}>
+                      <div style={{ width: `${progressFemale * 100}%`, height: '100%', background: '#FF4D8D', borderRadius: '3px' }} />
+                    </div>
+                    <span style={{ fontSize: '0.8rem', fontWeight: '800', color: progressFemale >= 1 ? '#FF4D8D' : '#666' }}>{currentFemale}/{event.maxFemale}</span>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ fontSize: '0.85rem', color: '#999', textDecoration: 'line-through' }}>40,000원</span>
+                    <span style={{ fontSize: '0.75rem', fontWeight: '800', color: '#FF6F61', background: 'rgba(255,111,97,0.1)', padding: '1px 6px', borderRadius: '4px' }}>28% OFF</span>
+                  </div>
+                  <span style={{ fontSize: '1.3rem', fontWeight: '900', color: '#FF6F61' }}>
+                    {(event as any).price ? `${((event as any).price).toLocaleString()}원` : '29,000원'}
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
+                  <Link href={`/status/${event.id}`} onClick={e => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#FF6F61', fontWeight: '800', fontSize: '0.9rem', textDecoration: 'none' }}>
+                    라인업 상세보기 <ArrowRight size={16} />
+                  </Link>
+                  {(status.label === '모집 중' || status.label === '모집 마감') && (
+                    <Link
+                      href={`/events/${event.id}`}
+                      onClick={e => e.stopPropagation()}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '4px',
+                        background: '#FF6F61', color: '#fff',
+                        fontSize: '0.8rem', fontWeight: '800',
+                        padding: '8px 16px', borderRadius: '100px',
+                        textDecoration: 'none',
+                      }}
+                    >
+                      {status.label === '모집 마감' ? '대기자 신청하기' : '신청하기'}
+                    </Link>
+                  )}
+                </div>
               </div>
             );
           })}
-          
+
           {sessions.length === 0 && (
             <div style={{ gridColumn: 'span 12', textAlign: 'center', padding: '100px 0', background: '#fff', borderRadius: '32px', border: '2px dashed #eee' }}>
               <Users size={48} color="#ddd" style={{ marginBottom: '16px' }} />
