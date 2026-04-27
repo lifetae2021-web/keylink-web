@@ -150,7 +150,7 @@ export default function HomePage() {
     <div>
       {/* ── HERO ── */}
       <section style={{
-        minHeight: '100vh',
+        minHeight: '75vh',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -167,7 +167,7 @@ export default function HomePage() {
 
         <div style={{
           textAlign: 'center',
-          padding: '100px 20px 60px',
+          padding: '80px 20px 20px',
           maxWidth: '900px',
           opacity: heroVisible ? 1 : 0,
           transform: heroVisible ? 'translateY(0)' : 'translateY(30px)',
@@ -201,18 +201,9 @@ export default function HomePage() {
             로테이션 소개팅 <strong style={{ color: 'var(--color-accent)' }}>키링크</strong>에서<br />진짜 인연을 만나보세요.
           </p>
 
-          <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Link href="/events" className="kl-btn-primary" style={{ fontSize: '1rem', padding: '16px 36px' }}>
-              참여 신청하기 <ArrowRight size={18} />
-            </Link>
-            <Link href="/notices" className="kl-btn-outline" style={{ fontSize: '1rem', padding: '16px 36px' }}>
-              서비스 알아보기
-            </Link>
-          </div>
-
           <div style={{
             display: 'flex', gap: '32px', justifyContent: 'center',
-            marginTop: '64px', flexWrap: 'wrap',
+            marginTop: '40px', flexWrap: 'wrap',
           }}>
             {[
               { num: '120기+', label: '누적 진행' },
@@ -228,8 +219,13 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* ── UPCOMING EVENTS ── */}
+      <Suspense fallback={<div style={{ textAlign: 'center', padding: '80px', color: '#999' }}>로딩 중...</div>}>
+        <EventsSection />
+      </Suspense>
+
       {/* ── ABOUT STATS ── */}
-      <section style={{ padding: '80px 20px', background: '#F9F9F9' }}>
+      <section style={{ padding: '60px 20px', background: '#F9F9F9' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: '56px' }}>
             <p style={{ fontSize: '0.8rem', fontWeight: '700', color: '#FF6F61', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '12px' }}>ABOUT 키링크</p>
@@ -259,11 +255,6 @@ export default function HomePage() {
           </div>
         </div>
       </section>
-
-      {/* ── UPCOMING EVENTS ── */}
-      <Suspense fallback={<div style={{ textAlign: 'center', padding: '80px', color: '#999' }}>로딩 중...</div>}>
-        <EventsSection />
-      </Suspense>
 
       {/* ── SIMPLE PROCESS SUMMARY ── */}
       <div id="how-it-works">

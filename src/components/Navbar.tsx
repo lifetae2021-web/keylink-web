@@ -8,7 +8,7 @@ import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
 import toast from 'react-hot-toast';
-import { version } from '../../package.json';
+const version = '1.0.2';
 // v8.1.7: Premium Navigation Bar
 
 // '진행 과정' is a special anchor link pointing to /#how-it-works

@@ -56,7 +56,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    return NextResponse.json({ success: true, successCount, failCount });
+    const isMock = process.env.NODE_ENV === 'development';
+    return NextResponse.json({ success: true, successCount, failCount, isMock });
   } catch (error) {
     console.error('SMS 발송 오류:', error);
     return NextResponse.json({ error: '문자 발송 중 오류가 발생했습니다.' }, { status: 500 });

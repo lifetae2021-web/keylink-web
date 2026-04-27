@@ -143,7 +143,8 @@ ${name}님은 ${formattedDate} ${formattedDay} ${formattedTime} 소개팅 날짜
     return NextResponse.json({ 
       success: true, 
       message: '선발 처리 및 안내 문자 발송이 완료되었습니다.',
-      smsResult 
+      smsResult,
+      isMock: smsResult?.mock || false
     });
 
   } catch (error: any) {

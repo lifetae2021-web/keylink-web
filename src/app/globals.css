@@ -473,16 +473,20 @@ body {
 
 @media (min-width: 1024px) {
   .kl-calendar-wrapper {
-    max-width: 860px;
+    max-width: 580px;
   }
   
   .kl-calendar-container {
-    padding: 32px;
+    padding: 12px;
+  }
+
+  .kl-calendar-grid {
+    gap: 4px !important;
   }
 
   .kl-calendar-cell {
-    padding: 10px 4px;
-    min-height: 95px;
+    padding: 4px 2px;
+    min-height: 45px;
   }
 
   .kl-event-tag {
@@ -501,7 +505,7 @@ body {
   padding: 24px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
   border: 1px solid var(--color-border);
-  margin-bottom: 32px;
+  margin-bottom: 16px;
   width: 100%;
 }
 
@@ -535,11 +539,11 @@ body {
 }
 
 .kl-calendar-date-badge {
-  font-size: 0.9rem;
+  font-size: 0.75rem;
   font-weight: 800;
-  margin-bottom: 8px;
-  width: 28px;
-  height: 28px;
+  margin-bottom: 4px;
+  width: 22px;
+  height: 22px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -559,16 +563,16 @@ body {
 }
 
 .kl-event-tag-age {
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   font-weight: 800;
   color: #111;
-  margin-bottom: 2px;
+  margin-bottom: 1px;
   word-break: keep-all;
   overflow: hidden;
 }
 
 .kl-event-tag-time {
-  font-size: 0.6rem;
+  font-size: 0.55rem;
   color: #FF6F61;
   font-weight: 700;
 }

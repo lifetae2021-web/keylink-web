@@ -85,10 +85,10 @@ export function EventsSection({ standalone = false }: { standalone?: boolean }) 
   const calendarEvents = liveEvents.filter(e => e.region === selectedRegion);
 
   return (
-    <div style={{ paddingTop: standalone ? '90px' : '60px', paddingBottom: standalone ? '0' : '40px', minHeight: standalone ? '100vh' : 'auto' }}>
+    <div style={{ paddingTop: standalone ? '40px' : '30px', paddingBottom: standalone ? '0' : '40px', minHeight: standalone ? '100vh' : 'auto' }}>
       {/* Header */}
       <section style={{
-        padding: standalone ? '60px 20px 40px' : '0 20px 40px',
+        padding: standalone ? '40px 20px 30px' : '0 20px 20px',
         background: standalone ? 'radial-gradient(ellipse at 50% 0%, rgba(255,111,97,0.1) 0%, transparent 70%)' : 'transparent',
         borderBottom: '1px solid var(--color-border)',
         textAlign: 'center',
@@ -97,7 +97,7 @@ export function EventsSection({ standalone = false }: { standalone?: boolean }) 
         <h2 className="kl-heading-lg" style={{ marginBottom: '16px' }}>
           <span className="kl-gradient-text">{selectedRegion === 'busan' ? '부산' : '창원'} 참여 신청</span>
         </h2>
-        <p style={{ color: 'var(--color-text-secondary)', fontSize: '1rem', marginBottom: '32px' }}>
+        <p style={{ color: 'var(--color-text-secondary)', fontSize: '1rem', marginBottom: '20px' }}>
           {selectedRegion === 'busan' ? '부산' : '창원'} 로테이션 소개팅 일정을 확인하고 신청하세요.
         </p>
 
@@ -129,7 +129,7 @@ export function EventsSection({ standalone = false }: { standalone?: boolean }) 
       </section>
 
       {/* Events Grid */}
-      <section className="kl-section">
+      <section className="kl-section" style={{ paddingTop: '20px' }}>
         {isLoading ? (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '24px' }}>
             {[1, 2].map((i) => (
@@ -185,7 +185,7 @@ function EventCalendar({ events, onDateSelect, selectedDate }: { events: Keylink
   return (
     <div className="kl-calendar-container">
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
         <button onClick={prevMonth} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '8px' }}>
            <ChevronLeft color="var(--color-text-secondary)" />
         </button>
@@ -196,7 +196,7 @@ function EventCalendar({ events, onDateSelect, selectedDate }: { events: Keylink
       </div>
 
       {/* Days of week */}
-      <div className="kl-calendar-grid" style={{ marginBottom: '12px' }}>
+      <div className="kl-calendar-grid" style={{ marginBottom: '4px' }}>
         {['일', '월', '화', '수', '목', '금', '토'].map(day => (
           <div key={day} className="kl-calendar-day-header">{day}</div>
         ))}

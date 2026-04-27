@@ -37,8 +37,10 @@ export async function sendSMS({ to, text }: SendSMSParams) {
   // 번호 형식 정리 (하이픈 제거)
   const cleanTo = to.replace(/[^0-9]/g, '');
 
-  if (!API_KEY || !API_SECRET || !SENDER_NUMBER) {
-    console.warn('SMS 발송 실패: Solapi API 설정이 누락되었습니다. (Mock 모드 작동)');
+  const isDev = process.env.NODE_ENV === 'development';
+
+  if (isDev || !API_KEY || !API_SECRET || !SENDER_NUMBER) {
+    console.warn(`SMS 발송 ${isDev ? '차단(로컬 환경)' : '실패(설정 누락)'}: Mock 모드 작동 중`);
     console.log(`[Mock SMS] TO: ${cleanTo}, TEXT: ${text}`);
     return { success: true, mock: true };
   }

@@ -164,6 +164,8 @@ export default function ApplicationsPage() {
 
         if (data.warning) {
           toast(data.warning, { icon: '⚠️', duration: 4000 });
+        } else if (data.isMock) {
+          toast('로컬 환경이라 실제 문자는 발송되지 않았습니다.', { icon: '⚠️', duration: 4000 });
         } else {
           toast.success('선발 및 안내 문자 발송 완료');
         }
@@ -780,7 +782,24 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                           )}
 
                           {app.status === 'selected' && (
-                            <button onClick={() => updateAppStatus(app, 'confirmed')} className="px-3 py-1.5 rounded-xl text-[0.75rem] font-bold bg-[#FFD700]/10 text-[#B8860B] border border-[#FFD700]/30 hover:bg-[#FFD700] hover:text-white transition-all shadow-sm">입금확정</button>
+                            <div className="flex items-center gap-1.5">
+                              <button 
+                                onClick={() => updateAppStatus(app, 'confirmed')} 
+                                className="px-3 py-1.5 rounded-xl text-[0.75rem] font-bold bg-[#FFD700]/10 text-[#B8860B] border border-[#FFD700]/30 hover:bg-[#FFD700] hover:text-white transition-all shadow-sm"
+                              >
+                                입금확정
+                              </button>
+                              <button 
+                                onClick={() => {
+                                  if (window.confirm('선발을 취소하고 다시 검토 중 상태로 되돌리시겠습니까?')) {
+                                    updateAppStatus(app, 'applied');
+                                  }
+                                }} 
+                                className="px-3 py-1.5 rounded-xl text-[0.75rem] font-bold bg-rose-50 text-rose-500 border border-rose-100 hover:bg-rose-500 hover:text-white transition-all shadow-sm"
+                              >
+                                선발 취소
+                              </button>
+                            </div>
                           )}
 
                           {app.status === 'cancelled' ? (
