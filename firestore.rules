@@ -120,5 +120,13 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // ─────────────────────────────────────
+    // smsTemplates (문자 템플릿) 컬렉션
+    // ─────────────────────────────────────
+    match /smsTemplates/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
   }
 }

@@ -63,7 +63,6 @@ export default function SettingsPage() {
       {/* Header */}
       <div>
         <h2 style={{ fontSize: '1.1rem', fontWeight: 700 }}>시스템 설정</h2>
-        <p style={{ fontSize: '0.8rem', color: '#555', marginTop: 2 }}>서비스 운영에 필요한 기본 설정을 관리합니다.</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">

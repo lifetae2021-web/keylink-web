@@ -8,6 +8,7 @@ import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
 import toast from 'react-hot-toast';
+import { version } from '../../package.json';
 // v8.1.7: Premium Navigation Bar
 
 // '진행 과정' is a special anchor link pointing to /#how-it-works
@@ -391,7 +392,7 @@ export default function Navbar() {
           borderRadius: '100px', pointerEvents: 'none',
           backdropFilter: 'blur(6px)',
         }}>
-          v1.0.0
+          v{version}
         </div>
       )}
 

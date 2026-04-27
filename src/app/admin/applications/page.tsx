@@ -5,14 +5,14 @@ import {
   Search, CheckCircle, XCircle, Eye,
   Download, ShieldCheck, ChevronLeft, ChevronRight, ChevronDown, Loader2,
   FileText, Users, CreditCard, Filter, Calendar, MapPin,
-  X, Phone, Briefcase, Ruler, Smile, Cigarette, Beer, Camera, Info, 
+  X, Phone, Briefcase, Ruler, Smile, Cigarette, Beer, Camera, Info,
   Ticket, Edit3
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { auth, db } from '@/lib/firebase';
 import UserProfileModal from '../users/UserProfileModal';
-import { 
-  collection, getDocs, doc, query, where, orderBy, Timestamp, getDoc, onSnapshot, writeBatch, increment 
+import {
+  collection, getDocs, doc, query, where, orderBy, Timestamp, getDoc, onSnapshot, writeBatch, increment
 } from 'firebase/firestore';
 import {
   selectApplicant,
@@ -24,19 +24,19 @@ import {
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import SMSPreviewModal from '@/components/admin/SMSPreviewModal';
-import { updateDoc } from 'firebase/firestore'; 
+import { updateDoc } from 'firebase/firestore';
 
 const DEPOSIT_STATUS = {
-  pending:   { label: '입금 대기', color: '#64748B', bg: '#F1F5F9' },
-  confirmed: { label: '입금 확인', color: '#2563EB', bg: '#EFF6FF'  },
+  pending: { label: '입금 대기', color: '#64748B', bg: '#F1F5F9' },
+  confirmed: { label: '입금 확인', color: '#2563EB', bg: '#EFF6FF' },
 };
 
 const APP_STATUS: Record<string, { label: string; color: string; bg: string }> = {
-  applied:   { label: '검토 중',   color: '#D97706', bg: '#FFFBEB'  },
-  selected:  { label: '입금 대기', color: '#7C3AED', bg: '#F5F3FF' },
-  held:      { label: '보류',      color: '#EA580C', bg: '#FFF7ED'  },
-  confirmed: { label: '참가 확정', color: '#059669', bg: '#ECFDF5'  },
-  cancelled: { label: '취소',      color: '#DC2626', bg: '#FEF2F2'  },
+  applied: { label: '검토 중', color: '#D97706', bg: '#FFFBEB' },
+  selected: { label: '입금 대기', color: '#7C3AED', bg: '#F5F3FF' },
+  held: { label: '보류', color: '#EA580C', bg: '#FFF7ED' },
+  confirmed: { label: '참가 확정', color: '#059669', bg: '#ECFDF5' },
+  cancelled: { label: '취소', color: '#DC2626', bg: '#FEF2F2' },
 };
 
 const panel = { background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' };
@@ -53,7 +53,7 @@ export default function ApplicationsPage() {
   const [userMap, setUserMap] = useState<Record<string, any>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isDataLoading, setIsDataLoading] = useState(false);
-  
+
   // Filtering & Modal States
   const [filterGender, setFilterGender] = useState<'all' | 'male' | 'female'>('all');
   const [filterUnselectedOnly, setFilterUnselectedOnly] = useState(false);
@@ -62,10 +62,11 @@ export default function ApplicationsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
   const [previewData, setPreviewData] = useState<any>(null);
+  const [smsTemplates, setSmsTemplates] = useState<any[]>([]);
 
   // v8.4.4: 필터링 상태 초기화 (헤더 필터 제거로 인한 전체 보기 복구)
   const [sortConfig, setSortConfig] = useState<{ field: string; direction: 'asc' | 'desc' }>({ field: 'appliedAt', direction: 'desc' });
-  const [ageFilter, setAgeFilter] = useState<string>('all'); 
+  const [ageFilter, setAgeFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
   // 1. sessions 컬렉션 실시간 동기화
@@ -96,15 +97,15 @@ export default function ApplicationsPage() {
     const q = selectedEventId === 'all'
       ? query(collection(db, 'applications'), orderBy('appliedAt', 'desc'))
       : query(
-          collection(db, 'applications'),
-          where('sessionId', '==', selectedEventId),
-          orderBy('appliedAt', 'desc')
-        );
+        collection(db, 'applications'),
+        where('sessionId', '==', selectedEventId),
+        orderBy('appliedAt', 'desc')
+      );
 
     const unsub = onSnapshot(q, async (snap) => {
       const apps = snap.docs.map(d => ({ id: d.id, ...d.data() } as any));
       setApplications(apps);
-      
+
       // users 컬렉션에서 누락된 정보 조인
       const uids = Array.from(new Set(apps.map((a: any) => a.userId))) as string[];
       const newUserMap = { ...userMap };
@@ -120,7 +121,7 @@ export default function ApplicationsPage() {
           }
         }
       }
-      
+
       if (updated) setUserMap(newUserMap);
       setIsDataLoading(false);
     }, (err) => {
@@ -131,12 +132,19 @@ export default function ApplicationsPage() {
     return () => unsub();
   }, [selectedEventId]);
 
+  // 3. SMS 템플릿 로드
+  useEffect(() => {
+    getDocs(collection(db, 'smsTemplates')).then(snap => {
+      setSmsTemplates(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+  }, []);
+
   // status 변경 로직
   const updateAppStatus = async (app: any, status: string, customMessage?: string) => {
     try {
       const { id: appId, sessionId, gender, status: prevStatus } = app;
       const user = userMap[app.userId] || {};
-      
+
       if (status === 'selected') {
         const token = await auth.currentUser?.getIdToken();
         const res = await fetch('/api/admin/applications/select', {
@@ -145,15 +153,15 @@ export default function ApplicationsPage() {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
           },
-          body: JSON.stringify({ 
+          body: JSON.stringify({
             applicationId: appId,
             customMessage: customMessage
           })
         });
-        
+
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || '처리 중 오류가 발생했습니다.');
-        
+
         if (data.warning) {
           toast(data.warning, { icon: '⚠️', duration: 4000 });
         } else {
@@ -180,7 +188,7 @@ export default function ApplicationsPage() {
         await cancelApplicant(appId, sessionId, gender, prevStatus === 'confirmed');
         toast.success('삭제 완료');
       }
-      
+
     } catch (e: any) {
       console.error(e);
       toast.error(e.message || '상태 업데이트에 실패했습니다.');
@@ -191,7 +199,7 @@ export default function ApplicationsPage() {
     const session = events.find(e => e.id === app.sessionId);
     if (!session) return toast.error('세션 정보를 찾을 수 없습니다.');
     const user = userMap[app.userId] || {};
-    
+
     // 기본 메시지 템플릿 생성 (API 로직과 맞춤)
     const eventTime = session.eventDate.toDate();
     const formatter = new Intl.DateTimeFormat('ko-KR', {
@@ -205,14 +213,37 @@ export default function ApplicationsPage() {
     const fDay = `(${getPart('weekday')})`;
     const fTime = `${getPart('hour')}:${getPart('minute')}`;
 
-    const defaultMsg = `안녕하세요 ! 키링크에 지원해주셔서 감사합니다☺️
+    const genderPrice = app.gender === 'male'
+      ? (app.maleOption === 'safe' ? 60000 : (session.malePrice || 49000))
+      : (app.femaleOption === 'group' ? 24000 : (session.femalePrice || 29000));
+
+    // v8.12.3: 저장된 '입금 요청 (기본)' 템플릿 자동 적용
+    const targetTemplate = smsTemplates.find(t => t.name === '입금 요청 (기본)');
+    let defaultMsg = '';
+
+    if (targetTemplate) {
+      const sessionName = session.episodeNumber
+        ? `${session.region === 'busan' ? '부산' : '창원'} ${session.episodeNumber}기`
+        : '';
+        
+      defaultMsg = targetTemplate.content
+        .replace(/{{이름}}/g, user.name || app.name || '참가자')
+        .replace(/{{날짜}}/g, fDate)
+        .replace(/{{요일}}/g, getPart('weekday') || '')
+        .replace(/{{시간}}/g, fTime)
+        .replace(/{{금액}}/g, (app.price || genderPrice).toLocaleString('ko-KR'))
+        .replace(/{{기수}}/g, sessionName)
+        .replace(/{{장소}}/g, session.venue || session.location || '');
+    } else {
+      defaultMsg = `안녕하세요 ! 키링크에 지원해주셔서 감사합니다☺️
 ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 지정되었습니다
 
-아래 계좌번호로 ${ (app.price || session.price || 60000).toLocaleString('ko-KR') }원 입금해주셔야 라인업에 확정등록되니 참고 부탁드립니다 :)
+아래 계좌번호로 ${(app.price || genderPrice).toLocaleString('ko-KR')}원 입금해주셔야 라인업에 확정등록되니 참고 부탁드립니다 :)
 3333359229548 카카오뱅크 태영훈(키링크) 입금 또는 참석가능 여부 알려주세요😭
 혹시나 입금이 늦을 것 같은 경우 말씀해주세요.
 
 좋은 인연 만날 수 있도록 키링크가 끝까지 책임질게요🥰`;
+    }
 
     setPreviewData({ app, session, defaultMsg });
     setPreviewModalOpen(true);
@@ -243,15 +274,15 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
         if (isDummyName || isJobEmpty || isTestEmail) {
           const randomJob = dummyJobs[Math.floor(Math.random() * dummyJobs.length)];
           const userRef = doc(db, 'users', docSnap.id);
-          
-          userUpdatePromises.push(updateDoc(userRef, { 
+
+          userUpdatePromises.push(updateDoc(userRef, {
             job: randomJob,
             updatedAt: Timestamp.now()
           }));
-          
+
           updatedUserIds.add(docSnap.id);
           count++;
-          
+
           // 로컬 상태 바로 업데이트 준비
           newUserMap[docSnap.id] = { ...user, job: randomJob };
         }
@@ -278,16 +309,16 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
       toast.error('먼저 특정 기수를 선택해주세요 (예: 1007기)');
       return;
     }
-    
+
     const countStr = window.prompt('추가할 남녀 각각의 더미 인원수를 입력하세요 (예: 8을 입력하면 남8, 여8 추가됨)', '8');
     if (!countStr) return;
-    
+
     const count = parseInt(countStr, 10);
     if (isNaN(count) || count <= 0 || count > 50) {
       toast.error('올바른 숫자를 입력해주세요 (1~50)');
       return;
     }
-    
+
     try {
       const token = await auth.currentUser?.getIdToken();
       if (!token) throw new Error('로그인이 필요합니다.');
@@ -312,7 +343,7 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
   };
 
   const activeEvent = events.find(e => e.id === selectedEventId);
-  
+
   // v8.1.7: 실시간 선발 현황 계산 (selected + confirmed)
   const selectionStats = useMemo(() => {
     if (selectedEventId === 'all') return { male: 0, female: 0 };
@@ -330,7 +361,7 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
     if (selectedEventId === 'all' || !activeEvent) return ids;
 
     // 적용 순(또는 변경 순) 정렬: 가장 먼저 신청한 사람이 정원 내, 늦게 신청한 사람이 초과
-    const getSortedSelected = (gender: string) => 
+    const getSortedSelected = (gender: string) =>
       applications
         .filter(a => a.gender === gender && (a.status === 'selected' || a.status === 'confirmed'))
         // 신청일 기준 오름차순 (먼저 신청한 사람 1순위)
@@ -355,18 +386,18 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
       const normalizedQuery = searchQuery.replace(/[^0-9]/g, '');
       const userPhoneDigits = (user.phone || '').replace(/[^0-9]/g, '');
 
-      const matchesSearch = 
+      const matchesSearch =
         (user.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
         (user.workplace || user.job || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
         (user.residence || user.location || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
         (normalizedQuery !== '' && userPhoneDigits.includes(normalizedQuery));
       const matchesGender = filterGender === 'all' || app.gender === filterGender;
       const matchesUnselected = !filterUnselectedOnly || app.status === 'applied';
-      
+
       // v8.4.1: 나이 대별 필터링
       let matchesAge = true;
       if (ageFilter !== 'all') {
-        const birthYear = user.birthDate ? parseInt(user.birthDate.includes('-') ? user.birthDate.slice(0,4) : (user.birthDate.length === 6 ? '19'+user.birthDate.slice(0,2) : user.birthDate.slice(0,4))) : 0;
+        const birthYear = user.birthDate ? parseInt(user.birthDate.includes('-') ? user.birthDate.slice(0, 4) : (user.birthDate.length === 6 ? '19' + user.birthDate.slice(0, 2) : user.birthDate.slice(0, 4))) : 0;
         if (ageFilter === '90s') matchesAge = birthYear >= 1990 && birthYear <= 1999;
         else if (ageFilter === '80s') matchesAge = birthYear >= 1980 && birthYear <= 1989;
         else if (ageFilter === '00s') matchesAge = birthYear >= 2000 && birthYear <= 2009;
@@ -405,7 +436,7 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
 
   return (
     <div className="space-y-6 animate-in fade-in duration-400 pb-20">
-      
+
       {/* Top Controls Bar (Integrated Header & Filters) */}
       <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
         {/* Left: Filters */}
@@ -469,12 +500,12 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
               <ChevronRight size={12} className="rotate-90" />
             </div>
           </div>
-          <button 
+          <button
             onClick={handleSeedDummyAccounts}
             className="flex items-center gap-2 rounded-xl transition-all hover:bg-emerald-50" style={{ height: '40px', padding: '0 12px', fontSize: '0.7rem', background: '#fff', border: '1px solid #6ee7b7', color: '#059669', fontWeight: 800 }}>
             <Users size={12} /> 더미 추가
           </button>
-          <button 
+          <button
             onClick={handleFixDummyJobs}
             className="flex items-center gap-2 rounded-xl transition-all hover:bg-orange-50" style={{ height: '40px', padding: '0 12px', fontSize: '0.7rem', background: '#fff', border: '1px solid #fed7aa', color: '#ea580c', fontWeight: 800 }}>
             <Briefcase size={12} /> 보정
@@ -489,36 +520,36 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
       {activeEvent && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
-            { label: '전체 신청',   value: applications.length,                                                         icon: Users,       color: '#FF6F61' },
-            { label: '입금 대기',   value: applications.filter((a: any) => a.status === 'selected').length,              icon: CreditCard,  color: '#a78bfa' },
-            { label: '참가 확정',   value: applications.filter((a: any) => a.status === 'confirmed').length,             icon: CheckCircle, color: '#4ade80' },
-            { 
-              label: '정원 현황',  
+            { label: '전체 신청', value: applications.length, icon: Users, color: '#FF6F61' },
+            { label: '입금 대기', value: applications.filter((a: any) => a.status === 'selected').length, icon: CreditCard, color: '#a78bfa' },
+            { label: '참가 확정', value: applications.filter((a: any) => a.status === 'confirmed').length, icon: CheckCircle, color: '#4ade80' },
+            {
+              label: '정원 현황',
               value: (
                 <span className={selectionStats.male + selectionStats.female > (activeEvent.maxMale || 0) + (activeEvent.maxFemale || 0) ? 'text-rose-500 animate-pulse font-black inline-block' : ''}>
-                  {selectionStats.male + selectionStats.female} / {(activeEvent.maxMale||0)+(activeEvent.maxFemale||0)}
+                  {selectionStats.male + selectionStats.female} / {(activeEvent.maxMale || 0) + (activeEvent.maxFemale || 0)}
                 </span>
-              ), 
-              icon: Calendar, 
-              color: '#facc15' 
+              ),
+              icon: Calendar,
+              color: '#facc15'
             },
-            { 
-              label: '선발 현황 (Reserved)', 
+            {
+              label: '선발 현황 (Reserved)',
               value: (
                 <div className="flex items-center gap-1 text-[0.95rem]">
-                  남 
+                  남
                   <span className={selectionStats.male > (activeEvent.maxMale || 0) ? 'text-rose-500 animate-pulse font-black inline-block' : ''}>
                     {selectionStats.male}/{activeEvent.maxMale}
                   </span>
-                  <span className="mx-1">·</span> 
-                  여 
+                  <span className="mx-1">·</span>
+                  여
                   <span className={selectionStats.female > (activeEvent.maxFemale || 0) ? 'text-rose-500 animate-pulse font-black inline-block' : ''}>
                     {selectionStats.female}/{activeEvent.maxFemale}
                   </span>
                 </div>
-              ), 
-              icon: ShieldCheck, 
-              color: '#3B82F6' 
+              ),
+              icon: ShieldCheck,
+              color: '#3B82F6'
             },
           ].map((item, i) => (
             <div key={i} style={{ ...panel, padding: '16px 20px' }} className="flex items-center justify-between">
@@ -571,7 +602,7 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
             </thead>
             <tbody>
               {isDataLoading ? (
-                [1,2,3,4,5,6,7,8].map(i => (
+                [1, 2, 3, 4, 5, 6, 7, 8].map(i => (
                   <tr key={i} style={{ borderBottom: '1px solid #F1F5F9', height: '88px' }}>
                     <td colSpan={7} style={{ padding: '0 20px' }}><Skeleton className="h-10 w-full" /></td>
                   </tr>
@@ -602,15 +633,15 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                   const isOverQuota = overQuotaAppIds.has(app.id); // v8.1.7
 
                   return (
-                    <tr 
-                      key={app.id} 
-                      style={{ 
-                        borderBottom: '1px solid #f0f0f0', 
+                    <tr
+                      key={app.id}
+                      style={{
+                        borderBottom: '1px solid #f0f0f0',
                         height: '88px',
                         // 정원 초과로 선택/확정된 사람은 명확한 빨간색, 더 이상 선택 못하게 막힌 줄은 연한 붉은색
                         background: isOverQuota ? '#FFE4E6' : ((canSelect && isFull) ? '#FFF1F2' : 'transparent')
-                      }} 
-                      className={`transition-colors group cursor-default ${ (canSelect && isFull) ? 'opacity-85' : 'hover:bg-slate-50' }`}
+                      }}
+                      className={`transition-colors group cursor-default ${(canSelect && isFull) ? 'opacity-85' : 'hover:bg-slate-50'}`}
                     >
                       {/* 신청 기수 */}
                       <td style={{ padding: '0 16px', textAlign: 'center' }}>
@@ -623,7 +654,7 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                       {/* 신청자 정보 (통합) */}
                       <td style={{ padding: '0 20px' }}>
                         <div className="flex items-center gap-4">
-                          <div 
+                          <div
                             className="w-14 h-14 rounded-full border-2 border-[#D4AF37] shadow-sm flex items-center justify-center overflow-hidden bg-slate-100 shrink-0 cursor-pointer hover:scale-110 transition-transform"
                             style={{ boxShadow: '0 0 10px rgba(212, 175, 55, 0.2)' }}
                             onClick={() => { setSelectedUser(user); setIsModalOpen(true); }}
@@ -636,7 +667,7 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                           </div>
                           <div className="flex flex-col">
                             <div className="flex items-center gap-2">
-                              <button 
+                              <button
                                 onClick={() => { setSelectedUser(user); setIsModalOpen(true); }}
                                 className="text-[1rem] font-black text-slate-800 hover:text-[#FF7E7E] transition-colors"
                               >
@@ -647,7 +678,7 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                               </span>
                             </div>
                             <div className="flex items-center gap-2 mt-1">
-                              <span className="text-[0.85rem] font-bold text-slate-600">{user.birthDate ? `${user.birthDate.includes('-') ? user.birthDate.slice(2,4) : user.birthDate.slice(0,2)}년생` : '??'}</span>
+                              <span className="text-[0.85rem] font-bold text-slate-600">{user.birthDate ? `${user.birthDate.includes('-') ? user.birthDate.slice(2, 4) : user.birthDate.slice(0, 2)}년생` : '??'}</span>
                             </div>
                           </div>
                         </div>
@@ -691,13 +722,13 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                       </td>
 
                       {/* 선발 관리 */}
-                       <td style={{ padding: '0 16px' }}>
+                      <td style={{ padding: '0 16px' }}>
                         <div className="flex items-center justify-center gap-1.5 transition-all">
                           {(app.status === 'applied' || app.status === 'held') && (
                             <>
                               {app.status === 'held' && (
-                                <button 
-                                  onClick={() => updateAppStatus(app, 'applied')} 
+                                <button
+                                  onClick={() => updateAppStatus(app, 'applied')}
                                   className="px-2.5 py-1.5 rounded-lg text-[0.7rem] font-black bg-amber-100 text-amber-700 border border-amber-200 hover:bg-amber-200 transition-all shadow-sm flex items-center gap-1 group/held"
                                   title="검토 중으로 되돌리기"
                                 >
@@ -713,11 +744,10 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                                   handleOpenPreview(app);
                                 }}
                                 disabled={!user.isJobReviewed || (app.gender === 'male' && isMaleFull) || (app.gender === 'female' && isFemaleFull)}
-                                className={`px-3 py-1.5 rounded-xl text-[0.75rem] font-bold border transition-all shadow-sm ${
-                                  !user.isJobReviewed || (app.gender === 'male' && isMaleFull) || (app.gender === 'female' && isFemaleFull)
-                                    ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed grayscale'
-                                    : 'bg-[#FF7E7E]/10 text-[#FF7E7E] border-[#FF7E7E]/20 hover:bg-[#FF7E7E] hover:text-white'
-                                }`}
+                                className={`px-3 py-1.5 rounded-xl text-[0.75rem] font-bold border transition-all shadow-sm ${!user.isJobReviewed || (app.gender === 'male' && isMaleFull) || (app.gender === 'female' && isFemaleFull)
+                                  ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed grayscale'
+                                  : 'bg-[#FF7E7E]/10 text-[#FF7E7E] border-[#FF7E7E]/20 hover:bg-[#FF7E7E] hover:text-white'
+                                  }`}
                                 title={!user.isJobReviewed ? "먼저 직업 정보를 확인/수정하고 승인해 주세요" : ""}
                               >
                                 선발
@@ -738,22 +768,21 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                                   }
                                 }}
                                 disabled={!user.isJobReviewed || (app.gender === 'male' && isMaleFull) || (app.gender === 'female' && isFemaleFull)}
-                                className={`px-3 py-1.5 rounded-xl text-[0.75rem] font-bold border transition-all shadow-sm ${
-                                  !user.isJobReviewed || (app.gender === 'male' && isMaleFull) || (app.gender === 'female' && isFemaleFull)
-                                    ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed grayscale'
-                                    : 'bg-[#FFD700]/10 text-[#B8860B] border-[#FFD700]/30 hover:bg-[#FFD700] hover:text-white'
-                                }`}
+                                className={`px-3 py-1.5 rounded-xl text-[0.75rem] font-bold border transition-all shadow-sm ${!user.isJobReviewed || (app.gender === 'male' && isMaleFull) || (app.gender === 'female' && isFemaleFull)
+                                  ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed grayscale'
+                                  : 'bg-[#FFD700]/10 text-[#B8860B] border-[#FFD700]/30 hover:bg-[#FFD700] hover:text-white'
+                                  }`}
                                 title={!user.isJobReviewed ? "먼저 직업 정보를 확인/수정하고 승인해 주세요" : ""}
                               >
                                 선발확정
                               </button>
                             </>
                           )}
-                          
+
                           {app.status === 'selected' && (
                             <button onClick={() => updateAppStatus(app, 'confirmed')} className="px-3 py-1.5 rounded-xl text-[0.75rem] font-bold bg-[#FFD700]/10 text-[#B8860B] border border-[#FFD700]/30 hover:bg-[#FFD700] hover:text-white transition-all shadow-sm">입금확정</button>
                           )}
-                          
+
                           {app.status === 'cancelled' ? (
                             <button
                               onClick={() => updateAppStatus(app, 'confirmed')}

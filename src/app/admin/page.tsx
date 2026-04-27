@@ -236,7 +236,6 @@ export default function AdminDashboard() {
       <div className="flex items-center justify-between">
         <div>
           <h2 style={{ fontSize: '1.5rem', fontWeight: 900, letterSpacing: '-0.03em', color: '#0F172A' }}>대시보드</h2>
-          <p style={{ fontSize: '0.85rem', color: '#64748B', marginTop: 2 }}>실시간 데이터와 서비스 현황을 한눈에 확인합니다. <span className="text-[10px] font-bold text-[#FF6F61] ml-2">v1.0.1 Premium</span></p>
         </div>
       </div>
 

@@ -11,7 +11,7 @@ import {
   LayoutDashboard, Users, Calendar, TrendingUp,
   Settings, LogOut, Bell, Menu, X,
   ExternalLink, ChevronDown,
-  FileText, Loader2, Timer, ChevronsLeft, ChevronsRight
+  FileText, Loader2, Timer, ChevronsLeft, ChevronsRight, MessageSquare
 } from 'lucide-react';
 import Link from 'next/link';
 import { version } from '../../../package.json';
@@ -25,6 +25,7 @@ const PAGE_TITLE: Record<string, string> = {
   '/admin/revenue':       '매출 통계',
   '/admin/cms':           '콘텐츠 편집',
   '/admin/settings':      '시스템 설정',
+  '/admin/sms-templates': 'SMS 템플릿',
 };
 
 const MOCK_NOTIFICATIONS = [
@@ -53,6 +54,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { label: '행사 / 매칭',   icon: Calendar,        path: '/admin/events' },
     { label: '키링크 타이머', icon: Timer,           path: '/admin/timer' },
     { label: '매출 통계',     icon: TrendingUp,      path: '/admin/revenue' },
+    { label: 'SMS 템플릿',     icon: MessageSquare,   path: '/admin/sms-templates' },
     { label: '콘텐츠 편집',   icon: FileText,        path: '/admin/cms' },
     { label: '시스템 설정',   icon: Settings,        path: '/admin/settings' },
   ];
@@ -351,6 +353,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <main className="flex-1 overflow-auto" style={{ padding: '32px 40px' }}>
           {children}
         </main>
+
+        {/* Admin version badge (Pill style) */}
+        <div style={{
+          position: 'fixed', bottom: '16px', right: '16px', zIndex: 9999,
+          background: '#0F172A', color: '#fff',
+          fontSize: '0.75rem', fontWeight: '800', padding: '6px 14px',
+          borderRadius: '100px', pointerEvents: 'none',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+          border: '1px solid rgba(255,255,255,0.1)',
+          backdropFilter: 'blur(8px)',
+        }}>
+          v{version}
+        </div>
       </div>
     </div>
   );

@@ -78,6 +78,7 @@ export default function EventsPage() {
   // 대기자 선발 SMS 미리보기
   const [selectPreviewOpen, setSelectPreviewOpen] = useState(false);
   const [selectPreviewData, setSelectPreviewData] = useState<any>(null);
+  const [smsTemplates, setSmsTemplates] = useState<any[]>([]);
 
   // 프로필 모달
   const [selectedUser, setSelectedUser] = useState<any | null>(null);
@@ -342,6 +343,15 @@ export default function EventsPage() {
     return () => unsub();
   }, []);
 
+  // SMS 템플릿 로드
+  useEffect(() => {
+    import('firebase/firestore').then(({ getDocs, collection }) => {
+      getDocs(collection(db, 'smsTemplates')).then(snap => {
+        setSmsTemplates(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      });
+    });
+  }, []);
+
   const active = useMemo(
     () => sessions.find((s) => s.id === selectedId),
     [sessions, selectedId],
@@ -455,14 +465,37 @@ export default function EventsPage() {
     const fDay = `(${getPart("weekday")})`;
     const fTime = `${getPart("hour")}:${getPart("minute")}`;
 
-    const defaultMsg = `안녕하세요 ! 키링크에 지원해주셔서 감사합니다☺️
+    const genderPrice = app.gender === 'male'
+      ? (app.maleOption === 'safe' ? 60000 : (session.malePrice || 49000))
+      : (app.femaleOption === 'group' ? 24000 : (session.femalePrice || 29000));
+
+    // v8.12.3: 저장된 '입금 요청 (기본)' 템플릿 자동 적용
+    const targetTemplate = smsTemplates.find(t => t.name === '입금 요청 (기본)');
+    let defaultMsg = '';
+
+    if (targetTemplate) {
+      const sessionName = session.episodeNumber
+        ? `${session.region === 'busan' ? '부산' : '창원'} ${session.episodeNumber}기`
+        : '';
+        
+      defaultMsg = targetTemplate.content
+        .replace(/{{이름}}/g, user.name || app.name || '참가자')
+        .replace(/{{날짜}}/g, fDate)
+        .replace(/{{요일}}/g, getPart('weekday') || '')
+        .replace(/{{시간}}/g, fTime)
+        .replace(/{{금액}}/g, (app.price || genderPrice).toLocaleString('ko-KR'))
+        .replace(/{{기수}}/g, sessionName)
+        .replace(/{{장소}}/g, session.venue || session.location || '');
+    } else {
+      defaultMsg = `안녕하세요 ! 키링크에 지원해주셔서 감사합니다☺️
 ${user.name || app.name || "참가자"}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 지정되었습니다
 
-아래 계좌번호로 ${(app.price || Number(String(session.price).replace(/,/g, "")) || 60000).toLocaleString("ko-KR")}원 입금해주셔야 라인업에 확정등록되니 참고 부탁드립니다 :)
+아래 계좌번호로 ${(app.price || genderPrice).toLocaleString("ko-KR")}원 입금해주셔야 라인업에 확정등록되니 참고 부탁드립니다 :)
 3333359229548 카카오뱅크 태영훈(키링크) 입금 또는 참석가능 여부 알려주세요😭
 혹시나 입금이 늦을 것 같은 경우 말씀해주세요.
 
 좋은 인연 만날 수 있도록 키링크가 끝까지 책임질게요🥰`;
+    }
 
     setSelectPreviewData({ app, session, defaultMsg });
     setSelectPreviewOpen(true);
@@ -633,7 +666,7 @@ ${user.name || app.name || "참가자"}님은 ${fDate} ${fDay} ${fTime} 소개�
     setVotingStatusModalOpen(true);
     setVotingStatusLoading(true);
     try {
-      const sessionParticipants = participants; 
+      const sessionParticipants = participants;
       const votes = await getAllVotesBySession(session.id);
       const votedUserIds = new Set(votes.map(v => v.userId));
 
@@ -817,7 +850,7 @@ ${user.name || app.name || "참가자"}님은 ${fDate} ${fDay} ${fTime} 소개�
     : 0;
   const isDetailFull = active
     ? liveConfirmedMale + liveConfirmedFemale >=
-      active.maxMale + active.maxFemale
+    active.maxMale + active.maxFemale
     : false;
 
   let activeBadgeLabel = "";
@@ -835,9 +868,6 @@ ${user.name || app.name || "참가자"}님은 ${fDate} ${fDay} ${fTime} 소개�
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-slate-900 text-xl font-bold">행사 / 매칭 관리</h2>
-          <p className="text-slate-500 text-[0.85rem] mt-1">
-            기수별 행사 현황과 매칭 알고리즘을 관리합니다.
-          </p>
         </div>
         <button
           onClick={() => {
@@ -948,11 +978,10 @@ ${user.name || app.name || "참가자"}님은 ${fDate} ${fDay} ${fTime} 소개�
                 <button
                   key={ev.id}
                   onClick={() => setSelectedId(ev.id)}
-                  className={`shrink-0 w-52 text-left rounded-xl transition-all duration-150 p-4 ${
-                    sel
-                      ? "bg-orange-50 border-2 border-[#FF6F61] shadow-md shadow-orange-100"
-                      : "bg-white border border-slate-200 hover:border-slate-300 hover:shadow-sm"
-                  }`}
+                  className={`shrink-0 w-52 text-left rounded-xl transition-all duration-150 p-4 ${sel
+                    ? "bg-orange-50 border-2 border-[#FF6F61] shadow-md shadow-orange-100"
+                    : "bg-white border border-slate-200 hover:border-slate-300 hover:shadow-sm"
+                    }`}
                 >
                   <div className="flex items-center justify-between mb-2">
                     <p
@@ -1080,11 +1109,10 @@ ${user.name || app.name || "참가자"}님은 ${fDate} ${fDay} ${fTime} 소개�
                     <button
                       key={tab.key}
                       onClick={() => setActiveTab(tab.key)}
-                      className={`flex items-center gap-1.5 px-3 sm:px-4 py-3 text-xs sm:text-[0.8rem] font-bold transition-all relative shrink-0 border-b-2 -mb-px ${
-                        activeTab === tab.key
-                          ? "text-[#FF6F61] border-[#FF6F61]"
-                          : "text-slate-400 border-transparent hover:text-slate-600"
-                      }`}
+                      className={`flex items-center gap-1.5 px-3 sm:px-4 py-3 text-xs sm:text-[0.8rem] font-bold transition-all relative shrink-0 border-b-2 -mb-px ${activeTab === tab.key
+                        ? "text-[#FF6F61] border-[#FF6F61]"
+                        : "text-slate-400 border-transparent hover:text-slate-600"
+                        }`}
                     >
                       <tab.icon size={13} />
                       {tab.label}
@@ -1705,59 +1733,59 @@ ${user.name || app.name || "참가자"}님은 ${fDate} ${fDay} ${fTime} 소개�
                                           )}
                                         </div>
                                         <div className="flex items-center gap-1">
-                                        {app.status === "selected" ? (
-                                          <>
-                                            <button
-                                              onClick={() => handleWaitlistConfirm(app)}
-                                              className="px-2 py-1 rounded-lg text-[0.65rem] font-black border transition-all bg-[#FFD700]/10 text-[#B8860B] border-[#FFD700]/30 hover:bg-[#FFD700] hover:text-white"
-                                            >
-                                              입금확정
-                                            </button>
-                                            <button
-                                              onClick={() => handleWaitlistDelete(app)}
-                                              className="px-2 py-1 rounded-lg text-[0.65rem] font-black bg-rose-50 text-rose-400 border border-rose-100 hover:bg-rose-500 hover:text-white transition-all"
-                                            >
-                                              삭제
-                                            </button>
-                                          </>
-                                        ) : (
-                                          <>
-                                            {app.status === "held" && (
+                                          {app.status === "selected" ? (
+                                            <>
                                               <button
-                                                onClick={() => callStatusApi(app.id, "applied").then(() => toast.success("검토 중으로 변경되었습니다.")).catch((e: any) => toast.error(e.message))}
-                                                className="px-2 py-1 rounded-lg text-[0.65rem] font-black bg-amber-100 text-amber-700 border border-amber-200 hover:bg-amber-200 transition-all flex items-center gap-1"
+                                                onClick={() => handleWaitlistConfirm(app)}
+                                                className="px-2 py-1 rounded-lg text-[0.65rem] font-black border transition-all bg-[#FFD700]/10 text-[#B8860B] border-[#FFD700]/30 hover:bg-[#FFD700] hover:text-white"
                                               >
-                                                보류 중 <X size={11} />
+                                                입금확정
                                               </button>
-                                            )}
-                                            <button
-                                              onClick={() => handleWaitlistSelect(app)}
-                                              disabled={isGenderFull[app.gender as "male" | "female"]}
-                                              className="px-2 py-1 rounded-lg text-[0.65rem] font-black border transition-all bg-[#FF7E7E]/10 text-[#FF7E7E] border-[#FF7E7E]/20 hover:bg-[#FF7E7E] hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
-                                            >
-                                              선발
-                                            </button>
-                                            <button
-                                              onClick={() => handleWaitlistHold(app)}
-                                              className="px-2 py-1 rounded-lg text-[0.65rem] font-black bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200 transition-all"
-                                            >
-                                              보류
-                                            </button>
-                                            <button
-                                              onClick={() => handleWaitlistConfirm(app)}
-                                              disabled={isGenderFull[app.gender as "male" | "female"]}
-                                              className="px-2 py-1 rounded-lg text-[0.65rem] font-black border transition-all bg-[#FFD700]/10 text-[#B8860B] border-[#FFD700]/30 hover:bg-[#FFD700] hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
-                                            >
-                                              선발확정
-                                            </button>
-                                            <button
-                                              onClick={() => handleWaitlistDelete(app)}
-                                              className="px-2 py-1 rounded-lg text-[0.65rem] font-black bg-rose-50 text-rose-400 border border-rose-100 hover:bg-rose-500 hover:text-white transition-all"
-                                            >
-                                              삭제
-                                            </button>
-                                          </>
-                                        )}
+                                              <button
+                                                onClick={() => handleWaitlistDelete(app)}
+                                                className="px-2 py-1 rounded-lg text-[0.65rem] font-black bg-rose-50 text-rose-400 border border-rose-100 hover:bg-rose-500 hover:text-white transition-all"
+                                              >
+                                                삭제
+                                              </button>
+                                            </>
+                                          ) : (
+                                            <>
+                                              {app.status === "held" && (
+                                                <button
+                                                  onClick={() => callStatusApi(app.id, "applied").then(() => toast.success("검토 중으로 변경되었습니다.")).catch((e: any) => toast.error(e.message))}
+                                                  className="px-2 py-1 rounded-lg text-[0.65rem] font-black bg-amber-100 text-amber-700 border border-amber-200 hover:bg-amber-200 transition-all flex items-center gap-1"
+                                                >
+                                                  보류 중 <X size={11} />
+                                                </button>
+                                              )}
+                                              <button
+                                                onClick={() => handleWaitlistSelect(app)}
+                                                disabled={isGenderFull[app.gender as "male" | "female"]}
+                                                className="px-2 py-1 rounded-lg text-[0.65rem] font-black border transition-all bg-[#FF7E7E]/10 text-[#FF7E7E] border-[#FF7E7E]/20 hover:bg-[#FF7E7E] hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
+                                              >
+                                                선발
+                                              </button>
+                                              <button
+                                                onClick={() => handleWaitlistHold(app)}
+                                                className="px-2 py-1 rounded-lg text-[0.65rem] font-black bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200 transition-all"
+                                              >
+                                                보류
+                                              </button>
+                                              <button
+                                                onClick={() => handleWaitlistConfirm(app)}
+                                                disabled={isGenderFull[app.gender as "male" | "female"]}
+                                                className="px-2 py-1 rounded-lg text-[0.65rem] font-black border transition-all bg-[#FFD700]/10 text-[#B8860B] border-[#FFD700]/30 hover:bg-[#FFD700] hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
+                                              >
+                                                선발확정
+                                              </button>
+                                              <button
+                                                onClick={() => handleWaitlistDelete(app)}
+                                                className="px-2 py-1 rounded-lg text-[0.65rem] font-black bg-rose-50 text-rose-400 border border-rose-100 hover:bg-rose-500 hover:text-white transition-all"
+                                              >
+                                                삭제
+                                              </button>
+                                            </>
+                                          )}
                                         </div>
                                       </div>
                                     </div>
@@ -2140,18 +2168,16 @@ ${user.name || app.name || "참가자"}님은 ${fDate} ${fDay} ${fTime} 소개�
                           .map(p => {
                             const isSubmitted = votingStatusData.submitted.some(s => s.userId === p.userId);
                             return (
-                              <div 
-                                key={p.id} 
-                                className={`flex items-center justify-between p-3.5 rounded-xl border transition-all duration-300 ${
-                                  isSubmitted 
-                                    ? 'bg-blue-600 border-blue-700 shadow-md shadow-blue-100 scale-[1.02]' 
-                                    : 'bg-white border-slate-200'
-                                }`}
+                              <div
+                                key={p.id}
+                                className={`flex items-center justify-between p-3.5 rounded-xl border transition-all duration-300 ${isSubmitted
+                                  ? 'bg-blue-600 border-blue-700 shadow-md shadow-blue-100 scale-[1.02]'
+                                  : 'bg-white border-slate-200'
+                                  }`}
                               >
                                 <div className="flex items-center gap-3">
-                                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[0.75rem] font-black shrink-0 ${
-                                    isSubmitted ? 'bg-blue-500 text-white' : 'bg-blue-50 text-blue-600'
-                                  }`}>
+                                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[0.75rem] font-black shrink-0 ${isSubmitted ? 'bg-blue-500 text-white' : 'bg-blue-50 text-blue-600'
+                                    }`}>
                                     {p.slotNumber}
                                   </div>
                                   <div className="flex flex-col">
@@ -2192,18 +2218,16 @@ ${user.name || app.name || "참가자"}님은 ${fDate} ${fDay} ${fTime} 소개�
                           .map(p => {
                             const isSubmitted = votingStatusData.submitted.some(s => s.userId === p.userId);
                             return (
-                              <div 
-                                key={p.id} 
-                                className={`flex items-center justify-between p-3.5 rounded-xl border transition-all duration-300 ${
-                                  isSubmitted 
-                                    ? 'bg-pink-600 border-pink-700 shadow-md shadow-pink-100 scale-[1.02]' 
-                                    : 'bg-white border-slate-200'
-                                }`}
+                              <div
+                                key={p.id}
+                                className={`flex items-center justify-between p-3.5 rounded-xl border transition-all duration-300 ${isSubmitted
+                                  ? 'bg-pink-600 border-pink-700 shadow-md shadow-pink-100 scale-[1.02]'
+                                  : 'bg-white border-slate-200'
+                                  }`}
                               >
                                 <div className="flex items-center gap-3">
-                                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[0.75rem] font-black shrink-0 ${
-                                    isSubmitted ? 'bg-pink-500 text-white' : 'bg-pink-50 text-pink-600'
-                                  }`}>
+                                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[0.75rem] font-black shrink-0 ${isSubmitted ? 'bg-pink-500 text-white' : 'bg-pink-50 text-pink-600'
+                                    }`}>
                                     {p.slotNumber}
                                   </div>
                                   <div className="flex flex-col">
@@ -2250,7 +2274,7 @@ ${user.name || app.name || "참가자"}님은 ${fDate} ${fDay} ${fTime} 소개�
                           <div className="space-y-2">
                             {participants
                               .filter(p => p.gender === 'male')
-                              .sort((a,b) => (a.slotNumber || 0) - (b.slotNumber || 0))
+                              .sort((a, b) => (a.slotNumber || 0) - (b.slotNumber || 0))
                               .map(p => {
                                 const vote = votingStatusData.rawVotes.find(v => v.userId === p.userId);
                                 if (!vote) return null;
@@ -2289,7 +2313,7 @@ ${user.name || app.name || "참가자"}님은 ${fDate} ${fDay} ${fTime} 소개�
                           <div className="space-y-2">
                             {participants
                               .filter(p => p.gender === 'female')
-                              .sort((a,b) => (a.slotNumber || 0) - (b.slotNumber || 0))
+                              .sort((a, b) => (a.slotNumber || 0) - (b.slotNumber || 0))
                               .map(p => {
                                 const vote = votingStatusData.rawVotes.find(v => v.userId === p.userId);
                                 if (!vote) return null;

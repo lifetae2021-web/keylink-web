@@ -31,7 +31,7 @@ export interface Session {
   region: 'busan' | 'changwon';    // 운영 지역 추가
   status: SessionStatus;
   votingUnlockedAt: Date | null;   // 투표 잠금 해제 시각
-  
+
   // v8.1.1: 호감도 투표 상세 설정
   voteConfig?: {
     maxSelection: number;          // 최대 선택 인원 (기본 3)
@@ -47,7 +47,7 @@ export interface Session {
     q4Label?: string;              // 최종 확인 문구
     q5Label?: string;              // 후기 입력 문구
   };
-  
+
   // v8.2.4: 스마트 로테이션 타이머 설정
   timerConfig?: {
     totalRounds?: number;
@@ -58,7 +58,7 @@ export interface Session {
     startMs?: number | null;
     status?: 'stopped' | 'running' | 'paused';
   };
-  
+
   // v6.6.0 추가 필드 (새 기수 등록 폼 연동)
   venue?: string;                  // 서면역 인근 카페
   venueAddress?: string;           // 상세 주소
@@ -67,7 +67,7 @@ export interface Session {
   targetMaleAge?: string;          // 94년생~01년생
   targetFemaleAge?: string;        // 94년생~01년생
   description?: string;
-  
+
   createdAt: Date;
   updatedAt?: Date;
 }
@@ -97,7 +97,7 @@ export interface Application {
   paymentConfirmed: boolean;
   appliedAt: Date;
   updatedAt: Date;
-  
+
   // 추가 프로필 정보 (v5.1.0 데이터 연동 강화)
   price?: number;
   maleOption?: string;
@@ -138,14 +138,14 @@ export interface Vote {
   userId: string;
   sessionId: string;
   choices: VoteChoice[];     // 1~3순위
-  
+
   // v8.1.7: 네이버 폼 스타일 대응 신규 필드
   realName?: string;         // 실명 확인
   myAlias?: string;          // 본인 호수 (ex. 키링남 1호)
   finalCheck?: boolean;      // 매칭 라인업 최종 확인 여부
   disclosureMode?: 'public' | 'anonymous'; // 공개 모드 (v8.1.7)
   feedback?: string;         // 후기 (선택 사항)
-  
+
   submittedAt: Date;
 }
 
