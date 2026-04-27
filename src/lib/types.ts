@@ -63,6 +63,8 @@ export interface Session {
   venue?: string;                  // 서면역 인근 카페
   venueAddress?: string;           // 상세 주소
   price?: number;                  // 29000
+  malePrice?: number;              // v8.12.3: 남성 개별 가격
+  femalePrice?: number;            // v8.12.3: 여성 개별 가격
   originalPrice?: number;          // 39000 (할인 표시용)
   targetMaleAge?: string;          // 94년생~01년생
   targetFemaleAge?: string;        // 94년생~01년생
