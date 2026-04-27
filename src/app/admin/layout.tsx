@@ -14,7 +14,7 @@ import {
   FileText, Loader2, Timer, ChevronsLeft, ChevronsRight, MessageSquare
 } from 'lucide-react';
 import Link from 'next/link';
-const version = '1.0.2';
+const version = '1.0.3';
 
 const PAGE_TITLE: Record<string, string> = {
   '/admin':               '대시보드',

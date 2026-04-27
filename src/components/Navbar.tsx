@@ -8,15 +8,15 @@ import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
 import toast from 'react-hot-toast';
-const version = '1.0.2';
+const version = '1.0.3';
 // v8.1.7: Premium Navigation Bar
 
-// '진행 과정' is a special anchor link pointing to /#how-it-works
+// '진행 과정' → /#process, '참여 신청' → /#apply 로 스무스 스크롤
 const navLinks = [
   { href: '/', label: 'HOME', anchor: 'top' },
   { href: '/notices', label: '공지 & FAQ', anchor: null },
-  { href: '/#how-it-works', label: '진행 과정', anchor: null },
-  { href: '/events', label: '참여 신청', anchor: null },
+  { href: '/', label: '진행 과정', anchor: 'process' },
+  { href: '/', label: '참여 신청', anchor: 'apply' },
   { href: '/status', label: '실시간 현황', anchor: null },
   { href: '/matching/result', label: '매칭 결과', anchor: null },
 ];
@@ -49,15 +49,17 @@ export default function Navbar() {
       if (pathname === '/') {
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
-        window.location.href = '/';
+        // 서브 페이지 → 홈 최상단으로 이동
+        sessionStorage.removeItem('scrollToAnchor');
+        router.push('/');
       }
       return;
     }
 
-    setActiveAnchor(anchor);
-    isManualScrolling.current = true;
-
-    const scrollTo = () => {
+    if (pathname === '/') {
+      // 홈 페이지 → 바로 스무스 스크롤
+      setActiveAnchor(anchor);
+      isManualScrolling.current = true;
       const el = document.getElementById(anchor);
       if (el) {
         el.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -65,22 +67,40 @@ export default function Navbar() {
       } else {
         isManualScrolling.current = false;
       }
-    };
-
-    if (pathname === '/') {
-      scrollTo();
     } else {
-      window.location.href = `/#${anchor}`;
+      // 서브 페이지 → sessionStorage에 앵커 저장 후 홈으로 이동
+      // 홈 마운트 시 sessionStorage를 읽어 스크롤 처리
+      sessionStorage.setItem('scrollToAnchor', anchor);
+      router.push('/');
     }
-  }, [pathname]);
+  }, [pathname, router]);
+
 
   useEffect(() => {
+    const ANCHORS = ['apply', 'process'] as const;
+    const HEADER_HEIGHT = 100;
+
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 40);
-      
-      // Active anchor tracking - Reset on mount
-      setActiveAnchor(null);
+
+      // 수동 스크롤 중에는 추적 건너뜀
+      if (isManualScrolling.current) return;
+      if (pathname !== '/') return;
+
+      // 현재 뷰포트에 걸쳐있는 섹션 감지
+      let found: string | null = null;
+      for (const id of ANCHORS) {
+        const el = document.getElementById(id);
+        if (!el) continue;
+        const rect = el.getBoundingClientRect();
+        if (rect.top <= HEADER_HEIGHT + 60 && rect.bottom > HEADER_HEIGHT) {
+          found = id;
+          break;
+        }
+      }
+      setActiveAnchor(found);
     };
+
     window.addEventListener('scroll', handleScroll, { passive: true });
 
     let unsubDoc: (() => void) | null = null;
@@ -104,6 +124,7 @@ export default function Navbar() {
     };
   }, [pathname]);
 
+
   // Reset active anchor when leaving homepage
   useEffect(() => {
     if (pathname !== '/') {
@@ -122,16 +143,12 @@ export default function Navbar() {
   };
 
   const isLinkActive = (link: typeof navLinks[0]) => {
-    // If on homepage, '참여 신청' (/events) is the default active menu
-    if (pathname === '/') {
-      if (link.href === '/events') return true;
-      return false; // Disable HOME and Scroll-spy highlights on homepage
-    }
-
-    // On other pages, use standard routing logic
+    // Anchor links: active when on homepage AND anchor matches
     if (link.anchor) {
+      if (link.anchor === 'top') return pathname === '/' && !activeAnchor;
       return pathname === '/' && activeAnchor === link.anchor;
     }
+    // Standard page links
     if (link.href === '/') return pathname === '/';
     return pathname === link.href || pathname.startsWith(link.href + '/');
   };
@@ -175,7 +192,7 @@ export default function Navbar() {
                 
                 return link.anchor ? (
                   <a
-                    key={link.href}
+                    key={link.label}
                     href={link.href}
                     onClick={(e) => { handleAnchorClick(e, link.anchor); if (pathname === '/register/social-profile') { e.preventDefault(); handleNavWithSignOut(link.href); } }}
                     style={{
@@ -191,7 +208,7 @@ export default function Navbar() {
                   </a>
                 ) : (
                   <Link
-                    key={link.href}
+                    key={link.label}
                     href={link.href}
                     onClick={(e) => { if (pathname === '/register/social-profile') { e.preventDefault(); handleNavWithSignOut(link.href); } }}
                     style={{
@@ -304,7 +321,7 @@ export default function Navbar() {
 
             return link.anchor ? (
               <a
-                key={link.href}
+                key={link.label}
                 href={link.href}
                 onClick={(e) => handleAnchorClick(e, link.anchor)}
                 style={{
@@ -317,7 +334,7 @@ export default function Navbar() {
               </a>
             ) : (
               <Link
-                key={link.href}
+                key={link.label}
                 href={link.href}
                 onClick={() => setIsMenuOpen(false)}
                 style={{

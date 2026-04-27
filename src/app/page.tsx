@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
-import Link from 'next/link';
+
 import {
   Heart, MapPin, ArrowRight, Star,
   CheckCircle, Sparkles, ChevronLeft, ChevronRight,
@@ -97,6 +97,24 @@ export default function HomePage() {
     return () => clearTimeout(t);
   }, []);
 
+  // 서브 페이지에서 앵커 메뉴 클릭 후 홈으로 이동한 경우, 대상 섹션으로 스크롤
+  useEffect(() => {
+    const anchor = sessionStorage.getItem('scrollToAnchor');
+    if (!anchor) return;
+    sessionStorage.removeItem('scrollToAnchor');
+
+    // DOM이 완전히 렌더링될 시간을 준 뒤 스크롤
+    const timer = setTimeout(() => {
+      const el = document.getElementById(anchor);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+
   const currentReviewRef = useRef(currentReview);
   useEffect(() => { currentReviewRef.current = currentReview; }, [currentReview]);
 
@@ -115,12 +133,6 @@ export default function HomePage() {
     return () => clearInterval(interval);
   }, [reviews.length]);
 
-  const stats = [
-    { value: '120기+', label: '누적 진행 회차', icon: Sparkles },
-    { value: '94%', label: '참가자 만족도', icon: Star },
-    { value: '2', label: '운영 지역', icon: MapPin },
-    { value: '6:6~8:8', label: '소규모 진행', icon: Heart },
-  ];
 
   const policies = [
     {
@@ -220,44 +232,15 @@ export default function HomePage() {
       </section>
 
       {/* ── UPCOMING EVENTS ── */}
-      <Suspense fallback={<div style={{ textAlign: 'center', padding: '80px', color: '#999' }}>로딩 중...</div>}>
-        <EventsSection />
-      </Suspense>
+      <div id="apply" style={{ scrollMarginTop: '100px' }}>
+        <Suspense fallback={<div style={{ textAlign: 'center', padding: '80px', color: '#999' }}>로딩 중...</div>}>
+          <EventsSection />
+        </Suspense>
+      </div>
 
-      {/* ── ABOUT STATS ── */}
-      <section style={{ padding: '60px 20px', background: '#F9F9F9' }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: '56px' }}>
-            <p style={{ fontSize: '0.8rem', fontWeight: '700', color: '#FF6F61', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '12px' }}>ABOUT 키링크</p>
-            <h2 className="kl-heading-lg" style={{ color: 'var(--color-text-primary)', marginBottom: '16px' }}>
-              왜 <span style={{ color: '#FF6F61' }}>키링크</span>인가요?
-            </h2>
-            <p style={{ color: 'var(--color-text-secondary)', fontSize: '1rem', maxWidth: '500px', margin: '0 auto', lineHeight: 1.8 }}>
-              2025년 2월 론칭 후 단 11개월 만에 120기 돌파.<br />입소문만으로 성장한 부산의 신뢰받는 소개팅 서비스
-            </p>
-          </div>
-
-          <div className="kl-stats-container">
-            <div className="kl-stats-grid">
-              {stats.map((stat) => {
-                const Icon = stat.icon;
-                return (
-                  <div key={stat.label} className="kl-stat-card">
-                    <div className="kl-stat-icon-box">
-                      {Icon && <Icon size={20} />}
-                    </div>
-                    <p className="kl-stat-value">{stat.value}</p>
-                    <p className="kl-stat-label">{stat.label}</p>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* ── SIMPLE PROCESS SUMMARY ── */}
-      <div id="how-it-works">
+      <div id="process" style={{ scrollMarginTop: '100px' }}>
         <ProcessSection />
       </div>
 
@@ -379,8 +362,11 @@ export default function HomePage() {
       </section>
 
       {/* ── FLOATING CTA ── */}
-      <Link
-        href="/events"
+      <button
+        onClick={() => {
+          const el = document.getElementById('apply');
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }}
         style={{
           position: 'fixed',
           bottom: '32px',
@@ -395,6 +381,8 @@ export default function HomePage() {
           fontSize: '1rem',
           padding: '16px 28px',
           borderRadius: '100px',
+          border: 'none',
+          cursor: 'pointer',
           textDecoration: 'none',
           boxShadow: '0 8px 24px rgba(255,111,97,0.4)',
           transition: 'transform 0.2s ease, box-shadow 0.2s ease',
@@ -409,7 +397,7 @@ export default function HomePage() {
         }}
       >
         참여 신청하기 <ArrowRight size={18} />
-      </Link>
+      </button>
     </div>
   );
 }
