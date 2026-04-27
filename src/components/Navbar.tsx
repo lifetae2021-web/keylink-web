@@ -383,14 +383,16 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* Admin version badge */}
+      {/* Admin version badge (Pill style) */}
       {isAdmin && (
         <div style={{
-          position: 'fixed', bottom: '16px', right: '16px', zIndex: 999,
-          background: '#111', color: '#fff',
-          fontSize: '0.82rem', fontWeight: '700', padding: '5px 12px',
+          position: 'fixed', bottom: '16px', right: '16px', zIndex: 9999,
+          background: '#0F172A', color: '#fff',
+          fontSize: '0.75rem', fontWeight: '800', padding: '6px 14px',
           borderRadius: '100px', pointerEvents: 'none',
-          backdropFilter: 'blur(6px)',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+          border: '1px solid rgba(255,255,255,0.1)',
+          backdropFilter: 'blur(8px)',
         }}>
           v{version}
         </div>
