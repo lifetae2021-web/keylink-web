@@ -7,6 +7,7 @@ import {
   CheckCircle, Clock, Shield, Camera, X, CreditCard, ChevronRight, Upload, ShieldCheck, FileText,
   CheckCircle2, WalletCards, Sparkles
 } from 'lucide-react';
+import { POLICIES } from '@/lib/constants/policies';
 import { getSession } from '@/lib/firestore/sessions';
 import { Session } from '@/lib/types';
 import { format } from 'date-fns';
@@ -71,6 +72,7 @@ export default function EventDetailPage() {
 
   const [safeOptionOpen, setSafeOptionOpen] = useState(false);
   const [policyOpenIdx, setPolicyOpenIdx] = useState<number | null>(null);
+  const [showRefundPolicy, setShowRefundPolicy] = useState(false);
   const [verificationFile, setVerificationFile] = useState<File | null>(null);
   const [verificationPreview, setVerificationPreview] = useState<string>('');
   const [verificationFileName, setVerificationFileName] = useState<string>('');
@@ -430,6 +432,76 @@ export default function EventDetailPage() {
           </div>
         </div>
       )}
+      {showRefundPolicy && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 4000,
+          background: 'rgba(0,0,0,0.7)',
+          display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
+          padding: '40px 20px', backdropFilter: 'blur(5px)',
+          overflowY: 'auto'
+        }}>
+          <div style={{
+            background: 'var(--color-surface)',
+            borderRadius: '24px',
+            padding: '32px 24px',
+            maxWidth: '440px', width: '100%',
+            position: 'relative',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
+            margin: 'auto 0'
+          }}>
+            <button onClick={() => setShowRefundPolicy(false)} style={{ position: 'absolute', top: '16px', right: '16px', background: 'none', border: 'none', cursor: 'pointer', padding: '8px' }}>
+              <X size={20} color="var(--color-text-muted)" />
+            </button>
+            
+            <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+              <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'rgba(255,111,97,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                <ShieldCheck size={28} color="#FF6F61" />
+              </div>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: '800', color: 'var(--color-text-primary)' }}>환불 및 취소 규정</h2>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '32px', maxHeight: '60vh', overflowY: 'auto', paddingRight: '4px' }}>
+              <div style={{ marginBottom: '4px' }}>
+                <p style={{ fontSize: '0.85rem', fontWeight: '800', color: 'var(--color-text-primary)', marginBottom: '6px' }}>제1조 (서비스의 성격)</p>
+                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>본 서비스는 다수의 참여자가 동일 일정에 맞추어 진행되는 오프라인 매칭 프로그램으로, 남녀 성비 및 참여 인원 구성이 사전에 확정되어 진행됩니다.</p>
+              </div>
+              
+              <div style={{ marginBottom: '4px' }}>
+                <p style={{ fontSize: '0.85rem', fontWeight: '800', color: 'var(--color-text-primary)', marginBottom: '6px' }}>제2조 (결제 및 환불)</p>
+                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>프로그램 특성상 참여자 매칭, 장소 예약, 운영 인력 배치 등 모든 사전 준비가 신청과 동시에 진행되므로, <strong style={{ color: '#C86A6A' }}>참여확정 이후 개인 사유(단순 변심, 일정 변경, 불참 등)에 의한 취소 및 환불은 원칙적으로 불가합니다.</strong></p>
+              </div>
+
+              <div style={{ marginBottom: '4px' }}>
+                <p style={{ fontSize: '0.85rem', fontWeight: '800', color: 'var(--color-text-primary)', marginBottom: '6px' }}>제3조 (환불 보장 및 예외 사항)</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div style={{ padding: '12px', borderRadius: '10px', background: 'rgba(255,111,97,0.05)', border: '1px solid rgba(255,111,97,0.1)' }}>
+                    <p style={{ fontSize: '0.75rem', fontWeight: '700', color: '#FF6F61', marginBottom: '2px' }}>① 중복 만남 보장</p>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>이용약관 제5조에 의거하여 100% 환불</p>
+                  </div>
+                  <div style={{ padding: '12px', borderRadius: '10px', background: 'rgba(169,143,213,0.05)', border: '1px solid rgba(169,143,213,0.1)' }}>
+                    <p style={{ fontSize: '0.75rem', fontWeight: '700', color: '#A98FD5', marginBottom: '2px' }}>② 안심 매칭 보장</p>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>안심 매칭 패키지 특약에 의거하여 환불됩니다.</p>
+                  </div>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>③ 서비스 제공자의 귀책 사유로 행사가 취소되거나, 본인의 입원 또는 직계가족 경조사 등 불가피한 사유 발생 시 증빙서류 확인 후 환불이 가능합니다.</p>
+                </div>
+              </div>
+
+              <div>
+                <p style={{ fontSize: '0.85rem', fontWeight: '800', color: 'var(--color-text-primary)', marginBottom: '6px' }}>제4조 (유의 사항)</p>
+                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>본인은 위 환불 및 취소 규정을 충분히 확인하였으며, 이에 동의합니다.</p>
+              </div>
+            </div>
+
+            <button
+              className="kl-btn-primary"
+              style={{ width: '100%', padding: '16px' }}
+              onClick={() => setShowRefundPolicy(false)}
+            >
+              확인
+            </button>
+          </div>
+        </div>
+      )}
 
       <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '20px' }}>
         <Link href="/events" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', color: 'var(--color-text-muted)', textDecoration: 'none', marginBottom: '32px', fontSize: '0.875rem' }}>
@@ -482,23 +554,11 @@ export default function EventDetailPage() {
           <div className="left-column">
             {step === 0 && (
               <>
-                {/* Hero card */}
-                <div style={{
-                  height: '260px',
-                  background: event.region === 'busan'
-                    ? 'linear-gradient(135deg, #FFF0F5, #FFE4E1)'
-                    : 'linear-gradient(135deg, #F8F8FF, #F0F0FF)',
-                  borderRadius: 'var(--radius-xl)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  marginBottom: '28px', position: 'relative', overflow: 'hidden',
-                }}>
-                  <div style={{ textAlign: 'center', position: 'relative' }}>
-
-                    <p style={{ fontSize: '4rem', fontWeight: '900', color: 'var(--color-text-primary)', lineHeight: 1 }}>
-                      {event.episodeNumber}<span style={{ fontSize: '1.5rem' }}>기</span>
-                    </p>
-                    <p style={{ fontSize: '1.05rem', color: '#475569', marginTop: '8px', fontWeight: '500', wordBreak: 'keep-all', letterSpacing: '-0.02em' }}>{event.title.replace(/ \d+기$/, '')}</p>
-                  </div>
+                {/* Title Section */}
+                <div style={{ marginBottom: '32px' }}>
+                  <h1 style={{ fontSize: '1.8rem', fontWeight: '900', color: 'var(--color-text-primary)', letterSpacing: '-0.03em', wordBreak: 'keep-all' }}>
+                    {event.title.replace(/ \d+기$/, '')}
+                  </h1>
                 </div>
 
                 {/* Description */}
@@ -528,12 +588,7 @@ export default function EventDetailPage() {
                 <div className="kl-card">
                   <h2 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '20px', color: 'var(--color-text-primary)' }}>환불 & 보장 정책 (키링크의 약속)</h2>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px' }}>
-                    {[
-                      { Icon: ShieldCheck, title: '중복 만남 100% 환불', subtitle: 'ZERO REPEAT GUARANTEE', desc: '최근 6개월 이내의 행사에서 만났던 인원을 다시 만나게 될 경우, 이용약관 제5조에 의거하여 100% 환불해 드립니다.', color: '#FF6F61', rgb: '255,111,97' },
-                      { Icon: WalletCards, title: '안심 매칭 보장', subtitle: 'SAFE MATCH GUARANTEE', desc: '남성 안심 패키지 선택 시, 미매칭 30% 환불', color: '#A98FD5', rgb: '169,143,213' },
-                      { Icon: Sparkles, title: '매칭 성공 혜택', subtitle: 'MATCH SUCCESS BONUS', desc: '오픈채팅방 즉시 연결', color: '#6EAE7C', rgb: '110,174,124' },
-                      { Icon: AlertCircle, title: '취소 정책', subtitle: 'CANCELLATION POLICY', desc: '결제 후 개인 사유 취소 불가', color: '#C86A6A', rgb: '200,106,106' },
-                    ].map((p, idx) => {
+                    {POLICIES.map((p, idx) => {
                       const isOpen = policyOpenIdx === idx;
                       return (
                         <div
@@ -551,7 +606,7 @@ export default function EventDetailPage() {
                         >
                           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
                             <div style={{ width: '42px', height: '42px', flexShrink: 0, borderRadius: '12px', background: `rgba(${p.rgb}, 0.1)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                              <p.Icon size={20} color={p.color} />
+                              <p.icon size={20} color={p.color} />
                             </div>
                             <div style={{ flex: 1 }}>
                               <p style={{ fontSize: '0.95rem', fontWeight: '800', color: 'var(--color-text-primary)' }}>{p.title}</p>
@@ -563,8 +618,8 @@ export default function EventDetailPage() {
                           </div>
 
                           {isOpen && (
-                            <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px dashed var(--color-border)', animation: 'fadeIn 0.3s ease' }}>
-                              <p style={{ fontSize: '0.9rem', color: '#475569', lineHeight: 1.65, fontWeight: '400', wordBreak: 'keep-all', letterSpacing: '-0.02em' }}>{p.desc}</p>
+                            <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px dashed var(--color-border)', animation: 'fadeIn 0.3s ease', textAlign: 'center' }}>
+                              <p style={{ fontSize: '0.875rem', color: '#64748b', lineHeight: 1.8, fontWeight: '500', wordBreak: 'keep-all', letterSpacing: '-0.02em', whiteSpace: 'pre-wrap', opacity: 0.9 }}>{p.desc}</p>
                             </div>
                           )}
                         </div>
@@ -813,10 +868,15 @@ export default function EventDetailPage() {
                       <input type="checkbox" checked={form.agreeTerms} onChange={(e) => setForm(f => ({ ...f, agreeTerms: e.target.checked }))} style={{ marginTop: '3px' }} />
                       <span style={{ fontSize: '0.85rem' }}>[필수] 이용약관 및 개인정보 수집/활용 동의</span>
                     </label>
-                    <label style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', cursor: 'pointer' }}>
-                      <input type="checkbox" checked={form.agreeRule} onChange={(e) => setForm(f => ({ ...f, agreeRule: e.target.checked }))} style={{ marginTop: '3px' }} />
-                      <span style={{ fontSize: '0.85rem' }}>[필수] 영구제명 규정 준수 동의</span>
-                    </label>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                      <label style={{ display: 'flex', gap: '10px', alignItems: 'center', cursor: 'pointer', flex: 1 }}>
+                        <input type="checkbox" checked={form.agreeRule} onChange={(e) => setForm(f => ({ ...f, agreeRule: e.target.checked }))} style={{ flexShrink: 0 }} />
+                        <span style={{ fontSize: '0.85rem' }}>[필수] 환불 및 취소 규정 확인 및 동의</span>
+                      </label>
+                      <button type="button" onClick={() => setShowRefundPolicy(true)} style={{ background: 'none', border: 'none', padding: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                        <ChevronRight size={18} color="#94a3b8" />
+                      </button>
+                    </div>
                   </div>
                 </form>
               </div>
@@ -955,51 +1015,26 @@ export default function EventDetailPage() {
                         )}
                       </div>
                     )}
+
+                    {/* 성별/옵션 선택 완료 후 안내 문구 (필요시) */}
+                    {userGender && form.gender && form.gender !== userGender && (
+                      <p style={{ textAlign: 'center', fontSize: '0.85rem', color: '#FF6F61', fontWeight: '700', marginTop: '10px' }}>
+                        본인 성별로만 신청 가능합니다.
+                      </p>
+                    )}
                   </div>
                 )}
 
-                <div style={{ marginTop: '24px' }}>
-                  {step === 0 ? (
-                    <>
-                      {userGender && form.gender && form.gender !== userGender && (
-                        <p style={{ textAlign: 'center', fontSize: '0.85rem', color: '#FF6F61', fontWeight: '700', marginBottom: '10px' }}>
-                          본인 성별로만 신청 가능합니다.
-                        </p>
-                      )}
-                      <button
-                        className="kl-btn-primary"
-                        style={{ width: '100%', padding: '18px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', opacity: (userGender && form.gender && form.gender !== userGender) ? 0.4 : 1 }}
-                        onClick={handleStep1Entry}
-                        disabled={!!(userGender && form.gender && form.gender !== userGender)}
-                      >
-                        {soldOutM && soldOutF ? <>대기 신청하기 <ChevronRight size={18} /></> : <>신청서 작성하기 <ChevronRight size={18} /></>}
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      {step === 1 && (
-                        <button
-                          form="bookingForm"
-                          type="submit"
-                          className="kl-btn-primary"
-                          style={{ width: '100%', padding: '18px', fontSize: '1.1rem', fontWeight: '800' }}
-                          disabled={isSubmitting || !submitReady}
-                        >
-                          {isSubmitting ? '제출 중...' : '신청서 제출 완료'}
-                        </button>
-                      )}
-                      {step > 0 && (
-                        <button type="button" onClick={() => setStep(step - 1)} style={{ width: '100%', background: 'none', border: 'none', marginTop: '12px', color: 'var(--color-text-muted)', fontWeight: '600', fontSize: '0.9rem', cursor: 'pointer' }}>이전으로 돌아가기</button>
-                      )}
-                    </>
-                  )}
-                </div>
+
+                {step > 0 && (
+                  <button type="button" onClick={() => setStep(step - 1)} style={{ width: '100%', background: 'none', border: 'none', marginTop: '12px', color: 'var(--color-text-muted)', fontWeight: '600', fontSize: '0.9rem', cursor: 'pointer' }}>이전으로 돌아가기</button>
+                )}
               </div>
             </div>
           )}
         </div>
         {/* 모바일 Sticky Bottom CTA */}
-        <div className="mobile-sticky-cta" style={{ display: 'none', position: 'fixed', bottom: 0, left: 0, right: 0, padding: '16px', background: 'var(--color-surface)', borderTop: '1px solid var(--color-border)', zIndex: 1000, boxShadow: '0 -4px 16px rgba(0,0,0,0.05)' }}>
+        <div className="sticky-cta" style={{ position: 'fixed', bottom: 0, left: 0, right: 0, padding: '16px', background: 'var(--color-surface)', borderTop: '1px solid var(--color-border)', zIndex: 1000, boxShadow: '0 -4px 16px rgba(0,0,0,0.05)' }}>
           {step === 0 && (
             <button
               className="kl-btn-primary"
@@ -1011,7 +1046,7 @@ export default function EventDetailPage() {
           )}
           {step === 1 && (
             <button form="bookingForm" type="submit" className="kl-btn-primary" style={{ width: '100%', padding: '16px', fontSize: '1.1rem', fontWeight: '800' }} disabled={isSubmitting || !submitReady}>
-              {isSubmitting ? '제출 중...' : '신청서 제출하기'}
+              {isSubmitting ? '제출 중...' : '신청서 제출 완료'}
             </button>
           )}
           {step === 2 && (
@@ -1026,7 +1061,7 @@ export default function EventDetailPage() {
           .event-detail-grid {
             grid-template-columns: 1fr !important;
           }
-          .mobile-sticky-cta {
+          .sticky-cta {
             display: block !important;
           }
         }

@@ -6,6 +6,7 @@ import {
   CheckCircle, Sparkles, ChevronLeft, ChevronRight,
   ShieldCheck, WalletCards
 } from 'lucide-react';
+import { POLICIES } from '@/lib/constants/policies';
 import { getReviews, ReviewItem } from '@/lib/firestore/cms';
 import { EventsSection } from '@/components/EventsSection';
 import { Suspense } from 'react';
@@ -36,7 +37,7 @@ function PolicyCards({ policies }: { policies: { icon: React.ElementType; title:
             <p style={{ fontSize: '0.7rem', fontWeight: '700', letterSpacing: '0.1em', color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '8px' }}>{policy.subtitle}</p>
             <h3 style={{ fontSize: '1.15rem', fontWeight: '800', color: 'var(--color-text-primary)', marginBottom: '16px' }}>{policy.title}</h3>
             {isOpen && (
-              <p style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)', lineHeight: 1.8, marginBottom: '16px' }}>{policy.desc}</p>
+              <p style={{ fontSize: '0.875rem', color: '#64748b', lineHeight: 1.8, marginBottom: '16px', whiteSpace: 'pre-wrap', textAlign: 'center', fontWeight: '500', letterSpacing: '-0.02em', opacity: 0.9 }}>{policy.desc}</p>
             )}
             <button
               onClick={() => setOpenIdx(isOpen ? null : idx)}
@@ -134,29 +135,7 @@ export default function HomePage() {
   }, [reviews.length]);
 
 
-  const policies = [
-    {
-      icon: ShieldCheck,
-      title: '중복 만남 100% 환불',
-      subtitle: 'ZERO REPEAT GUARANTEE',
-      desc: '최근 6개월 이내의 행사에서 만났던 인원을 다시 만나게 될 경우, 이용약관 제5조에 의거하여 100% 환불해 드립니다.',
-      color: '#FF6F61',
-    },
-    {
-      icon: WalletCards,
-      title: '안심 매칭 보장',
-      subtitle: 'SAFE MATCH GUARANTEE',
-      desc: '남성 안심 패키지 선택 시, 미매칭 30% 환불',
-      color: '#A98FD5',
-    },
-    {
-      icon: Sparkles,
-      title: '매칭 성공 혜택',
-      subtitle: 'MATCH SUCCESS BONUS',
-      desc: '오픈채팅방 즉시 연결',
-      color: '#6EAE7C',
-    },
-  ];
+  const homePolicies = POLICIES.slice(0, 3);
 
   return (
     <div>
@@ -256,7 +235,7 @@ export default function HomePage() {
           </p>
         </div>
 
-        <PolicyCards policies={policies} />
+        <PolicyCards policies={homePolicies} />
       </section>
 
       {/* ── REVIEWS ── */}
