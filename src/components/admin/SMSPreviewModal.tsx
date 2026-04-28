@@ -118,9 +118,9 @@ const SMSPreviewModal: React.FC<SMSPreviewModalProps> = ({
       />
 
       {/* Modal Content */}
-      <div className="relative bg-white w-full max-w-2xl rounded-[32px] shadow-2xl overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-4 duration-300">
+      <div className="relative bg-white w-full max-w-2xl max-h-[90vh] flex flex-col rounded-[32px] shadow-2xl overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-4 duration-300">
         {/* Header */}
-        <div className="bg-gradient-to-r from-[#FF7E7E] to-[#FFAB91] px-8 py-6 flex items-center justify-between">
+        <div className="bg-gradient-to-r from-[#FF7E7E] to-[#FFAB91] px-6 py-5 md:px-8 md:py-6 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3 text-white">
             <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
               <MessageSquare size={20} />
@@ -138,7 +138,7 @@ const SMSPreviewModal: React.FC<SMSPreviewModalProps> = ({
           </button>
         </div>
 
-        <div className="p-8">
+        <div className="p-5 md:p-8 overflow-y-auto flex-1">
           {/* 템플릿 선택 버튼 */}
           <div className="mb-5 relative">
             <button

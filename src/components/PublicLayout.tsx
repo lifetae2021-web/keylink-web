@@ -6,6 +6,7 @@ import Navbar from './Navbar';
 import Footer from './Footer';
 import CherryBlossoms from './CherryBlossoms';
 import ProfileGuard from './ProfileGuard';
+import AnalyticsTracker from './AnalyticsTracker';
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -28,6 +29,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
 
   return (
     <div className="flex flex-col min-h-screen">
+      <AnalyticsTracker />
       <ProfileGuard />
       <CherryBlossoms />
       <Navbar />

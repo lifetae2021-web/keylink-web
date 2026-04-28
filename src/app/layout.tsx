@@ -37,7 +37,7 @@ export default function RootLayout({
       <body className="antialiased">
         <PublicLayout>{children}</PublicLayout>
 <Toaster
-          position="bottom-center"
+          position="top-center"
           toastOptions={{
             duration: 3000,
             style: {

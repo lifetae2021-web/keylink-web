@@ -5,12 +5,17 @@ import { useRouter } from 'next/navigation';
 import { Calendar, MapPin, Users, ArrowRight, Timer, LayoutGrid, Loader2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { getAllSessions } from '@/lib/firestore/sessions';
-import { Session } from '@/lib/types';
+import { Session, Application } from '@/lib/types';
+import { auth, db } from '@/lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 
 export default function StatusListPage() {
   const router = useRouter();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [userApps, setUserApps] = useState<Record<string, Application>>({});
+  const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
     async function fetchSessions() {
@@ -39,6 +44,31 @@ export default function StatusListPage() {
       }
     }
     fetchSessions();
+
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      setUser(currentUser);
+      if (currentUser) {
+        try {
+          const q = query(
+            collection(db, 'applications'),
+            where('userId', '==', currentUser.uid)
+          );
+          const snap = await getDocs(q);
+          const apps: Record<string, Application> = {};
+          snap.forEach(doc => {
+            const data = doc.data() as Application;
+            apps[data.sessionId] = { ...data, id: doc.id };
+          });
+          setUserApps(apps);
+        } catch (error) {
+          console.error("Error fetching user applications:", error);
+        }
+      } else {
+        setUserApps({});
+      }
+    });
+
+    return () => unsubscribe();
   }, []);
 
   const getStatusInfo = (event: Session) => {
@@ -181,13 +211,16 @@ export default function StatusListPage() {
                       onClick={e => e.stopPropagation()}
                       style={{
                         display: 'flex', alignItems: 'center', gap: '4px',
-                        background: '#FF6F61', color: '#fff',
+                        background: userApps[event.id]?.status === 'confirmed' ? '#10b981' : (userApps[event.id] ? '#94a3b8' : '#FF6F61'),
+                        color: '#fff',
                         fontSize: '0.8rem', fontWeight: '800',
                         padding: '8px 16px', borderRadius: '100px',
                         textDecoration: 'none',
                       }}
                     >
-                      {status.label === '모집 마감' ? '대기자 신청하기' : '신청하기'}
+                      {userApps[event.id]?.status === 'confirmed' 
+                        ? '참가 확정' 
+                        : (userApps[event.id] ? '신청완료' : (status.label === '모집 마감' ? '대기자 신청하기' : '신청하기'))}
                     </Link>
                   )}
                 </div>

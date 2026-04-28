@@ -10,6 +10,10 @@ import { Session } from '@/lib/types';
 import { subscribeAllSessions } from '@/lib/firestore/sessions';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from 'date-fns';
 import { ko } from 'date-fns/locale';
+import { auth, db } from '@/lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { Application } from '@/lib/types';
 
 // Firestore Session → KeylinkEvent 어댑터
 function sessionToEvent(session: Session): KeylinkEvent {
@@ -45,6 +49,8 @@ export function EventsSection({ standalone = false }: { standalone?: boolean }) 
   const [selectedRegion, setSelectedRegion] = useState<'busan' | 'changwon'>('busan');
   const [liveEvents, setLiveEvents] = useState<KeylinkEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [userApps, setUserApps] = useState<Record<string, Application>>({});
+  const [user, setUser] = useState<any>(null);
 
   // Firestore 실시간 구독
   useEffect(() => {
@@ -65,7 +71,34 @@ export function EventsSection({ standalone = false }: { standalone?: boolean }) 
       setLiveEvents(mappedEvents);
       setIsLoading(false);
     });
-    return () => unsubscribe();
+
+    const unsubAuth = onAuthStateChanged(auth, async (currentUser) => {
+      setUser(currentUser);
+      if (currentUser) {
+        try {
+          const q = query(
+            collection(db, 'applications'),
+            where('userId', '==', currentUser.uid)
+          );
+          const snap = await getDocs(q);
+          const apps: Record<string, Application> = {};
+          snap.forEach(doc => {
+            const data = doc.data() as Application;
+            apps[data.sessionId] = { ...data, id: doc.id };
+          });
+          setUserApps(apps);
+        } catch (error) {
+          console.error("Error fetching user applications:", error);
+        }
+      } else {
+        setUserApps({});
+      }
+    });
+
+    return () => {
+      unsubscribe();
+      unsubAuth();
+    };
   }, []);
 
   // 카드 리스트용 필터링 및 정렬 (v1.9.8: 마감 기수 노출 24시간 유지)
@@ -74,12 +107,26 @@ export function EventsSection({ standalone = false }: { standalone?: boolean }) 
   // 따라서 여기서는 지역/날짜 필터만 적용하여 마감 기수도 정상 노출
   const now = new Date();
   const filtered = liveEvents
-    .filter((e) => {
-      const dateMatch = selectedDate ? isSameDay(e.date, selectedDate) : true;
-      const regionMatch = e.region === selectedRegion;
-      return dateMatch && regionMatch;
-    })
+    .filter((e) => e.region === selectedRegion)
     .sort((a, b) => a.date.getTime() - b.date.getTime());
+
+  const handleDateSelect = (date: Date | null) => {
+    setSelectedDate(date);
+    if (date) {
+      // 선택한 날짜의 첫 번째 이벤트 찾기
+      const targetEvent = filtered.find(e => isSameDay(e.date, date));
+      if (targetEvent) {
+        // DOM 업데이트(필요 시) 반영을 위해 약간의 딜레이
+        setTimeout(() => {
+          const el = document.getElementById(`event-${targetEvent.id}`);
+          if (el) {
+            const y = el.getBoundingClientRect().top + window.scrollY - 100; // 상단 여백 100px 확보
+            window.scrollTo({ top: y, behavior: 'smooth' });
+          }
+        }, 50);
+      }
+    }
+  };
 
   // 달력용 필터링 (지역만 유지, 날짜 필터 제거하여 상시 노출)
   const calendarEvents = liveEvents.filter(e => e.region === selectedRegion);
@@ -125,7 +172,7 @@ export function EventsSection({ standalone = false }: { standalone?: boolean }) 
 
       {/* Calendar View */}
       <section className="kl-calendar-wrapper">
-        <EventCalendar events={calendarEvents} onDateSelect={setSelectedDate} selectedDate={selectedDate} />
+        <EventCalendar events={calendarEvents} onDateSelect={handleDateSelect} selectedDate={selectedDate} />
       </section>
 
       {/* Events Grid */}
@@ -144,11 +191,14 @@ export function EventsSection({ standalone = false }: { standalone?: boolean }) 
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '24px' }}>
-            {filtered.map((event, idx) => (
-              <div key={event.id} className="animate-fadeInUp" style={{ animationDelay: `${idx * 0.1}s` }}>
-                <EventCard event={event} />
-              </div>
-            ))}
+            {filtered.map((event, idx) => {
+              const isSelected = selectedDate ? isSameDay(event.date, selectedDate) : false;
+              return (
+                <div key={event.id} id={`event-${event.id}`} className="animate-fadeInUp" style={{ animationDelay: `${idx * 0.1}s` }}>
+                  <EventCard event={event} isSelected={isSelected} userApp={userApps[event.id]} />
+                </div>
+              );
+            })}
           </div>
         )}
       </section>
@@ -252,7 +302,7 @@ function EventCalendar({ events, onDateSelect, selectedDate }: { events: Keylink
   )
 }
 
-function EventCard({ event }: { event: KeylinkEvent }) {
+function EventCard({ event, isSelected = false, userApp }: { event: KeylinkEvent, isSelected?: boolean, userApp?: Application }) {
   const router = useRouter();
   const isSoldOut = (event.maxMale > 0 && event.currentMale >= event.maxMale) && (event.maxFemale > 0 && event.currentFemale >= event.maxFemale);
 
@@ -290,10 +340,11 @@ function EventCard({ event }: { event: KeylinkEvent }) {
     <Link
       href={`/events/${event.id}`}
       style={{
-        background: '#fff',
+        background: isSelected ? '#FFF5F4' : '#fff',
         borderRadius: '32px',
         padding: '32px',
-        border: '1.5px solid #eee',
+        border: isSelected ? '2px solid #FF6F61' : '1.5px solid #eee',
+        boxShadow: isSelected ? '0 10px 30px rgba(255,111,97,0.15)' : 'none',
         transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         display: 'flex',
         flexDirection: 'column',
@@ -309,8 +360,9 @@ function EventCard({ event }: { event: KeylinkEvent }) {
       }}
       onMouseLeave={e => {
         e.currentTarget.style.transform = 'translateY(0)';
-        e.currentTarget.style.borderColor = '#eee';
-        e.currentTarget.style.boxShadow = 'none';
+        e.currentTarget.style.borderColor = isSelected ? '#FF6F61' : '#eee';
+        e.currentTarget.style.boxShadow = isSelected ? '0 10px 30px rgba(255,111,97,0.15)' : 'none';
+        e.currentTarget.style.background = isSelected ? '#FFF5F4' : '#fff';
       }}
     >
       {/* 배지 + 타이틀 */}
@@ -383,13 +435,16 @@ function EventCard({ event }: { event: KeylinkEvent }) {
             onClick={e => { e.preventDefault(); e.stopPropagation(); router.push(`/events/${event.id}`); }}
             style={{
               display: 'flex', alignItems: 'center', gap: '4px',
-              background: '#FF6F61', color: '#fff',
+              background: userApp?.status === 'confirmed' ? '#10b981' : (userApp ? '#94a3b8' : '#FF6F61'),
+              color: '#fff',
               fontSize: '0.8rem', fontWeight: '800',
               padding: '8px 16px', borderRadius: '100px',
               border: 'none', cursor: 'pointer',
             }}
           >
-            {isSoldOut ? '대기자 신청하기' : '신청하기'}
+            {userApp?.status === 'confirmed' 
+              ? '참가 확정' 
+              : (userApp ? '신청완료' : (isSoldOut ? '대기자 신청하기' : '신청하기'))}
           </button>
         )}
       </div>

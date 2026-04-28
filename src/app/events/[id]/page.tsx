@@ -686,7 +686,7 @@ export default function EventDetailPage() {
                   <div className="kl-card">
                     <h3 style={{ fontSize: '1rem', fontWeight: '800', color: 'var(--color-text-primary)', marginBottom: '16px', borderBottom: '1px solid var(--color-border)', paddingBottom: '12px' }}>재직 증명 (필수)</h3>
                     <p style={{ fontSize: '0.8rem', color: '#64748B', lineHeight: 1.6, marginBottom: '16px' }}>
-                      신뢰할 수 있는 모임을 위해 서류(재직증명서, 급여명세서, 건강보험 등) 중 하나를 반드시 업로드해 주세요.
+                      신뢰할 수 있는 모임을 위해 서류(재직증명서, 급여명세서, 건강보험, 사원증, 명함 등) 중 하나를 반드시 업로드해 주세요.
                     </p>
 
                     {/* 미리보기 영역 */}
@@ -752,7 +752,7 @@ export default function EventDetailPage() {
                     <div style={{ marginBottom: '24px' }}>
                       <label className="kl-label">희망 음료 (중복 선택 가능)</label>
                       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '10px' }}>
-                        {['아이스 아메리카노', '제로 콜라', '복숭아 아이스티', '얼그레이', '페퍼민트', '카라멜 블랙티', '물', '따뜻한 음료'].map(d => {
+                        {['아이스 아메리카노', '복숭아 아이스티', '얼그레이', '페퍼민트', '카라멜 블랙티', '물', '따뜻한 음료'].map(d => {
                           const selected = (form.drink || []).includes(d);
                           return (
                             <button

@@ -1,6 +1,6 @@
 'use client';
 
-import { X, User, ShieldCheck, Phone, Camera, MapPin, Briefcase, Users2, Wine, Cigarette, Info, Coffee, Heart, HeartOff, Mail, Calendar, Ruler, Weight, ExternalLink, History, AlertCircle, CheckCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, User, ShieldCheck, Phone, Camera, MapPin, Briefcase, Users2, Wine, Cigarette, Info, Coffee, Heart, HeartOff, Calendar, Ruler, Weight, ExternalLink, History, AlertCircle, CheckCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 import { db } from '@/lib/firebase';
@@ -332,19 +332,6 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose }:
                   <TextBox label="기타 특이사항" value={user.etc || user.about} icon={Info} color="#A78BFA" />
                 </div>
 
-                {/* 5. 계정 메타 정보 */}
-                <div className="flex items-center justify-between pt-8 border-t border-slate-100">
-                  <div className="flex items-center gap-2 text-slate-400">
-                    <Mail size={14} />
-                    <span className="text-xs font-bold">{user.email || '-'}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-slate-400">
-                    <Calendar size={14} />
-                    <span className="text-xs font-bold">
-                      가입: {user.createdAt?.seconds ? format(new Date(user.createdAt.seconds * 1000), 'yy.MM.dd') : '-'}
-                    </span>
-                  </div>
-                </div>
 
                 {/* 6. 활동 지표 */}
                 <div className="flex gap-4 pt-4">

@@ -482,7 +482,7 @@ export default function MyPage() {
 
             <EditRow label="희망 음료 (중복 선택 가능)">
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                {['아이스 아메리카노', '제로 콜라', '복숭아 아이스티', '얼그레이', '페퍼민트', '카라멜 블랙티', '물', '따뜻한 음료'].map(d => {
+                {['아이스 아메리카노', '복숭아 아이스티', '얼그레이', '페퍼민트', '카라멜 블랙티', '물', '따뜻한 음료'].map(d => {
                   const selected = (editForm.drink || []).includes(d);
                   return (
                     <button 
@@ -513,7 +513,7 @@ export default function MyPage() {
              <EditRow label="재직 증명 (필수)" required>
                <div style={{ background: '#F8FAFC', border: '1.5px solid #E2E8F0', borderRadius: '16px', padding: '20px', marginBottom: '24px' }}>
                  <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', lineHeight: 1.6, marginBottom: '16px' }}>
-                   신뢰할 수 있는 모임을 위해 서류(재직증명서, 급여명세서, 건강보험 등) 중 하나를 반드시 업로드해 주세요.
+                   신뢰할 수 있는 모임을 위해 서류(재직증명서, 급여명세서, 건강보험, 사원증, 명함 등) 중 하나를 반드시 업로드해 주세요.
                  </p>
                  
                  {/* 미리보기 영역 */}

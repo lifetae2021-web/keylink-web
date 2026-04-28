@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import {
   Users, Heart, TrendingUp, Clock,
   CalendarCheck, UserPlus, ChevronRight, Zap, Loader2,
-  ClipboardList, Calendar
+  ClipboardList, Calendar, Eye
 } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
@@ -61,6 +61,10 @@ export default function AdminDashboard() {
     prevMonthlyMatchCount: 0,
     monthlyRevenue: 0,
     prevMonthlyRevenue: 0,
+    todayPV: 0,
+    todayUV: 0,
+    yesterdayPV: 0,
+    yesterdayUV: 0,
   });
   const [genderData, setGenderData] = useState([
     { name: '남성', value: 0, color: '#60a5fa' },
@@ -96,10 +100,11 @@ export default function AdminDashboard() {
         const allApps = appsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
         const now = new Date();
-        const dayMap: Record<string, { applicants: number; matches: number }> = {};
+        const dayMap: Record<string, { applicants: number; matches: number; pv: number; uv: number }> = {};
         for (let i = 6; i >= 0; i--) {
           const d = subDays(now, i);
-          dayMap[format(d, 'yyyy-MM-dd')] = { applicants: 0, matches: 0 };
+          const dateKey = format(d, 'yyyy-MM-dd');
+          dayMap[dateKey] = { applicants: 0, matches: 0, pv: 0, uv: 0 };
         }
 
         const appMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -125,11 +130,6 @@ export default function AdminDashboard() {
             if (dayMap[key]) dayMap[key].matches++;
           }
         });
-
-        const chart = Object.entries(dayMap).map(([dateStr, v]) => ({
-          day: DAY_LABELS[new Date(dateStr).getDay()],
-          ...v,
-        }));
 
         // 3. 매칭 성공 커플 (votes 컬렉션)
         let matchCount = 0, monthlyMatchCount = 0, prevMonthlyMatchCount = 0;
@@ -177,7 +177,38 @@ export default function AdminDashboard() {
           })
           .slice(0, 3);
 
-        // 6. 최근 가입자
+        // 6. 방문자 데이터 (서버 API 호출 - Permission 에러 방지)
+        let todayPV = 0, todayUV = 0, yesterdayPV = 0, yesterdayUV = 0;
+        try {
+          const res = await fetch('/api/admin/analytics/stats');
+          const analyticsData = await res.json();
+          
+          const todayStr = format(now, 'yyyy-MM-dd');
+          const yesterdayStr = format(subDays(now, 1), 'yyyy-MM-dd');
+          
+          Object.entries(analyticsData).forEach(([dateStr, data]: [string, any]) => {
+            if (dayMap[dateStr]) {
+              dayMap[dateStr].pv = data.pv || 0;
+              dayMap[dateStr].uv = data.uv || 0;
+            }
+            if (dateStr === todayStr) {
+              todayPV = data.pv || 0;
+              todayUV = data.uv || 0;
+            } else if (dateStr === yesterdayStr) {
+              yesterdayPV = data.pv || 0;
+              yesterdayUV = data.uv || 0;
+            }
+          });
+        } catch (e) {
+          console.error('Error fetching analytics via API:', e);
+        }
+
+        const chart = Object.entries(dayMap).map(([dateStr, v]) => ({
+          day: DAY_LABELS[new Date(dateStr).getDay()],
+          ...v,
+        }));
+
+        // 7. 최근 가입자
         const recentQuery = query(
           collection(db, 'users'),
           orderBy('createdAt', 'desc'),
@@ -185,7 +216,13 @@ export default function AdminDashboard() {
         );
         const recentSnap = await getDocs(recentQuery);
 
-        setStats({ totalUsers: usersSnap.size, monthlyNewUsers, prevMonthlyNewUsers, weeklyApps, prevWeeklyApps, monthlyApps, prevMonthlyApps, totalApps: allApps.length, matchCount, monthlyMatchCount, prevMonthlyMatchCount, monthlyRevenue, prevMonthlyRevenue });
+        setStats({ 
+          totalUsers: usersSnap.size, monthlyNewUsers, prevMonthlyNewUsers, 
+          weeklyApps, prevWeeklyApps, monthlyApps, prevMonthlyApps, 
+          totalApps: allApps.length, matchCount, monthlyMatchCount, 
+          prevMonthlyMatchCount, monthlyRevenue, prevMonthlyRevenue,
+          todayPV, todayUV, yesterdayPV, yesterdayUV
+        });
         setGenderData([
           { name: '남성', value: maleCount + femaleCount > 0 ? Math.round((maleCount / (maleCount + femaleCount)) * 100) : 50, color: '#60a5fa' },
           { name: '여성', value: maleCount + femaleCount > 0 ? Math.round((femaleCount / (maleCount + femaleCount)) * 100) : 50, color: '#FF6F61' },
@@ -229,6 +266,8 @@ export default function AdminDashboard() {
     { label: '신청',      icon: UserPlus,   color: '#60a5fa', monthlyNew: stats.monthlyApps,       monthlyNewLabel: '이번 달', subValue: stats.totalApps.toLocaleString(),            subLabel: '누적', trend: calcTrend(stats.monthlyApps, stats.prevMonthlyApps) },
     { label: '매칭 커플', icon: Heart,      color: '#f472b6', monthlyNew: stats.monthlyMatchCount, monthlyNewLabel: '이번 달', subValue: stats.matchCount.toLocaleString(),           subLabel: '누적', trend: calcTrend(stats.monthlyMatchCount, stats.prevMonthlyMatchCount) },
     { label: '매출',      icon: TrendingUp, color: '#4ade80', monthlyNew: stats.monthlyRevenue,    monthlyNewLabel: '이번 달', subValue: formatRevenue(stats.prevMonthlyRevenue),     subLabel: '전월', trend: calcTrend(stats.monthlyRevenue, stats.prevMonthlyRevenue) },
+    { label: '방문자(UV)', icon: Users,      color: '#8b5cf6', monthlyNew: stats.todayUV,          monthlyNewLabel: '오늘',    subValue: stats.yesterdayUV.toLocaleString(),          subLabel: '어제', trend: calcTrend(stats.todayUV, stats.yesterdayUV) },
+    { label: '페이지뷰(PV)', icon: Eye,        color: '#f59e0b', monthlyNew: stats.todayPV,          monthlyNewLabel: '오늘',    subValue: stats.yesterdayPV.toLocaleString(),          subLabel: '어제', trend: calcTrend(stats.todayPV, stats.yesterdayPV) },
   ];
 
   return (
@@ -240,7 +279,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         {statsCards.map((s, i) => (
           <div key={i} style={{ ...panel, padding: '16px 20px' }} className="hover:border-slate-300 transition-colors group">
             <div className="flex items-center gap-2 mb-3">
@@ -438,12 +477,13 @@ export default function AdminDashboard() {
                   />
                   <Area type="monotone" dataKey="applicants" stroke="#FF6F61" strokeWidth={2} fill="url(#gA)" name="신청" />
                   <Area type="monotone" dataKey="matches"    stroke="#60a5fa" strokeWidth={2} fill="url(#gM)" name="확정" />
+                  <Area type="monotone" dataKey="uv"         stroke="#8b5cf6" strokeWidth={2} fill="none" name="방문자" />
                 </AreaChart>
               </ResponsiveContainer>
             )}
           </div>
-          <div className="flex gap-5 mt-4 pt-4" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-            {[['#FF6F61', '신청'], ['#60a5fa', '확정']].map(([c, l]) => (
+          <div className="flex flex-wrap gap-5 mt-4 pt-4" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+            {[['#FF6F61', '신청'], ['#60a5fa', '확정'], ['#8b5cf6', '방문자(UV)']].map(([c, l]) => (
               <div key={l} className="flex items-center gap-2">
                 <div style={{ width: 12, height: 2, borderRadius: 2, background: c }} />
                 <span style={{ fontSize: '0.75rem', color: '#555' }}>{l}</span>
