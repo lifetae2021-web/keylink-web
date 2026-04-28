@@ -888,10 +888,36 @@ export default function EventDetailPage() {
                   <CheckCircle size={32} color="#6EAE7C" />
                 </div>
                 <h2 style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--color-text-primary)', marginBottom: '10px' }}>신청서 제출 완료!</h2>
-                <p style={{ fontSize: '0.95rem', color: 'var(--color-text-secondary)', marginBottom: '32px', lineHeight: 1.6 }}>신청서 및 인증 내역 검토하고 선발된 인원에게만 순차적으로 연락드립니다.</p>
-                <Link href="/mypage" className="kl-btn-primary" style={{ width: '100%', padding: '18px', fontSize: '1.1rem', textAlign: 'center', display: 'block' }}>
-                  마이페이지에서 확인하기
-                </Link>
+                <p style={{ fontSize: '0.95rem', color: 'var(--color-text-secondary)', marginBottom: '40px', lineHeight: 1.7 }}>
+                  남녀간 이상형에 부합된 인원에게만<br />
+                  순차적으로 연락드립니다.
+                </p>
+                <div style={{ position: 'relative', width: '100%', marginTop: '20px' }}>
+                  <div style={{
+                    position: 'absolute',
+                    top: '-32px',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    background: 'linear-gradient(135deg, #FF6F61, #FF8E53)',
+                    color: '#fff',
+                    padding: '6px 14px',
+                    borderRadius: '20px',
+                    fontSize: '0.8rem',
+                    fontWeight: '900',
+                    boxShadow: '0 4px 15px rgba(255,111,97,0.4)',
+                    whiteSpace: 'nowrap',
+                    animation: 'floatBadge 2s infinite ease-in-out',
+                    zIndex: 10,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}>
+                    <Sparkles size={14} /> 선발 확률 UP
+                  </div>
+                  <Link href="/events" className="kl-btn-primary" style={{ width: '100%', padding: '20px', fontSize: '1.1rem', textAlign: 'center', display: 'block', borderRadius: '16px', fontWeight: '900', boxShadow: '0 8px 25px rgba(255,111,97,0.15)' }}>
+                    추가 신청 하기
+                  </Link>
+                </div>
               </div>
             )}
           </div>
@@ -1057,6 +1083,10 @@ export default function EventDetailPage() {
         </div>
 
         <style>{`
+        @keyframes floatBadge {
+          0%, 100% { transform: translate(-50%, 0); }
+          50% { transform: translate(-50%, -8px); }
+        }
         @media (max-width: 900px) {
           .event-detail-grid {
             grid-template-columns: 1fr !important;

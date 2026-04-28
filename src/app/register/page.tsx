@@ -16,7 +16,7 @@ function RegisterForm() {
 
   const [formStep, setFormStep] = useState(1); // 1: Form, 2: Complete
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   // Rules
   const [agreements, setAgreements] = useState({
     terms: false,
@@ -59,7 +59,7 @@ function RegisterForm() {
       return () => clearTimeout(timer);
     }
   }, [idError]);
-  
+
   const formatPhone = (val: string) => {
     const digits = val.replace(/\D/g, '').slice(0, 11);
     if (digits.length <= 3) return digits;
@@ -76,7 +76,7 @@ function RegisterForm() {
 
   const update = (key: string, value: string) => {
     let formattedValue = value;
-    
+
     if (key === 'username') {
       // Allow only lowercase English and numbers
       const filtered = value.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -109,7 +109,7 @@ function RegisterForm() {
 
   const handleIdCheck = async () => {
     if (!form.username) return toast.error('아이디를 입력해주세요.');
-    
+
     try {
       // v7.3.3: Admin SDK API를 통해 쿼리 (비로그인 클라이언트 Firestore 직접 접근 제거)
       const res = await fetch('/api/auth/check-id', {
@@ -144,7 +144,7 @@ function RegisterForm() {
       setPhoneChecked(false);
       return;
     }
-    
+
     try {
       const res = await fetch('/api/auth/check-phone', {
         method: 'POST',
@@ -222,7 +222,7 @@ function RegisterForm() {
       display: 'flex', flexDirection: 'column', alignItems: 'center',
     }}>
       <div style={{ maxWidth: '480px', width: '100%' }}>
-        
+
         {formStep === 1 ? (
           <div style={{
             background: '#FFFFFF', border: '1px solid var(--color-border)',
@@ -239,13 +239,13 @@ function RegisterForm() {
               {/* Phone (Main) - Moved to top, Auto-check on blur */}
               <div>
                 <label className="kl-label" style={{ fontWeight: '800', marginBottom: '10px' }}>연락처</label>
-                <input 
-                  className="kl-input" 
-                  style={{ borderRadius: '12px', height: '54px', border: phoneError ? '1px solid #EF4444' : '1px solid var(--color-border)' }} 
-                  type="tel" 
-                  placeholder="ex. 010-0000-0000" 
-                  value={form.phone} 
-                  onChange={e => { update('phone', e.target.value); setPhoneChecked(false); setPhoneError(''); }} 
+                <input
+                  className="kl-input"
+                  style={{ borderRadius: '12px', height: '54px', border: phoneError ? '1px solid #EF4444' : '1px solid var(--color-border)' }}
+                  type="tel"
+                  placeholder="ex. 010-0000-0000"
+                  value={form.phone}
+                  onChange={e => { update('phone', e.target.value); setPhoneChecked(false); setPhoneError(''); }}
                   onBlur={handlePhoneCheck}
                 />
                 {phoneError && (
@@ -260,17 +260,17 @@ function RegisterForm() {
                 <div>
                   <label className="kl-label" style={{ fontWeight: '800', marginBottom: '10px' }}>아이디</label>
                   <div style={{ display: 'flex', gap: '8px' }}>
-                    <input 
-                      className="kl-input" 
-                      style={{ flex: 1, borderRadius: '12px', height: '54px' }} 
-                      placeholder="영문 소문자, 숫자 조합" 
-                      value={form.username} 
+                    <input
+                      className="kl-input"
+                      style={{ flex: 1, borderRadius: '12px', height: '54px' }}
+                      placeholder="영문 소문자, 숫자 조합"
+                      value={form.username}
                       onChange={e => { update('username', e.target.value); setIdChecked(false); }}
                       inputMode="email"
                       lang="en"
                     />
-                    <button type="button" onClick={handleIdCheck} style={{ 
-                      padding: '0 20px', background: idChecked ? '#F0F0F0' : '#333', color: idChecked ? '#999' : '#FFF', 
+                    <button type="button" onClick={handleIdCheck} style={{
+                      padding: '0 20px', background: idChecked ? '#F0F0F0' : '#333', color: idChecked ? '#999' : '#FFF',
                       borderRadius: '12px', border: 'none', fontWeight: '800', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.2s'
                     }}>
                       중복확인
@@ -323,9 +323,9 @@ function RegisterForm() {
                     </button>
                   </div>
                   {form.password && form.passwordConfirm && (
-                    <div style={{ 
-                      fontSize: '0.8rem', 
-                      marginTop: '8px', 
+                    <div style={{
+                      fontSize: '0.8rem',
+                      marginTop: '8px',
                       fontWeight: '600',
                       color: form.password === form.passwordConfirm ? '#22C55E' : '#EF4444'
                     }}>
@@ -372,9 +372,9 @@ function RegisterForm() {
                 <div style={{ fontSize: '0.8rem', color: '#6B7280', marginBottom: '10px', fontWeight: '500' }}>* 번호 오기입으로 인한 재확인</div>
                 <input className="kl-input" style={{ borderRadius: '12px', height: '54px' }} type="tel" placeholder="연락처를 다시 한 번 입력해 주세요" value={form.phoneConfirm} onChange={e => update('phoneConfirm', e.target.value)} />
                 {form.phone && form.phoneConfirm && (
-                  <div style={{ 
-                    fontSize: '0.8rem', 
-                    marginTop: '8px', 
+                  <div style={{
+                    fontSize: '0.8rem',
+                    marginTop: '8px',
                     fontWeight: '600',
                     color: form.phone === form.phoneConfirm ? '#22C55E' : '#EF4444'
                   }}>
@@ -388,7 +388,7 @@ function RegisterForm() {
                 <button onClick={toggleAllAgreements} style={{
                   display: 'flex', alignItems: 'center', gap: '10px', background: 'none', border: 'none', cursor: 'pointer', marginBottom: '16px', padding: 0
                 }}>
-                  {isAllAgreed ? <CheckSquare color="#FF6F61" fill="rgba(255,111,97,0.2)" size={20}/> : <Square color="#999" size={20}/>}
+                  {isAllAgreed ? <CheckSquare color="#FF6F61" fill="rgba(255,111,97,0.2)" size={20} /> : <Square color="#999" size={20} />}
                   <span style={{ fontWeight: '800', fontSize: '0.9rem', color: isAllAgreed ? '#FF6F61' : '#333' }}>전체 동의하기</span>
                 </button>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -407,8 +407,8 @@ function RegisterForm() {
                 </div>
               </div>
 
-              <button className="kl-btn-primary" 
-                style={{ width: '100%', padding: '20px', marginTop: '8px', borderRadius: '100px', fontSize: '1.1rem', fontWeight: '900', boxShadow: '0 10px 20px rgba(255,111,97,0.2)' }} 
+              <button className="kl-btn-primary"
+                style={{ width: '100%', padding: '20px', marginTop: '8px', borderRadius: '100px', fontSize: '1.1rem', fontWeight: '900', boxShadow: '0 10px 20px rgba(255,111,97,0.2)' }}
                 onClick={handleSubmit} disabled={isSubmitting}>
                 {isSubmitting ? '가입 처리 중...' : '회원가입 완료'}
               </button>
@@ -434,7 +434,7 @@ function RegisterForm() {
               가입을 축하합니다!
             </h2>
             <p style={{ color: 'var(--color-text-secondary)', lineHeight: 1.7, marginBottom: '48px', fontSize: '1.05rem' }}>
-              이제 키링크의 모든 소개팅 일정을<br/>자유롭게 조회하고 신청하실 수 있습니다.
+              이제 키링크의 모든 소개팅 일정을<br />자유롭게 조회하고 신청하실 수 있습니다.
             </p>
             <div style={{ display: 'flex', gap: '14px', flexDirection: 'column' }}>
               <Link href="/events" className="kl-btn-primary" style={{ width: '100%', padding: '20px', borderRadius: '100px', fontWeight: '800', fontSize: '1.05rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}>

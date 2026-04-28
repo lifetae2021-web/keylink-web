@@ -920,7 +920,12 @@ function ApplicationStatusBlock({ application, session, userId, hasVoted }: Stat
           <div style={{ background: '#FFFBEB', borderRadius: '16px', padding: '20px', border: '1px solid #FCD34D' }}>
             <p style={{ color: '#92400E', fontWeight: '700', fontSize: '0.82rem', marginBottom: '12px' }}>📌 입금 안내</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {[['은행', '카카오뱅크'], ['계좌', '3333-01-8290604'], ['예금주', '박종현'], ['금액', '35,000원']].map(([label, val]) => (
+              {[
+                ['은행', '카카오뱅크'],
+                ['계좌', '3333-35-9229548'],
+                ['예금주', '태영훈(키링크)'],
+                ['금액', `${(application.price || (application.gender === 'female' ? 29000 : 49000)).toLocaleString()}원`]
+              ].map(([label, val]) => (
                 <div key={label} style={{ display: 'flex', gap: '12px' }}>
                   <span style={{ minWidth: '48px', color: '#9CA3AF', fontSize: '0.82rem', fontWeight: '700' }}>{label}</span>
                   <span style={{ color: '#111', fontSize: '0.9rem', fontWeight: '800' }}>{val}</span>

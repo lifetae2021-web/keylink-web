@@ -114,16 +114,17 @@ export default function ResultListPage() {
         <div className="kl-container">
           <div style={{ 
             display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', 
-            marginBottom: '48px', borderBottom: '1.5px solid #eee', paddingBottom: '24px' 
+            marginBottom: '48px', borderBottom: '1.5px solid #eee', paddingBottom: '24px',
+            flexWrap: 'wrap', gap: '20px'
           }}>
             <div>
-              <h2 style={{ fontSize: '2.2rem', fontWeight: '900', color: '#111', marginBottom: '12px', letterSpacing: '-0.02em' }}>
-                기수별 매칭리포트 <span style={{ fontSize: '1.2rem', color: '#999', fontWeight: '600' }}>(준비중)</span>
+              <h2 style={{ fontSize: '1.75rem', fontWeight: '900', color: '#111', marginBottom: '12px', letterSpacing: '-0.02em', wordBreak: 'keep-all' }}>
+                기수별 매칭리포트 <span style={{ fontSize: '1.1rem', color: '#999', fontWeight: '600' }}>(준비중)</span>
               </h2>
               <p style={{ color: '#888', fontWeight: '500' }}>과거 모든 행사의 매칭 데이터를 투명하게 공개합니다.</p>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 24px', background: '#fff', borderRadius: '16px', border: '1px solid #eee', fontSize: '0.95rem', color: '#111', fontWeight: '800' }}>
-              <Clock size={18} /> 실시간 데이터
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px', background: '#fff', borderRadius: '16px', border: '1px solid #eee', fontSize: '0.85rem', color: '#111', fontWeight: '800' }}>
+              <Clock size={16} /> 실시간 데이터
             </div>
           </div>
 
