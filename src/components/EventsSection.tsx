@@ -84,7 +84,10 @@ export function EventsSection({ standalone = false }: { standalone?: boolean }) 
           const apps: Record<string, Application> = {};
           snap.forEach(doc => {
             const data = doc.data() as Application;
-            apps[data.sessionId] = { ...data, id: doc.id };
+            // v8.12.6: 취소된 신청은 신청하지 않은 것으로 간주하여 다시 신청 가능하도록 처리
+            if (data.status !== 'cancelled') {
+              apps[data.sessionId] = { ...data, id: doc.id };
+            }
           });
           setUserApps(apps);
         } catch (error) {
