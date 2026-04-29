@@ -282,8 +282,8 @@ export default function AdminDashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         {statsCards.map((s, i) => {
           const isAnalytics = s.label === '방문자(UV)' || s.label === '페이지뷰(PV)';
-          const CardWrapper = isAnalytics ? Link : 'div';
-          const wrapperProps = isAnalytics ? { href: '/admin/analytics' as any } : {};
+          const CardWrapper = (isAnalytics ? Link : 'div') as any;
+          const wrapperProps = isAnalytics ? { href: '/admin/analytics' } : {};
 
           return (
             <CardWrapper key={i} {...wrapperProps} style={{ ...panel, padding: '16px 20px', cursor: isAnalytics ? 'pointer' : 'default', display: 'block' }} className="hover:border-slate-300 transition-colors group">
