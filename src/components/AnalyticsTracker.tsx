@@ -3,8 +3,8 @@
 import { useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { format } from 'date-fns';
-import { auth } from '@/lib/firebase';
-import { db } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 
 export default function AnalyticsTracker() {
