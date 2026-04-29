@@ -4,7 +4,8 @@ import { useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { format } from 'date-fns';
 import { auth } from '@/lib/firebase';
-import { onAuthStateChanged } from 'firebase/auth';
+import { db } from '@/lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
 export default function AnalyticsTracker() {
   const pathname = usePathname();
@@ -53,9 +54,22 @@ export default function AnalyticsTracker() {
     };
 
     let tracked = false;
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (!tracked) {
         tracked = true;
+        
+        // 관리자 권한 확인 (관리자 본인의 트래킹 제외)
+        if (user) {
+          try {
+            const userSnap = await getDoc(doc(db, 'users', user.uid));
+            if (userSnap.exists() && userSnap.data()?.role === 'admin') {
+              return; // 관리자라면 트래킹 중단
+            }
+          } catch (e) {
+            console.error('Error checking admin role for analytics:', e);
+          }
+        }
+        
         trackVisit(user?.uid || null);
       }
     });
