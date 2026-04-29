@@ -91,6 +91,9 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
         birthYear: `${year}년생`,
         job: u.admin_job || u.job || '검토 중',
         height: u.height ? `${u.height}cm` : '160cm대',
+        smoking: u.smoking || '비흡연',
+        drinking: u.drinking || '안 마심',
+        religion: u.religion || '무교',
       };
     }).sort((a, b) => b.birthYear.localeCompare(a.birthYear));
 
