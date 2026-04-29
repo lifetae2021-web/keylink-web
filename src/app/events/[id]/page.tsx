@@ -300,7 +300,9 @@ export default function EventDetailPage() {
         where('sessionId', '==', sessionId)
       );
       const existingSnap = await getDocs(existingQ);
-      if (!existingSnap.empty) {
+      const activeApp = existingSnap.docs.find(d => d.data().status !== 'cancelled');
+      
+      if (activeApp) {
         toast.error('이미 이 기수에 신청하셨습니다.');
         setIsSubmitting(false);
         return;
