@@ -742,6 +742,7 @@ export default function UsersPage() {
           session={null}
           recipientLabel={`${smsTargetUser.name}님 (프로필 작성 요청)`}
           confirmLabel="요청 문자 발송"
+          autoSelectTemplateName="프로필 작성"
           defaultMessage={`[키링크] 안녕하세요, {{이름}}님! 키링크를 방문해주셔서 감사합니다.\n\n원활한 매칭을 위해 프로필 작성이 조금 더 필요합니다.\n지금 바로 접속하셔서 매력적인 프로필을 완성하고 진짜 인연을 만나보세요!\n\n- 링크: https://www.keylink.kr/mypage/edit`}
         />
       )}

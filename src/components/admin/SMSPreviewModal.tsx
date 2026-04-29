@@ -13,6 +13,7 @@ interface SMSPreviewModalProps {
   defaultMessage: string;
   recipientLabel?: string;
   confirmLabel?: string;
+  autoSelectTemplateName?: string;
 }
 
 interface Template {
@@ -60,6 +61,7 @@ const SMSPreviewModal: React.FC<SMSPreviewModalProps> = ({
   defaultMessage,
   recipientLabel,
   confirmLabel,
+  autoSelectTemplateName,
 }) => {
   const [message, setMessage] = useState(defaultMessage);
   const [isSending, setIsSending] = useState(false);
@@ -79,10 +81,20 @@ const SMSPreviewModal: React.FC<SMSPreviewModalProps> = ({
     setLoadingTemplates(true);
     const q = query(collection(db, 'smsTemplates'), orderBy('createdAt', 'desc'));
     getDocs(q).then(snap => {
-      setTemplates(snap.docs.map(d => ({ id: d.id, ...d.data() } as Template)));
+      const fetched = snap.docs.map(d => ({ id: d.id, ...d.data() } as Template));
+      setTemplates(fetched);
       setLoadingTemplates(false);
+
+      // 자동 선택 로직 (v8.13.0)
+      if (autoSelectTemplateName) {
+        const target = fetched.find(t => t.name.includes(autoSelectTemplateName));
+        if (target) {
+          const applied = applyVariables(target.content, applicant, session);
+          setMessage(applied);
+        }
+      }
     });
-  }, [isOpen]);
+  }, [isOpen, autoSelectTemplateName, applicant, session]);
 
   const handleSelectTemplate = (t: Template) => {
     const applied = applyVariables(t.content, applicant, session);
