@@ -13,7 +13,7 @@ import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import {
   LogOut, Camera, ChevronDown, ChevronUp, X, Check, Edit3, Package, Upload,
   Clock, Banknote, CheckCircle2, XCircle, Vote as VoteIcon, Lock, ShieldCheck, FileText,
-  ChevronRight, Heart
+  ChevronRight, Heart, ArrowRight
 } from 'lucide-react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
@@ -754,7 +754,7 @@ export default function MyPage() {
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             background: '#FFFFFF', borderRadius: '24px', padding: '20px 24px',
             boxShadow: '0 10px 40px rgba(255,111,97,0.08)', border: '1px solid #FFE8E5',
-            textDecoration: 'none', marginBottom: '20px', transition: 'background 0.2s'
+            textDecoration: 'none', marginBottom: '12px', transition: 'background 0.2s'
           }}
           onMouseEnter={(e) => e.currentTarget.style.background = '#FFFAFA'}
           onMouseLeave={(e) => e.currentTarget.style.background = '#FFFFFF'}
@@ -769,6 +769,38 @@ export default function MyPage() {
             </div>
           </div>
           <ChevronRight size={20} color="#CBD5E1" />
+        </Link>
+
+        {/* v8.12.7: 1:1 매칭 서비스 유도 블록 */}
+        <Link 
+          href="/private-matching" 
+          style={{ 
+            marginBottom: '20px', 
+            display: 'flex', 
+            flexDirection: 'row', 
+            alignItems: 'center', 
+            justifyContent: 'space-between',
+            gap: '12px',
+            background: 'linear-gradient(135deg, #6A4C93, #8E54E9)', 
+            padding: '16px 24px', 
+            borderRadius: '24px', 
+            border: 'none',
+            color: '#fff',
+            textDecoration: 'none',
+            boxShadow: '0 8px 25px rgba(106, 76, 147, 0.2)',
+            transition: 'transform 0.2s',
+            textAlign: 'left'
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
+          onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+        >
+          <div style={{ flex: 1 }}>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: '900', marginBottom: '2px', letterSpacing: '-0.02em' }}>1:1 프라이빗 매칭 서비스</h3>
+            <p style={{ fontSize: '0.75rem', opacity: 0.9, fontWeight: '500', lineHeight: 1.3 }}>가입비 0원, 오직 당신만을 위한 맞춤 인연</p>
+          </div>
+          <div style={{ background: '#fff', color: '#6A4C93', padding: '8px 14px', borderRadius: '100px', fontSize: '0.85rem', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+            신청 <ArrowRight size={14} />
+          </div>
         </Link>
 
         {/* ─── v8.1.7: 신청 현황 상태 블록 (다중 카드 지원) ─── */}

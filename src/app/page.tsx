@@ -189,7 +189,7 @@ export default function HomePage() {
             margin: '0 auto 48px',
             wordBreak: 'keep-all',
           }}>
-            로테이션 소개팅 <strong style={{ color: 'var(--color-accent)' }}>키링크</strong>에서<br />진짜 인연을 만나보세요.
+            <strong style={{ color: 'var(--color-accent)', fontSize: '1.5em' }}>키링크</strong>에서<br />진짜 인연을 만나보세요.
           </p>
 
           <div style={{

@@ -25,6 +25,7 @@ import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import SMSPreviewModal from '@/components/admin/SMSPreviewModal';
 import { updateDoc } from 'firebase/firestore';
+import AdminApplicationList from '@/components/admin/AdminApplicationList'; // v8.12.7: 1:1 매칭 리스트 컴포넌트 추가
 
 const DEPOSIT_STATUS = {
   pending: { label: '입금 대기', color: '#64748B', bg: '#F1F5F9' },
@@ -55,6 +56,7 @@ export default function ApplicationsPage() {
   const [isDataLoading, setIsDataLoading] = useState(false);
 
   // Filtering & Modal States
+  const [activeTab, setActiveTab] = useState<'group' | '1on1'>('group'); // v8.12.7: 탭 상태 추가
   const [filterGender, setFilterGender] = useState<'all' | 'male' | 'female'>('all');
   const [filterUnselectedOnly, setFilterUnselectedOnly] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -439,8 +441,26 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
   return (
     <div className="space-y-6 animate-in fade-in duration-400 pb-20">
 
-      {/* Top Controls Bar (Integrated Header & Filters) */}
-      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+      {/* v8.12.7: 그룹 매칭 / 1:1 매칭 탭 UI */}
+      <div className="flex gap-4 border-b border-slate-200">
+        <button
+          onClick={() => setActiveTab('group')}
+          className={`pb-3 px-4 font-black text-[1.1rem] transition-colors border-b-2 ${activeTab === 'group' ? 'border-[#FF7E7E] text-[#FF7E7E]' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+        >
+          그룹 소개팅 관리
+        </button>
+        <button
+          onClick={() => setActiveTab('1on1')}
+          className={`pb-3 px-4 font-black text-[1.1rem] transition-colors border-b-2 flex items-center gap-2 ${activeTab === '1on1' ? 'border-purple-600 text-purple-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+        >
+          1:1 신청자 보기 <span className="text-[0.65rem] bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full mb-1">NEW</span>
+        </button>
+      </div>
+
+      {activeTab === 'group' ? (
+        <>
+          {/* Top Controls Bar (Integrated Header & Filters) */}
+          <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
         {/* Left: Filters */}
         <div className="flex items-center gap-2">
           <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
@@ -836,6 +856,11 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
           </table>
         </div>
       </div>
+        </>
+      ) : (
+        /* 1:1 매칭 신청 관리 탭 */
+        <AdminApplicationList />
+      )}
 
       {/* Modal Overlay */}
       <UserProfileModal user={selectedUser} isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); setSelectedUser(null); }} />

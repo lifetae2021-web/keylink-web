@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Calendar, MapPin, Users, ArrowLeft, AlertCircle,
   CheckCircle, Clock, Shield, Camera, X, CreditCard, ChevronRight, Upload, ShieldCheck, FileText,
-  CheckCircle2, WalletCards, Sparkles
+  CheckCircle2, WalletCards, Sparkles, ArrowRight
 } from 'lucide-react';
 import { POLICIES } from '@/lib/constants/policies';
 import { getSession } from '@/lib/firestore/sessions';
@@ -948,7 +948,7 @@ export default function EventDetailPage() {
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 transition={{ duration: 0.6, ease: [0.23, 1, 0.32, 1] }}
                 className="kl-card" 
-                style={{ textAlign: 'center', padding: '60px 24px', position: 'relative', overflow: 'hidden' }}
+                style={{ textAlign: 'center', padding: '32px 20px', position: 'relative', overflow: 'hidden' }}
               >
                 {/* Background Sparkle Animation */}
                 <div style={{ position: 'absolute', inset: 0, zIndex: 0, opacity: 0.4, pointerEvents: 'none' }}>
@@ -984,18 +984,18 @@ export default function EventDetailPage() {
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
                     transition={{ delay: 0.3, type: "spring", stiffness: 200, damping: 15 }}
-                    style={{ width: '88px', height: '88px', borderRadius: '50%', background: 'rgba(110,174,124,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 28px', border: '2px solid rgba(110,174,124,0.15)' }}
+                    style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(110,174,124,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', border: '2px solid rgba(110,174,124,0.15)' }}
                   >
-                    <CheckCircle size={44} color="#6EAE7C" />
+                    <CheckCircle size={32} color="#6EAE7C" />
                   </motion.div>
                   
-                  <h2 style={{ fontSize: '1.85rem', fontWeight: '900', color: 'var(--color-text-primary)', marginBottom: '14px', letterSpacing: '-0.03em' }}>신청서 제출 완료!</h2>
-                  <p style={{ fontSize: '1rem', color: 'var(--color-text-secondary)', marginBottom: '48px', lineHeight: 1.7, fontWeight: '500', wordBreak: 'keep-all' }}>
+                  <h2 style={{ fontSize: '1.5rem', fontWeight: '900', color: 'var(--color-text-primary)', marginBottom: '8px', letterSpacing: '-0.03em' }}>신청서 제출 완료!</h2>
+                  <p style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)', marginBottom: '56px', lineHeight: 1.5, fontWeight: '500', wordBreak: 'keep-all' }}>
                     남녀간 이상형에 부합된 인원에게만<br />
                     순차적으로 연락드립니다.
                   </p>
                   
-                  <div style={{ position: 'relative', width: '100%', marginTop: '20px' }}>
+                  <div style={{ position: 'relative', width: '100%', marginTop: '12px' }}>
                     <motion.div 
                       initial={{ y: 0 }}
                       animate={{ y: [-4, 0, -4] }}
@@ -1022,8 +1022,39 @@ export default function EventDetailPage() {
                       <Sparkles size={16} /> 선발 확률 UP
                     </motion.div>
                     
-                    <Link href="/events" className="kl-btn-primary" style={{ width: '100%', padding: '22px', fontSize: '1.1rem', textAlign: 'center', display: 'block', borderRadius: '24px', fontWeight: '900', boxShadow: '0 12px 30px rgba(255,111,97,0.2)' }}>
+                    <Link href="/events" className="kl-btn-primary" style={{ width: '100%', padding: '18px', fontSize: '1rem', textAlign: 'center', display: 'block', borderRadius: '20px', fontWeight: '900', boxShadow: '0 8px 25px rgba(255,111,97,0.15)' }}>
                       다른 기수도 추가 신청 하기
+                    </Link>
+
+                    {/* v8.12.7: 1:1 매칭 서비스 유도 블록 (컴팩트 버전) */}
+                    <Link 
+                      href="/private-matching" 
+                      className="kl-card"
+                      style={{ 
+                        marginTop: '12px', 
+                        display: 'flex', 
+                        flexDirection: 'row', 
+                        alignItems: 'center', 
+                        justifyContent: 'space-between',
+                        gap: '12px',
+                        background: 'linear-gradient(135deg, #6A4C93, #8E54E9)', 
+                        padding: '16px 20px', 
+                        borderRadius: '20px', 
+                        border: 'none',
+                        color: '#fff',
+                        textDecoration: 'none',
+                        boxShadow: '0 8px 25px rgba(106, 76, 147, 0.2)',
+                        transition: 'transform 0.2s',
+                        textAlign: 'left'
+                      }}
+                    >
+                      <div style={{ flex: 1 }}>
+                        <h3 style={{ fontSize: '1.1rem', fontWeight: '900', marginBottom: '2px', letterSpacing: '-0.02em' }}>1:1 매칭 서비스</h3>
+                        <p style={{ fontSize: '0.75rem', opacity: 0.9, fontWeight: '500', lineHeight: 1.3 }}>가입비 0원, 이상형만 콕 집어서!</p>
+                      </div>
+                      <div style={{ background: '#fff', color: '#6A4C93', padding: '8px 14px', borderRadius: '100px', fontSize: '0.85rem', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                        신청 <ArrowRight size={14} />
+                      </div>
                     </Link>
                   </div>
                 </div>

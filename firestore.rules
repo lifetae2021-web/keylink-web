@@ -128,5 +128,21 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // ─────────────────────────────────────
+    // private_applications (1:1 매칭 신청) 컬렉션
+    // ─────────────────────────────────────
+    match /private_applications/{appId} {
+      // 본인 신청서 읽기 가능
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      // 신규 신청: 로그인한 유저가 본인 UID로 생성
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      // 관리자: 모든 읽기/쓰기/업데이트
+      allow read, write: if isAdmin();
+      // 유저: 수락 액션을 위한 업데이트 (status가 profile_sent일 때만 negotiating으로 변경 허용)
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid 
+        && resource.data.status == 'profile_sent' 
+        && request.resource.data.status == 'negotiating';
+    }
+
   }
 }
