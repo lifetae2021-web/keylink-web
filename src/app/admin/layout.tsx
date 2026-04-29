@@ -91,15 +91,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     if (saved) setLastViewedNoti(Number(saved));
 
     const unsubUsers = onSnapshot(
-      query(collection(db, 'users'), where('status', '==', 'pending'), orderBy('createdAt', 'desc'), limit(5)),
+      query(collection(db, 'users'), where('status', '==', 'pending'), limit(10)),
       (snap) => handleSync()
     );
     const unsubApps = onSnapshot(
-      query(collection(db, 'applications'), where('status', '==', 'applied'), orderBy('appliedAt', 'desc'), limit(5)),
+      query(collection(db, 'applications'), where('status', '==', 'applied'), limit(10)),
       (snap) => handleSync()
     );
     const unsubPrivate = onSnapshot(
-      query(collection(db, 'private_applications'), orderBy('createdAt', 'desc'), limit(5)),
+      query(collection(db, 'private_applications'), limit(10)),
       (snap) => handleSync()
     );
 
@@ -108,7 +108,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       const now = new Date();
 
       // 유저
-      const uSnap = await getDocs(query(collection(db, 'users'), where('status', '==', 'pending'), orderBy('createdAt', 'desc'), limit(5)));
+      const uSnap = await getDocs(query(collection(db, 'users'), where('status', '==', 'pending'), limit(10)));
       uSnap.forEach(d => {
         const data = d.data();
         const date = data.createdAt?.toDate() || now;
@@ -123,7 +123,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       });
 
       // 일반 신청
-      const aSnap = await getDocs(query(collection(db, 'applications'), where('status', '==', 'applied'), orderBy('appliedAt', 'desc'), limit(5)));
+      const aSnap = await getDocs(query(collection(db, 'applications'), where('status', '==', 'applied'), limit(10)));
       aSnap.forEach(d => {
         const data = d.data();
         const date = data.appliedAt?.toDate() || now;
@@ -138,7 +138,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       });
 
       // 1:1 매칭
-      const pSnap = await getDocs(query(collection(db, 'private_applications'), orderBy('createdAt', 'desc'), limit(5)));
+      const pSnap = await getDocs(query(collection(db, 'private_applications'), limit(10)));
       pSnap.forEach(d => {
         const data = d.data();
         const date = data.createdAt?.toDate() || now;
@@ -148,7 +148,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           text: `${data.name || '신청자'} 님이 1:1 프라이빗 매칭을 신청했습니다.`,
           date,
           time: formatTimeAgo(date),
-          path: '/admin/applications' // 현재는 여기서 통합 관리 (필요시 전용 페이지로)
+          path: '/admin/applications'
         });
       });
 
