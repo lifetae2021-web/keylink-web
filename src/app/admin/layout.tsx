@@ -12,7 +12,8 @@ import {
   LayoutDashboard, Users, Calendar, TrendingUp,
   Settings, LogOut, Bell, Menu, X,
   ExternalLink, ChevronDown,
-  FileText, Loader2, Timer, ChevronsLeft, ChevronsRight, MessageSquare
+  FileText, Loader2, Timer, ChevronsLeft, ChevronsRight, MessageSquare,
+  UserPlus, ClipboardList, Clock, Zap
 } from 'lucide-react';
 import Link from 'next/link';
 const version = '1.0.8';
