@@ -341,7 +341,7 @@ export default function AdminDashboard() {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
-                  {['이름', '이메일', '상태', '가입일'].map(h => (
+                  {['이름', '성별 / 나이', '상태', '가입일'].map(h => (
                     <th key={h} style={{ padding: '10px 24px', textAlign: 'left', fontSize: '0.72rem', fontWeight: 600, color: '#444', borderBottom: '1px solid rgba(255,255,255,0.06)', whiteSpace: 'nowrap' }}>
                       {h}
                     </th>
@@ -362,7 +362,9 @@ export default function AdminDashboard() {
                     return (
                       <tr key={m.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }} className="hover:bg-white/[0.02] transition-colors">
                         <td style={{ padding: '12px 24px', fontSize: '0.85rem', fontWeight: 600 }}>{m.name || '미입력'}</td>
-                        <td style={{ padding: '12px 24px', fontSize: '0.83rem', color: '#666' }}>{m.email}</td>
+                        <td style={{ padding: '12px 24px', fontSize: '0.83rem', color: '#666' }}>
+                          {m.gender === 'male' ? '남' : m.gender === 'female' ? '여' : '-'} / {m.birthDate ? `${new Date().getFullYear() - parseInt(m.birthDate.length === 6 ? (parseInt(m.birthDate.substring(0, 2)) > 40 ? '19' : '20') + m.birthDate.substring(0, 2) : m.birthDate.substring(0, 4)) + 1}세` : '-'}
+                        </td>
                         <td style={{ padding: '12px 24px' }}>
                           <span style={{ fontSize: '0.72rem', fontWeight: 600, padding: '4px 10px', borderRadius: 20, color: s.color, background: s.bg }}>
                             {s.label}
