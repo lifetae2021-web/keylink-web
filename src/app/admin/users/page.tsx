@@ -8,7 +8,7 @@ import {
   UserPlus, Award, AlertCircle, Edit3, Trash2, X
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { db } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 import {
   collection, onSnapshot, doc, updateDoc, query, orderBy, Timestamp
 } from 'firebase/firestore';
