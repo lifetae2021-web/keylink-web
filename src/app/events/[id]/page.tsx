@@ -1025,6 +1025,41 @@ export default function EventDetailPage() {
                     <Link href="/events" className="kl-btn-primary" style={{ width: '100%', padding: '22px', fontSize: '1.1rem', textAlign: 'center', display: 'block', borderRadius: '24px', fontWeight: '900', boxShadow: '0 12px 30px rgba(255,111,97,0.2)' }}>
                       다른 기수도 추가 신청 하기
                     </Link>
+
+                    {/* v8.12.7: 1:1 매칭 서비스 유도 블록 추가 */}
+                    <Link 
+                      href="/register?type=1on1" 
+                      className="kl-card"
+                      style={{ 
+                        marginTop: '20px', 
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        alignItems: 'center', 
+                        gap: '16px',
+                        background: 'linear-gradient(135deg, #6A4C93, #8E54E9)', 
+                        padding: '32px 24px', 
+                        borderRadius: '24px', 
+                        border: 'none',
+                        color: '#fff',
+                        textDecoration: 'none',
+                        boxShadow: '0 12px 30px rgba(106, 76, 147, 0.25)',
+                        transition: 'transform 0.2s',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ background: 'rgba(255,255,255,0.2)', padding: '4px 12px', borderRadius: '100px', fontSize: '0.7rem', fontWeight: '900', letterSpacing: '0.05em' }}>PREMIUM SERVICE</span>
+                      </div>
+                      <div style={{ textAlign: 'center' }}>
+                        <h3 style={{ fontSize: '1.25rem', fontWeight: '900', marginBottom: '8px', letterSpacing: '-0.02em' }}>가입비 없는 1:1 매칭 서비스</h3>
+                        <p style={{ fontSize: '0.9rem', opacity: 0.9, fontWeight: '500', lineHeight: 1.5, wordBreak: 'keep-all' }}>
+                          내가 원하는 이상형만 콕 집어서!<br/>
+                          지금 무료로 매칭 신청을 남겨보세요.
+                        </p>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '900', fontSize: '0.95rem', background: '#fff', color: '#6A4C93', padding: '12px 24px', borderRadius: '100px', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}>
+                        지금 바로 신청하기 <ArrowRight size={18} />
+                      </div>
+                    </Link>
                   </div>
                 </div>
               </motion.div>
