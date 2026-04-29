@@ -21,10 +21,14 @@ export default function AnalyticsTracker() {
       localStorage.setItem('kl_visitor_id', visitorId);
     }
 
+    // 1. 이미 로컬스토리지에 관리자 태그가 있으면 즉시 종료 (가장 빠름)
+    if (localStorage.getItem('kl_is_admin') === 'true') return;
+
     const referrer = document.referrer || '';
     const userAgent = navigator.userAgent;
 
     const trackVisit = async (uid: string | null) => {
+      // 한 번 트래킹한 세션은 다시 하지 않음 (useEffect 내 변수 대신 useRef나 다른 방식도 좋지만 여기선 로직 유지)
       try {
         const today = format(new Date(), 'yyyy-MM-dd');
         const uvKey = `last_visit_uv_${today}`;
@@ -35,7 +39,6 @@ export default function AnalyticsTracker() {
           localStorage.setItem(uvKey, 'true');
         }
 
-        // 서버 사이드 API 호출 (Firebase Rules 우회 및 상세 로그 기록)
         await fetch('/api/analytics/track', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -53,24 +56,40 @@ export default function AnalyticsTracker() {
       }
     };
 
-    let tracked = false;
+    let isHandled = false;
+
+    // auth 상태가 확인될 때까지 기다림
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (!tracked) {
-        tracked = true;
-        
-        // 관리자 권한 확인 (관리자 본인의 트래킹 제외)
-        if (user) {
-          try {
-            const userSnap = await getDoc(doc(db, 'users', user.uid));
-            if (userSnap.exists() && userSnap.data()?.role === 'admin') {
-              return; // 관리자라면 트래킹 중단
-            }
-          } catch (e) {
-            console.error('Error checking admin role for analytics:', e);
+      if (isHandled) return;
+
+      if (user) {
+        // 사용자가 있는 경우: 관리자 여부 확인 후 결정
+        try {
+          const userSnap = await getDoc(doc(db, 'users', user.uid));
+          const isAdmin = userSnap.exists() && userSnap.data()?.role === 'admin';
+          
+          if (isAdmin) {
+            localStorage.setItem('kl_is_admin', 'true');
+            isHandled = true;
+            return; // 관리자는 트래킹 안 함
+          } else {
+            localStorage.removeItem('kl_is_admin');
+            isHandled = true;
+            trackVisit(user.uid);
           }
+        } catch (e) {
+          console.error('Error checking role:', e);
+          isHandled = true;
+          trackVisit(user.uid);
         }
-        
-        trackVisit(user?.uid || null);
+      } else {
+        // 사용자가 없는 경우 (비회원): 
+        // 찰나의 시간 동안 관리자 로그인이 풀렸다가 다시 잡히는 경우 대비 500ms 대기
+        setTimeout(() => {
+          if (isHandled) return;
+          isHandled = true;
+          trackVisit(null);
+        }, 500);
       }
     });
 
