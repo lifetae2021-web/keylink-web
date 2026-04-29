@@ -58,10 +58,16 @@ export async function getUserParticipations(userId: string) {
     );
     const hasPublishedResult = !!(summary && summary.status === 'approved' && inResults);
 
+    const status = hasPublishedResult 
+      ? 'published' 
+      : (sessionData.status === 'matching' || sessionData.status === 'voting')
+        ? 'pending' 
+        : appData.status;
+
     return {
       application: appData,
       session: sessionData,
-      status: hasPublishedResult ? 'published' : (sessionData.status === 'open' ? 'confirmed' : 'pending'),
+      status,
       matchingResultId: hasPublishedResult ? appData.sessionId : null,
     };
   }));

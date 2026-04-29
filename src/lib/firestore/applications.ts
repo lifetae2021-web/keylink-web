@@ -13,6 +13,9 @@ import {
   onSnapshot,
   Timestamp,
   DocumentSnapshot,
+  doc,
+  updateDoc,
+  serverTimestamp,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Application, ApplicationStatus } from '@/lib/types';
@@ -202,4 +205,13 @@ export async function getApplicationBySession(
   const snap = await getDocs(q);
   if (snap.empty) return null;
   return fromDoc(snap.docs[0]);
+}
+
+/** 신청서 취소 (v8.12.5) */
+export async function cancelApplication(applicationId: string) {
+  const docRef = doc(db, COLLECTION, applicationId);
+  await updateDoc(docRef, {
+    status: 'cancelled',
+    updatedAt: serverTimestamp(),
+  });
 }

@@ -6,8 +6,10 @@ import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { format } from 'date-fns';
 import { collection, query, orderBy, getDocs } from 'firebase/firestore';
-import { Heart, Trophy, Clock, CheckCircle2, ArrowRight, Loader2 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { Heart, Trophy, Clock, CheckCircle2, ArrowRight, Loader2, XCircle, AlertCircle } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { cancelApplication } from '@/lib/firestore/applications';
+import toast from 'react-hot-toast';
 
 import { getUserParticipations } from '@/lib/firestore/userMatching';
 
@@ -16,7 +18,7 @@ interface MatchingRound {
   episode: number;
   date: string;
   title: string;
-  status: 'confirmed' | 'pending' | 'published';
+  status: 'confirmed' | 'pending' | 'published' | 'applied' | 'selected' | 'waitlisted' | 'cancelled' | 'held';
   sessionId: string;
 }
 
@@ -53,6 +55,20 @@ export default function MatchingResultsListPage() {
     return () => unsubscribe();
   }, []);
 
+  const handleCancel = async (applicationId: string, episode: number) => {
+    if (!confirm(`${episode}기 신청을 취소하시겠습니까?\n취소 후에는 복구가 불가능합니다.`)) return;
+
+    try {
+      await cancelApplication(applicationId);
+      toast.success('신청이 취소되었습니다.');
+      // 로컬 상태 업데이트
+      setRounds(prev => prev.map(r => r.id === applicationId ? { ...r, status: 'cancelled' } : r));
+    } catch (error) {
+      console.error("Error cancelling application:", error);
+      toast.error('취소 처리 중 오류가 발생했습니다.');
+    }
+  };
+
   const getStatusBadge = (status: MatchingRound['status']) => {
     switch (status) {
       case 'confirmed':
@@ -61,6 +77,14 @@ export default function MatchingResultsListPage() {
         return <span className="px-3 py-1 bg-amber-50 text-amber-600 text-xs font-bold rounded-full border border-amber-100 flex items-center gap-1"><Clock size={12} /> 매칭 집계 중</span>;
       case 'published':
         return <span className="px-3 py-1 bg-green-50 text-green-600 text-xs font-bold rounded-full border border-green-100 flex items-center gap-1"><Trophy size={12} /> 결과 확인 가능</span>;
+      case 'applied':
+        return <span className="px-3 py-1 bg-gray-50 text-gray-500 text-xs font-bold rounded-full border border-gray-200 flex items-center gap-1"><Clock size={12} /> 신청 완료 (검토 중)</span>;
+      case 'selected':
+        return <span className="px-3 py-1 bg-indigo-50 text-indigo-600 text-xs font-bold rounded-full border border-indigo-100 flex items-center gap-1"><Clock size={12} /> 선발 완료 (입금 대기)</span>;
+      case 'waitlisted':
+        return <span className="px-3 py-1 bg-orange-50 text-orange-600 text-xs font-bold rounded-full border border-orange-100 flex items-center gap-1">대기자</span>;
+      case 'cancelled':
+        return <span className="px-3 py-1 bg-red-50 text-red-400 text-xs font-bold rounded-full border border-red-100">취소됨</span>;
       default:
         return null;
     }
@@ -126,7 +150,30 @@ export default function MatchingResultsListPage() {
                       자세히 보기 <ArrowRight size={18} />
                     </div>
                   ) : (
-                    <div className="text-xs text-gray-300 font-bold tracking-tight">집계 완료 시 안내 드립니다</div>
+                    <div className="flex flex-col items-end gap-2">
+                      <div className="text-xs text-gray-300 font-bold tracking-tight">집계 완료 시 안내 드립니다</div>
+                      
+                      {/* 취소 가능 상태: 신청 완료, 선발 완료, 대기자 */}
+                      {['applied', 'selected', 'waitlisted'].includes(round.status) && (
+                        <button
+                          onClick={(e) => { 
+                            e.preventDefault(); 
+                            e.stopPropagation(); 
+                            handleCancel(round.id, round.episode); 
+                          }}
+                          className="text-[11px] font-bold text-gray-300 hover:text-red-400 transition-colors flex items-center gap-1 bg-gray-50 px-2 py-1 rounded-lg hover:bg-red-50"
+                        >
+                          <XCircle size={12} /> 신청 취소
+                        </button>
+                      )}
+
+                      {/* 참가 확정 상태: 고객센터 문의 유도 */}
+                      {round.status === 'confirmed' && (
+                        <div className="text-[10px] font-bold text-gray-300 flex items-center gap-1">
+                          <AlertCircle size={10} /> 취소는 카톡 채널로 문의해 주세요
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
               </Link>
