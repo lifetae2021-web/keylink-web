@@ -217,7 +217,7 @@ function LoginContent() {
 
             <div style={{ position: 'relative' }}>
               {lastMethod === 'email' && (
-                <div style={{ position: 'absolute', top: '-8px', right: '12px', background: '#333', color: '#fff', fontSize: '0.6rem', padding: '2px 6px', borderRadius: '4px', fontWeight: '800', zIndex: 10 }}>마지막 이용 방법</div>
+                <div style={{ position: 'absolute', top: '-8px', right: '12px', background: '#333', color: '#fff', fontSize: '0.6rem', padding: '2px 6px', borderRadius: '4px', fontWeight: '800', zIndex: 10 }}>최근 사용</div>
               )}
               <button
                 type="submit"

@@ -17,19 +17,17 @@ function RegisterForm() {
   const [formStep, setFormStep] = useState(1); // 1: Form, 2: Complete
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Rules
   const [agreements, setAgreements] = useState({
     terms: false,
     privacy: false,
     thirdParty: false,
-    photoConsent: false,
   });
 
-  const isAllAgreed = agreements.terms && agreements.privacy && agreements.thirdParty && agreements.photoConsent;
+  const isAllAgreed = agreements.terms && agreements.privacy && agreements.thirdParty;
 
   const toggleAllAgreements = () => {
     const nextVal = !isAllAgreed;
-    setAgreements({ terms: nextVal, privacy: nextVal, thirdParty: nextVal, photoConsent: nextVal });
+    setAgreements({ terms: nextVal, privacy: nextVal, thirdParty: nextVal });
   };
 
   // Form State
@@ -52,6 +50,7 @@ function RegisterForm() {
 
   // Input Validation UI Feedback
   const [idError, setIdError] = useState(false);
+  const [nameError, setNameError] = useState(false);
 
   useEffect(() => {
     if (idError) {
@@ -59,6 +58,13 @@ function RegisterForm() {
       return () => clearTimeout(timer);
     }
   }, [idError]);
+
+  useEffect(() => {
+    if (nameError) {
+      const timer = setTimeout(() => setNameError(false), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [nameError]);
 
   const formatPhone = (val: string) => {
     const digits = val.replace(/\D/g, '').slice(0, 11);
@@ -81,6 +87,13 @@ function RegisterForm() {
       // Allow only lowercase English and numbers
       const filtered = value.toLowerCase().replace(/[^a-z0-9]/g, '');
       if (filtered !== value.toLowerCase()) setIdError(true);
+      formattedValue = filtered;
+    }
+
+    if (key === 'name') {
+      // Allow only Korean characters
+      const filtered = value.replace(/[^ㄱ-ㅎ|ㅏ-ㅣ|가-힣]/g, '');
+      if (filtered !== value) setNameError(true);
       formattedValue = filtered;
     }
 
@@ -192,7 +205,6 @@ function RegisterForm() {
         gender: form.gender,
         phone: form.phone,
         birthDate: form.birthDate,
-        photoConsent: agreements.photoConsent,
         role: 'user',
         provider: 'email',
         createdAt: serverTimestamp(),
@@ -338,7 +350,12 @@ function RegisterForm() {
               {/* Name */}
               <div>
                 <label className="kl-label" style={{ fontWeight: '800', marginBottom: '10px' }}>이름 (실명)</label>
-                <input className="kl-input" style={{ borderRadius: '12px', height: '54px' }} placeholder="이름을 입력해 주세요" value={form.name} onChange={e => update('name', e.target.value)} />
+                <input className="kl-input" style={{ borderRadius: '12px', height: '54px' }} placeholder="이름을 입력해 주세요" value={form.name} onChange={e => update('name', e.target.value)} lang="ko" />
+                {nameError && (
+                  <div style={{ color: '#EF4444', fontSize: '0.75rem', marginTop: '6px', fontWeight: '600', animation: 'fadeIn 0.3s' }}>
+                    실명은 한글로만 입력 가능합니다.
+                  </div>
+                )}
               </div>
 
               {/* Gender */}
@@ -370,7 +387,7 @@ function RegisterForm() {
                   연락처 재확인
                 </label>
                 <div style={{ fontSize: '0.8rem', color: '#6B7280', marginBottom: '10px', fontWeight: '500' }}>* 번호 오기입으로 인한 재확인</div>
-                <input className="kl-input" style={{ borderRadius: '12px', height: '54px' }} type="tel" placeholder="연락처를 다시 한 번 입력해 주세요" value={form.phoneConfirm} onChange={e => update('phoneConfirm', e.target.value)} />
+                <input className="kl-input" style={{ borderRadius: '12px', height: '54px' }} type="tel" value={form.phoneConfirm} onChange={e => update('phoneConfirm', e.target.value)} />
                 {form.phone && form.phoneConfirm && (
                   <div style={{
                     fontSize: '0.8rem',
@@ -395,8 +412,7 @@ function RegisterForm() {
                   {[
                     { key: 'terms', label: '서비스 이용약관 동의 (필수)' },
                     { key: 'privacy', label: '개인정보 수집 및 이용 동의 (필수)' },
-                    { key: 'thirdParty', label: '개인정보 제3자 소유 제공 동의 (필수)' },
-                    { key: 'photoConsent', label: '마케팅 활용 모자이크 촬영 동의 (필수)' },
+                    { key: 'thirdParty', label: '개인정보 제3자 제공 동의 (필수)' },
                   ].map(({ key, label }) => (
                     <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
                       onClick={() => setAgreements(a => ({ ...a, [key]: !a[key as keyof typeof agreements] }))}>

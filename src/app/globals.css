@@ -226,8 +226,9 @@ body {
 }
 
 .kl-input:focus {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(200, 145, 106, 0.15);
+  border-color: var(--color-accent);
+  box-shadow: 0 8px 24px rgba(255, 111, 97, 0.12), 0 0 0 3px rgba(255, 111, 97, 0.08);
+  transform: translateY(-1px);
 }
 
 .kl-label {

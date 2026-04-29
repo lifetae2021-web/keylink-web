@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Calendar, MapPin, Users, ArrowLeft, AlertCircle,
   CheckCircle, Clock, Shield, Camera, X, CreditCard, ChevronRight, Upload, ShieldCheck, FileText,
@@ -62,7 +63,7 @@ export default function EventDetailPage() {
     idealType: '', nonIdealType: '',
     smoking: '', drinking: '', religion: '',
     drink: [] as string[], etc: '',
-    agreeTerms: true, agreeRule: true, // Auto-checked on load
+    agreeTerms: true, agreeRule: true, agreePhoto: true, // Auto-checked on load
     maleOption: 'normal', // 'normal' | 'safe'
     femaleOption: 'normal', // 'normal' | 'group'
     groupPartnerName: '',
@@ -92,28 +93,79 @@ export default function EventDetailPage() {
         const userSnap = await getDoc(userRef);
         if (userSnap.exists()) {
           const data = userSnap.data();
-          setForm(prev => {
-            const d = data;
-            return {
-              ...prev,
-              ...d,
-              drink: Array.isArray(d.drink) ? d.drink : (d.drink ? [d.drink] : [])
-            };
-          });
+          const d = data;
+          const initialProfile = {
+            name: d.name || '',
+            gender: d.gender || '',
+            phone: d.phone || '',
+            instaId: d.instaId || '',
+            birthDate: d.birthDate || '',
+            height: d.height || '',
+            weight: d.weight || '',
+            residence: d.residence || '',
+            workplace: d.workplace || '',
+            jobRole: d.jobRole || d.workplace || '',
+            avoidAcquaintance: d.avoidAcquaintance || '',
+            idealType: d.idealType || '',
+            nonIdealType: d.nonIdealType || '',
+            smoking: d.smoking || '',
+            drinking: d.drinking || '',
+            religion: d.religion || '',
+            drink: Array.isArray(d.drink) ? d.drink : (d.drink ? [d.drink] : []),
+            etc: d.etc || '',
+            agreeTerms: true,
+            agreeRule: true,
+            agreePhoto: true,
+            maleOption: 'normal',
+            femaleOption: 'normal',
+            groupPartnerName: '',
+            groupPartnerBirthYear: '',
+            employmentProof: d.employmentProof || d.verificationUrl || '',
+          };
+
+          // [Draft] Load and merge with profile data
+          // 1. Load UNIFIED profile draft
+          const unifiedDraftStr = localStorage.getItem(`kl_unified_profile_draft_${user.uid}`);
+          // 2. Load SESSION specific draft
+          const sessionDraftStr = localStorage.getItem(`kl_session_draft_${id}_${user.uid}`);
+          
+          let mergedForm = { ...initialProfile };
+
+          if (unifiedDraftStr) {
+            try {
+              const uDraft = JSON.parse(unifiedDraftStr);
+              mergedForm = { 
+                ...mergedForm, 
+                ...uDraft,
+                name: uDraft.name || mergedForm.name,
+                phone: uDraft.phone || mergedForm.phone,
+                gender: uDraft.gender || mergedForm.gender
+              };
+            } catch (e) {}
+          }
+
+          if (sessionDraftStr) {
+            try {
+              const sDraft = JSON.parse(sessionDraftStr);
+              mergedForm = { ...mergedForm, ...sDraft };
+            } catch (e) {}
+          }
+
+          setForm(mergedForm);
 
           // Consolidation migration for application form (v3.5.3)
-          const savedPhotos = data.photos || data.profilePhotos || [];
-          const legacyFace = data.facePhotos || [];
-          const legacyBody = data.bodyPhotos || [];
+          const savedPhotos = d.photos || d.profilePhotos || [];
+          const legacyFace = d.facePhotos || [];
+          const legacyBody = d.bodyPhotos || [];
           const merged = savedPhotos.length > 0 ? savedPhotos : [...legacyFace, ...legacyBody].slice(0, 5);
           setPhotos(merged);
 
           // v7.8.5: 재직 증명 미리보기 설정 (employmentProof 표준화)
-          const proofUrl = data.employmentProof || data.verificationUrl || '';
+          const proofUrl = d.employmentProof || d.verificationUrl || '';
           setVerificationPreview(proofUrl);
 
           setHasProfile(true);
-          setUserGender(data.gender || '');
+          setUserGender(d.gender || '');
         }
       } else {
         setCurrentUser(null);
@@ -122,19 +174,28 @@ export default function EventDetailPage() {
     return () => unsubscribe();
   }, []);
 
-  // LocalStorage 연동
+  // [Draft] Auto-save draft when form changes (Split between Unified and Session)
   useEffect(() => {
-    const saved = localStorage.getItem(`keylink_form_${id}`);
-    if (saved) {
-      try {
-        setForm(prev => ({ ...prev, ...JSON.parse(saved) }));
-      } catch (e) { }
-    }
-  }, [id]);
+    if (currentUser && step === 1) {
+      const timeout = setTimeout(() => {
+        // Split form data
+        const {
+          agreeTerms, agreeRule, maleOption, femaleOption, 
+          groupPartnerName, groupPartnerBirthYear,
+          ...profileData
+        } = form;
 
-  useEffect(() => {
-    localStorage.setItem(`keylink_form_${id}`, JSON.stringify(form));
-  }, [form, id]);
+        const sessionData = {
+          agreeTerms, agreeRule, maleOption, femaleOption, 
+          groupPartnerName, groupPartnerBirthYear
+        };
+
+        localStorage.setItem(`kl_unified_profile_draft_${currentUser.uid}`, JSON.stringify(profileData));
+        localStorage.setItem(`kl_session_draft_${id}_${currentUser.uid}`, JSON.stringify(sessionData));
+      }, 1000);
+      return () => clearTimeout(timeout);
+    }
+  }, [form, id, currentUser, step]);
 
   if (isLoading) {
     return (
@@ -185,8 +246,12 @@ export default function EventDetailPage() {
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.agreeTerms || !form.agreeRule) {
-      toast.error('약관 및 운영 규정에 동의해주세요.');
+    if (!form.agreeRule) {
+      toast.error('운영 규정에 동의해주세요.');
+      return;
+    }
+    if (!form.agreePhoto) {
+      toast.error('마케팅 활용 동의에 체크해주세요.');
       return;
     }
 
@@ -283,6 +348,7 @@ export default function EventDetailPage() {
         drink: form.drink,
         photos: uploadedUrls,
         employmentProof: finalVerificationUrl,
+        photoConsent: form.agreePhoto,
         verificationUrl: deleteField(),
         updatedAt: serverTimestamp()
       }, { merge: true });
@@ -307,6 +373,7 @@ export default function EventDetailPage() {
         job: form.workplace || '',
         residence: form.residence || '',
         phone: form.phone || '',
+        photoConsent: form.agreePhoto,
         status: 'applied',
         paymentConfirmed: false,
         appliedAt: now,
@@ -329,7 +396,10 @@ export default function EventDetailPage() {
       });
 
       toast.success('신청서가 접수되었습니다. 검토 후 연락드리겠습니다.');
-      localStorage.removeItem(`keylink_form_${id}`);
+      localStorage.removeItem(`kl_unified_profile_draft_${currentUser.uid}`);
+      localStorage.removeItem(`kl_session_draft_${id}_${currentUser.uid}`);
+      localStorage.removeItem(`kl_draft_event_${id}_${currentUser.uid}`); // Clean up old legacy keys
+      localStorage.removeItem(`keylink_form_${id}`); 
       setStep(2);
     } catch (err: any) {
       console.error('Submission Error:', err);
@@ -476,7 +546,7 @@ export default function EventDetailPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <div style={{ padding: '12px', borderRadius: '10px', background: 'rgba(255,111,97,0.05)', border: '1px solid rgba(255,111,97,0.1)' }}>
                     <p style={{ fontSize: '0.75rem', fontWeight: '700', color: '#FF6F61', marginBottom: '2px' }}>① 중복 만남 보장</p>
-                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>이용약관 제5조에 의거하여 100% 환불</p>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>이용약관 제6조에 의거하여 100% 환불</p>
                   </div>
                   <div style={{ padding: '12px', borderRadius: '10px', background: 'rgba(169,143,213,0.05)', border: '1px solid rgba(169,143,213,0.1)' }}>
                     <p style={{ fontSize: '0.75rem', fontWeight: '700', color: '#A98FD5', marginBottom: '2px' }}>② 안심 매칭 보장</p>
@@ -508,37 +578,7 @@ export default function EventDetailPage() {
           <ArrowLeft size={16} /> 일정 목록으로
         </Link>
 
-        {/* 4단계 프로세스 진행 바 (상세페이지 아닐 때 표출) */}
-        {step > 0 && (
-          <div style={{
-            marginBottom: '32px', background: 'var(--gradient-card)', border: '1px solid var(--color-border)',
-            borderRadius: 'var(--radius-lg)', padding: '24px',
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative'
-          }}>
-            {/* 배경 라인 */}
-            <div style={{ position: 'absolute', top: '50%', left: '40px', right: '40px', height: '2px', background: 'var(--color-surface-2)', zIndex: 0 }} />
 
-            {[
-              { state: 1, label: '신청서 작성' },
-              { state: 2, label: '결제/승인' },
-              { state: 3, label: '최종 확정' }
-            ].map((s, i) => (
-              <div key={s.state} style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', background: 'var(--color-surface-1)', padding: '0 10px' }}>
-                <div style={{
-                  width: '36px', height: '36px', borderRadius: '50%',
-                  background: step >= s.state ? '#FF6F61' : 'var(--color-surface-2)',
-                  color: step >= s.state ? '#fff' : 'var(--color-text-muted)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '700',
-                  border: step >= s.state ? 'none' : '2px solid var(--color-border)',
-                  transition: 'all 0.3s'
-                }}>
-                  {step > s.state ? <CheckCircle size={20} color="#fff" /> : s.state}
-                </div>
-                <span style={{ fontSize: '0.8rem', fontWeight: step >= s.state ? '700' : '500', color: step >= s.state ? '#111' : 'var(--color-text-muted)' }}>{s.label}</span>
-              </div>
-            ))}
-          </div>
-        )}
 
         <div
           className="event-detail-grid"
@@ -707,29 +747,44 @@ export default function EventDetailPage() {
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '24px' }}>
                       <div>
                         <label className="kl-label">이상형 (중요도 순 최대 5가지)</label>
-                        <textarea className="kl-input" rows={3} placeholder="1. 다정한 person&#10;2. 운동을 즐기는 person" value={form.idealType} onChange={(e) => setForm(f => ({ ...f, idealType: e.target.value }))} />
+                        <textarea className="kl-input" rows={3} placeholder="ex) 자기관리하는, 비흡연, 173이상, 94~00년생 등 자유롭게 적어주세요." value={form.idealType} onChange={(e) => setForm(f => ({ ...f, idealType: e.target.value }))} />
                       </div>
                       <div>
                         <label className="kl-label">비선호형 (중요도 순 최대 5가지)</label>
-                        <textarea className="kl-input" rows={3} placeholder="1. 연락이 너무 안 되는 person&#10;2. 예의가 없는 person" value={form.nonIdealType} onChange={(e) => setForm(f => ({ ...f, nonIdealType: e.target.value }))} />
+                        <textarea className="kl-input" rows={3} placeholder="ex) 키, 몸매, 흡연 및 음주여부, 경제력, 원하지 않는 나이대 등 자유롭게 적어주세요." value={form.nonIdealType} onChange={(e) => setForm(f => ({ ...f, nonIdealType: e.target.value }))} />
                       </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                         {[
                           { key: 'smoking', label: '흡연 유무 *', options: ['비흡연', '전자담배', '연초'] },
                           { key: 'drinking', label: '음주 빈도 *', options: ['안 마심', '가끔 (월 1~2회)', '주 1~2회', '즐겨 마시는 편'] },
                           { key: 'religion', label: '종교 *', options: ['무교', '기독교', '천주교', '불교', '기타'] }
-                        ].map(radioGroup => (
-                          <div key={radioGroup.key}>
-                            <p className="kl-label" style={{ marginBottom: '10px' }}>{radioGroup.label}</p>
-                            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                              {radioGroup.options.map(opt => (
-                                <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', cursor: 'pointer' }}>
-                                  <input type="radio" style={{ accentColor: '#FF6F61' }}
-                                    checked={form[radioGroup.key as keyof typeof form] === opt}
-                                    onChange={() => setForm(f => ({ ...f, [radioGroup.key]: opt }))} />
-                                  {opt}
-                                </label>
-                              ))}
+                        ].map(group => (
+                          <div key={group.key}>
+                            <p className="kl-label" style={{ marginBottom: '12px' }}>{group.label}</p>
+                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                              {group.options.map(opt => {
+                                const isSelected = form[group.key as keyof typeof form] === opt;
+                                return (
+                                  <button
+                                    key={opt}
+                                    type="button"
+                                    onClick={() => setForm(f => ({ ...f, [group.key]: opt }))}
+                                    style={{
+                                      padding: '10px 18px',
+                                      borderRadius: '100px',
+                                      fontSize: '0.85rem',
+                                      fontWeight: '700',
+                                      cursor: 'pointer',
+                                      transition: 'all 0.2s',
+                                      border: isSelected ? '2px solid #FF6F61' : '1px solid #FFE8E5',
+                                      background: isSelected ? '#FFF5F4' : '#fff',
+                                      color: isSelected ? '#FF6F61' : '#AAA',
+                                    }}
+                                  >
+                                    {opt}
+                                  </button>
+                                );
+                              })}
                             </div>
                           </div>
                         ))}
@@ -834,7 +889,7 @@ export default function EventDetailPage() {
                       <div style={{ background: '#FFFDFD', border: '1.5px dashed #FFDBE9', borderRadius: '16px', padding: '24px', marginBottom: '16px' }}>
                         <p style={{ fontSize: '0.82rem', color: 'var(--color-text-secondary)', lineHeight: 1.6, marginBottom: '20px', fontWeight: '500' }}>
                           과도한 보정이나 마스크 착용 사진은 지양해주세요.<br />
-                          <strong style={{ color: '#FF6F61' }}>얼굴과 전신 사진이 포함되도록 자유롭게 총 5장까지 등록해 주세요.</strong>
+                          <strong style={{ color: '#FF6F61' }}>얼굴과 전신 사진이 포함되도록<br />자유롭게 총 5장까지 등록가능</strong>
                         </p>
 
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', justifyContent: 'center' }}>
@@ -864,10 +919,6 @@ export default function EventDetailPage() {
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    <label style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', cursor: 'pointer' }}>
-                      <input type="checkbox" checked={form.agreeTerms} onChange={(e) => setForm(f => ({ ...f, agreeTerms: e.target.checked }))} style={{ marginTop: '3px' }} />
-                      <span style={{ fontSize: '0.85rem' }}>[필수] 이용약관 및 개인정보 수집/활용 동의</span>
-                    </label>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
                       <label style={{ display: 'flex', gap: '10px', alignItems: 'center', cursor: 'pointer', flex: 1 }}>
                         <input type="checkbox" checked={form.agreeRule} onChange={(e) => setForm(f => ({ ...f, agreeRule: e.target.checked }))} style={{ flexShrink: 0 }} />
@@ -877,48 +928,104 @@ export default function EventDetailPage() {
                         <ChevronRight size={18} color="#94a3b8" />
                       </button>
                     </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                      <label style={{ display: 'flex', gap: '10px', alignItems: 'center', cursor: 'pointer', flex: 1 }}>
+                        <input type="checkbox" checked={form.agreePhoto} onChange={(e) => setForm(f => ({ ...f, agreePhoto: e.target.checked }))} style={{ flexShrink: 0 }} />
+                        <span style={{ fontSize: '0.85rem' }}>[필수] 마케팅 활용 모자이크 촬영 동의</span>
+                      </label>
+                    </div>
                   </div>
                 </form>
               </div>
             )}
 
             {step === 2 && (
-              <div className="kl-card" style={{ textAlign: 'center', padding: '40px 20px' }}>
-                <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(110,174,124,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
-                  <CheckCircle size={32} color="#6EAE7C" />
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                transition={{ duration: 0.6, ease: [0.23, 1, 0.32, 1] }}
+                className="kl-card" 
+                style={{ textAlign: 'center', padding: '60px 24px', position: 'relative', overflow: 'hidden' }}
+              >
+                {/* Background Sparkle Animation */}
+                <div style={{ position: 'absolute', inset: 0, zIndex: 0, opacity: 0.4, pointerEvents: 'none' }}>
+                   {[...Array(6)].map((_, i) => (
+                     <motion.div
+                       key={i}
+                       initial={{ opacity: 0, y: 100 }}
+                       animate={{ 
+                         opacity: [0, 1, 0], 
+                         y: [-20, -160],
+                         x: [0, (i % 2 === 0 ? 40 : -40)]
+                       }}
+                       transition={{ 
+                         duration: 3, 
+                         repeat: Infinity, 
+                         delay: i * 0.5,
+                         ease: "easeOut" 
+                       }}
+                       style={{ 
+                         position: 'absolute', 
+                         bottom: '10%', 
+                         left: `${10 + i * 16}%`,
+                         color: '#FF6F61'
+                       }}
+                     >
+                       <Sparkles size={24} fill="#FF6F61" />
+                     </motion.div>
+                   ))}
                 </div>
-                <h2 style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--color-text-primary)', marginBottom: '10px' }}>신청서 제출 완료!</h2>
-                <p style={{ fontSize: '0.95rem', color: 'var(--color-text-secondary)', marginBottom: '40px', lineHeight: 1.7 }}>
-                  남녀간 이상형에 부합된 인원에게만<br />
-                  순차적으로 연락드립니다.
-                </p>
-                <div style={{ position: 'relative', width: '100%', marginTop: '20px' }}>
-                  <div style={{
-                    position: 'absolute',
-                    top: '-32px',
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    background: 'linear-gradient(135deg, #FF6F61, #FF8E53)',
-                    color: '#fff',
-                    padding: '6px 14px',
-                    borderRadius: '20px',
-                    fontSize: '0.8rem',
-                    fontWeight: '900',
-                    boxShadow: '0 4px 15px rgba(255,111,97,0.4)',
-                    whiteSpace: 'nowrap',
-                    animation: 'floatBadge 2s infinite ease-in-out',
-                    zIndex: 10,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px'
-                  }}>
-                    <Sparkles size={14} /> 선발 확률 UP
+
+                <div style={{ position: 'relative', zIndex: 1 }}>
+                  <motion.div 
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ delay: 0.3, type: "spring", stiffness: 200, damping: 15 }}
+                    style={{ width: '88px', height: '88px', borderRadius: '50%', background: 'rgba(110,174,124,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 28px', border: '2px solid rgba(110,174,124,0.15)' }}
+                  >
+                    <CheckCircle size={44} color="#6EAE7C" />
+                  </motion.div>
+                  
+                  <h2 style={{ fontSize: '1.85rem', fontWeight: '900', color: 'var(--color-text-primary)', marginBottom: '14px', letterSpacing: '-0.03em' }}>신청서 제출 완료!</h2>
+                  <p style={{ fontSize: '1rem', color: 'var(--color-text-secondary)', marginBottom: '48px', lineHeight: 1.7, fontWeight: '500', wordBreak: 'keep-all' }}>
+                    남녀간 이상형에 부합된 인원에게만<br />
+                    순차적으로 연락드립니다.
+                  </p>
+                  
+                  <div style={{ position: 'relative', width: '100%', marginTop: '20px' }}>
+                    <motion.div 
+                      initial={{ y: 0 }}
+                      animate={{ y: [-4, 0, -4] }}
+                      transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                      style={{
+                        position: 'absolute',
+                        top: '-38px',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        background: 'linear-gradient(135deg, #FF6F61, #FF8E53)',
+                        color: '#fff',
+                        padding: '8px 20px',
+                        borderRadius: '20px',
+                        fontSize: '0.85rem',
+                        fontWeight: '900',
+                        boxShadow: '0 8px 25px rgba(255,111,97,0.35)',
+                        whiteSpace: 'nowrap',
+                        zIndex: 10,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      <Sparkles size={16} /> 선발 확률 UP
+                    </motion.div>
+                    
+                    <Link href="/events" className="kl-btn-primary" style={{ width: '100%', padding: '22px', fontSize: '1.1rem', textAlign: 'center', display: 'block', borderRadius: '24px', fontWeight: '900', boxShadow: '0 12px 30px rgba(255,111,97,0.2)' }}>
+                      다른 기수도 추가 신청 하기
+                    </Link>
                   </div>
-                  <Link href="/events" className="kl-btn-primary" style={{ width: '100%', padding: '20px', fontSize: '1.1rem', textAlign: 'center', display: 'block', borderRadius: '16px', fontWeight: '900', boxShadow: '0 8px 25px rgba(255,111,97,0.15)' }}>
-                    추가 신청 하기
-                  </Link>
                 </div>
-              </div>
+              </motion.div>
             )}
           </div>
 

@@ -5,7 +5,7 @@ export const POLICIES = [
     icon: ShieldCheck,
     title: '중복 만남 100% 환불',
     subtitle: 'ZERO REPEAT GUARANTEE',
-    desc: '이용약관 제5조에 의거하여 100% 환불',
+    desc: '이용약관 제6조에 의거하여 100% 환불',
     color: '#FF6F61',
     rgb: '255,111,97',
   },

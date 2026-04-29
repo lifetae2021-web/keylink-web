@@ -13,13 +13,13 @@ import { Suspense } from 'react';
 
 const steps = [
   { num: '01', title: '신청하기', desc: '원하는 날짜 선택 후 신청' },
-  { num: '02', title: '참가자 선발 및 입금', desc: '선발된 분들께 안내 문자 발송, 입금 확인 후 최종 참여 확정' },
+  { num: '02', title: '참가자 선발 및 입금', desc: '선발된 분들께 안내 문자 발송,\n입금 확인 후 최종 참여 확정' },
   { num: '03', title: '행사 당일 참석', desc: '신분증 지참 후 안내 된 장소에 방문' },
   { num: '04', title: '신원 확인', desc: '신분증 확인 후 자리 안내' },
   { num: '05', title: '1:1 로테이션 대화', desc: '모든 이성과 약 15분 집중 대화' },
-  { num: '06', title: '호감도 순위 입력', desc: '행사 종료 후 웹사이트에서 1~3순위 선택하여 제출' },
+  { num: '06', title: '호감가는 이성 선택', desc: '행사 종료 후\n웹사이트에서 호감가는 이성 3명을 선택하여 제출' },
   { num: '07', title: '매칭 결과 확인', desc: '상호 호감 매칭 시 오픈채팅방 초대' },
-  { num: '08', title: '새로운 시작 ✨', desc: '매칭 성공 시 카카오 오픈채팅방을 통해 자연스러운 만남 시작' },
+  { num: '08', title: '새로운 시작 ✨', desc: '현실 커플 인증 시 다양한 혜택 제공' },
 ];
 
 function PolicyCards({ policies }: { policies: { icon: React.ElementType; title: string; subtitle: string; desc: string; color: string }[] }) {
@@ -77,7 +77,7 @@ function ProcessSection() {
                 {step.num}
               </div>
               <h3 style={{ fontWeight: '800', fontSize: '1.1rem', color: 'var(--color-text-primary)', marginTop: '6px' }}>{step.title}</h3>
-              <p style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)', lineHeight: 1.7, wordBreak: 'keep-all' }}>{step.desc}</p>
+              <p style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)', lineHeight: 1.7, wordBreak: 'keep-all', whiteSpace: 'pre-line' }}>{step.desc}</p>
             </div>
           ))}
         </div>

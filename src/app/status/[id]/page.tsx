@@ -14,25 +14,26 @@ import { Session, Application } from '@/lib/types';
 export default function StatusPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: sessionId } = use(params);
   const [activeTab, setActiveTab] = useState<'male' | 'female'>('male');
-  const [watchers, setWatchers] = useState(24);
+  const [watchers, setWatchers] = useState(12);
   const [shuffleSeed, setShuffleSeed] = useState(0);
   const [session, setSession] = useState<Session | null>(null);
   const [applicants, setApplicants] = useState<Application[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  
+
   const [userMap, setUserMap] = useState<Record<string, any>>({});
+  const [selectedRow, setSelectedRow] = useState<any | null>(null);
 
   useEffect(() => {
     async function fetchData() {
       try {
         let sessionData = await getSession(sessionId);
-        
+
         // v8.5.0: 레거시 경로 대응 - ID로 조회 실패 시 기수 번호(episodeNumber)로 재시도
         if (!sessionData && !isNaN(parseInt(sessionId))) {
-           const all = await getAllSessions();
-           sessionData = all.find(s => s.episodeNumber === parseInt(sessionId)) || null;
+          const all = await getAllSessions();
+          sessionData = all.find(s => s.episodeNumber === parseInt(sessionId)) || null;
         }
-        
+
         if (!sessionData) {
           setIsLoading(false);
           return;
@@ -47,7 +48,7 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
         // v8.4.8+: 사용자 상세 정보(키, MBTI 등) 가져오기
         const userPromises = confirmedApps.map(a => getDoc(doc(db, 'users', a.userId)));
         const userSnaps = await Promise.all(userPromises);
-        
+
         const map: Record<string, any> = {};
         userSnaps.forEach(snap => {
           if (snap.exists()) {
@@ -67,7 +68,7 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
     const interval = setInterval(() => {
       setWatchers(prev => {
         const delta = Math.floor(Math.random() * 5) - 2;
-        return Math.max(18, Math.min(42, prev + delta));
+        return Math.max(3, Math.min(24, prev + delta));
       });
       setShuffleSeed(prev => prev + 1);
     }, 5000);
@@ -80,12 +81,12 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
   // v8.4.8: 라인업 데이터 바인딩 (이름/연락처 완전 배제)
   const confirmedRows = useMemo(() => {
     const currentList = activeTab === 'male' ? maleApplicants : femaleApplicants;
-    
+
     const baseData = currentList.map(p => {
       const u = userMap[p.userId] || {};
       const birth = u.birthDate || '';
       const year = birth.includes('-') ? birth.split('-')[0].slice(2, 4) : (birth.length >= 2 ? birth.slice(0, 2) : '??');
-      
+
       return {
         birthYear: `${year}년생`,
         job: u.admin_job || u.job || '검토 중',
@@ -118,11 +119,17 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
 
     const jobs = shuffle(baseData.map(r => r.job), shuffleSeed);
     const heights = shuffle(baseData.map(r => r.height), shuffleSeed + 999);
+    const smokings = shuffle(baseData.map(r => r.smoking), shuffleSeed + 111);
+    const drinkings = shuffle(baseData.map(r => r.drinking), shuffleSeed + 222);
+    const religions = shuffle(baseData.map(r => r.religion), shuffleSeed + 333);
 
     return baseData.map((r, i) => ({
       birthYear: r.birthYear,
       job: jobs[i],
       height: heights[i],
+      smoking: smokings[i],
+      drinking: drinkings[i],
+      religion: religions[i],
       isBlind: false
     }));
   }, [activeTab, maleApplicants, femaleApplicants, userMap, shuffleSeed]);
@@ -160,7 +167,7 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
 
   return (
     <div style={{ paddingBottom: '100px', background: 'var(--color-bg)' }}>
-      <div style={{ 
+      <div style={{
         position: 'sticky', top: '85px', zIndex: 100,
         background: 'rgba(255, 111, 97, 0.9)', backdropFilter: 'blur(10px)',
         color: '#fff', padding: '12px 20px', textAlign: 'center',
@@ -172,9 +179,9 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
 
       <div className="kl-container" style={{ paddingTop: '100px' }}>
         <div style={{ marginBottom: '40px' }}>
-          <Link href="/status" style={{ 
-            display: 'inline-flex', alignItems: 'center', gap: '8px', 
-            color: '#666', textDecoration: 'none', 
+          <Link href="/status" style={{
+            display: 'inline-flex', alignItems: 'center', gap: '8px',
+            color: '#666', textDecoration: 'none',
             fontWeight: '700', fontSize: '0.85rem',
             padding: '10px 20px', borderRadius: '12px', background: '#fff',
             border: '1.5px solid #eee', transition: 'all 0.2s ease',
@@ -185,18 +192,18 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
         </div>
 
         <section style={{ marginBottom: '60px' }}>
-          <div style={{ 
+          <div style={{
             display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '32px',
             alignItems: 'center'
           }}>
             <div style={{ position: 'relative', borderRadius: '32px', overflow: 'hidden', height: '400px', boxShadow: '0 20px 40px rgba(0,0,0,0.1)', background: '#f5f5f5' }}>
-              <Image 
-                src="/images/venue.png" 
-                alt="Venue Interior" 
-                fill 
+              <Image
+                src="/images/venue.png"
+                alt="Venue Interior"
+                fill
                 style={{ objectFit: 'cover' }}
               />
-              <div style={{ 
+              <div style={{
                 position: 'absolute', bottom: 0, left: 0, right: 0, padding: '30px',
                 background: 'linear-gradient(to top, rgba(0,0,0,0.7), transparent)', color: '#fff'
               }}>
@@ -213,13 +220,13 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
               </div>
               <h1 style={{ fontSize: '2.4rem', fontWeight: '900', marginBottom: '24px', letterSpacing: '-0.03em' }}>
                 {progressMale >= 1 && progressFemale >= 1 ? (
-                  <>남녀 마감 완료! <br/></>
+                  <>남녀 마감 완료! <br /></>
                 ) : (progressMale >= 0.7 || progressFemale >= 0.7) ? (
-                  <>곧 마감됩니다! <br/></>
+                  <>곧 마감됩니다! <br /></>
                 ) : null}
                 현재 <span style={{ color: '#FF6F61' }}>참가 확정</span> 명단
               </h1>
-              
+
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontWeight: '700', fontSize: '0.9rem' }}>
@@ -256,13 +263,13 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
               참가 확정 라인업
             </h3>
             <p style={{ color: 'var(--color-text-secondary)', fontWeight: '500', maxWidth: '600px', margin: '0 auto' }}>
-              개인정보 보호를 위해 성함과 연락처를 제외한 <br className="desktop-br"/>
+              개인정보 보호를 위해 성함과 연락처를 제외한 <br className="desktop-br" />
               나이, 직업, 키 정보만 투명하게 공개합니다.
             </p>
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', marginBottom: '40px' }}>
-            <button 
+            <button
               onClick={() => setActiveTab('male')}
               style={{
                 padding: '16px 36px', borderRadius: '100px', border: 'none',
@@ -276,7 +283,7 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
             >
               키링남 라인업
             </button>
-            <button 
+            <button
               onClick={() => setActiveTab('female')}
               style={{
                 padding: '16px 36px', borderRadius: '100px', border: 'none',
@@ -293,9 +300,8 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
           </div>
 
           <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-            {/* Header for Lineup List (v8.8.3 Optimized) */}
-            <div style={{ 
-              display: 'grid', gridTemplateColumns: 'minmax(60px, 80px) 120px 1fr 120px', gap: '15px',
+            <div className="lineup-header" style={{
+              display: 'grid', gridTemplateColumns: 'minmax(60px, 80px) 120px 1fr 120px 100px', gap: '15px',
               padding: '15px 40px', background: 'rgba(0,0,0,0.02)', borderRadius: '16px',
               fontWeight: '800', color: '#888', fontSize: '0.85rem', marginBottom: '16px',
               textAlign: 'center'
@@ -304,10 +310,11 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
               <span>출생연도</span>
               <span>직업 <small style={{ fontSize: '0.65rem', color: '#bbb', fontWeight: '500' }}>(랜덤)</small></span>
               <span>키 <small style={{ fontSize: '0.65rem', color: '#bbb', fontWeight: '500' }}>(랜덤)</small></span>
+              <span className="desktop-only">상세보기</span>
             </div>
 
             <AnimatePresence mode="wait">
-              <motion.div 
+              <motion.div
                 key={activeTab}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -315,67 +322,56 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
                 transition={{ duration: 0.3 }}
                 style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}
               >
-                {Array.from({ length: activeTab === 'male' ? (session.maxMale || 8) : (session.maxFemale || 8) }).map((_, idx) => {
+                {Array.from({ length: Math.max(activeTab === 'male' ? (session.maxMale || 8) : (session.maxFemale || 8), confirmedRows.length) }).map((_, idx) => {
                   const row = confirmedRows[idx];
                   const isFilled = !!row;
 
                   return (
-                    <div key={idx} className={`status-row ${isFilled ? 'v850-card' : 'empty-slot'}`} style={{ 
-                      display: 'grid', gridTemplateColumns: 'minmax(60px, 80px) 120px 1fr 120px', gap: '15px',
-                      background: isFilled ? '#fff' : 'rgba(255,255,255,0.4)', 
-                      border: isFilled ? '1.5px solid #f2f2f2' : '1.5px dashed #eee', 
-                      borderRadius: '24px',
-                      padding: '24px 40px', 
-                      boxShadow: isFilled ? '0 8px 24px rgba(0,0,0,0.02)' : 'none',
-                      alignItems: 'center', textAlign: 'center',
-                      transition: 'all 0.3s ease',
-                      opacity: isFilled ? 1 : 0.6
-                    }}>
-                      <div style={{ fontWeight: '900', color: isFilled ? '#CCC' : '#EEE', fontSize: '1.2rem' }}>{idx + 1}</div>
-                      
+                    <div
+                      key={idx}
+                      className={`status-row ${isFilled ? 'v850-card cursor-pointer' : 'empty-slot'}`}
+                      onClick={() => isFilled && !row.isBlind && setSelectedRow({ ...row, idx: idx + 1 })}
+                      style={{
+                        display: 'grid', gridTemplateColumns: 'minmax(60px, 80px) 120px 1fr 120px 100px', gap: '15px',
+                        background: isFilled ? '#fff' : 'rgba(255,255,255,0.4)',
+                        border: isFilled ? '1.5px solid #f2f2f2' : '1.5px dashed #eee',
+                        borderRadius: '24px',
+                        padding: '24px 40px',
+                        boxShadow: isFilled ? '0 8px 24px rgba(0,0,0,0.02)' : 'none',
+                        alignItems: 'center', textAlign: 'center',
+                        transition: 'all 0.3s ease',
+                        opacity: isFilled ? 1 : 0.6,
+                        cursor: isFilled && !row.isBlind ? 'pointer' : 'default'
+                      }}
+                    >
+                      <div className="row-number" style={{ fontWeight: '900', color: isFilled ? '#CCC' : '#EEE', fontSize: '1.2rem' }}>{idx + 1}</div>
+
                       {isFilled ? (
                         row.isBlind ? (
                           <>
                             <div style={{ fontWeight: '800', color: '#111', fontSize: '1rem' }}>{row.birthYear}</div>
-                            <div style={{ gridColumn: 'span 2', color: '#9CA3AF', fontWeight: '700', fontSize: '0.95rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <div style={{ gridColumn: 'span 3', color: '#9CA3AF', fontWeight: '700', fontSize: '0.95rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                               정보 보호를 위해 2인부터 공개
                             </div>
                           </>
                         ) : (
                           <>
-                            <div style={{ fontWeight: '800', color: '#111', fontSize: '1rem' }}>{row.birthYear}</div>
-                            <div style={{ fontWeight: '900', color: activeTab === 'male' ? '#3B82F6' : '#FF6F61', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                              <AnimatePresence mode="wait">
-                                <motion.span 
-                                  key={row.job}
-                                  initial={{ opacity: 0 }}
-                                  animate={{ opacity: 1 }}
-                                  exit={{ opacity: 0 }}
-                                  transition={{ duration: 0.4 }}
-                                >
-                                  {row.job}
-                                </motion.span>
-                              </AnimatePresence>
-                              <span style={{ fontSize: '0.65rem', color: '#bbb', fontWeight: '500' }}>(랜덤)</span>
+                            <div className="row-birth" style={{ fontWeight: '800', color: '#111', fontSize: '1rem' }}>{row.birthYear}</div>
+                            <div className="row-job" style={{ fontWeight: '900', color: activeTab === 'male' ? '#3B82F6' : '#FF6F61', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                              {row.job}
+                              <span className="random-label" style={{ fontSize: '0.65rem', color: '#bbb', fontWeight: '500' }}>(랜덤)</span>
                             </div>
-                            <div style={{ color: '#666', fontWeight: '800', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                              <AnimatePresence mode="wait">
-                                <motion.span 
-                                  key={row.height}
-                                  initial={{ opacity: 0 }}
-                                  animate={{ opacity: 1 }}
-                                  exit={{ opacity: 0 }}
-                                  transition={{ duration: 0.4 }}
-                                >
-                                  {row.height}
-                                </motion.span>
-                              </AnimatePresence>
-                              <span style={{ fontSize: '0.65rem', color: '#bbb', fontWeight: '500' }}>(랜덤)</span>
+                            <div className="row-height" style={{ color: '#666', fontWeight: '800', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                              {row.height}
+                              <span className="random-label" style={{ fontSize: '0.65rem', color: '#bbb', fontWeight: '500' }}>(랜덤)</span>
+                            </div>
+                            <div className="row-detail desktop-only" style={{ display: 'flex', justifyContent: 'center' }}>
+                              <div style={{ background: '#f8f8f8', padding: '6px 12px', borderRadius: '10px', fontSize: '0.75rem', fontWeight: '700', color: '#888' }}>보기</div>
                             </div>
                           </>
                         )
                       ) : (
-                        <div style={{ gridColumn: 'span 3', color: '#bbb', fontWeight: '700', fontSize: '0.95rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+                        <div className="row-empty" style={{ gridColumn: 'span 4', color: '#bbb', fontWeight: '700', fontSize: '0.95rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
                           <Sparkles size={16} className="text-gray-200" /> 모집 중 / 새로운 인연을 기다리고 있어요!
                         </div>
                       )}
@@ -388,15 +384,15 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
         </section>
 
         {/* Assurance Banner v3.5.3 */}
-        <div style={{ 
+        <div style={{
           maxWidth: '800px', margin: '0 auto 80px auto',
-          background: 'linear-gradient(135deg, #F0F7FF 0%, #EBF3FF 100%)', 
+          background: 'linear-gradient(135deg, #F0F7FF 0%, #EBF3FF 100%)',
           border: '1px solid rgba(0,122,255,0.1)',
           padding: '40px', borderRadius: '32px', display: 'flex', alignItems: 'center', gap: '30px',
           boxShadow: '0 10px 30px rgba(0,122,255,0.05)'
         }}>
-          <div style={{ 
-            background: '#007AFF', width: '64px', height: '64px', borderRadius: '20px', 
+          <div style={{
+            background: '#007AFF', width: '64px', height: '64px', borderRadius: '20px',
             display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff',
             boxShadow: '0 8px 16px rgba(0,122,255,0.2)'
           }}>
@@ -407,7 +403,7 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
               지인/중복 만남 시 <span style={{ color: '#007AFF' }}>100% 환불</span>
             </h4>
             <p style={{ fontSize: '1rem', color: '#666', fontWeight: '500', lineHeight: '1.5' }}>
-              과거 매칭되었던 분이나 지인을 만날까 봐 걱정 마세요.<br className="desktop-br"/>
+              과거 매칭되었던 분이나 지인을 만날까 봐 걱정 마세요.<br className="desktop-br" />
               키링크의 꼼꼼한 사전 필터링 시스템이 완벽하게 보호해 드립니다.
             </p>
           </div>
@@ -450,6 +446,8 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
         </Link>
       )}
 
+
+
       <style jsx>{`
         .pulse-circle { width: 8px; height: 8px; background-color: #fff; border-radius: 50%; animation: pulse 1.5s infinite; }
         @keyframes pulse { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(255, 255, 255, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); } }
@@ -458,9 +456,29 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
         .v850-card { border-left: 6px solid #f0f0f0; }
 
         @media (max-width: 768px) {
-          .desktop-br { display: none; }
-          .status-row { grid-template-columns: 50px 1fr !important; padding: 15px 20px !important; gap: 8px !important; }
-          .status-row > div:nth-child(3), .status-row > div:nth-child(4) { display: none; }
+          .desktop-br, .desktop-only { display: none !important; }
+          
+          .lineup-header { 
+            grid-template-columns: 40px 75px 1fr 85px !important; 
+            padding: 10px 12px !important; 
+            gap: 4px !important;
+            font-size: 0.75rem !important;
+            margin-bottom: 10px !important;
+          }
+          
+          .status-row { 
+            grid-template-columns: 40px 75px 1fr 85px !important; 
+            padding: 20px 10px !important; 
+            gap: 4px !important; 
+            border-radius: 18px !important;
+          }
+          
+          .row-birth { font-size: 0.8rem !important; }
+          .row-job { font-size: 0.85rem !important; flex-wrap: wrap; text-align: center; line-height: 1.2; }
+          .row-height { font-size: 0.85rem !important; flex-wrap: wrap; text-align: center; line-height: 1.2; }
+          .row-number { font-size: 0.9rem !important; }
+          .random-label { font-size: 0.55rem !important; }
+          
           h1 { font-size: 1.8rem !important; }
         }
       `}</style>

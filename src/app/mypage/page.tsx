@@ -98,6 +98,7 @@ export default function MyPage() {
   const photoInputRef = useRef<HTMLInputElement>(null);
   const mainPhotoInputRef = useRef<HTMLInputElement>(null);
 
+  // [Draft] Load from localStorage if exists
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (!currentUser) { router.replace('/login'); return; }
@@ -129,7 +130,20 @@ export default function MyPage() {
             etc: d.etc || '',
             employmentProof: d.employmentProof || d.verificationUrl || '',
           };
-          setEditForm(initialForm);
+
+          // [Draft] Load from UNIFIED profile draft
+          const savedDraft = localStorage.getItem(`kl_unified_profile_draft_${currentUser.uid}`);
+          if (savedDraft) {
+            try {
+              const draft = JSON.parse(savedDraft);
+              setEditForm({ ...initialForm, ...draft });
+            } catch (e) {
+              setEditForm(initialForm);
+            }
+          } else {
+            setEditForm(initialForm);
+          }
+
           setVerificationPreview(initialForm.employmentProof || '');
           
           const savedPhotos = d.photos || d.profilePhotos || [];
@@ -141,21 +155,17 @@ export default function MyPage() {
       } catch (e) { console.error(e); }
       finally { setLoading(false); }
 
-      // v8.1.7: 모든 신청서 실시간 구독 및 관련 세션 실시간 추적
       const unsubApps = subscribeMyApplications(currentUser.uid, (apps) => {
         setApplications(apps);
-        
-        // 각 신청서의 세션 정보 실시간 구독 (필요한 경우에만)
         apps.forEach(async (app) => {
           if (!sessionsMap[app.sessionId]) {
             subscribeSession(app.sessionId, (s) => {
               if (s) setSessionsMap(prev => ({ ...prev, [app.sessionId]: s }));
             });
           }
-          // 투표 여부 확인 (최초 1회 또는 상태 변경 시)
           if (app.status === 'confirmed') {
             const vote = await getMyVote(app.sessionId, currentUser.uid);
-            if (vote) setHasVoted(true); // 간단하게 하나라도 했는지 체크 (성능상 최적화 가능)
+            if (vote) setHasVoted(true);
           }
         });
       });
@@ -164,6 +174,16 @@ export default function MyPage() {
     });
     return () => unsubscribe();
   }, [router]);
+
+  // [Draft] Auto-save to UNIFIED profile draft
+  useEffect(() => {
+    if (user && isEditing) {
+      const timeout = setTimeout(() => {
+        localStorage.setItem(`kl_unified_profile_draft_${user.uid}`, JSON.stringify(editForm));
+      }, 1000);
+      return () => clearTimeout(timeout);
+    }
+  }, [editForm, user, isEditing]);
 
   const handleSave = async () => {
     if (!editForm.workplace) return toast.error('회사명 / 직무를 입력해주세요.');
@@ -242,6 +262,10 @@ export default function MyPage() {
       setUserData((p: any) => ({ ...p, ...updateData }));
       setPhotos(uploadedUrls); // Update local state with URLs
       setIsEditing(false);
+      
+      // [Draft] Clear UNIFIED draft on success
+      localStorage.removeItem(`kl_unified_profile_draft_${user!.uid}`);
+      
       toast.success('프로필 정보가 안전하게 업데이트되었습니다.');
     } catch (error: any) {
       console.error('Profile Save Error:', error);
@@ -369,7 +393,7 @@ export default function MyPage() {
                 <div style={{ background: '#FFFDFD', border: '1.5px dashed #FFDBE9', borderRadius: '16px', padding: '24px', marginBottom: '16px' }}>
                    <p style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)', lineHeight: 1.6, marginBottom: '20px', fontWeight: '500' }}>
                     과도한 보정이나 마스크 착용 사진은 지양해주세요.<br/>
-                    <strong style={{ color: '#FF6F61' }}>얼굴과 전신 사진이 포함되도록 자유롭게 총 5장까지 등록해 주세요.</strong>
+                    <strong style={{ color: '#FF6F61' }}>얼굴과 전신 사진이 포함되도록<br />자유롭게 총 5장까지 등록가능</strong>
                   </p>
                   
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
@@ -443,11 +467,11 @@ export default function MyPage() {
             </EditRow>
 
             <EditRow label="이상형 (최대 5가지)">
-              <textarea style={textAreaStyle} value={editForm.idealType} onChange={e => setEditForm((p: any) => ({ ...p, idealType: e.target.value }))} placeholder={'1. 다정한 사람\n2. 웃는게 예쁜 사람'} rows={3} />
+              <textarea style={textAreaStyle} value={editForm.idealType} onChange={e => setEditForm((p: any) => ({ ...p, idealType: e.target.value }))} placeholder={'ex) 자기관리하는, 비흡연, 173이상, 94~00년생 등 자유롭게 적어주세요.'} rows={3} />
             </EditRow>
 
             <EditRow label="비선호형 (최대 5가지)">
-              <textarea style={textAreaStyle} value={editForm.nonIdealType} onChange={e => setEditForm((p: any) => ({ ...p, nonIdealType: e.target.value }))} placeholder={'1. 예의 없는 사람\n2. 연락 두절되는 사람'} rows={3} />
+              <textarea style={textAreaStyle} value={editForm.nonIdealType} onChange={e => setEditForm((p: any) => ({ ...p, nonIdealType: e.target.value }))} placeholder={'ex) 키, 몸매, 흡연 및 음주여부, 경제력, 원하지 않는 나이대 등 자유롭게 적어주세요.'} rows={3} />
             </EditRow>
 
             <EditRow label="흡연 유무" required>
@@ -649,12 +673,39 @@ export default function MyPage() {
             </div>
           </div>
 
-          {/* Accordion Toggle */}
-          <button
-            onClick={() => setExpanded(v => !v)}
-            style={{ width: '100%', margin: '20px 0 0', padding: '20px', background: expanded ? '#FFF5F4' : 'linear-gradient(135deg, #FF6F61, #FF9A9E)', border: 'none', color: expanded ? '#FF6F61' : '#fff', fontWeight: '900', fontSize: '1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', transition: 'all 0.3s' }}>
-            {expanded ? <><ChevronUp size={20} /> 상세 정보 접기</> : <><ChevronDown size={20} /> 전체 정보 펼쳐보기</>}
-          </button>
+          {/* Accordion Toggle (Refined Design) */}
+          <div style={{ padding: '0 24px 20px' }}>
+            <button
+              onClick={() => setExpanded(v => !v)}
+              style={{ 
+                width: '100%', 
+                padding: '14px', 
+                background: expanded ? '#FFF5F4' : '#FFFFFF', 
+                border: expanded ? '1px solid #FFDBE9' : '1px solid #FFE8E5',
+                color: '#FF6F61', 
+                fontWeight: '800', 
+                fontSize: '0.9rem', 
+                cursor: 'pointer', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                gap: '8px', 
+                borderRadius: '16px',
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                boxShadow: expanded ? 'none' : '0 4px 12px rgba(255,111,97,0.05)'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = '0 6px 16px rgba(255,111,97,0.1)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = expanded ? 'none' : '0 4px 12px rgba(255,111,97,0.05)';
+              }}
+            >
+              {expanded ? <><ChevronUp size={18} /> 상세 정보 접기</> : <><ChevronDown size={18} /> 전체 정보 펼쳐보기</>}
+            </button>
+          </div>
 
           {/* === ACCORDION CONTENT === */}
           {expanded && (

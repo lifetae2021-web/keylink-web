@@ -160,8 +160,18 @@ export default function StatusListPage() {
 
                 <div>
                   {(event as any).targetMaleAge && (
-                    <div style={{ display: 'inline-flex', marginBottom: '12px', background: '#FFF5F4', border: '1px solid rgba(255,111,97,0.2)', padding: '4px 8px', borderRadius: '8px' }}>
-                      <span style={{ fontSize: '0.75rem', fontWeight: '800', color: '#FF6F61' }}>남성 연령 : {(event as any).targetMaleAge}</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '14px' }}>
+                      <div style={{ display: 'inline-flex', alignSelf: 'flex-start', background: '#FFF5F4', border: '1px solid rgba(255,111,97,0.2)', padding: '4px 10px', borderRadius: '8px' }}>
+                        <span style={{ fontSize: '0.75rem', fontWeight: '800', color: '#FF6F61' }}>남성 연령 : {(event as any).targetMaleAge}</span>
+                      </div>
+                      <div style={{ paddingLeft: '4px' }}>
+                        <p style={{ fontSize: '0.72rem', fontWeight: '700', color: '#64748b', lineHeight: 1.4 }}>
+                          • 여성분들은 남성 연령대 참고 후 신청해주세요.
+                        </p>
+                        <p style={{ fontSize: '0.68rem', fontWeight: '500', color: '#94a3b8', lineHeight: 1.4 }}>
+                          • 선발 시 남녀간 이상형과 나이대를 참고하여 선발합니다.
+                        </p>
+                      </div>
                     </div>
                   )}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', color: '#666', fontSize: '0.9rem', fontWeight: '600' }}>

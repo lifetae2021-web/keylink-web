@@ -141,7 +141,7 @@ export default function SocialAuth({ isAdmin, isLoading, setIsLoading, lastMetho
         {/* Kakao Login */}
         <div style={{ position: 'relative' }}>
           {lastMethod === 'kakao' && (
-            <div style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', background: '#333', color: '#fff', fontSize: '0.55rem', padding: '1px 5px', borderRadius: '3px', fontWeight: '800', zIndex: 10, whiteSpace: 'nowrap' }}>마지막 이용</div>
+            <div style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', background: '#333', color: '#fff', fontSize: '0.55rem', padding: '1px 5px', borderRadius: '3px', fontWeight: '800', zIndex: 10, whiteSpace: 'nowrap' }}>최근 사용</div>
           )}
           <button
             onClick={() => {
@@ -163,7 +163,7 @@ export default function SocialAuth({ isAdmin, isLoading, setIsLoading, lastMetho
         {/* Google Login */}
         <div style={{ position: 'relative' }}>
           {lastMethod === 'google' && (
-            <div style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', background: '#333', color: '#fff', fontSize: '0.55rem', padding: '1px 5px', borderRadius: '3px', fontWeight: '800', zIndex: 10, whiteSpace: 'nowrap' }}>마지막 이용</div>
+            <div style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', background: '#333', color: '#fff', fontSize: '0.55rem', padding: '1px 5px', borderRadius: '3px', fontWeight: '800', zIndex: 10, whiteSpace: 'nowrap' }}>최근 사용</div>
           )}
           <button
             onClick={handleGoogleLogin}

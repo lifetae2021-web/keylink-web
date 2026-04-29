@@ -72,6 +72,47 @@ export default function UsersPage() {
   const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // 쿠폰 발송 모달
+  const [couponTarget, setCouponTarget] = useState<any | null>(null);
+  const [couponTitle, setCouponTitle] = useState('웰컴 가입 축하 쿠폰');
+  const [customCouponTitle, setCustomCouponTitle] = useState('');
+  const [discountType, setDiscountType] = useState<'percent' | 'amount'>('percent');
+  const [discountValue, setDiscountValue] = useState('');
+  const [validityPeriod, setValidityPeriod] = useState<number | 'unlimited'>(1);
+  const [isSendingCoupon, setIsSendingCoupon] = useState(false);
+
+  const handleSendCoupon = async () => {
+    const finalCouponTitle = couponTitle === '직접 입력' ? customCouponTitle : couponTitle;
+    if (!couponTarget || !finalCouponTitle || !discountValue) {
+      return toast.error('쿠폰 정보를 모두 입력해 주세요.');
+    }
+    setIsSendingCoupon(true);
+    try {
+      const { addDoc, collection: coll } = await import('firebase/firestore');
+      const userRef = doc(db, 'users', couponTarget.id);
+      const newCoupon = {
+        title: finalCouponTitle,
+        type: discountType,
+        value: Number(discountValue),
+        validityMonths: validityPeriod,
+        isUsed: false,
+        createdAt: Timestamp.now(),
+      };
+      
+      await addDoc(coll(userRef, 'coupons'), newCoupon);
+      
+      toast.success(`${couponTarget.name} 회원에게 쿠폰이 발송되었습니다.`);
+      setCouponTarget(null);
+      setCouponTitle('웰컴 가입 축하 쿠폰');
+      setCustomCouponTitle('');
+      setDiscountValue('');
+    } catch (e) {
+      toast.error('쿠폰 발송 중 오류가 발생했습니다.');
+    } finally {
+      setIsSendingCoupon(false);
+    }
+  };
+
   const handleDeleteUser = async () => {
     if (!deleteTarget) return;
     setIsDeleting(true);
@@ -593,6 +634,14 @@ export default function UsersPage() {
                             </button>
                           )}
                           <button
+                            onClick={() => setCouponTarget(u)}
+                            className="flex items-center justify-center rounded-lg hover:bg-sky-50 transition-all text-slate-400 hover:text-sky-500"
+                            style={{ width: 32, height: 32 }}
+                            title="쿠폰 발송"
+                          >
+                            <Ticket size={14} />
+                          </button>
+                          <button
                             onClick={() => setDeleteTarget(u)}
                             className="flex items-center justify-center rounded-lg hover:bg-rose-50 transition-all text-slate-300 hover:text-rose-500"
                             style={{ width: 32, height: 32 }}
@@ -700,6 +749,143 @@ export default function UsersPage() {
                 style={{ flex: 1, padding: '12px', borderRadius: '100px', border: 'none', background: '#EF4444', color: '#fff', fontWeight: '800', fontSize: '0.88rem', cursor: isDeleting ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
               >
                 {isDeleting ? <><Loader2 size={15} className="animate-spin" /> 삭제 중...</> : '삭제하기'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 쿠폰 발송 모달 */}
+      {couponTarget && (
+        <div
+          onClick={() => !isSendingCoupon && setCouponTarget(null)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ background: '#fff', borderRadius: '20px', width: '100%', maxWidth: '420px', padding: '32px' }}
+            className="shadow-2xl animate-in fade-in zoom-in-95 duration-200"
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Ticket size={20} color="#3b82f6" />
+                <h2 style={{ fontSize: '1.1rem', fontWeight: '800', color: '#0F172A' }}>쿠폰 발송</h2>
+              </div>
+              <button onClick={() => !isSendingCoupon && setCouponTarget(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8' }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="space-y-5">
+              {/* 대상 회원 */}
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">대상 회원</label>
+                <div className="bg-slate-50 px-4 py-3 rounded-xl text-sm font-semibold text-slate-700 border border-slate-100">
+                  {couponTarget.name} <span className="text-slate-400 font-normal">({couponTarget.email || '이메일 없음'})</span>
+                </div>
+              </div>
+
+              {/* 쿠폰 메시지 */}
+              <div className="flex flex-col gap-2">
+                <label className="block text-xs font-bold text-slate-500">쿠폰 메시지(제목)</label>
+                <select
+                  value={couponTitle}
+                  onChange={e => setCouponTitle(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-400 outline-none transition-colors text-sm font-semibold text-slate-700 bg-white cursor-pointer shadow-sm"
+                >
+                  <option value="웰컴 가입 축하 쿠폰">웰컴 가입 축하 쿠폰</option>
+                  <option value="지인 추천 감사 쿠폰">지인 추천 감사 쿠폰</option>
+                  <option value="생일 축하 특별 쿠폰">생일 축하 특별 쿠폰</option>
+                  <option value="파티 할인 쿠폰">파티 할인 쿠폰</option>
+                  <option value="다음 만남 응원 쿠폰">다음 만남 응원 쿠폰</option>
+                  <option value="VIP 전용 시크릿 쿠폰">VIP 전용 시크릿 쿠폰</option>
+                  <option value="직접 입력">직접 입력...</option>
+                </select>
+
+                {couponTitle === '직접 입력' && (
+                  <input
+                    type="text"
+                    placeholder="쿠폰 이름을 직접 적어주세요"
+                    value={customCouponTitle}
+                    onChange={e => setCustomCouponTitle(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl border border-blue-200 focus:border-blue-500 outline-none transition-colors text-sm font-medium animate-in slide-in-from-top-1 bg-blue-50/50"
+                    autoFocus
+                  />
+                )}
+              </div>
+
+              {/* 할인 방식 */}
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">할인 방식</label>
+                <div className="flex bg-slate-100 p-1 rounded-xl">
+                  <button
+                    onClick={() => setDiscountType('percent')}
+                    className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${discountType === 'percent' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                  >
+                    % 퍼센트 할인
+                  </button>
+                  <button
+                    onClick={() => setDiscountType('amount')}
+                    className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${discountType === 'amount' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                  >
+                    ₩ 금액 할인
+                  </button>
+                </div>
+              </div>
+
+              {/* 할인 금액/비율 입력 */}
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">
+                  {discountType === 'percent' ? '몇 % 할인 쿠폰을 보낼까요?' : '얼마를 할인할까요?'}
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="1"
+                    placeholder={discountType === 'percent' ? '10' : '10000'}
+                    value={discountValue}
+                    onChange={e => setDiscountValue(e.target.value)}
+                    className="w-full pl-4 pr-12 py-3 rounded-xl border border-slate-200 focus:border-blue-400 outline-none transition-colors text-sm font-bold"
+                  />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 font-bold text-slate-400">
+                    {discountType === 'percent' ? '%' : '원'}
+                  </span>
+                </div>
+              </div>
+
+              {/* 유효 기간 */}
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-2">유효기간 설정</label>
+                <div className="flex flex-wrap gap-2">
+                  {[1, 3, 6, 12, 'unlimited'].map((v) => (
+                    <label key={v} className="flex items-center gap-1.5 cursor-pointer group">
+                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors ${validityPeriod === v ? 'border-blue-500' : 'border-slate-300 group-hover:border-blue-400'}`}>
+                        {validityPeriod === v && <div className="w-2 h-2 rounded-full bg-blue-500" />}
+                      </div>
+                      <span className="text-sm font-medium text-slate-700 select-none">
+                        {v === 'unlimited' ? '∞ 무제한(기한 없음)' : `${v}개월`}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px', marginTop: '32px' }}>
+              <button
+                onClick={() => setCouponTarget(null)}
+                disabled={isSendingCoupon}
+                style={{ flex: 1, padding: '14px', borderRadius: '12px', border: '1px solid #E2E8F0', background: '#F8FAFC', color: '#64748B', fontWeight: '700', fontSize: '0.9rem', cursor: 'pointer' }}
+              >
+                취소
+              </button>
+              <button
+                onClick={handleSendCoupon}
+                disabled={isSendingCoupon || (couponTitle === '직접 입력' ? !customCouponTitle : !couponTitle) || !discountValue}
+                className="disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:bg-blue-600 shadow-lg shadow-blue-500/20"
+                style={{ flex: 1, padding: '14px', borderRadius: '12px', border: 'none', background: '#3b82f6', color: '#fff', fontWeight: '800', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+              >
+                {isSendingCoupon ? <><Loader2 size={16} className="animate-spin" /> 발송 중...</> : '발송하기'}
               </button>
             </div>
           </div>

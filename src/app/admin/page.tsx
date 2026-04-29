@@ -280,43 +280,50 @@ export default function AdminDashboard() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-        {statsCards.map((s, i) => (
-          <div key={i} style={{ ...panel, padding: '16px 20px' }} className="hover:border-slate-300 transition-colors group">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center transition-transform group-hover:scale-110" style={{ background: `${s.color}14` }}>
-                <s.icon size={15} style={{ color: s.color }} />
+        {statsCards.map((s, i) => {
+          const isAnalytics = s.label === '방문자(UV)' || s.label === '페이지뷰(PV)';
+          const CardWrapper = isAnalytics ? Link : 'div';
+          const wrapperProps = isAnalytics ? { href: '/admin/analytics' as any } : {};
+
+          return (
+            <CardWrapper key={i} {...wrapperProps} style={{ ...panel, padding: '16px 20px', cursor: isAnalytics ? 'pointer' : 'default', display: 'block' }} className="hover:border-slate-300 transition-colors group">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center transition-transform group-hover:scale-110" style={{ background: `${s.color}14` }}>
+                  <s.icon size={15} style={{ color: s.color }} />
+                </div>
+                <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#0f172a' }}>{s.label}</span>
+                {isAnalytics && <ChevronRight size={14} className="ml-auto text-gray-400 group-hover:text-[#FF6F61] transition-colors" />}
               </div>
-              <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#0f172a' }}>{s.label}</span>
-            </div>
-            {isLoading ? (
-              <Skeleton className="h-8 w-2/3" />
-            ) : (
-              <div className="flex items-baseline justify-between gap-2">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <p style={{ fontSize: '1.6rem', fontWeight: 700, letterSpacing: '-0.02em', color: '#0f172a', lineHeight: 1.1 }}>
-                      {s.label === '매출' ? formatRevenue(s.monthlyNew as number) : (s.monthlyNew ?? 0)}
-                      {(s.label === '가입자' || s.label === '신청') && <span style={{ fontSize: '1rem', fontWeight: 600, marginLeft: 2 }}>명</span>}
-                      {s.label === '매칭 커플' && <span style={{ fontSize: '1rem', fontWeight: 600, marginLeft: 2 }}>커플</span>}
-                    </p>
-                    <span style={{
-                      fontSize: '0.68rem', fontWeight: 700, padding: '2px 5px', borderRadius: 5,
-                      color: s.trend >= 0 ? '#16a34a' : '#dc2626',
-                      background: s.trend >= 0 ? '#dcfce7' : '#fee2e2',
-                    }}>
-                      {s.trend >= 0 ? '+' : ''}{s.trend}%
-                    </span>
+              {isLoading ? (
+                <Skeleton className="h-8 w-2/3" />
+              ) : (
+                <div className="flex items-baseline justify-between gap-2">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p style={{ fontSize: '1.6rem', fontWeight: 700, letterSpacing: '-0.02em', color: '#0f172a', lineHeight: 1.1 }}>
+                        {s.label === '매출' ? formatRevenue(s.monthlyNew as number) : (s.monthlyNew ?? 0)}
+                        {(s.label === '가입자' || s.label === '신청') && <span style={{ fontSize: '1rem', fontWeight: 600, marginLeft: 2 }}>명</span>}
+                        {s.label === '매칭 커플' && <span style={{ fontSize: '1rem', fontWeight: 600, marginLeft: 2 }}>커플</span>}
+                      </p>
+                      <span style={{
+                        fontSize: '0.68rem', fontWeight: 700, padding: '2px 5px', borderRadius: 5,
+                        color: s.trend >= 0 ? '#16a34a' : '#dc2626',
+                        background: s.trend >= 0 ? '#dcfce7' : '#fee2e2',
+                      }}>
+                        {s.trend >= 0 ? '+' : ''}{s.trend}%
+                      </span>
+                    </div>
+                    <p style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: 4 }}>{s.monthlyNewLabel}</p>
                   </div>
-                  <p style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: 4 }}>{s.monthlyNewLabel}</p>
+                  <div className="text-right shrink-0">
+                    <p style={{ fontSize: '1.05rem', fontWeight: 700, letterSpacing: '-0.02em', color: '#cbd5e1', lineHeight: 1.1 }}>{s.subValue}</p>
+                    <p style={{ fontSize: '0.75rem', color: '#cbd5e1', marginTop: 4 }}>{s.subLabel}</p>
+                  </div>
                 </div>
-                <div className="text-right shrink-0">
-                  <p style={{ fontSize: '1.05rem', fontWeight: 700, letterSpacing: '-0.02em', color: '#cbd5e1', lineHeight: 1.1 }}>{s.subValue}</p>
-                  <p style={{ fontSize: '0.75rem', color: '#cbd5e1', marginTop: 4 }}>{s.subLabel}</p>
-                </div>
-              </div>
-            )}
-          </div>
-        ))}
+              )}
+            </CardWrapper>
+          );
+        })}
       </div>
 
       {/* Row 2: Recent Users & Recent Applicants */}
