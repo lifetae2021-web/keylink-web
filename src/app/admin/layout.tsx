@@ -28,12 +28,15 @@ const PAGE_TITLE: Record<string, string> = {
   '/admin/sms-templates': 'SMS 템플릿',
 };
 
-const MOCK_NOTIFICATIONS = [
-  { id: 1, type: 'new',    text: '박준형 님이 신원인증을 요청했습니다.',   time: '2분 전',  read: false },
-  { id: 2, type: 'new',    text: '이서윤 님이 신원인증을 요청했습니다.',   time: '11분 전', read: false },
-  { id: 3, type: 'update', text: '부산 120기 신청 인원이 14/16명 달성.',  time: '1시간 전', read: true  },
-  { id: 4, type: 'cancel', text: '정다혜 님이 120기 참가를 취소했습니다.', time: '3시간 전', read: true  },
-];
+// v8.12.8: 리얼타임 알림 시스템 (더미데이터 제거)
+interface NotificationItem {
+  id: string;
+  type: 'user' | 'app' | 'private';
+  text: string;
+  time: string;
+  date: Date;
+  path: string;
+}
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -42,7 +45,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [collapsed, setCollapsed] = useState(false);
   const [showText, setShowText] = useState(true);
   const [notiOpen, setNotiOpen]       = useState(false);
-  const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [lastViewedNoti, setLastViewedNoti] = useState<number>(0);
   const [authState, setAuthState] = useState<'loading' | 'admin' | 'denied'>('loading');
   const [pendingCount, setPendingCount] = useState(0);
   const notiRef = useRef<HTMLDivElement>(null);
@@ -77,7 +81,97 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return () => unsub();
   }, [authState]);
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  // 2. 통합 알림 시스템 (최근 10건)
+  useEffect(() => {
+    if (authState !== 'admin') return;
+
+    // 로컬 스토리지에서 마지막 확인 시간 로드
+    const saved = localStorage.getItem('kl_admin_noti_viewed');
+    if (saved) setLastViewedNoti(Number(saved));
+
+    const unsubUsers = onSnapshot(
+      query(collection(db, 'users'), where('status', '==', 'pending'), orderBy('createdAt', 'desc'), limit(5)),
+      (snap) => handleSync()
+    );
+    const unsubApps = onSnapshot(
+      query(collection(db, 'applications'), where('status', '==', 'applied'), orderBy('appliedAt', 'desc'), limit(5)),
+      (snap) => handleSync()
+    );
+    const unsubPrivate = onSnapshot(
+      query(collection(db, 'private_applications'), orderBy('createdAt', 'desc'), limit(5)),
+      (snap) => handleSync()
+    );
+
+    async function handleSync() {
+      const combined: NotificationItem[] = [];
+      const now = new Date();
+
+      // 유저
+      const uSnap = await getDocs(query(collection(db, 'users'), where('status', '==', 'pending'), orderBy('createdAt', 'desc'), limit(5)));
+      uSnap.forEach(d => {
+        const data = d.data();
+        const date = data.createdAt?.toDate() || now;
+        combined.push({
+          id: d.id,
+          type: 'user',
+          text: `${data.name || '신규유저'} 님이 가입 승인을 대기 중입니다.`,
+          date,
+          time: formatTimeAgo(date),
+          path: '/admin/users'
+        });
+      });
+
+      // 일반 신청
+      const aSnap = await getDocs(query(collection(db, 'applications'), where('status', '==', 'applied'), orderBy('appliedAt', 'desc'), limit(5)));
+      aSnap.forEach(d => {
+        const data = d.data();
+        const date = data.appliedAt?.toDate() || now;
+        combined.push({
+          id: d.id,
+          type: 'app',
+          text: `${data.name || '신청자'} 님이 새로운 기수에 참가 신청했습니다.`,
+          date,
+          time: formatTimeAgo(date),
+          path: '/admin/applications'
+        });
+      });
+
+      // 1:1 매칭
+      const pSnap = await getDocs(query(collection(db, 'private_applications'), orderBy('createdAt', 'desc'), limit(5)));
+      pSnap.forEach(d => {
+        const data = d.data();
+        const date = data.createdAt?.toDate() || now;
+        combined.push({
+          id: d.id,
+          type: 'private',
+          text: `${data.name || '신청자'} 님이 1:1 프라이빗 매칭을 신청했습니다.`,
+          date,
+          time: formatTimeAgo(date),
+          path: '/admin/applications' // 현재는 여기서 통합 관리 (필요시 전용 페이지로)
+        });
+      });
+
+      setNotifications(combined.sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 10));
+    }
+
+    function formatTimeAgo(date: Date) {
+      const diff = (new Date().getTime() - date.getTime()) / 1000;
+      if (diff < 60) return '방금 전';
+      if (diff < 3600) return `${Math.floor(diff / 60)}분 전`;
+      if (diff < 86400) return `${Math.floor(diff / 3600)}시간 전`;
+      return `${Math.floor(diff / 86400)}일 전`;
+    }
+
+    return () => { unsubUsers(); unsubApps(); unsubPrivate(); };
+  }, [authState]);
+
+  const unreadCount = notifications.filter(n => n.date.getTime() > lastViewedNoti).length;
+
+  const markAllRead = () => {
+    const now = Date.now();
+    setLastViewedNoti(now);
+    localStorage.setItem('kl_admin_noti_viewed', String(now));
+  };
   const pageTitle   = PAGE_TITLE[pathname] ?? '관리자';
 
   // Auth guard
@@ -117,7 +211,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const markAllRead = () => setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  const markAllReadAction = () => {
+    markAllRead();
+  };
 
   const toggleCollapse = (next: boolean) => {
     if (next) {
@@ -287,45 +383,67 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               {notiOpen && (
                 <div
                   className="absolute right-0 flex flex-col overflow-hidden"
-                  style={{ top: 'calc(100% + 12px)', width: 320, background: '#111113', border: '1px solid rgba(255,255,255,0.08)', borderTop: '2px solid #FF6F61', borderRadius: 12, boxShadow: '0 20px 50px rgba(0,0,0,0.6)', zIndex: 1000 }}
+                  style={{ top: 'calc(100% + 12px)', width: 340, background: '#111113', border: '1px solid rgba(255,255,255,0.08)', borderTop: '2px solid #FF6F61', borderRadius: 12, boxShadow: '0 20px 50px rgba(0,0,0,0.6)', zIndex: 1000 }}
                 >
                   <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                    <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>알림</span>
-                    {unreadCount > 0 && (
-                      <button onClick={markAllRead} style={{ fontSize: '0.75rem', color: '#666', cursor: 'pointer' }}>
-                        모두 읽음
-                      </button>
-                    )}
+                    <div className="flex items-center gap-2">
+                      <span style={{ fontSize: '0.9rem', fontWeight: 800, color: '#fff' }}>최근 알림</span>
+                      {unreadCount > 0 && (
+                        <span style={{ background: '#FF6F61', color: '#fff', fontSize: '0.7rem', fontWeight: 900, padding: '2px 8px', borderRadius: '100px' }}>{unreadCount}</span>
+                      )}
+                    </div>
+                    <button onClick={markAllReadAction} style={{ fontSize: '0.75rem', color: '#666', cursor: 'pointer', background: 'none', border: 'none', fontWeight: '600' }}>
+                      모두 읽음
+                    </button>
                   </div>
-                  <div style={{ maxHeight: 360, overflowY: 'auto' }}>
+                  <div style={{ maxHeight: 380, overflowY: 'auto' }} className="kl-scrollbar">
                     {notifications.length === 0 ? (
-                      <p className="text-center py-10" style={{ color: '#555', fontSize: '0.85rem' }}>새로운 알림이 없습니다.</p>
-                    ) : notifications.map(n => (
-                      <div
-                        key={n.id}
-                        className="flex gap-3 px-5 py-4 cursor-pointer transition-all duration-150"
-                        style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', background: n.read ? 'transparent' : 'rgba(255,111,97,0.04)' }}
-                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.03)'; }}
-                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = n.read ? 'transparent' : 'rgba(255,111,97,0.04)'; }}
-                      >
-                        <div
-                          className="flex items-center justify-center rounded-full shrink-0"
-                          style={{
-                            width: 32, height: 32,
-                            background: n.type === 'new' ? 'rgba(74,222,128,0.1)' : n.type === 'update' ? 'rgba(250,204,21,0.1)' : 'rgba(239,68,68,0.1)',
-                            color: n.type === 'new' ? '#4ade80' : n.type === 'update' ? '#facc15' : '#ef4444',
-                            fontSize: '0.8rem',
-                          }}
-                        >
-                          {n.type === 'new' ? '✓' : n.type === 'update' ? '↑' : '✕'}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p style={{ fontSize: '0.83rem', lineHeight: 1.4, color: n.read ? '#888' : '#ddd' }}>{n.text}</p>
-                          <p style={{ fontSize: '0.72rem', color: '#555', marginTop: 3 }}>{n.time}</p>
-                        </div>
+                      <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
+                        <Bell size={32} color="#333" style={{ marginBottom: '12px' }} />
+                        <p style={{ color: '#555', fontSize: '0.85rem', fontWeight: '500' }}>새로운 알림이 없습니다.</p>
                       </div>
-                    ))}
+                    ) : notifications.map(n => {
+                      const isNew = n.date.getTime() > lastViewedNoti;
+                      return (
+                        <div
+                          key={n.id}
+                          onClick={() => { setNotiOpen(false); router.push(n.path); }}
+                          className="flex gap-3 px-5 py-4 cursor-pointer transition-all duration-150"
+                          style={{ 
+                            borderBottom: '1px solid rgba(255,255,255,0.04)', 
+                            background: isNew ? 'rgba(255,111,97,0.05)' : 'transparent',
+                            position: 'relative'
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = isNew ? 'rgba(255,111,97,0.05)' : 'transparent'; }}
+                        >
+                          {isNew && <div style={{ position: 'absolute', left: '0', top: '50%', transform: 'translateY(-50%)', width: '3px', height: '100%', background: '#FF6F61' }} />}
+                          <div
+                            className="flex items-center justify-center rounded-full shrink-0"
+                            style={{
+                              width: 36, height: 36,
+                              background: n.type === 'user' ? 'rgba(74,222,128,0.1)' : n.type === 'app' ? 'rgba(96,165,250,0.1)' : 'rgba(167,139,250,0.1)',
+                              color: n.type === 'user' ? '#4ade80' : n.type === 'app' ? '#60a5fa' : '#a78bfa',
+                              fontSize: '0.85rem',
+                            }}
+                          >
+                            {n.type === 'user' ? <UserPlus size={16} /> : n.type === 'app' ? <ClipboardList size={16} /> : <Zap size={16} />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p style={{ fontSize: '0.83rem', lineHeight: 1.45, color: isNew ? '#fff' : '#94a3b8', fontWeight: isNew ? '700' : '500' }}>{n.text}</p>
+                            <p style={{ fontSize: '0.72rem', color: '#555', marginTop: 4, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <Clock size={10} /> {n.time}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
+                  {notifications.length > 0 && (
+                    <Link href="/admin/applications" onClick={() => setNotiOpen(false)} style={{ display: 'block', textAlign: 'center', padding: '14px', fontSize: '0.8rem', color: '#888', textDecoration: 'none', background: 'rgba(255,255,255,0.02)', fontWeight: '600' }}>
+                      모든 활동 보기
+                    </Link>
+                  )}
                 </div>
               )}
             </div>
