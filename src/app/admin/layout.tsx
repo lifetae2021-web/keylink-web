@@ -5,7 +5,8 @@ import { usePathname, useRouter } from 'next/navigation';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { 
-  collection, query, where, onSnapshot, doc, getDoc 
+  collection, query, where, onSnapshot, doc, getDoc,
+  orderBy, limit, getDocs
 } from 'firebase/firestore';
 import {
   LayoutDashboard, Users, Calendar, TrendingUp,
