@@ -14,6 +14,7 @@ import {
 } from 'firebase/firestore';
 import { format } from 'date-fns';
 import UserProfileModal from './UserProfileModal';
+import SMSPreviewModal from '@/components/admin/SMSPreviewModal';
 
 type Status = 'all' | 'pending' | 'verified' | 'rejected';
 
@@ -71,6 +72,9 @@ export default function UsersPage() {
   // 회원 삭제
   const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // SMS 발송 모달 (v8.12.9)
+  const [smsTargetUser, setSmsTargetUser] = useState<any | null>(null);
 
   // 쿠폰 발송 모달
   const [couponTarget, setCouponTarget] = useState<any | null>(null);
@@ -281,6 +285,34 @@ export default function UsersPage() {
     } catch (error) {
       console.error('Rejection error:', error);
       toast.error('반려 처리 중 오류가 발생했습니다.');
+    }
+  };
+
+  const handleSendProfileRequestSms = async (message: string) => {
+    if (!smsTargetUser) return;
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      const res = await fetch('/api/admin/sms/send', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          targets: [{
+            phone: smsTargetUser.phone,
+            name: smsTargetUser.name,
+            gender: smsTargetUser.gender,
+            userId: smsTargetUser.id
+          }],
+          message
+        }),
+      });
+      if (!res.ok) throw new Error('발송 실패');
+      toast.success(`${smsTargetUser.name}님께 프로필 작성 요청 문자를 발송했습니다.`);
+    } catch (e) {
+      console.error(e);
+      throw e;
     }
   };
 
@@ -583,8 +615,10 @@ export default function UsersPage() {
                       <td style={{ padding: '0 20px', verticalAlign: 'middle' }}>
                         <div className="flex flex-col gap-2">
                           <span
-                            className="inline-flex items-center gap-1.5"
+                            onClick={() => currentStatus === 'pending' && setSmsTargetUser(u)}
+                            className={`inline-flex items-center gap-1.5 ${currentStatus === 'pending' ? 'cursor-pointer hover:scale-105 active:scale-95 transition-all' : ''}`}
                             style={{ width: 'fit-content', fontSize: '0.72rem', fontWeight: 600, padding: '4px 10px', borderRadius: 20, color: sc.color, background: sc.bg }}
+                            title={currentStatus === 'pending' ? '프로필 작성 요청 문자 보내기' : ''}
                           >
                             <span style={{ width: 5, height: 5, borderRadius: '50%', background: sc.color, display: 'inline-block' }} />
                             {sc.label}
@@ -697,6 +731,20 @@ export default function UsersPage() {
         isOpen={!!selectedUserForProfile}
         onClose={() => setSelectedUserForProfile(null)}
       />
+
+      {/* SMS 발송 모달 (프로필 작성 요청용) */}
+      {smsTargetUser && (
+        <SMSPreviewModal
+          isOpen={!!smsTargetUser}
+          onClose={() => setSmsTargetUser(null)}
+          onConfirm={handleSendProfileRequestSms}
+          applicant={smsTargetUser}
+          session={null}
+          recipientLabel={`${smsTargetUser.name}님 (프로필 작성 요청)`}
+          confirmLabel="요청 문자 발송"
+          defaultMessage={`[키링크] 안녕하세요, {{이름}}님! 키링크를 방문해주셔서 감사합니다.\n\n원활한 매칭을 위해 프로필 작성이 조금 더 필요합니다.\n지금 바로 접속하셔서 매력적인 프로필을 완성하고 진짜 인연을 만나보세요!\n\n- 링크: https://www.keylink.kr/mypage/edit`}
+        />
+      )}
 
       {/* 회원 삭제 확인 모달 */}
       {deleteTarget && (
