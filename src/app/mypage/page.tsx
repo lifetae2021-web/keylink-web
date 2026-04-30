@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useRef, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { auth, db, storage } from '@/lib/firebase';
 import { compressImage } from '@/lib/utils';
 import { onAuthStateChanged, User } from 'firebase/auth';
@@ -64,8 +64,11 @@ function EditRow({ label, children, required }: { label: string; children: React
 const inputStyle: React.CSSProperties = { borderRadius: '12px', border: '1.5px solid #FFDBE9', padding: '12px 16px', fontSize: '0.95rem', fontWeight: '600', width: '100%', boxSizing: 'border-box', background: '#FFFAFA', outline: 'none', transition: 'border-color 0.2s' };
 const textAreaStyle: React.CSSProperties = { ...inputStyle, resize: 'vertical', minHeight: '80px', lineHeight: '1.6' };
 
-export default function MyPage() {
+function MyPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const mode = searchParams.get('mode');
+
   const [user, setUser] = useState<User | null>(null);
   const [userData, setUserData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -184,6 +187,13 @@ export default function MyPage() {
       return () => clearTimeout(timeout);
     }
   }, [editForm, user, isEditing]);
+
+  // v8.13.0: URL mode=edit 대응
+  useEffect(() => {
+    if (mode === 'edit') {
+      setIsEditing(true);
+    }
+  }, [mode]);
 
   const handleSave = async () => {
     if (!editForm.workplace) return toast.error('회사명 / 직무를 입력해주세요.');
@@ -829,6 +839,20 @@ export default function MyPage() {
         .kl-scrollbar::-webkit-scrollbar-thumb { background: #FFDBE9; borderRadius: 4px; }
       `}</style>
     </div>
+  );
+}
+
+export default function MyPage() {
+  return (
+    <Suspense fallback={
+      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#FFFAF9' }}>
+        <div style={{ width: '52px', height: '52px', borderRadius: '50%', border: '3px solid #FFDBE9', borderTop: '3px solid #FF6F61', animation: 'spin 1s linear infinite', marginBottom: '16px' }} />
+        <p style={{ color: '#FF6F61', fontWeight: '700' }}>정보를 불러오는 중...</p>
+        <style>{`@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}`}</style>
+      </div>
+    }>
+      <MyPageContent />
+    </Suspense>
   );
 }
 

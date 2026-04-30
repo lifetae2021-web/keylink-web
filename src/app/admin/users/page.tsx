@@ -10,7 +10,7 @@ import {
 import toast from 'react-hot-toast';
 import { auth, db } from '@/lib/firebase';
 import {
-  collection, onSnapshot, doc, updateDoc, query, orderBy, Timestamp
+  collection, onSnapshot, doc, updateDoc, query, orderBy, Timestamp, serverTimestamp
 } from 'firebase/firestore';
 import { format } from 'date-fns';
 import UserProfileModal from './UserProfileModal';
@@ -309,6 +309,14 @@ export default function UsersPage() {
         }),
       });
       if (!res.ok) throw new Error('발송 실패');
+      
+      // 요청 기록 저장 (v8.13.1)
+      await updateDoc(doc(db, 'users', smsTargetUser.id), {
+        profileRequestSent: true,
+        profileRequestAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+
       toast.success(`${smsTargetUser.name}님께 프로필 작성 요청 문자를 발송했습니다.`);
     } catch (e) {
       console.error(e);
@@ -624,6 +632,13 @@ export default function UsersPage() {
                             {sc.label}
                           </span>
 
+                          {/* 요청 완료 표시 (v8.13.1) */}
+                          {currentStatus === 'pending' && u.profileRequestSent && (
+                            <span style={{ fontSize: '9px', fontWeight: 800, color: '#FF7E7E', display: 'flex', alignItems: 'center', gap: '4px', marginLeft: '4px' }}>
+                              <CheckCircle size={10} /> 요청완료
+                            </span>
+                          )}
+
                           <select
                             value={u.role || '일반회원'}
                             onChange={(e) => updateRole(u.id, e.target.value)}
@@ -743,7 +758,7 @@ export default function UsersPage() {
           recipientLabel={`${smsTargetUser.name}님 (프로필 작성 요청)`}
           confirmLabel="요청 문자 발송"
           autoSelectTemplateName="프로필 작성"
-          defaultMessage={`[키링크] 안녕하세요, {{이름}}님! 키링크를 방문해주셔서 감사합니다.\n\n원활한 매칭을 위해 프로필 작성이 조금 더 필요합니다.\n지금 바로 접속하셔서 매력적인 프로필을 완성하고 진짜 인연을 만나보세요!\n\n- 링크: https://www.keylink.kr/mypage/edit`}
+          defaultMessage={`[키링크] 안녕하세요, {{이름}}님! 키링크를 방문해주셔서 감사합니다.\n\n원활한 매칭을 위해 프로필 작성이 조금 더 필요합니다.\n지금 바로 접속하셔서 매력적인 프로필을 완성하고 진짜 인연을 만나보세요!\n\n- 링크: https://www.keylink.kr/mypage?mode=edit`}
         />
       )}
 

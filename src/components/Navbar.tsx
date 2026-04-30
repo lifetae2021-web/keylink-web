@@ -189,7 +189,7 @@ export default function Navbar() {
                 const isConversionMenu = link.href === '/events';
                 const activeColor = isConversionMenu ? '#FF4D3D' : '#FF6F61';
                 const activeBg = isConversionMenu ? 'rgba(255, 77, 61, 0.12)' : 'rgba(255, 111, 97, 0.1)';
-                
+
                 return link.anchor ? (
                   <a
                     key={link.label}
@@ -238,12 +238,12 @@ export default function Navbar() {
                     <UserIcon size={16} className="kl-btn-icon" /> 마이페이지
                   </Link>
                   {/* PC 전용 로그아웃 버튼 (v3.5.3) */}
-                  <button 
-                    onClick={handleLogout} 
+                  <button
+                    onClick={handleLogout}
                     className="desktop-only-btn"
-                    style={{ 
-                      padding: '10px 18px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px', 
-                      borderRadius: '100px', background: 'transparent', border: '1px solid #EDEDED', 
+                    style={{
+                      padding: '10px 18px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px',
+                      borderRadius: '100px', background: 'transparent', border: '1px solid #EDEDED',
                       color: '#888888', cursor: 'pointer', transition: 'all 0.2s', fontWeight: '500'
                     }}
                     onMouseEnter={e => { e.currentTarget.style.borderColor = '#FFDBE9'; e.currentTarget.style.color = '#FF6F61'; }}
@@ -266,9 +266,9 @@ export default function Navbar() {
               )}
               <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
-                style={{ 
+                style={{
                   background: 'none', border: 'none', cursor: 'pointer', color: '#333333', padding: '8px',
-                  display: user ? 'flex' : 'none' 
+                  display: user ? 'flex' : 'none'
                 }}
                 className="mobile-menu-btn"
               >
