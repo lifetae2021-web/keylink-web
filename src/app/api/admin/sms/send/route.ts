@@ -13,6 +13,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '수신자와 메시지가 필요합니다.' }, { status: 400 });
     }
 
+    // v8.12.9: 로컬 환경(development)에서는 실제 발송을 차단하고 경고 반환
+    const isDev = process.env.NODE_ENV === 'development';
+    if (isDev) {
+      return NextResponse.json({ 
+        error: '[로컬 환경] 로컬 테스트 중에는 실제 문자 발송이 제한됩니다.' 
+      }, { status: 403 });
+    }
+
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 });

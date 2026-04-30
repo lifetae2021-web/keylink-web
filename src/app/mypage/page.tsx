@@ -806,7 +806,7 @@ function MyPageContent() {
         >
           <div style={{ flex: 1 }}>
             <h3 style={{ fontSize: '1.1rem', fontWeight: '900', marginBottom: '2px', letterSpacing: '-0.02em' }}>1:1 프라이빗 매칭 서비스</h3>
-            <p style={{ fontSize: '0.75rem', opacity: 0.9, fontWeight: '500', lineHeight: 1.3 }}>가입비 0원, 오직 당신만을 위한 맞춤 인연</p>
+            <p style={{ fontSize: '0.75rem', opacity: 0.9, fontWeight: '500', lineHeight: 1.3 }}>가입비 0원, 지금 신청 시 무료 매칭</p>
           </div>
           <div style={{ background: '#fff', color: '#6A4C93', padding: '8px 14px', borderRadius: '100px', fontSize: '0.85rem', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
             신청 <ArrowRight size={14} />

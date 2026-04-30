@@ -46,80 +46,117 @@ export async function POST(req: Request) {
     let nextFemaleSlot = 1;
 
     const batch = adminDb.batch();
-    const jobs = ['대기업 사원', 'IT 개발자', '공공기관 대리', '전문직', '스타트업 기획자', '연구원', '금융권 주임', '의료계 종사자'];
-    const locations = ['부산 진구', '부산 해운대구', '창원 성산구', '창원 의창구', '부산 수영구'];
+    const { MALE_JOBS, FEMALE_JOBS, LAST_NAMES, MALE_NAMES, FEMALE_NAMES, DUMMY_LOCATIONS } = await import('@/lib/constants/dummyData');
 
+    // 세션 정보 조회하여 연령대 파악
+    const sessionSnap = await adminDb.doc(`sessions/${sessionId}`).get();
+    const sessionData = sessionSnap.data() || {};
+    
+    // 남성 타겟 연령대 파싱 — "90~96년생", "94~00년생" 형식 모두 지원
+    let maleStart = 90;
+    let maleEnd = 96;
+    if (sessionData.targetMaleAge) {
+      const cleaned = String(sessionData.targetMaleAge).replace(/년생/g, '').trim();
+      const parts = cleaned.split('~');
+      if (parts.length === 2) {
+        const s = parseInt(parts[0].trim(), 10);
+        const e = parseInt(parts[1].trim(), 10);
+        if (!isNaN(s) && !isNaN(e) && s >= 0 && s <= 99 && e >= 0 && e <= 99) {
+          maleStart = s;
+          maleEnd = e;
+          // ±00년생체럼 endYear이 startYear보다 작은 경우: 2000년대 초반으로 보정
+          // 예) maleStart=94, maleEnd=0 → maleEnd=100 (2000년)
+          if (maleEnd < maleStart) maleEnd += 100;
+        }
+      }
+    }
+
+    const getRandom = (arr: any[]) => arr[Math.floor(Math.random() * arr.length)];
+    const generateName = (gender: 'male' | 'female') => {
+      const last = getRandom(LAST_NAMES);
+      const first = gender === 'male' ? getRandom(MALE_NAMES) : getRandom(FEMALE_NAMES);
+      return last + first;
+    };
+
+    const generateMaleBirthDate = (): { birthDate: string; shortYear: number } => {
+      const year = maleStart + Math.floor(Math.random() * (maleEnd - maleStart + 1));
+      const fullYear = year > 50 ? 1900 + year : 2000 + year;
+      const month = String(1 + Math.floor(Math.random() * 12)).padStart(2, '0');
+      const day = String(1 + Math.floor(Math.random() * 28)).padStart(2, '0');
+      return { birthDate: `${fullYear}-${month}-${day}`, shortYear: year };
+    };
+
+    // 여성: 해당 남성보다 1~3살 어리게 (연도 기준 +1~+3)
+    const generateFemaleBirthDate = (maleShortYear: number): string => {
+      const offset = 1 + Math.floor(Math.random() * 3); // 1, 2, 3 중 랜덤
+      const year = maleShortYear + offset;
+      const fullYear = year > 50 ? 1900 + year : 2000 + year;
+      const month = String(1 + Math.floor(Math.random() * 12)).padStart(2, '0');
+      const day = String(1 + Math.floor(Math.random() * 28)).padStart(2, '0');
+      return `${fullYear}-${month}-${day}`;
+    };
+
+    const ts = Date.now();
+
+    // ── 남성 루프 (count명) ──────────────────────
     for (let i = 1; i <= count; i++) {
       const now = FieldValue.serverTimestamp();
-      
-      // 남성 빈 호수 찾기
-      while (usedMaleSlots.has(nextMaleSlot)) nextMaleSlot++;
-      usedMaleSlots.add(nextMaleSlot);
-      
-      // 남성 더미
-      const mId = `dummy_male_${i}_${Date.now()}`;
-      const mUserId = `user_m_${i}_${Date.now()}`;
+      const mId = `dummy_male_${i}_${ts + i}`;
+      const mUserId = `user_m_${i}_${ts + i}`;
+      const mName = generateName('male');
+      const { birthDate: mBirth, shortYear: mShortYear } = generateMaleBirthDate();
+      const mAge = new Date().getFullYear() - (mShortYear > 50 ? 1900 + mShortYear : 2000 + mShortYear) + 1;
+
       batch.set(adminDb.collection('applications').doc(mId), {
         userId: mUserId,
         sessionId,
-        name: `더미남${i}`,
-        age: 28 + Math.floor(Math.random() * 7),
+        name: mName,
+        age: mAge,
+        birthDate: mBirth,
         gender: 'male',
-        job: jobs[Math.floor(Math.random() * jobs.length)],
-        residence: locations[Math.floor(Math.random() * locations.length)],
-        phone: `010-1234-567${i}`,
-        status: 'confirmed',
-        paymentConfirmed: true,
-        slotNumber: nextMaleSlot,
+        job: getRandom(MALE_JOBS),
+        residence: getRandom(DUMMY_LOCATIONS),
+        height: 170 + Math.floor(Math.random() * 16), // 170~185cm
+        phone: `010-${1000 + Math.floor(Math.random() * 8999)}-${1000 + Math.floor(Math.random() * 8999)}`,
+        status: 'applied',
+        paymentConfirmed: false,
         appliedAt: now,
-        updatedAt: now
+        updatedAt: now,
       });
-      batch.set(adminDb.collection('users').doc(mUserId), {
-        name: `더미남${i}`,
-        gender: 'male',
-        job: jobs[Math.floor(Math.random() * jobs.length)],
-        residence: locations[Math.floor(Math.random() * locations.length)],
-        isJobReviewed: true,
-        photos: [`https://picsum.photos/seed/m${mId}/200/200`]
-      }, { merge: true });
+    }
 
-      // 여성 빈 호수 찾기
-      while (usedFemaleSlots.has(nextFemaleSlot)) nextFemaleSlot++;
-      usedFemaleSlots.add(nextFemaleSlot);
+    // ── 여성 루프 (count명) ──────────────────────
+    for (let i = 1; i <= count; i++) {
+      const now = FieldValue.serverTimestamp();
+      const fId = `dummy_female_${i}_${ts + i + 10000}`;
+      const fUserId = `user_f_${i}_${ts + i + 10000}`;
+      const fName = generateName('female');
 
-      // 여성 더미
-      const fId = `dummy_female_${i}_${Date.now()}`;
-      const fUserId = `user_f_${i}_${Date.now()}`;
+      // 남성 기준 랜덤 연도에서 +1~3 오프셋 적용
+      const baseMaleYear = maleStart + Math.floor(Math.random() * (maleEnd - maleStart + 1));
+      const fBirth = generateFemaleBirthDate(baseMaleYear);
+      const fFullYear = parseInt(fBirth.split('-')[0]);
+      const fAge = new Date().getFullYear() - fFullYear + 1;
+
       batch.set(adminDb.collection('applications').doc(fId), {
         userId: fUserId,
         sessionId,
-        name: `더미녀${i}`,
-        age: 26 + Math.floor(Math.random() * 7),
+        name: fName,
+        age: fAge,
+        birthDate: fBirth,
         gender: 'female',
-        job: jobs[Math.floor(Math.random() * jobs.length)],
-        residence: locations[Math.floor(Math.random() * locations.length)],
-        phone: `010-9876-543${i}`,
-        status: 'confirmed',
-        paymentConfirmed: true,
-        slotNumber: nextFemaleSlot,
+        job: getRandom(FEMALE_JOBS),
+        residence: getRandom(DUMMY_LOCATIONS),
+        height: 158 + Math.floor(Math.random() * 13), // 158~170cm
+        phone: `010-${1000 + Math.floor(Math.random() * 8999)}-${1000 + Math.floor(Math.random() * 8999)}`,
+        status: 'applied',
+        paymentConfirmed: false,
         appliedAt: now,
-        updatedAt: now
+        updatedAt: now,
       });
-      batch.set(adminDb.collection('users').doc(fUserId), {
-        name: `더미녀${i}`,
-        gender: 'female',
-        job: jobs[Math.floor(Math.random() * jobs.length)],
-        residence: locations[Math.floor(Math.random() * locations.length)],
-        isJobReviewed: true,
-        photos: [`https://picsum.photos/seed/f${fId}/200/200`]
-      }, { merge: true });
     }
 
-    batch.update(adminDb.collection('sessions').doc(sessionId), {
-      currentMale: FieldValue.increment(count),
-      currentFemale: FieldValue.increment(count),
-    });
-
+    // applied 상태는 커운터에 영향없음 (커운터 증가 없음)
     await batch.commit();
 
     return NextResponse.json({ success: true, count });

@@ -266,60 +266,6 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
     setPreviewModalOpen(true);
   };
 
-  // v8.4.5: 더미 계정 직업 보정 로직 (검색 범위 확장 & batch 처리성 Promise.all)
-  const handleFixDummyJobs = async () => {
-    const dummyJobs = ['회사원', '대기업', '공기업', '공무원', '초등교사', '승무원', '교육직', '기술직', '군무원', '전문직', 'IT개발자'];
-    let count = 0;
-    try {
-      // 1. 유저 데이터 전체 스캔
-      const usersSnap = await getDocs(collection(db, 'users'));
-      const newUserMap = { ...userMap };
-      const userUpdatePromises: Promise<void>[] = [];
-      const updatedUserIds = new Set<string>();
-
-      usersSnap.forEach(docSnap => {
-        const user = docSnap.data();
-        const name = user.name || '';
-        const job = user.job || '';
-        const email = user.email || '';
-
-        // v8.4.5: 광범위한 더미 식별 로직 (이름에 더미 포함 OR 직업이 비어있음 OR 이메일에 test/dummy 포함)
-        const isDummyName = name.includes('더미');
-        const isJobEmpty = !job || job === '-' || job.trim() === '';
-        const isTestEmail = email.includes('test') || email.includes('dummy');
-
-        if (isDummyName || isJobEmpty || isTestEmail) {
-          const randomJob = dummyJobs[Math.floor(Math.random() * dummyJobs.length)];
-          const userRef = doc(db, 'users', docSnap.id);
-
-          userUpdatePromises.push(updateDoc(userRef, {
-            job: randomJob,
-            updatedAt: Timestamp.now()
-          }));
-
-          updatedUserIds.add(docSnap.id);
-          count++;
-
-          // 로컬 상태 바로 업데이트 준비
-          newUserMap[docSnap.id] = { ...user, job: randomJob };
-        }
-      });
-
-      if (count === 0) {
-        toast('보정할 더미 계정이 없습니다.');
-        return;
-      }
-
-      await Promise.all(userUpdatePromises);
-
-      // 3. UI 상태 동기화 (onSnapshot이 있지만 즉각적인 반응성 확보)
-      setUserMap(newUserMap);
-      toast.success(`총 ${count}명의 더미 데이터 직업 보정이 완료되었습니다.`);
-    } catch (e) {
-      console.error(e);
-      toast.error('더미 데이터 보정 중 오류가 발생했습니다.');
-    }
-  };
 
   const handleSeedDummyAccounts = async () => {
     if (!selectedEventId || selectedEventId === 'all') {
@@ -540,11 +486,6 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                 className="flex items-center gap-2 rounded-xl transition-all hover:bg-emerald-50" style={{ height: '40px', padding: '0 12px', fontSize: '0.7rem', background: '#fff', border: '1px solid #6ee7b7', color: '#059669', fontWeight: 800 }}>
                 <Users size={12} /> 더미 추가
               </button>
-              <button
-                onClick={handleFixDummyJobs}
-                className="flex items-center gap-2 rounded-xl transition-all hover:bg-orange-50" style={{ height: '40px', padding: '0 12px', fontSize: '0.7rem', background: '#fff', border: '1px solid #fed7aa', color: '#ea580c', fontWeight: 800 }}>
-                <Briefcase size={12} /> 보정
-              </button>
               <button className="flex items-center gap-2 rounded-xl transition-all hover:bg-slate-100" style={{ height: '40px', padding: '0 12px', fontSize: '0.75rem', background: '#fff', border: '1px solid #E2E8F0', color: '#64748B', fontWeight: 800 }}>
                 <Download size={12} /> 엑셀
               </button>
@@ -590,7 +531,7 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                 <div key={i} style={{ ...panel, padding: '16px 20px' }} className="flex items-center justify-between">
                   <div>
                     <p style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748B' }}>{item.label}</p>
-                    <p style={{ fontSize: '1.25rem', fontWeight: 800, color: item.color, marginTop: 2 }}>{item.value}</p>
+                    <div style={{ fontSize: '1.25rem', fontWeight: 800, color: item.color, marginTop: 2 }}>{item.value}</div>
                   </div>
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: `${item.color}10` }}>
                     <item.icon size={18} style={{ color: item.color }} />
@@ -697,7 +638,7 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                                 {user.photoUrl || user.photoURL || user.photos?.[0] ? (
                                   <img src={user.photoUrl || user.photoURL || user.photos?.[0]} className="w-full h-full object-cover" />
                                 ) : (
-                                  <span className="text-xs font-bold text-[#D4AF37]">{user.name?.[0] || 'U'}</span>
+                                  <span className="text-xs font-bold text-[#D4AF37]">{(user.name || app.name)?.[0] || 'U'}</span>
                                 )}
                               </div>
                               <div className="flex flex-col">
@@ -708,12 +649,17 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                                   >
                                     {user.name || app.name}
                                   </button>
-                                  <span className={`text-[0.65rem] font-bold px-1.5 py-0.5 rounded ${user.gender === 'male' ? 'text-blue-600 bg-blue-50' : 'text-rose-600 bg-rose-50'}`}>
-                                    {user.gender === 'male' ? '남성' : '여성'}
+                                  <span className={`text-[0.65rem] font-bold px-1.5 py-0.5 rounded ${(user.gender || app.gender) === 'male' ? 'text-blue-600 bg-blue-50' : 'text-rose-600 bg-rose-50'}`}>
+                                    {(user.gender || app.gender) === 'male' ? '남성' : '여성'}
                                   </span>
+                                  {(app.userId?.startsWith('user_m_') || app.userId?.startsWith('user_f_') || app.id?.startsWith('dummy_')) && (
+                                    <span className="text-[0.65rem] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 border border-slate-200">
+                                      더미
+                                    </span>
+                                  )}
                                 </div>
                                 <div className="flex items-center gap-2 mt-1">
-                                  <span className="text-[0.85rem] font-bold text-slate-600">{user.birthDate ? `${user.birthDate.includes('-') ? user.birthDate.slice(2, 4) : user.birthDate.slice(0, 2)}년생` : '??'}</span>
+                                  {(() => { const bd = user.birthDate || app.birthDate; return bd ? <span className="text-[0.85rem] font-bold text-slate-600">{bd.includes('-') ? bd.slice(2, 4) : bd.slice(0, 2)}년생</span> : <span className="text-[0.85rem] text-slate-400">??</span>; })()}
                                 </div>
                               </div>
                             </div>
@@ -722,8 +668,9 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                           {/* 직업 */}
                           <td style={{ padding: '0 16px' }}>
                             <div className="flex flex-col">
-                              <p className={`text-[0.85rem] font-bold tracking-tight ${user.job ? 'text-slate-800' : 'text-slate-400'}`}>
-                                {user.job || user.workplace?.split(',')[0] || <span className="font-normal">-</span>}
+                              {/* 더미 계정의 경우 app.job을 fallback으로 사용 */}
+                              <p className={`text-[0.85rem] font-bold tracking-tight ${(user.job || app.job) ? 'text-slate-800' : 'text-slate-400'}`}>
+                                {user.job || user.workplace?.split(',')[0] || app.job || <span className="font-normal">-</span>}
                               </p>
                               <span className="text-[0.72rem] text-slate-400">{user.company || ''}</span>
                             </div>
@@ -759,60 +706,77 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                           {/* 선발 관리 */}
                           <td style={{ padding: '0 16px' }}>
                             <div className="flex items-center justify-center gap-1.5 transition-all">
-                              {(app.status === 'applied' || app.status === 'held') && (
-                                <>
-                                  {app.status === 'held' && (
+                              {(app.status === 'applied' || app.status === 'held') && (() => {
+                                const isDummy = app.userId?.startsWith('user_m_') || app.userId?.startsWith('user_f_');
+                                if (isDummy) {
+                                  return (
                                     <button
-                                      onClick={() => updateAppStatus(app, 'applied')}
-                                      className="px-2.5 py-1.5 rounded-lg text-[0.7rem] font-black bg-amber-100 text-amber-700 border border-amber-200 hover:bg-amber-200 transition-all shadow-sm flex items-center gap-1 group/held"
-                                      title="검토 중으로 되돌리기"
+                                      onClick={() => {
+                                        if (window.confirm(`[더미] ${app.name || ''}을 선발확정 처리하시겠습니까?`)) {
+                                          updateAppStatus(app, 'confirmed');
+                                        }
+                                      }}
+                                      className="px-3 py-1.5 rounded-xl text-[0.75rem] font-bold border transition-all shadow-sm bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-500 hover:text-white"
                                     >
-                                      보류 중 <X size={12} />
+                                      선발확정
                                     </button>
-                                  )}
-                                  <button
-                                    onClick={() => {
-                                      if (!user.isJobReviewed) return toast.error('먼저 회원 관리에서 직업 정보를 확인하고 승인(Job Reviewed)해 주세요.');
-                                      if ((app.gender === 'male' && isMaleFull) || (app.gender === 'female' && isFemaleFull)) {
-                                        return toast.error(`해당 성별의 모집 정원이 이미 충족되었습니다. (최대 ${app.gender === 'male' ? activeEvent?.maxMale : activeEvent?.maxFemale}명)`);
-                                      }
-                                      handleOpenPreview(app);
-                                    }}
-                                    disabled={!user.isJobReviewed || (app.gender === 'male' && isMaleFull) || (app.gender === 'female' && isFemaleFull)}
-                                    className={`px-3 py-1.5 rounded-xl text-[0.75rem] font-bold border transition-all shadow-sm ${!user.isJobReviewed || (app.gender === 'male' && isMaleFull) || (app.gender === 'female' && isFemaleFull)
-                                      ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed grayscale'
-                                      : 'bg-[#FF7E7E]/10 text-[#FF7E7E] border-[#FF7E7E]/20 hover:bg-[#FF7E7E] hover:text-white'
-                                      }`}
-                                    title={!user.isJobReviewed ? "먼저 직업 정보를 확인/수정하고 승인해 주세요" : ""}
-                                  >
-                                    선발
-                                  </button>
+                                  );
+                                }
+                                return (
+                                  <>
+                                    {app.status === 'held' && (
+                                      <button
+                                        onClick={() => updateAppStatus(app, 'applied')}
+                                        className="px-2.5 py-1.5 rounded-lg text-[0.7rem] font-black bg-amber-100 text-amber-700 border border-amber-200 hover:bg-amber-200 transition-all shadow-sm flex items-center gap-1 group/held"
+                                        title="검토 중으로 되돌리기"
+                                      >
+                                        보류 중 <X size={12} />
+                                      </button>
+                                    )}
+                                    <button
+                                      onClick={() => {
+                                        if (!user.isJobReviewed) return toast.error('먼저 회원 관리에서 직업 정보를 확인하고 승인(Job Reviewed)해 주세요.');
+                                        if ((app.gender === 'male' && isMaleFull) || (app.gender === 'female' && isFemaleFull)) {
+                                          return toast.error(`해당 성별의 모집 정원이 이미 충족되었습니다. (최대 ${app.gender === 'male' ? activeEvent?.maxMale : activeEvent?.maxFemale}명)`);
+                                        }
+                                        handleOpenPreview(app);
+                                      }}
+                                      disabled={!user.isJobReviewed || (app.gender === 'male' && isMaleFull) || (app.gender === 'female' && isFemaleFull)}
+                                      className={`px-3 py-1.5 rounded-xl text-[0.75rem] font-bold border transition-all shadow-sm ${!user.isJobReviewed || (app.gender === 'male' && isMaleFull) || (app.gender === 'female' && isFemaleFull)
+                                        ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed grayscale'
+                                        : 'bg-[#FF7E7E]/10 text-[#FF7E7E] border-[#FF7E7E]/20 hover:bg-[#FF7E7E] hover:text-white'
+                                        }`}
+                                      title={!user.isJobReviewed ? "먼저 직업 정보를 확인/수정하고 승인해 주세요" : ""}
+                                    >
+                                      선발
+                                    </button>
 
-                                  {app.status === 'applied' && (
-                                    <button onClick={() => updateAppStatus(app, 'held')} className="px-3 py-1.5 rounded-xl text-[0.75rem] font-bold bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200 transition-all shadow-sm">보류</button>
-                                  )}
+                                    {app.status === 'applied' && (
+                                      <button onClick={() => updateAppStatus(app, 'held')} className="px-3 py-1.5 rounded-xl text-[0.75rem] font-bold bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200 transition-all shadow-sm">보류</button>
+                                    )}
 
-                                  <button
-                                    onClick={() => {
-                                      if (!user.isJobReviewed) return toast.error('먼저 회원 관리에서 직업 정보를 확인하고 승인(Job Reviewed)해 주세요.');
-                                      if ((app.gender === 'male' && isMaleFull) || (app.gender === 'female' && isFemaleFull)) {
-                                        return toast.error(`해당 성별의 모집 정원이 이미 충족되었습니다. (최대 ${app.gender === 'male' ? activeEvent?.maxMale : activeEvent?.maxFemale}명)`);
-                                      }
-                                      if (window.confirm('문자 발송 없이 입금 완료 처리하시겠습니까?')) {
-                                        updateAppStatus(app, 'confirmed');
-                                      }
-                                    }}
-                                    disabled={!user.isJobReviewed || (app.gender === 'male' && isMaleFull) || (app.gender === 'female' && isFemaleFull)}
-                                    className={`px-3 py-1.5 rounded-xl text-[0.75rem] font-bold border transition-all shadow-sm ${!user.isJobReviewed || (app.gender === 'male' && isMaleFull) || (app.gender === 'female' && isFemaleFull)
-                                      ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed grayscale'
-                                      : 'bg-[#FFD700]/10 text-[#B8860B] border-[#FFD700]/30 hover:bg-[#FFD700] hover:text-white'
-                                      }`}
-                                    title={!user.isJobReviewed ? "먼저 직업 정보를 확인/수정하고 승인해 주세요" : ""}
-                                  >
-                                    선발확정
-                                  </button>
-                                </>
-                              )}
+                                    <button
+                                      onClick={() => {
+                                        if (!user.isJobReviewed) return toast.error('먼저 회원 관리에서 직업 정보를 확인하고 승인(Job Reviewed)해 주세요.');
+                                        if ((app.gender === 'male' && isMaleFull) || (app.gender === 'female' && isFemaleFull)) {
+                                          return toast.error(`해당 성별의 모집 정원이 이미 충족되었습니다. (최대 ${app.gender === 'male' ? activeEvent?.maxMale : activeEvent?.maxFemale}명)`);
+                                        }
+                                        if (window.confirm('문자 발송 없이 입금 완료 처리하시겠습니까?')) {
+                                          updateAppStatus(app, 'confirmed');
+                                        }
+                                      }}
+                                      disabled={!user.isJobReviewed || (app.gender === 'male' && isMaleFull) || (app.gender === 'female' && isFemaleFull)}
+                                      className={`px-3 py-1.5 rounded-xl text-[0.75rem] font-bold border transition-all shadow-sm ${!user.isJobReviewed || (app.gender === 'male' && isMaleFull) || (app.gender === 'female' && isFemaleFull)
+                                        ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed grayscale'
+                                        : 'bg-[#FFD700]/10 text-[#B8860B] border-[#FFD700]/30 hover:bg-[#FFD700] hover:text-white'
+                                        }`}
+                                      title={!user.isJobReviewed ? "먼저 직업 정보를 확인/수정하고 승인해 주세요" : ""}
+                                    >
+                                      선발확정
+                                    </button>
+                                  </>
+                                );
+                              })()}
 
                               {app.status === 'selected' && (
                                 <div className="flex items-center gap-1.5">

@@ -24,7 +24,9 @@ export async function POST(req: NextRequest) {
     }
 
     const appPreSnap = await adminDb.doc(`applications/${applicationId}`).get();
-    if (!appPreSnap.exists) throw new Error('신청서를 찾을 수 없습니다.');
+    if (!appPreSnap.exists) {
+      return NextResponse.json({ error: '신청서를 찾을 수 없습니다.' }, { status: 404 });
+    }
     const appPreData = appPreSnap.data()!;
     const { sessionId, gender, status: prevStatus, slotNumber } = appPreData;
 
@@ -51,9 +53,7 @@ export async function POST(req: NextRequest) {
 
     await adminDb.runTransaction(async (transaction) => {
       const appRef = adminDb.doc(`applications/${applicationId}`);
-      const appSnap = await transaction.get(appRef);
-      if (!appSnap.exists) throw new Error('신청서를 찾을 수 없습니다.');
-
+      // 이미 위에서 존재 확인을 완료했으므로 트랜잭션 내 중복 체크 생략
       const sessionRef = adminDb.doc(`sessions/${sessionId}`);
       const counterField = gender === 'male' ? 'currentMale' : 'currentFemale';
 

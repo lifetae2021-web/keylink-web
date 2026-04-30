@@ -21,6 +21,9 @@ async function callStatusApi(applicationId: string, status: string) {
 
 /** 단일 신청자 선발 (status: 'selected') - SMS 발송이 수반되므로 기존 API 사용 권장 */
 export async function selectApplicant(applicationId: string): Promise<void> {
+  if (process.env.NODE_ENV === 'development') {
+    throw new Error('[로컬 환경] 로컬 테스트 중에는 실제 선발 처리가 제한됩니다.');
+  }
   // 선발(selected)의 경우 SMS 발송 로직이 있는 /api/admin/applications/select를 
   // 사용하는 것이 일반적이므로, 여기서는 단순 상태 변경만 필요한 경우에 사용
   await updateDoc(doc(db, APPLICATIONS, applicationId), {
@@ -83,6 +86,9 @@ export async function restoreApplicant(
 export async function bulkSelectApplicants(
   applicationIds: string[]
 ): Promise<void> {
+  if (process.env.NODE_ENV === 'development') {
+    throw new Error('[로컬 환경] 로컬 테스트 중에는 실제 일괄 선발 처리가 제한됩니다.');
+  }
   // TODO: 일괄 처리 시에도 하드 리미트 적용이 필요한 경우 
   // 반복문을 돌며 개별 API를 호출하거나, 일괄 처리를 위한 전용 API를 생성해야 합니다.
   // v8.1.7 현재는 빌드 오류 방지를 위해 기존 로직 유지

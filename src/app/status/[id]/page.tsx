@@ -84,16 +84,20 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
 
     const baseData = currentList.map(p => {
       const u = userMap[p.userId] || {};
-      const birth = u.birthDate || '';
-      const year = birth.includes('-') ? birth.split('-')[0].slice(2, 4) : (birth.length >= 2 ? birth.slice(0, 2) : '??');
+
+      // 더미 계정은 users 컬렉션에 없으므로 application 문서의 필드를 fallback으로 사용
+      const rawBirth = u.birthDate || p.birthDate || '';
+      const year = rawBirth.includes('-')
+        ? rawBirth.split('-')[0].slice(2, 4)
+        : (rawBirth.length >= 2 ? rawBirth.slice(0, 2) : '??');
 
       return {
         birthYear: `${year}년생`,
-        job: u.admin_job || u.job || '검토 중',
-        height: u.height ? `${u.height}cm` : '160cm대',
-        smoking: u.smoking || '비흡연',
-        drinking: u.drinking || '안 마심',
-        religion: u.religion || '무교',
+        job: u.admin_job || u.job || p.job || '검토 중',
+        height: u.height ? `${u.height}cm` : p.height ? `${p.height}cm` : '비공개',
+        smoking: u.smoking || p.smoking || '비흡연',
+        drinking: u.drinking || p.drinking || '안 마심',
+        religion: u.religion || p.religion || '무교',
       };
     }).sort((a, b) => b.birthYear.localeCompare(a.birthYear));
 
@@ -304,7 +308,7 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
 
           <div style={{ maxWidth: '900px', margin: '0 auto' }}>
             <div className="lineup-header" style={{
-              display: 'grid', gridTemplateColumns: 'minmax(60px, 80px) 120px 1fr 120px 100px', gap: '15px',
+              display: 'grid', gridTemplateColumns: 'minmax(60px, 80px) 120px 1fr 120px', gap: '15px',
               padding: '15px 40px', background: 'rgba(0,0,0,0.02)', borderRadius: '16px',
               fontWeight: '800', color: '#888', fontSize: '0.85rem', marginBottom: '16px',
               textAlign: 'center'
@@ -313,7 +317,7 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
               <span>출생연도</span>
               <span>직업 <small style={{ fontSize: '0.65rem', color: '#bbb', fontWeight: '500' }}>(랜덤)</small></span>
               <span>키 <small style={{ fontSize: '0.65rem', color: '#bbb', fontWeight: '500' }}>(랜덤)</small></span>
-              <span className="desktop-only">상세보기</span>
+
             </div>
 
             <AnimatePresence mode="wait">
@@ -335,7 +339,7 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
                       className={`status-row ${isFilled ? 'v850-card cursor-pointer' : 'empty-slot'}`}
                       onClick={() => isFilled && !row.isBlind && setSelectedRow({ ...row, idx: idx + 1 })}
                       style={{
-                        display: 'grid', gridTemplateColumns: 'minmax(60px, 80px) 120px 1fr 120px 100px', gap: '15px',
+                        display: 'grid', gridTemplateColumns: 'minmax(60px, 80px) 120px 1fr 120px', gap: '15px',
                         background: isFilled ? '#fff' : 'rgba(255,255,255,0.4)',
                         border: isFilled ? '1.5px solid #f2f2f2' : '1.5px dashed #eee',
                         borderRadius: '24px',
@@ -367,9 +371,6 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
                             <div className="row-height" style={{ color: '#666', fontWeight: '800', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
                               {row.height}
                               <span className="random-label" style={{ fontSize: '0.65rem', color: '#bbb', fontWeight: '500' }}>(랜덤)</span>
-                            </div>
-                            <div className="row-detail desktop-only" style={{ display: 'flex', justifyContent: 'center' }}>
-                              <div style={{ background: '#f8f8f8', padding: '6px 12px', borderRadius: '10px', fontSize: '0.75rem', fontWeight: '700', color: '#888' }}>보기</div>
                             </div>
                           </>
                         )

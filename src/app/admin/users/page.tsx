@@ -59,6 +59,7 @@ export default function UsersPage() {
   const [sortConfig, setSortConfig] = useState<{ key: 'age' | 'createdAt', direction: 'asc' | 'desc' | null }>({ key: 'createdAt', direction: 'desc' });
 
   // Custom Pagination for performance
+  const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
 
   // Modal states
@@ -205,7 +206,23 @@ export default function UsersPage() {
     });
   }, [users, search, filter, genderFilter, sortConfig]);
 
-  const pagedItems = useMemo(() => filtered.slice(0, pageSize), [filtered, pageSize]);
+  const pagedItems = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filtered.slice(start, start + pageSize);
+  }, [filtered, currentPage, pageSize]);
+
+  const totalPages = Math.ceil(filtered.length / pageSize);
+
+  // 페이지 이동 시 상단으로 스크롤
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // 필터나 검색어 변경 시 1페이지로 리셋
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, filter, genderFilter, sortConfig]);
 
   const toggleSort = (key: 'age' | 'createdAt') => {
     setSortConfig(prev => {
@@ -308,7 +325,8 @@ export default function UsersPage() {
           message
         }),
       });
-      if (!res.ok) throw new Error('발송 실패');
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '발송 실패');
       
       // 요청 기록 저장 (v8.13.1)
       await updateDoc(doc(db, 'users', smsTargetUser.id), {
@@ -722,20 +740,49 @@ export default function UsersPage() {
           </div>
         )}
 
-        {/* Loading More / Windows Mechanism */}
-        <div className="flex items-center justify-between px-6 py-4 bg-slate-50/50" style={{ borderTop: '1px solid #F1F5F9' }}>
-          <p style={{ fontSize: '0.75rem', fontWeight: 500, color: '#64748B' }}>
-            프리미엄 대시보드: 현재 <strong style={{ color: '#0F172A' }}>{pagedItems.length}</strong>명 표시 중 (전체 {filtered.length}명)
+        {/* Pagination (v8.14.0) */}
+        <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-6 bg-slate-50/50 gap-4" style={{ borderTop: '1px solid #F1F5F9' }}>
+          <p style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748B' }}>
+            전체 <strong style={{ color: '#0F172A' }}>{filtered.length}</strong>명 중 {(currentPage - 1) * pageSize + 1}-{Math.min(currentPage * pageSize, filtered.length)}명 표시
           </p>
-          <div className="flex items-center gap-1">
-            {filtered.length > pageSize && (
-              <button
-                onClick={() => setPageSize(prev => prev + 20)}
-                className="px-6 py-2 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 hover:text-[#FF7E7E] transition-all shadow-sm"
-              >
-                데이터 더 불러오기
-              </button>
-            )}
+          
+          <div className="flex items-center gap-1.5">
+            <button
+              disabled={currentPage === 1}
+              onClick={() => handlePageChange(currentPage - 1)}
+              className="p-2 rounded-lg border border-slate-200 bg-white text-slate-400 hover:text-[#FF7E7E] disabled:opacity-30 disabled:hover:text-slate-400 transition-all shadow-sm"
+            >
+              <ChevronLeft size={16} />
+            </button>
+
+            <div className="flex items-center gap-1">
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                // 현재 페이지 주변 5개 번호 표시 로직
+                let pageNum = currentPage;
+                if (totalPages <= 5) pageNum = i + 1;
+                else if (currentPage <= 3) pageNum = i + 1;
+                else if (currentPage >= totalPages - 2) pageNum = totalPages - 4 + i;
+                else pageNum = currentPage - 2 + i;
+
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => handlePageChange(pageNum)}
+                    className={`w-9 h-9 rounded-lg text-[0.75rem] font-bold transition-all shadow-sm ${currentPage === pageNum ? 'bg-[#FF7E7E] text-white' : 'bg-white border border-slate-200 text-slate-500 hover:border-[#FF7E7E] hover:text-[#FF7E7E]'}`}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
+            </div>
+
+            <button
+              disabled={currentPage === totalPages}
+              onClick={() => handlePageChange(currentPage + 1)}
+              className="p-2 rounded-lg border border-slate-200 bg-white text-slate-400 hover:text-[#FF7E7E] disabled:opacity-30 disabled:hover:text-slate-400 transition-all shadow-sm"
+            >
+              <ChevronRight size={16} />
+            </button>
           </div>
         </div>
       </div>

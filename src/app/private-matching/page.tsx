@@ -1,10 +1,67 @@
 'use client';
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { auth, db } from '@/lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ShieldCheck, HeartHandshake, UserSearch, ArrowRight, Sparkles } from 'lucide-react';
+import { ShieldCheck, HeartHandshake, UserSearch, ArrowRight, Sparkles, Lock } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export default function PrivateMatchingLandingPage() {
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<any>(null);
+  const [userData, setUserData] = useState<any>(null);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (authUser) => {
+      if (authUser) {
+        setUser(authUser);
+        const userDoc = await getDoc(doc(db, 'users', authUser.uid));
+        if (userDoc.exists()) {
+          setUserData(userDoc.data());
+        }
+      } else {
+        setUser(null);
+        setUserData(null);
+      }
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="w-10 h-10 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-5 text-center">
+        <div className="w-20 h-20 bg-purple-100 rounded-full flex items-center justify-center mb-6 text-purple-600">
+          <Lock size={40} />
+        </div>
+        <h1 className="text-2xl font-black text-slate-800 mb-3">로그인이 필요합니다</h1>
+        <p className="text-slate-500 mb-8 max-w-xs break-keep">
+          1:1 프라이빗 매칭 서비스는 회원 전용 서비스입니다. 로그인 후 맞춤 혜택을 확인해보세요.
+        </p>
+        <Link 
+          href="/login"
+          className="w-full max-w-xs bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold py-4 rounded-xl shadow-lg"
+        >
+          로그인하러 가기
+        </Link>
+      </div>
+    );
+  }
+
+  const isMale = userData?.gender === 'male';
+  const isFemale = userData?.gender === 'female';
+
   return (
     <div className="min-h-screen bg-slate-50 pt-[80px] pb-24">
       {/* Hero Section */}
@@ -42,7 +99,7 @@ export default function PrivateMatchingLandingPage() {
         >
           <div className="bg-rose-50 border border-rose-100 rounded-xl p-4 mb-6 text-center">
             <p className="text-rose-600 font-black text-sm">🎉 한시적 오픈 이벤트 🎉</p>
-            <p className="text-slate-700 text-xs mt-1 font-bold">지금 신청하면 남녀 모두 매칭 수수료 무료!</p>
+            <p className="text-slate-700 text-xs mt-1 font-bold">지금 신청하면 매칭 수수료 무료!</p>
           </div>
 
           <h2 className="text-lg font-black text-slate-800 mb-5">키링크 1:1 매칭의 특별함</h2>
@@ -87,19 +144,46 @@ export default function PrivateMatchingLandingPage() {
 
           <hr className="my-6 border-slate-100" />
 
-          <div className="bg-slate-50 rounded-xl p-5 mb-8">
-            <h3 className="text-[0.85rem] font-bold text-slate-500 mb-3 text-center">매칭 성공 시 1회 진행비</h3>
-            <div className="flex justify-center items-center gap-8">
-              <div className="text-center">
-                <p className="text-xs font-bold text-blue-500 mb-1">남성</p>
-                <p className="text-xl font-black text-slate-800">39,000<span className="text-sm font-bold text-slate-500 ml-1">원</span></p>
-              </div>
-              <div className="w-px h-8 bg-slate-200"></div>
-              <div className="text-center">
-                <p className="text-xs font-bold text-rose-500 mb-1">여성</p>
-                <p className="text-xl font-black text-slate-800">10,000<span className="text-sm font-bold text-slate-500 ml-1">원</span></p>
-              </div>
+          <div className="bg-slate-50 rounded-2xl p-8 mb-8 text-center relative overflow-hidden border-2 border-rose-100 shadow-inner">
+            <div className="absolute top-0 right-0 bg-rose-500 text-white text-[10px] font-black px-4 py-1.5 rounded-bl-xl shadow-sm tracking-tighter">
+              OPEN EVENT
             </div>
+            <h3 className="text-[0.9rem] font-bold text-slate-500 mb-5">매칭 성공 시 1회 진행비</h3>
+            
+            {isMale && (
+              <div className="flex flex-col items-center">
+                <p className="text-[0.7rem] font-black text-blue-500 mb-2 px-3 py-1 bg-blue-50 rounded-full">남성 회원 혜택</p>
+                <div className="flex flex-col items-center">
+                  <span className="text-slate-400 text-sm line-through decoration-slate-300 font-bold mb-1">정가 39,000원</span>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-4xl font-black text-rose-600 tracking-tighter">0</span>
+                    <span className="text-xl font-black text-rose-600">원</span>
+                  </div>
+                </div>
+                <p className="mt-3 text-[0.75rem] font-bold text-rose-500 animate-bounce">지금 신청하면 무료 매칭 가능!</p>
+              </div>
+            )}
+            
+            {isFemale && (
+              <div className="flex flex-col items-center">
+                <p className="text-[0.7rem] font-black text-rose-500 mb-2 px-3 py-1 bg-rose-50 rounded-full">여성 회원 혜택</p>
+                <div className="flex flex-col items-center">
+                  <span className="text-slate-400 text-sm line-through decoration-slate-300 font-bold mb-1">정가 10,000원</span>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-4xl font-black text-rose-600 tracking-tighter">0</span>
+                    <span className="text-xl font-black text-rose-600">원</span>
+                  </div>
+                </div>
+                <p className="mt-3 text-[0.75rem] font-bold text-rose-500 animate-bounce">지금 신청하면 무료 매칭 가능!</p>
+              </div>
+            )}
+            
+            {!isMale && !isFemale && (
+              <div className="py-4">
+                <div className="w-8 h-8 border-4 border-slate-200 border-t-rose-500 rounded-full animate-spin mx-auto mb-2"></div>
+                <p className="text-slate-400 text-xs font-bold">회원님을 위한 혜택 확인 중...</p>
+              </div>
+            )}
           </div>
 
           <Link 

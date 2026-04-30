@@ -41,6 +41,15 @@ export async function POST(req: NextRequest) {
     const userId = initialAppData.userId;
     const gender = initialAppData.gender;
 
+    // v8.12.9: 로컬 환경(development)에서는 상태 변경 및 실제 과금 방지를 위해 차단
+    const isDev = process.env.NODE_ENV === 'development';
+    if (isDev) {
+      return NextResponse.json({ 
+        error: '[로컬 환경] 로컬 테스트 중에는 실제 문자 발송 및 상태 변경이 제한됩니다.',
+        isMock: true 
+      }, { status: 403 });
+    }
+
     // 3. 트랜잭션을 통한 인원 체크 및 상태 업데이트
     try {
       await adminDb.runTransaction(async (transaction) => {

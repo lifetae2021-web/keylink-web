@@ -63,6 +63,14 @@ export default function PrivateMatching() {
               setHasApplied(true);
             }
 
+            // v8.12.9: 프로필 데이터 연동 (사진 및 재직증명)
+            if (userData.photos && userData.photos.length > 0) {
+              setPhotos(userData.photos);
+            }
+            if (userData.employmentProof) {
+              setJobProof(userData.employmentProof);
+            }
+
           } else {
             setUser({ uid: currentUser.uid });
           }
@@ -302,7 +310,10 @@ export default function PrivateMatching() {
               <hr className="border-slate-100 my-6" />
 
               <div className="mb-6">
-                <h3 className="font-black text-lg text-slate-800 flex items-center gap-2"><ImageIcon size={20} className="text-purple-500" /> 프로필 사진 (3~5장)</h3>
+                <div className="flex justify-between items-end">
+                  <h3 className="font-black text-lg text-slate-800 flex items-center gap-2"><ImageIcon size={20} className="text-purple-500" /> 프로필 사진 (3~5장)</h3>
+                  {photos.length > 0 && <span className="text-[10px] bg-emerald-50 text-emerald-600 font-black px-2 py-1 rounded-md mb-1 border border-emerald-100">프로필 데이터 연동됨</span>}
+                </div>
                 <p className="text-sm text-slate-500 mt-1">상대방에게 신뢰를 줄 수 있는 얼굴이 잘 나온 사진을 올려주세요. (최소 3장)</p>
               </div>
 
@@ -333,7 +344,10 @@ export default function PrivateMatching() {
               <hr className="border-slate-100 my-6" />
 
               <div className="mb-6">
-                <h3 className="font-black text-lg text-slate-800 flex items-center gap-2"><ShieldCheck size={20} className="text-purple-500" /> 신원 인증</h3>
+                <div className="flex justify-between items-end">
+                  <h3 className="font-black text-lg text-slate-800 flex items-center gap-2"><ShieldCheck size={20} className="text-purple-500" /> 신원 인증</h3>
+                  {jobProof && <span className="text-[10px] bg-emerald-50 text-emerald-600 font-black px-2 py-1 rounded-md mb-1 border border-emerald-100">프로필 데이터 연동됨</span>}
+                </div>
                 <p className="text-sm text-slate-500 mt-1">안전한 매칭을 위해 필수 서류를 업로드해주세요.</p>
               </div>
 

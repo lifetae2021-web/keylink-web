@@ -15,6 +15,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '신청서 ID와 변경할 상태가 필요합니다.' }, { status: 400 });
     }
 
+    // v8.12.9: 로컬 환경(development)에서 SMS 발송이 수반되는 '선발' 상태 변경만 차단
+    // '참가 확정(confirmed)'은 SMS 없이 DB만 변경하므로 로컬에서도 허용
+    if (process.env.NODE_ENV === 'development' && status === 'selected') {
+      return NextResponse.json({ 
+        error: '[로컬 환경] 로컬 테스트 중에는 실제 선발(SMS 발송) 처리가 제한됩니다.' 
+      }, { status: 403 });
+    }
+
     // 1. 관리자 권한 확인
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
