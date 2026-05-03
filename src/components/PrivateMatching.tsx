@@ -66,7 +66,7 @@ export default function PrivateMatching() {
               smoking: userData.smoking || '',
               drinking: userData.drinking || '',
               religion: userData.religion || '',
-              mbti: userData.mbti || '',
+              mbti: '', // v8.15.10: 항상 빈칸으로 시작
             }));
 
             // v8.12.8: 중복 신청 여부 체크
@@ -150,6 +150,7 @@ export default function PrivateMatching() {
 
   const handleSubmit = async () => {
     if (!form.maritalStatus) return toast.error('법적 미혼 상태임을 확인해주세요.');
+    if (!form.mbti) return toast.error('나의 MBTI를 입력해주세요.');
     if (!form.idealType1 || !form.idealType2 || !form.idealType3) return toast.error('이상형 조건을 모두 입력해주세요.');
     if (photos.length < 3) return toast.error('본인 사진을 최소 3장 이상 업로드해주세요.');
     if (!idProof) return toast.error('신분증 사본을 업로드해주세요.');
@@ -178,7 +179,7 @@ export default function PrivateMatching() {
         residence: form.residence,
         maritalStatus: form.maritalStatus,
         idealTypeConditions: [form.idealType1, form.idealType2, form.idealType3],
-        photos: user.photos || [],
+        photos: uploadedPhotos,
         employmentProofUrl: user.employmentProof || '',
         status: 'pending_consult', // 상담대기
         updatedAt: serverTimestamp(),
@@ -212,6 +213,7 @@ export default function PrivateMatching() {
         drinking: form.drinking,
         religion: form.religion,
         mbti: form.mbti,
+        photos: uploadedPhotos,
         updatedAt: serverTimestamp(),
       });
 
@@ -371,7 +373,7 @@ export default function PrivateMatching() {
                       type="text" 
                       value={form.mbti}
                       onChange={e => setForm(f => ({...f, mbti: e.target.value.toUpperCase()}))}
-                      placeholder="ENFJ"
+                      placeholder=""
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-800 focus:bg-white focus:border-purple-500 transition-all outline-none" 
                     />
                   </div>
@@ -386,9 +388,8 @@ export default function PrivateMatching() {
                     >
                       <option value="">선택</option>
                       <option value="비흡연">비흡연</option>
-                      <option value="흡연">흡연</option>
-                      <option value="금연 중">금연 중</option>
                       <option value="전자담배">전자담배</option>
+                      <option value="연초">연초</option>
                     </select>
                   </div>
                   <div>
@@ -399,10 +400,10 @@ export default function PrivateMatching() {
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-800 focus:bg-white focus:border-purple-500 transition-all outline-none"
                     >
                       <option value="">선택</option>
-                      <option value="전혀 안함">전혀 안함</option>
-                      <option value="가끔 마심">가끔 마심</option>
-                      <option value="자주 마심">자주 마심</option>
-                      <option value="술자리를 즐김">술자리를 즐김</option>
+                      <option value="안 마심">안 마심</option>
+                      <option value="가끔 (월 1~2회)">가끔 (월 1~2회)</option>
+                      <option value="주 1~2회">주 1~2회</option>
+                      <option value="즐겨 마시는 편">즐겨 마시는 편</option>
                     </select>
                   </div>
                 </div>

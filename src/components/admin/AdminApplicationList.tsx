@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { Search, Image as ImageIcon, FileText, ChevronDown, Trash2 } from 'lucide-react';
+import { Search, Image as ImageIcon, FileText, ChevronDown, Trash2, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 
@@ -16,6 +16,7 @@ const STATUS_MAP: Record<string, { label: string, color: string, bg: string }> =
 };
 
 export default function AdminApplicationList() {
+// ... (rest of the state and handlers remain the same)
   const [applications, setApplications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -25,19 +26,60 @@ export default function AdminApplicationList() {
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerData, setViewerData] = useState<any>(null);
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+  
+  // Lightbox Gallery State
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [galleryImages, setGalleryImages] = useState<string[]>([]);
+  const [currentGalleryIndex, setCurrentGalleryIndex] = useState(0);
+
+  // Helper to open lightbox with gallery
+  const openGallery = (url: string, allPhotos: string[] = [], idProof: string = '', jobProof: string = '') => {
+    const combined = [...allPhotos, idProof, jobProof].filter(Boolean);
+    setGalleryImages(combined);
+    const idx = combined.indexOf(url);
+    setCurrentGalleryIndex(idx >= 0 ? idx : 0);
+    setPreviewUrl(url);
+  };
+
+  const nextImage = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    const nextIdx = (currentGalleryIndex + 1) % galleryImages.length;
+    setCurrentGalleryIndex(nextIdx);
+    setPreviewUrl(galleryImages[nextIdx]);
+  };
+
+  const prevImage = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    const prevIdx = (currentGalleryIndex - 1 + galleryImages.length) % galleryImages.length;
+    setCurrentGalleryIndex(prevIdx);
+    setPreviewUrl(galleryImages[prevIdx]);
+  };
 
   useEffect(() => {
-    const q = query(collection(db, 'private_applications'), orderBy('appliedAt', 'desc'));
-    const unsub = onSnapshot(q, (snap) => {
-      setApplications(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-      setLoading(false);
-    }, (err) => {
-      console.error(err);
-      toast.error('1:1 매칭 신청 내역을 불러오는데 실패했습니다.');
-      setLoading(false);
+    const unsubscribe = auth.onAuthStateChanged((currentUser) => {
+      if (!currentUser) {
+        setLoading(false);
+        return;
+      }
+
+      const q = query(collection(db, 'private_applications'), orderBy('appliedAt', 'desc'));
+      const unsub = onSnapshot(q, (snap) => {
+        setApplications(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+        setLoading(false);
+      }, (err) => {
+        console.error("[AdminApplicationList] Firebase Error:", err.code, err.message);
+        if (err.code === 'permission-denied') {
+          toast.error('접근 권한이 없습니다. 관리자 계정인지 확인해주세요.');
+        } else {
+          toast.error('데이터를 불러오는데 실패했습니다.');
+        }
+        setLoading(false);
+      });
+
+      return () => unsub();
     });
 
-    return () => unsub();
+    return () => unsubscribe();
   }, []);
 
   const handleStatusChange = async (appId: string, newStatus: string) => {
@@ -114,7 +156,6 @@ export default function AdminApplicationList() {
                 <th className="p-4 text-left font-bold text-slate-500">이름/성별/나이</th>
                 <th className="p-4 text-left font-bold text-slate-500">직업/거주지</th>
                 <th className="p-4 text-left font-bold text-slate-500">연락처</th>
-                <th className="p-4 text-center font-bold text-slate-500">이상형/서류</th>
                 <th className="p-4 text-center font-bold text-slate-500">진행 상태</th>
                 <th className="p-4 text-center font-bold text-slate-500">관리</th>
               </tr>
@@ -133,9 +174,35 @@ export default function AdminApplicationList() {
                     <tr key={app.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
                       <td className="p-4 text-slate-600 font-medium">{appliedDate}</td>
                       <td className="p-4">
-                        <div className="font-bold text-slate-800">{app.name}</div>
-                        <div className="text-xs text-slate-500 mt-1">
-                          {app.gender === 'male' ? '남성' : '여성'} · {app.birthDate}
+                        <div className="flex items-center gap-3">
+                          {/* Avatar */}
+                          <div 
+                            onClick={() => { setViewerData(app); setViewerOpen(true); }}
+                            className="w-10 h-10 rounded-full border-2 border-slate-100 overflow-hidden bg-slate-50 flex-shrink-0 cursor-pointer hover:scale-105 transition-transform"
+                          >
+                            {app.photos?.[0] ? (
+                              <img src={app.photos[0]} className="w-full h-full object-cover" alt="avatar" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-slate-300 font-bold text-xs bg-slate-50">
+                                {app.name?.[0] || 'U'}
+                              </div>
+                            )}
+                          </div>
+                          
+                          {/* Info */}
+                          <div className="flex flex-col">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-bold text-slate-800">{app.name}</span>
+                              <span className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase ${
+                                app.gender === 'male' ? 'bg-blue-50 text-blue-500' : 'bg-rose-50 text-rose-500'
+                              }`}>
+                                {app.gender === 'male' ? '남성' : '여성'}
+                              </span>
+                            </div>
+                            <span className="text-[11px] font-bold text-slate-400 mt-0.5">
+                              {app.birthDate ? (app.birthDate.includes('-') ? app.birthDate.slice(2, 4) : app.birthDate.slice(0, 2)) : '--'}년생
+                            </span>
+                          </div>
                         </div>
                       </td>
                       <td className="p-4">
@@ -143,14 +210,6 @@ export default function AdminApplicationList() {
                         <div className="text-xs text-slate-500 mt-1">{app.residence || '-'}</div>
                       </td>
                       <td className="p-4 font-medium text-slate-700">{app.phone}</td>
-                      <td className="p-4 text-center">
-                        <button 
-                          onClick={() => { setViewerData(app); setViewerOpen(true); }}
-                          className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-colors inline-flex items-center gap-1"
-                        >
-                          <FileText size={14} /> 상세 보기
-                        </button>
-                      </td>
                       <td className="p-4 text-center">
                         <div className="relative inline-block text-left">
                           <button 
@@ -201,8 +260,14 @@ export default function AdminApplicationList() {
 
       {/* Viewer Modal */}
       {viewerOpen && viewerData && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
+        <div 
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+          onClick={() => setViewerOpen(false)}
+        >
+          <div 
+            className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="sticky top-0 bg-white/90 backdrop-blur-sm border-b border-slate-100 p-4 flex justify-between items-center z-10">
               <h3 className="font-black text-lg text-slate-800">{viewerData.name} 님의 1:1 매칭 프로필</h3>
               <button onClick={() => setViewerOpen(false)} className="p-2 bg-slate-100 rounded-full hover:bg-slate-200"><X size={16} /></button>
@@ -224,9 +289,9 @@ export default function AdminApplicationList() {
                 <h4 className="font-bold text-slate-700 mb-3 flex items-center gap-2"><ImageIcon size={16} className="text-purple-500" /> 등록 사진</h4>
                 <div className="flex gap-3 overflow-x-auto pb-2">
                   {viewerData.photos?.map((url: string, i: number) => (
-                    <a key={i} href={url} target="_blank" rel="noreferrer" className="shrink-0">
-                      <img src={url} className="w-32 h-32 object-cover rounded-xl border border-slate-200" alt="photo" />
-                    </a>
+                    <div key={i} onClick={() => openGallery(url, viewerData.photos, viewerData.idProofUrl, viewerData.jobProofUrl)} className="shrink-0 cursor-pointer hover:opacity-80 transition-opacity">
+                      <img src={url} className="w-32 h-32 object-cover rounded-xl border border-slate-200 shadow-sm" alt="photo" />
+                    </div>
                   ))}
                 </div>
               </div>
@@ -235,22 +300,66 @@ export default function AdminApplicationList() {
               <div>
                 <h4 className="font-bold text-slate-700 mb-3 flex items-center gap-2"><FileText size={16} className="text-purple-500" /> 인증 서류</h4>
                 <div className="grid grid-cols-2 gap-4">
-                  <a href={viewerData.idProofUrl} target="_blank" rel="noreferrer" className="block border border-slate-200 rounded-xl p-3 hover:border-purple-300 transition-colors group/proof">
+                  <div onClick={() => openGallery(viewerData.idProofUrl, viewerData.photos, viewerData.idProofUrl, viewerData.jobProofUrl)} className="cursor-pointer border border-slate-200 rounded-xl p-3 hover:border-purple-300 transition-colors bg-slate-50 shadow-sm">
                     <p className="text-xs font-bold text-slate-500 mb-2">신분증 사본</p>
-                    <div className="w-full h-32 bg-slate-50 rounded-lg overflow-hidden flex items-center justify-center">
+                    <div className="w-full h-32 rounded-lg overflow-hidden flex items-center justify-center bg-white">
                       <img src={viewerData.idProofUrl} className="w-full h-full object-contain" />
                     </div>
-                  </a>
-                  <a href={viewerData.jobProofUrl} target="_blank" rel="noreferrer" className="block border border-slate-200 rounded-xl p-3 hover:border-purple-300 transition-colors group/proof">
+                  </div>
+                  <div onClick={() => openGallery(viewerData.jobProofUrl, viewerData.photos, viewerData.idProofUrl, viewerData.jobProofUrl)} className="cursor-pointer border border-slate-200 rounded-xl p-3 hover:border-purple-300 transition-colors bg-slate-50 shadow-sm">
                     <p className="text-xs font-bold text-slate-500 mb-2">재직 증명 서류</p>
-                    <div className="w-full h-32 bg-slate-50 rounded-lg overflow-hidden flex items-center justify-center">
+                    <div className="w-full h-32 rounded-lg overflow-hidden flex items-center justify-center bg-white">
                       <img src={viewerData.jobProofUrl} className="w-full h-full object-contain" />
                     </div>
-                  </a>
+                  </div>
                 </div>
               </div>
-              
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Image Lightbox Pop-up with Gallery Navigation */}
+      {previewUrl && (
+        <div 
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 animate-in fade-in duration-200"
+          onClick={() => setPreviewUrl(null)}
+        >
+          {/* Navigation Buttons */}
+          {galleryImages.length > 1 && (
+            <>
+              <button 
+                onClick={prevImage}
+                className="absolute left-4 md:left-10 z-[210] p-3 bg-white/10 hover:bg-white/20 text-white rounded-full transition-all backdrop-blur-sm"
+              >
+                <ChevronLeft size={32} />
+              </button>
+              <button 
+                onClick={nextImage}
+                className="absolute right-4 md:right-10 z-[210] p-3 bg-white/10 hover:bg-white/20 text-white rounded-full transition-all backdrop-blur-sm"
+              >
+                <ChevronRight size={32} />
+              </button>
+              
+              {/* Image Counter */}
+              <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-[210] bg-black/50 text-white px-4 py-2 rounded-full font-bold text-sm backdrop-blur-sm border border-white/20">
+                {currentGalleryIndex + 1} / {galleryImages.length}
+              </div>
+            </>
+          )}
+
+          <div className="relative max-w-[95vw] max-h-[85vh] flex items-center justify-center">
+            <img 
+              src={previewUrl} 
+              className="max-w-full max-h-[85vh] rounded-lg shadow-2xl object-contain border-4 border-white/10 animate-in zoom-in-95 duration-200"
+              onClick={(e) => e.stopPropagation()} 
+            />
+            <button 
+              className="absolute -top-12 right-0 p-2 text-white/70 hover:text-white transition-colors"
+              onClick={() => setPreviewUrl(null)}
+            >
+              <X size={32} />
+            </button>
           </div>
         </div>
       )}
@@ -258,5 +367,3 @@ export default function AdminApplicationList() {
   );
 }
 
-// Need to import X since it's used in the modal
-import { X } from 'lucide-react';

@@ -4,7 +4,7 @@ import { X, User, ShieldCheck, Phone, Camera, MapPin, Briefcase, Users2, Wine, C
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 import { db } from '@/lib/firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import toast from 'react-hot-toast';
 import { useState, useEffect } from 'react';
 
@@ -52,14 +52,38 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose }:
   const [user, setUser] = useState(initialUser);
   const [isUpdating, setIsUpdating] = useState(false);
   const [photoIndex, setPhotoIndex] = useState(0);
+  const [privateAppPhotos, setPrivateAppPhotos] = useState<string[]>([]);
 
   // Sync state with props when modal opens or user changes
   useEffect(() => {
     if (initialUser) {
       setUser(initialUser);
       setPhotoIndex(0);
+      setPrivateAppPhotos([]);
     }
   }, [initialUser, isOpen]);
+
+  // v8.15.9: users 콬렉션에 사진이 없으면 private_applications에서 보완
+  useEffect(() => {
+    if (!isOpen || !initialUser) return;
+    const uid = initialUser.uid || initialUser.id;
+    if (!uid) return;
+    const existingPhotos = [
+      ...(Array.isArray(initialUser.photos) ? initialUser.photos : []),
+      ...(Array.isArray(initialUser.profilePhotos) ? initialUser.profilePhotos : []),
+      ...(Array.isArray(initialUser.facePhotos) ? initialUser.facePhotos : []),
+    ].filter(Boolean);
+    if (existingPhotos.length === 0) {
+      const q = query(collection(db, 'private_applications'), where('userId', '==', uid));
+      getDocs(q).then(snap => {
+        if (!snap.empty) {
+          const appData = snap.docs[0].data();
+          const appPhotos = Array.isArray(appData.photos) ? appData.photos.filter(Boolean) : [];
+          if (appPhotos.length > 0) setPrivateAppPhotos(appPhotos);
+        }
+      });
+    }
+  }, [isOpen, initialUser]);
 
   // 모달 열릴 때 모든 사진 preload
   useEffect(() => {
@@ -120,7 +144,12 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose }:
 
   const photos: string[] = [
     ...(Array.isArray(user.photos) ? user.photos : []),
+    ...(Array.isArray(user.profilePhotos) ? user.profilePhotos : []),
+    ...(Array.isArray(user.facePhotos) ? user.facePhotos : []),
+    ...(Array.isArray(user.bodyPhotos) ? user.bodyPhotos : []),
+    ...(Array.isArray(user.fullBodyPhotos) ? user.fullBodyPhotos : []),
     ...(!Array.isArray(user.photos) && (user.photoUrl || user.photoURL) ? [user.photoUrl || user.photoURL] : []),
+    ...privateAppPhotos,
   ].filter(Boolean);
   const currentPhoto = photos[photoIndex] || null;
 

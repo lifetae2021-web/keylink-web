@@ -10,7 +10,7 @@ import {
 import toast from 'react-hot-toast';
 import { auth, db } from '@/lib/firebase';
 import {
-  collection, onSnapshot, doc, updateDoc, query, orderBy, Timestamp, serverTimestamp
+  collection, onSnapshot, doc, updateDoc, query, orderBy, Timestamp, serverTimestamp, getDocs, where
 } from 'firebase/firestore';
 import { format } from 'date-fns';
 import UserProfileModal from './UserProfileModal';
@@ -141,12 +141,40 @@ export default function UsersPage() {
     setIsLoading(true);
     const q = query(collection(db, 'users'), orderBy('createdAt', 'desc'));
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
       const fetchedUsers = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }));
-      setUsers(fetchedUsers);
+
+      // v8.15.9: private_applications 에서 사진 병합 (없는 유저만)
+      const usersNeedingPhotos = fetchedUsers.filter(u => {
+        const hasPhoto = u.photos?.[0] || u.profilePhotos?.[0] || u.facePhotos?.[0] || u.bodyPhotos?.[0] || u.photoUrl || u.photoURL;
+        return !hasPhoto;
+      });
+
+      if (usersNeedingPhotos.length > 0) {
+        const appSnap = await getDocs(collection(db, 'private_applications'));
+        const photoMap: Record<string, string[]> = {};
+        appSnap.docs.forEach(d => {
+          const data = d.data();
+          if (data.userId && Array.isArray(data.photos) && data.photos.length > 0) {
+            photoMap[data.userId] = data.photos.filter(Boolean);
+          }
+        });
+
+        const merged = fetchedUsers.map(u => {
+          const hasPhoto = u.photos?.[0] || u.profilePhotos?.[0] || u.facePhotos?.[0] || u.bodyPhotos?.[0] || u.photoUrl || u.photoURL;
+          if (!hasPhoto && photoMap[u.id]) {
+            return { ...u, photos: photoMap[u.id] };
+          }
+          return u;
+        });
+        setUsers(merged);
+      } else {
+        setUsers(fetchedUsers);
+      }
+
       setIsLoading(false);
     }, (error) => {
       console.error('Error fetching users:', error);
@@ -540,11 +568,14 @@ export default function UsersPage() {
                             onClick={() => setSelectedUserForProfile(u)}
                             className="w-10 h-10 rounded-full border-2 border-white shadow-sm flex items-center justify-center overflow-hidden bg-slate-100 shrink-0 cursor-pointer hover:scale-110 transition-transform"
                           >
-                            {(u.photoUrl || u.photoURL || u.photos?.[0]) ? (
-                              <img src={u.photoUrl || u.photoURL || u.photos?.[0]} className="w-full h-full object-cover" />
-                            ) : (
-                              <span className="text-xs font-bold text-slate-400">{u.name?.[0] || 'U'}</span>
-                            )}
+                            {(() => {
+                              const photo = u.photos?.[0] || u.profilePhotos?.[0] || u.facePhotos?.[0] || u.bodyPhotos?.[0] || u.photoUrl || u.photoURL;
+                              return photo ? (
+                                <img src={photo} className="w-full h-full object-cover" />
+                              ) : (
+                                <span className="text-xs font-bold text-slate-400">{u.name?.[0] || 'U'}</span>
+                              );
+                            })()}
                           </div>
                           {u.isJobReviewed === false && (
                             <div className="absolute -top-1.5 -right-3 z-10 bg-[#FF7E7E] text-white text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-md border-2 border-white animate-bounce whitespace-nowrap">
