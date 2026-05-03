@@ -148,7 +148,7 @@ export default function UsersPage() {
       }));
 
       // v8.15.9: private_applications 에서 사진 병합 (없는 유저만)
-      const usersNeedingPhotos = fetchedUsers.filter(u => {
+      const usersNeedingPhotos = fetchedUsers.filter((u: any) => {
         const hasPhoto = u.photos?.[0] || u.profilePhotos?.[0] || u.facePhotos?.[0] || u.bodyPhotos?.[0] || u.photoUrl || u.photoURL;
         return !hasPhoto;
       });
