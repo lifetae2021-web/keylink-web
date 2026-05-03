@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { auth, db, storage } from '@/lib/firebase';
-import { doc, getDoc, setDoc, serverTimestamp, collection, addDoc, where, query, getDocs } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, serverTimestamp, collection, addDoc, where, query, getDocs } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { CheckCircle, Upload, X, AlertCircle, ArrowRight, UserCheck, Search, Image as ImageIcon, ShieldCheck, Info } from 'lucide-react';
 import toast from 'react-hot-toast';
