@@ -163,7 +163,7 @@ export default function UsersPage() {
           }
         });
 
-        const merged = fetchedUsers.map(u => {
+        const merged = fetchedUsers.map((u: any) => {
           const hasPhoto = u.photos?.[0] || u.profilePhotos?.[0] || u.facePhotos?.[0] || u.bodyPhotos?.[0] || u.photoUrl || u.photoURL;
           if (!hasPhoto && photoMap[u.id]) {
             return { ...u, photos: photoMap[u.id] };
