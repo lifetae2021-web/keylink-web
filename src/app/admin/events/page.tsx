@@ -235,12 +235,6 @@ export default function EventsPage() {
       isInitialSelectRef.current = false;
       return;
     }
-    setTimeout(() => {
-      const el = detailPanelRef.current;
-      if (!el) return;
-      const top = el.getBoundingClientRect().top + window.scrollY - 80;
-      window.scrollTo({ top, behavior: "smooth" });
-    }, 100);
   }, [selectedId]);
 
   // v7.2.0: 선택된 기수의 신청자 명단 실시간 구독
@@ -1012,7 +1006,7 @@ ${user.name || app.name || "참가자"}님은 ${fDate} ${fDay} ${fTime} 소개�
                   </div>
                   <p className="flex items-center gap-1 text-[0.75rem] text-slate-400 mb-3">
                     <Calendar size={12} />{" "}
-                    {format(ev.eventDate, "MM. dd (E)", { locale: ko })}
+                    {format(ev.eventDate, "MM. dd (E) HH:mm", { locale: ko })}
                   </p>
                   {ev.targetMaleAge && (
                     <p className="flex items-center gap-1 text-[0.68rem] text-blue-400 font-semibold mb-2">

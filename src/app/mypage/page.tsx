@@ -79,6 +79,7 @@ function MyPageContent() {
   // v8.1.7: 신청 현황 다중 상태 관리
   const [applications, setApplications] = useState<Application[]>([]);
   const [hasVoted, setHasVoted] = useState(false);
+  const [privateApp, setPrivateApp] = useState<any>(null); // v8.15.8: 1:1 매칭 신청 정보
   
   const [sessionsMap, setSessionsMap] = useState<Record<string, Session>>({});
 
@@ -171,6 +172,14 @@ function MyPageContent() {
             if (vote) setHasVoted(true);
           }
         });
+      });
+
+      // v8.15.8: 1:1 매칭 신청 현황 조회
+      const privateQ = query(collection(db, 'private_applications'), where('userId', '==', currentUser.uid));
+      getDocs(privateQ).then(snap => {
+        if (!snap.empty) {
+          setPrivateApp(snap.docs[0].data());
+        }
       });
 
       return () => { unsubApps(); };
@@ -783,7 +792,7 @@ function MyPageContent() {
 
         {/* v8.12.7: 1:1 매칭 서비스 유도 블록 */}
         <Link 
-          href="/private-matching" 
+          href={privateApp?.status === 'pending_consult' ? "/private-matching/apply?mode=edit" : "/private-matching"} 
           style={{ 
             marginBottom: '20px', 
             display: 'flex', 
@@ -806,10 +815,16 @@ function MyPageContent() {
         >
           <div style={{ flex: 1 }}>
             <h3 style={{ fontSize: '1.1rem', fontWeight: '900', marginBottom: '2px', letterSpacing: '-0.02em' }}>1:1 프라이빗 매칭 서비스</h3>
-            <p style={{ fontSize: '0.75rem', opacity: 0.9, fontWeight: '500', lineHeight: 1.3 }}>가입비 0원, 지금 신청 시 무료 매칭</p>
+            <p style={{ fontSize: '0.75rem', opacity: 0.9, fontWeight: '500', lineHeight: 1.3 }}>
+              {privateApp?.status === 'pending_consult' ? '현재 상담 대기 중입니다. 내용을 수정할 수 있어요.' : '가입비 0원, 지금 신청 시 무료 매칭'}
+            </p>
           </div>
           <div style={{ background: '#fff', color: '#6A4C93', padding: '8px 14px', borderRadius: '100px', fontSize: '0.85rem', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
-            신청 <ArrowRight size={14} />
+            {privateApp?.status === 'pending_consult' ? (
+              <><Edit3 size={14} /> 수정하기</>
+            ) : (
+              <>신청 <ArrowRight size={14} /></>
+            )}
           </div>
         </Link>
 

@@ -1,10 +1,10 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { auth, db, storage } from '@/lib/firebase';
 import { doc, getDoc, setDoc, serverTimestamp, collection, addDoc, where, query, getDocs } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
-import { CheckCircle, Upload, X, AlertCircle, ArrowRight, UserCheck, Search, Image as ImageIcon, ShieldCheck } from 'lucide-react';
+import { CheckCircle, Upload, X, AlertCircle, ArrowRight, UserCheck, Search, Image as ImageIcon, ShieldCheck, Info } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function PrivateMatching() {
@@ -14,6 +14,9 @@ export default function PrivateMatching() {
   const [hasApplied, setHasApplied] = useState(false); // v8.12.8: 중복 신청 체크
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [step, setStep] = useState(1); // 1: Basic Info, 2: Deep Info, 3: Success
+  const searchParams = useSearchParams();
+  const isEditMode = searchParams.get('mode') === 'edit';
+  const [applicationId, setApplicationId] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     name: '',
@@ -23,6 +26,11 @@ export default function PrivateMatching() {
     job: '',
     residence: '',
     maritalStatus: false, // true means single
+    height: '',
+    smoking: '',
+    drinking: '',
+    religion: '',
+    mbti: '',
     idealType1: '',
     idealType2: '',
     idealType3: '',
@@ -44,7 +52,7 @@ export default function PrivateMatching() {
           if (userDoc.exists()) {
             const userData = userDoc.data();
             setUser({ uid: currentUser.uid, ...userData });
-            
+
             // Auto-sync data
             setForm(prev => ({
               ...prev,
@@ -54,13 +62,37 @@ export default function PrivateMatching() {
               phone: userData.phone || '',
               job: userData.job || userData.workplace?.split(',')[0] || '',
               residence: userData.residence || userData.location || '',
+              height: userData.height || '',
+              smoking: userData.smoking || '',
+              drinking: userData.drinking || '',
+              religion: userData.religion || '',
+              mbti: userData.mbti || '',
             }));
 
             // v8.12.8: 중복 신청 여부 체크
             const q = query(collection(db, 'private_applications'), where('userId', '==', currentUser.uid));
             const snap = await getDocs(q);
             if (!snap.empty) {
-              setHasApplied(true);
+              const appData = snap.docs[0].data();
+              setApplicationId(snap.docs[0].id);
+              
+              if (!isEditMode) {
+                setHasApplied(true);
+              } else {
+                // v8.15.8: 수정 모드일 경우 기존 데이터로 폼 채우기
+                setForm(prev => ({
+                  ...prev,
+                  idealType1: appData.idealTypeConditions?.[0] || '',
+                  idealType2: appData.idealTypeConditions?.[1] || '',
+                  idealType3: appData.idealTypeConditions?.[2] || '',
+                  height: appData.height || prev.height,
+                  smoking: appData.smoking || prev.smoking,
+                  drinking: appData.drinking || prev.drinking,
+                  religion: appData.religion || prev.religion,
+                  mbti: appData.mbti || prev.mbti,
+                  maritalStatus: appData.maritalStatus || false,
+                }));
+              }
             }
 
             // v8.12.9: 프로필 데이터 연동 (사진 및 재직증명)
@@ -135,8 +167,8 @@ export default function PrivateMatching() {
       const uploadedIdProof = await uploadFileToStorage(idProof, `private_matching/${user.uid}/idProof_${Date.now()}.jpg`);
       const uploadedJobProof = await uploadFileToStorage(jobProof, `private_matching/${user.uid}/jobProof_${Date.now()}.jpg`);
 
-      // 3. Save to private_applications collection
-      await addDoc(collection(db, 'private_applications'), {
+      // 3. Save or Update private_applications collection
+      const appData = {
         userId: user.uid,
         name: form.name,
         gender: form.gender,
@@ -146,11 +178,40 @@ export default function PrivateMatching() {
         residence: form.residence,
         maritalStatus: form.maritalStatus,
         idealTypeConditions: [form.idealType1, form.idealType2, form.idealType3],
-        photos: uploadedPhotos,
-        idProofUrl: uploadedIdProof,
-        jobProofUrl: uploadedJobProof,
+        photos: user.photos || [],
+        employmentProofUrl: user.employmentProof || '',
         status: 'pending_consult', // 상담대기
-        appliedAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        // v8.15.7: 상세 프로필 정보 포함
+        height: form.height,
+        smoking: form.smoking,
+        drinking: form.drinking,
+        religion: form.religion,
+        mbti: form.mbti,
+        // v8.15.8: 수정 여부 표시
+        isUpdated: isEditMode ? true : false,
+      };
+
+      if (isEditMode && applicationId) {
+        const { updateDoc: updateAppDoc } = await import('firebase/firestore');
+        await updateAppDoc(doc(db, 'private_applications', applicationId), appData);
+        toast.success('신청 내용이 수정되었습니다.');
+      } else {
+        const { addDoc: addNewDoc } = await import('firebase/firestore');
+        await addNewDoc(collection(db, 'private_applications'), {
+          ...appData,
+          appliedAt: serverTimestamp(),
+        });
+        toast.success('신청이 완료되었습니다.');
+      }
+
+      // 4. v8.15.7: 내 프로필 정보도 함께 업데이트 (실시간 연동)
+      await updateDoc(doc(db, 'users', user.uid), {
+        height: form.height,
+        smoking: form.smoking,
+        drinking: form.drinking,
+        religion: form.religion,
+        mbti: form.mbti,
         updatedAt: serverTimestamp(),
       });
 
@@ -180,13 +241,13 @@ export default function PrivateMatching() {
             이미 1:1 프라이빗 매칭을 신청하신 상태입니다.<br />
             진행 상황은 마이페이지에서 확인하실 수 있습니다.
           </p>
-          <button 
+          <button
             onClick={() => router.push('/matching-results')}
             className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-4 rounded-xl transition-colors mb-3"
           >
             내 매칭 현황 확인하기
           </button>
-          <button 
+          <button
             onClick={() => router.push('/')}
             className="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-4 rounded-xl transition-colors"
           >
@@ -200,11 +261,13 @@ export default function PrivateMatching() {
   return (
     <div className="min-h-screen bg-slate-50 pt-[80px] pb-24">
       <div className="max-w-xl mx-auto px-5">
-        
+
         {/* Progress Bar */}
         {step < 3 && (
           <div className="mb-8">
-            <h1 className="text-2xl font-black text-slate-800 mb-2">1:1 매칭 신청서 작성</h1>
+            <h1 className="text-2xl font-black text-slate-800 mb-2">
+              {isEditMode ? '1:1 매칭 신청서 수정' : '1:1 매칭 신청서 작성'}
+            </h1>
             <div className="flex gap-2">
               <div className={`h-1.5 flex-1 rounded-full ${step >= 1 ? 'bg-purple-500' : 'bg-slate-200'}`}></div>
               <div className={`h-1.5 flex-1 rounded-full ${step >= 2 ? 'bg-purple-500' : 'bg-slate-200'}`}></div>
@@ -223,6 +286,17 @@ export default function PrivateMatching() {
                   <p className="text-xs text-slate-500 mt-1">기존 프로필 데이터가 안전하게 연동되었습니다. 수정이 필요한 경우 마이페이지에서 변경해주세요.</p>
                 </div>
               </div>
+
+              {/* v8.15.5: 승인 대기 중인 회원 안내 (v8.15.5) */}
+              {user?.status === 'pending' && (
+                <div className="flex items-center gap-3 mb-6 bg-amber-50 p-4 rounded-xl border border-amber-200">
+                  <AlertCircle className="text-amber-600 shrink-0" size={24} />
+                  <div>
+                    <h3 className="font-bold text-amber-800 text-sm">현재 승인 대기 중입니다</h3>
+                    <p className="text-xs text-amber-600 mt-1">1:1 매칭은 관리자 승인(인증 완료) 후 신청하실 수 있습니다. 잠시만 기다려 주세요!</p>
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-5">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -258,9 +332,14 @@ export default function PrivateMatching() {
                 </div>
               </div>
 
-              <button 
-                onClick={() => setStep(2)}
-                className="w-full mt-8 bg-slate-900 hover:bg-slate-800 text-white font-bold py-4 rounded-xl flex justify-center items-center gap-2 transition-colors"
+              <button
+                onClick={() => {
+                  if (user?.status === 'pending') {
+                    return toast.error('아직 승인 대기 중입니다. 관리자 승인 후 신청이 가능합니다.');
+                  }
+                  setStep(2);
+                }}
+                className={`w-full mt-8 font-bold py-4 rounded-xl flex justify-center items-center gap-2 transition-all ${user?.status === 'pending' ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-slate-900 hover:bg-slate-800 text-white shadow-lg shadow-slate-200'}`}
               >
                 다음 단계로 <ArrowRight size={18} />
               </button>
@@ -269,6 +348,87 @@ export default function PrivateMatching() {
 
           {step === 2 && (
             <div className="p-6">
+              {/* v8.15.7: 나의 상세 프로필 정보 (기본 프로필 연동) */}
+              <div className="mb-8">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-1.5 h-1.5 rounded-full bg-purple-500"></div>
+                  <h3 className="font-black text-lg text-slate-800">나의 상세 정보 확인</h3>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1.5">키 (cm)</label>
+                    <input 
+                      type="number" 
+                      value={form.height}
+                      onChange={e => setForm(f => ({...f, height: e.target.value}))}
+                      placeholder="175"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-800 focus:bg-white focus:border-purple-500 transition-all outline-none" 
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1.5">MBTI</label>
+                    <input 
+                      type="text" 
+                      value={form.mbti}
+                      onChange={e => setForm(f => ({...f, mbti: e.target.value.toUpperCase()}))}
+                      placeholder="ENFJ"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-800 focus:bg-white focus:border-purple-500 transition-all outline-none" 
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4 mt-4">
+                  <div>
+                    <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1.5">흡연 여부</label>
+                    <select 
+                      value={form.smoking}
+                      onChange={e => setForm(f => ({...f, smoking: e.target.value}))}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-800 focus:bg-white focus:border-purple-500 transition-all outline-none"
+                    >
+                      <option value="">선택</option>
+                      <option value="비흡연">비흡연</option>
+                      <option value="흡연">흡연</option>
+                      <option value="금연 중">금연 중</option>
+                      <option value="전자담배">전자담배</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1.5">음주 빈도</label>
+                    <select 
+                      value={form.drinking}
+                      onChange={e => setForm(f => ({...f, drinking: e.target.value}))}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-800 focus:bg-white focus:border-purple-500 transition-all outline-none"
+                    >
+                      <option value="">선택</option>
+                      <option value="전혀 안함">전혀 안함</option>
+                      <option value="가끔 마심">가끔 마심</option>
+                      <option value="자주 마심">자주 마심</option>
+                      <option value="술자리를 즐김">술자리를 즐김</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1.5">종교</label>
+                  <select 
+                    value={form.religion}
+                    onChange={e => setForm(f => ({...f, religion: e.target.value}))}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-800 focus:bg-white focus:border-purple-500 transition-all outline-none"
+                  >
+                    <option value="">선택</option>
+                    <option value="무교">무교</option>
+                    <option value="기독교">기독교</option>
+                    <option value="천주교">천주교</option>
+                    <option value="불교">불교</option>
+                    <option value="기타">기타</option>
+                  </select>
+                </div>
+                <p className="text-[11px] text-slate-400 mt-3 flex items-center gap-1.5 pl-1">
+                  <Info size={12} className="text-purple-400" />
+                  수정하신 내용은 기본 프로필 정보에도 동일하게 반영됩니다.
+                </p>
+              </div>
+
+              <hr className="border-slate-100 my-8" />
+
               <div className="mb-6">
                 <h3 className="font-black text-lg text-slate-800 flex items-center gap-2"><Search size={20} className="text-purple-500" /> 이상형 정보</h3>
                 <p className="text-sm text-slate-500 mt-1">1:1 매칭을 위해 원하는 이상형의 조건을 구체적으로 작성해주세요. (우선순위 순)</p>
@@ -277,32 +437,32 @@ export default function PrivateMatching() {
               <div className="space-y-4 mb-8">
                 <div>
                   <label className="block text-xs font-bold text-purple-600 mb-1.5">1순위 조건 (필수)</label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     value={form.idealType1}
-                    onChange={e => setForm(f => ({...f, idealType1: e.target.value}))}
-                    placeholder="예: 키 175cm 이상, 다정한 성격" 
-                    className="w-full bg-white border border-slate-300 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 rounded-lg px-4 py-3 text-sm font-bold text-slate-800 outline-none transition-all" 
+                    onChange={e => setForm(f => ({ ...f, idealType1: e.target.value }))}
+                    placeholder="예: 키 175cm 이상, 다정한 성격"
+                    className="w-full bg-white border border-slate-300 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 rounded-lg px-4 py-3 text-sm font-bold text-slate-800 outline-none transition-all"
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-purple-600 mb-1.5">2순위 조건 (필수)</label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     value={form.idealType2}
-                    onChange={e => setForm(f => ({...f, idealType2: e.target.value}))}
-                    placeholder="예: 비흡연자, 안정적인 직장" 
-                    className="w-full bg-white border border-slate-300 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 rounded-lg px-4 py-3 text-sm font-bold text-slate-800 outline-none transition-all" 
+                    onChange={e => setForm(f => ({ ...f, idealType2: e.target.value }))}
+                    placeholder="예: 비흡연자, 안정적인 직장"
+                    className="w-full bg-white border border-slate-300 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 rounded-lg px-4 py-3 text-sm font-bold text-slate-800 outline-none transition-all"
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-purple-600 mb-1.5">3순위 조건 (필수)</label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     value={form.idealType3}
-                    onChange={e => setForm(f => ({...f, idealType3: e.target.value}))}
-                    placeholder="예: 같은 지역 거주, 취미가 비슷한 사람" 
-                    className="w-full bg-white border border-slate-300 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 rounded-lg px-4 py-3 text-sm font-bold text-slate-800 outline-none transition-all" 
+                    onChange={e => setForm(f => ({ ...f, idealType3: e.target.value }))}
+                    placeholder="예: 같은 지역 거주, 취미가 비슷한 사람"
+                    className="w-full bg-white border border-slate-300 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 rounded-lg px-4 py-3 text-sm font-bold text-slate-800 outline-none transition-all"
                   />
                 </div>
               </div>
@@ -321,7 +481,7 @@ export default function PrivateMatching() {
                 {photos.map((photo, i) => (
                   <div key={i} className="relative w-24 h-24 rounded-xl overflow-hidden border border-slate-200 group">
                     <img src={photo} className="w-full h-full object-cover" alt="profile" />
-                    <button 
+                    <button
                       onClick={() => setPhotos(p => p.filter((_, idx) => idx !== i))}
                       className="absolute top-1 right-1 bg-black/50 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
                     >
@@ -330,7 +490,7 @@ export default function PrivateMatching() {
                   </div>
                 ))}
                 {photos.length < 5 && (
-                  <button 
+                  <button
                     onClick={() => photoInputRef.current?.click()}
                     className="w-24 h-24 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 flex flex-col items-center justify-center gap-1 hover:bg-slate-100 transition-colors"
                   >
@@ -338,7 +498,7 @@ export default function PrivateMatching() {
                     <span className="text-xs font-bold text-slate-500">추가</span>
                   </button>
                 )}
-                <input type="file" ref={photoInputRef} onChange={e => handleFileChange(e, () => {}, true)} accept="image/*" multiple className="hidden" />
+                <input type="file" ref={photoInputRef} onChange={e => handleFileChange(e, () => { }, true)} accept="image/*" multiple className="hidden" />
               </div>
 
               <hr className="border-slate-100 my-6" />
@@ -358,7 +518,7 @@ export default function PrivateMatching() {
                       <p className="font-bold text-sm text-slate-800">신분증 사본 <span className="text-[10px] text-rose-500 font-medium ml-1">(뒷자리는 가리고 업로드)</span></p>
                       <p className="text-xs text-slate-500">주민등록증, 운전면허증 등</p>
                     </div>
-                    <button 
+                    <button
                       onClick={() => idProofInputRef.current?.click()}
                       className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition-colors"
                     >
@@ -375,7 +535,7 @@ export default function PrivateMatching() {
                       <p className="font-bold text-sm text-slate-800">재직 증명 서류</p>
                       <p className="text-xs text-slate-500">재직증명서, 급여명세서, 건강보험자격득실 등</p>
                     </div>
-                    <button 
+                    <button
                       onClick={() => jobProofInputRef.current?.click()}
                       className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition-colors"
                     >
@@ -389,10 +549,10 @@ export default function PrivateMatching() {
 
               <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-8">
                 <label className="flex items-start gap-3 cursor-pointer">
-                  <input 
-                    type="checkbox" 
+                  <input
+                    type="checkbox"
                     checked={form.maritalStatus}
-                    onChange={e => setForm(f => ({...f, maritalStatus: e.target.checked}))}
+                    onChange={e => setForm(f => ({ ...f, maritalStatus: e.target.checked }))}
                     className="mt-1 w-5 h-5 rounded border-slate-300 text-purple-600 focus:ring-purple-500"
                   />
                   <div>
@@ -403,13 +563,13 @@ export default function PrivateMatching() {
               </div>
 
               <div className="flex gap-3">
-                <button 
+                <button
                   onClick={() => setStep(1)}
                   className="w-1/3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-4 rounded-xl transition-colors"
                 >
                   이전
                 </button>
-                <button 
+                <button
                   onClick={handleSubmit}
                   disabled={isSubmitting}
                   className="w-2/3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold py-4 rounded-xl flex justify-center items-center gap-2 transition-all shadow-lg shadow-purple-200 disabled:opacity-70"
@@ -417,7 +577,7 @@ export default function PrivateMatching() {
                   {isSubmitting ? (
                     <span className="flex items-center gap-2"><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> 제출 중...</span>
                   ) : (
-                    '매칭 신청 완료하기'
+                    isEditMode ? '수정 완료하기' : '매칭 신청 완료하기'
                   )}
                 </button>
               </div>
@@ -435,7 +595,7 @@ export default function PrivateMatching() {
                 작성해주신 이상형 조건에 맞는 분을 찾아<br className="hidden md:block" />
                 순차적으로 연락드리겠습니다.
               </p>
-              <button 
+              <button
                 onClick={() => router.push('/mypage')}
                 className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-4 rounded-xl transition-colors"
               >

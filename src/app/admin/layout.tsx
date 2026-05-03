@@ -16,7 +16,7 @@ import {
   UserPlus, ClipboardList, Clock, Zap
 } from 'lucide-react';
 import Link from 'next/link';
-const version = '1.0.9';
+const version = '1.0.10';
 
 const PAGE_TITLE: Record<string, string> = {
   '/admin':               '대시보드',
