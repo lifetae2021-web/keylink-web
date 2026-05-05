@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, Fragment } from 'react';
 import {
   Search, CheckCircle, XCircle, Eye,
   Download, ShieldCheck, ChevronLeft, ChevronRight, ChevronDown, Loader2,
   FileText, Users, CreditCard, Filter, Calendar, MapPin,
   X, Phone, Briefcase, Ruler, Smile, Cigarette, Beer, Camera, Info,
-  Ticket, Edit3
+  Ticket, Edit3, Trash2, UserPlus, User
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { auth, db } from '@/lib/firebase';
@@ -401,18 +401,18 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
     <div className="space-y-6 animate-in fade-in duration-400 pb-20">
 
       {/* v8.12.7: 그룹 매칭 / 1:1 매칭 탭 UI */}
-      <div className="flex gap-4 border-b border-slate-200">
+      <div className="flex gap-2 md:gap-4 border-b border-slate-200 overflow-x-auto no-scrollbar">
         <button
           onClick={() => setActiveTab('group')}
-          className={`pb-3 px-4 font-black text-[1.1rem] transition-colors border-b-2 ${activeTab === 'group' ? 'border-[#FF7E7E] text-[#FF7E7E]' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+          className={`pb-3 px-2 md:px-4 font-black text-[0.95rem] md:text-[1.1rem] transition-colors border-b-2 whitespace-nowrap ${activeTab === 'group' ? 'border-[#FF7E7E] text-[#FF7E7E]' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
         >
-          그룹 소개팅 관리
+          로테이션 신청 관리
         </button>
         <button
           onClick={() => setActiveTab('1on1')}
-          className={`pb-3 px-4 font-black text-[1.1rem] transition-colors border-b-2 flex items-center gap-2 ${activeTab === '1on1' ? 'border-purple-600 text-purple-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+          className={`pb-3 px-2 md:px-4 font-black text-[0.95rem] md:text-[1.1rem] transition-colors border-b-2 flex items-center gap-2 whitespace-nowrap ${activeTab === '1on1' ? 'border-purple-600 text-purple-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
         >
-          1:1 신청자 보기 <span className="text-[0.65rem] bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full mb-1">NEW</span>
+          1:1 신청자 관리 <span className="text-[0.6rem] md:text-[0.65rem] bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full mb-1">NEW</span>
         </button>
       </div>
 
@@ -462,32 +462,54 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
             </div>
 
             {/* Right: Actions */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 md:gap-2">
               <div className="relative group">
                 <select
                   value={selectedEventId}
                   onChange={(e) => setSelectedEventId(e.target.value)}
-                  className="bg-white border-2 border-[#FFD2CE]/60 rounded-xl pr-8 text-xs font-black text-slate-800 outline-none focus:border-[#FF7E7E]/60 transition-all cursor-pointer shadow-sm appearance-none"
-                  style={{ minWidth: '150px', height: '40px', paddingLeft: '12px' }}
+                  className="bg-white border border-slate-200 rounded-lg pr-7 text-[0.7rem] font-bold text-slate-700 outline-none focus:border-[#FF7E7E]/40 transition-all cursor-pointer shadow-sm appearance-none"
+                  style={{ minWidth: '130px', height: '36px', paddingLeft: '10px' }}
                 >
                   <option value="all">전체 기수 보기</option>
-                  {events.map(ev => (
-                    <option key={ev.id} value={ev.id}>
-                      {ev.region === 'busan' ? '부산' : ev.region === 'changwon' ? '창원' : (ev.region ?? '부산')} {ev.episodeNumber}기 [{(ev.status === 'open' || ev.status === 'recruiting') ? '모집중' : '마감'}]
-                    </option>
-                  ))}
+                  {events.map(ev => {
+                    const now = new Date();
+                    const eventDate = ev.eventDate?.toDate?.() || new Date();
+                    const twoHoursAfter = new Date(eventDate.getTime() + 2 * 60 * 60 * 1000);
+                    
+                    const totalParticipants = (ev.currentMale || 0) + (ev.currentFemale || 0);
+                    const maxParticipants = (ev.maxMale || 0) + (ev.maxFemale || 0);
+                    const isOver = maxParticipants > 0 && totalParticipants >= maxParticipants;
+                    
+                    let statusLabel = '모집중';
+                    if (now >= twoHoursAfter) statusLabel = '종료';
+                    else if (now >= eventDate) statusLabel = '진행중';
+                    else if (isOver) statusLabel = '마감';
+                    else statusLabel = '모집중';
+
+                    const dateLabel = eventDate ? `(${format(eventDate, 'MM/dd')})` : '';
+
+                    return (
+                      <option key={ev.id} value={ev.id}>
+                        {ev.region === 'busan' ? '부산' : ev.region === 'changwon' ? '창원' : (ev.region ?? '부산')} {ev.episodeNumber}기 {dateLabel} [{statusLabel}]
+                      </option>
+                    );
+                  })}
                 </select>
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-[#FF7E7E]/60">
-                  <ChevronRight size={12} className="rotate-90" />
+                <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                  <ChevronDown size={10} />
                 </div>
               </div>
               <button
                 onClick={handleSeedDummyAccounts}
-                className="flex items-center gap-2 rounded-xl transition-all hover:bg-emerald-50" style={{ height: '40px', padding: '0 12px', fontSize: '0.7rem', background: '#fff', border: '1px solid #6ee7b7', color: '#059669', fontWeight: 800 }}>
-                <Users size={12} /> 더미 추가
+                className="flex items-center gap-1.5 rounded-lg transition-all hover:bg-slate-50 border border-slate-200 text-slate-500 hover:text-emerald-600" 
+                style={{ height: '36px', padding: '0 10px', fontSize: '0.65rem', background: '#fff', fontWeight: 700 }}
+              >
+                <Users size={12} /> <span className="hidden sm:inline">더미</span> 추가
               </button>
-              <button className="flex items-center gap-2 rounded-xl transition-all hover:bg-slate-100" style={{ height: '40px', padding: '0 12px', fontSize: '0.75rem', background: '#fff', border: '1px solid #E2E8F0', color: '#64748B', fontWeight: 800 }}>
-                <Download size={12} /> 엑셀
+              <button className="flex items-center gap-1.5 rounded-lg transition-all hover:bg-slate-50 border border-slate-200 text-slate-500 hover:text-blue-600" 
+                style={{ height: '36px', padding: '0 10px', fontSize: '0.65rem', background: '#fff', fontWeight: 700 }}
+              >
+                <Download size={12} /> <span className="hidden sm:inline">엑셀</span>
               </button>
             </div>
           </div>
@@ -559,21 +581,21 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
           <div className="mx-auto w-full" style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 16, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
             <div className="overflow-auto max-h-[75vh]">
               <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' }}>
-                <thead className="sticky top-0 z-20 shadow-sm" style={{ background: '#F8FAFC' }}>
+                <thead className="hidden md:table-header-group sticky top-0 z-20" style={{ background: '#F8FAFC' }}>
                   <tr style={{ borderBottom: '1px solid #E2E8F0' }}>
                     {/* 신청 기수 */}
-                    <th style={{ padding: '18px 10px', textAlign: 'center', fontSize: '0.75rem', fontWeight: 800, color: selectedEventId !== 'all' ? '#3B82F6' : '#64748B' }}>
+                    <th style={{ padding: '14px 10px', textAlign: 'center', fontSize: '0.7rem', fontWeight: 700, color: '#94A3B8' }}>
                       신청 기수
                     </th>
                     {/* 신청자 정보 (프로필 + 이름 + 나이) */}
-                    <th style={{ padding: '18px 20px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 800, color: '#64748B' }}>
-                      신청자 정보 (사진/이름/나이)
+                    <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: '0.7rem', fontWeight: 700, color: '#94A3B8' }}>
+                      신청자 정보
                     </th>
-                    <th style={{ padding: '18px 10px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 800, color: '#64748B' }}>직업</th>
-                    <th style={{ padding: '18px 10px', textAlign: 'center', fontSize: '0.75rem', fontWeight: 800, color: '#64748B' }}>거주지</th>
-                    <th style={{ padding: '18px 10px', textAlign: 'center', fontSize: '0.75rem', fontWeight: 800, color: statusFilter !== 'all' ? '#FF6F61' : '#64748B' }}>상태</th>
-                    <th style={{ padding: '18px 16px', textAlign: 'center', fontSize: '0.75rem', fontWeight: 800, color: '#64748B' }}>선발 관리</th>
-                    <th style={{ padding: '18px 10px', textAlign: 'center', fontSize: '0.75rem', fontWeight: 800, color: '#64748B' }}>연락처</th>
+                    <th style={{ padding: '14px 10px', textAlign: 'left', fontSize: '0.7rem', fontWeight: 700, color: '#94A3B8' }}>직업</th>
+                    <th style={{ padding: '14px 10px', textAlign: 'center', fontSize: '0.7rem', fontWeight: 700, color: '#94A3B8' }}>거주지</th>
+                    <th style={{ padding: '14px 10px', textAlign: 'center', fontSize: '0.7rem', fontWeight: 700, color: '#94A3B8' }}>상태</th>
+                    <th style={{ padding: '14px 16px', textAlign: 'center', fontSize: '0.7rem', fontWeight: 700, color: '#94A3B8' }}>선발 관리</th>
+                    <th style={{ padding: '14px 10px', textAlign: 'center', fontSize: '0.7rem', fontWeight: 700, color: '#94A3B8' }}>삭제</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -598,7 +620,7 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                   ) : (
                     filtered.map((app, index) => {
                       const user = userMap[app.userId] || {};
-                      const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS] || DEPOSIT_STATUS.pending;
+const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS] || DEPOSIT_STATUS.pending;
                       const aStatus = APP_STATUS[app.status] || APP_STATUS['applied'];
                       const event = events.find(e => e.id === app.sessionId);
                       const regionName = !event ? '-' : event.region === 'busan' ? '부산' : event.region === 'changwon' ? '창원' : event.region;
@@ -606,226 +628,310 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
 
                       const isFull = (app.gender === 'male' && isMaleFull) || (app.gender === 'female' && isFemaleFull);
                       const canSelect = app.status === 'applied' || app.status === 'held';
-                      const isOverQuota = overQuotaAppIds.has(app.id); // v8.1.7
+                      const isOverQuota = overQuotaAppIds.has(app.id);
+
+                      // v8.13.5: 연령대 미일치 여부 계산
+                      const targetAgeRange = app.gender === 'male' ? event?.targetMaleAge : event?.targetFemaleAge;
+                      const userBirthDate = user.birthDate || app.birthDate || '';
+                      
+                      let isAgeMismatch = false;
+                      if (targetAgeRange && userBirthDate) {
+                        const birthYearMatch = userBirthDate.match(/(\d{2,4})/);
+                        const rangeMatch = targetAgeRange.match(/(\d{2})~(\d{2})/);
+                        
+                        if (birthYearMatch && rangeMatch) {
+                          let birthYear = parseInt(birthYearMatch[1]);
+                          if (birthYear > 1900) birthYear = birthYear % 100;
+                          
+                          const startYear = parseInt(rangeMatch[1]);
+                          const endYear = parseInt(rangeMatch[2]);
+                          
+                          const fullBirth = birthYear < 40 ? 2000 + birthYear : 1900 + birthYear;
+                          const fullStart = startYear < 40 ? 2000 + startYear : 1900 + startYear;
+                          const fullEnd = endYear < 40 ? 2000 + endYear : 1900 + endYear;
+                          
+                          const minYear = Math.min(fullStart, fullEnd);
+                          const maxYear = Math.max(fullStart, fullEnd);
+                          
+                          if (fullBirth < minYear || fullBirth > maxYear) {
+                            isAgeMismatch = true;
+                          }
+                        }
+                      }
 
                       return (
-                        <tr
-                          key={app.id}
-                          style={{
-                            borderBottom: '1px solid #f0f0f0',
-                            height: '88px',
-                            // 정원 초과로 선택/확정된 사람은 명확한 빨간색, 더 이상 선택 못하게 막힌 줄은 연한 붉은색
-                            background: isOverQuota ? '#FFE4E6' : ((canSelect && isFull) ? '#FFF1F2' : 'transparent')
-                          }}
-                          className={`transition-colors group cursor-default ${(canSelect && isFull) ? 'opacity-85' : 'hover:bg-slate-50'}`}
-                        >
-                          {/* 신청 기수 */}
-                          <td style={{ padding: '0 16px', textAlign: 'center' }}>
-                            <div className="flex flex-col items-center">
-                              <p className="text-[0.85rem] font-black text-slate-800 tracking-tighter whitespace-nowrap">{regionName} {event?.episodeNumber || '??'}기</p>
-                              <p className="text-[0.65rem] font-bold text-[#FF7E7E] mt-1">{eventDateLabel}</p>
-                            </div>
-                          </td>
-
-                          {/* 신청자 정보 (통합) */}
-                          <td style={{ padding: '0 20px' }}>
-                            <div className="flex items-center gap-4">
-                              <div
-                                className="w-14 h-14 rounded-full border-2 border-[#D4AF37] shadow-sm flex items-center justify-center overflow-hidden bg-slate-100 shrink-0 cursor-pointer hover:scale-110 transition-transform"
-                                style={{ boxShadow: '0 0 10px rgba(212, 175, 55, 0.2)' }}
-                                onClick={() => { setSelectedUser(user); setIsModalOpen(true); }}
-                              >
-                                {user.photoUrl || user.photoURL || user.photos?.[0] ? (
-                                  <img src={user.photoUrl || user.photoURL || user.photos?.[0]} className="w-full h-full object-cover" />
-                                ) : (
-                                  <span className="text-xs font-bold text-[#D4AF37]">{(user.name || app.name)?.[0] || 'U'}</span>
-                                )}
+                        <Fragment key={app.id}>
+                          {/* Desktop View: Table Row */}
+                          <tr
+                            className="hidden md:table-row hover:bg-slate-50 transition-colors"
+                            style={{
+                              borderBottom: '1px solid #f0f0f0',
+                              height: '88px',
+                              background: isOverQuota ? '#FFE4E6' : ((canSelect && isFull) ? '#FFF1F2' : 'transparent')
+                            }}
+                          >
+                            <td style={{ padding: '0 16px', textAlign: 'center' }}>
+                              <div className="flex flex-col items-center">
+                                <p className="text-[0.85rem] font-black text-slate-800 tracking-tighter whitespace-nowrap">{regionName} {event?.episodeNumber || '??'}기</p>
+                                <p className="text-[0.65rem] font-bold text-[#FF7E7E] mt-1">{eventDateLabel}</p>
                               </div>
-                              <div className="flex flex-col">
-                                <div className="flex items-center gap-2">
-                                  <button
-                                    onClick={() => { setSelectedUser(user); setIsModalOpen(true); }}
-                                    className="text-[1rem] font-black text-slate-800 hover:text-[#FF7E7E] transition-colors"
-                                  >
-                                    {user.name || app.name}
-                                  </button>
-                                  <span className={`text-[0.65rem] font-bold px-1.5 py-0.5 rounded ${(user.gender || app.gender) === 'male' ? 'text-blue-600 bg-blue-50' : 'text-rose-600 bg-rose-50'}`}>
-                                    {(user.gender || app.gender) === 'male' ? '남성' : '여성'}
-                                  </span>
-                                  {(app.userId?.startsWith('user_m_') || app.userId?.startsWith('user_f_') || app.id?.startsWith('dummy_')) && (
-                                    <span className="text-[0.65rem] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 border border-slate-200">
-                                      더미
-                                    </span>
+                            </td>
+
+                            <td style={{ padding: '0 20px' }}>
+                              <div className="flex items-center gap-4">
+                                <div
+                                  className="w-14 h-14 rounded-full border-2 border-[#D4AF37] shadow-sm flex items-center justify-center overflow-hidden bg-slate-100 shrink-0 cursor-pointer hover:scale-110 transition-transform"
+                                  style={{ boxShadow: '0 0 10px rgba(212, 175, 55, 0.2)' }}
+                                  onClick={() => { setSelectedUser(user); setIsModalOpen(true); }}
+                                >
+                                  {user.photos?.[0] || user.photoUrl || user.photoURL ? (
+                                    <img src={user.photos?.[0] || user.photoUrl || user.photoURL} className="w-full h-full object-cover" />
+                                  ) : (
+                                    <span className="text-xs font-bold text-[#D4AF37]">{(user.name || app.name)?.[0] || 'U'}</span>
                                   )}
                                 </div>
-                                <div className="flex items-center gap-2 mt-1">
-                                  {(() => { const bd = user.birthDate || app.birthDate; return bd ? <span className="text-[0.85rem] font-bold text-slate-600">{bd.includes('-') ? bd.slice(2, 4) : bd.slice(0, 2)}년생</span> : <span className="text-[0.85rem] text-slate-400">??</span>; })()}
+                                <div className="flex flex-col">
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      onClick={() => { setSelectedUser(user); setIsModalOpen(true); }}
+                                      className="text-[1rem] font-black text-slate-800 hover:text-[#FF7E7E] transition-colors"
+                                    >
+                                      {user.name || app.name}
+                                    </button>
+                                    <span className={`text-[0.65rem] font-bold px-1.5 py-0.5 rounded ${(user.gender || app.gender) === 'male' ? 'text-blue-600 bg-blue-50' : 'text-rose-600 bg-rose-50'}`}>
+                                      {(user.gender || app.gender) === 'male' ? '남성' : '여성'}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-2 mt-1">
+                                    {(() => { const bd = user.birthDate || app.birthDate; return bd ? <span className="text-[0.85rem] font-bold text-slate-600">{bd.includes('-') ? bd.slice(2, 4) : bd.slice(0, 2)}년생</span> : <span className="text-[0.85rem] text-slate-400">??</span>; })()}
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          </td>
+                            </td>
 
-                          {/* 직업 */}
-                          <td style={{ padding: '0 16px' }}>
-                            <div className="flex flex-col">
-                              {/* 더미 계정의 경우 app.job을 fallback으로 사용 */}
-                              <p className={`text-[0.85rem] font-bold tracking-tight ${(user.job || app.job) ? 'text-slate-800' : 'text-slate-400'}`}>
-                                {user.job || user.workplace?.split(',')[0] || app.job || <span className="font-normal">-</span>}
-                              </p>
-                              <span className="text-[0.72rem] text-slate-400">{user.company || ''}</span>
-                            </div>
-                          </td>
-
-                          {/* 거주지 */}
-                          <td style={{ padding: '0 16px', textAlign: 'center' }}>
-                            <p className="text-[0.85rem] font-bold text-slate-700 whitespace-nowrap">{app.residence || user.residence || user.location || '-'}</p>
-                          </td>
-
-                          {/* 상태 (Unified) */}
-                          <td style={{ padding: '0 16px', textAlign: 'center' }}>
-                            <div className="flex flex-col items-center gap-1">
-                              <span style={{
-                                fontSize: '0.72rem',
-                                fontWeight: 900,
-                                padding: '4px 10px',
-                                borderRadius: 6,
-                                color: aStatus.color,
-                                background: aStatus.bg,
-                                border: `1px solid ${aStatus.color}20`
-                              }}>
-                                {aStatus.label}
-                              </span>
-                              {app.femaleOption === 'group' && (
-                                <p className="text-[0.68rem] font-bold text-pink-500 whitespace-nowrap">
-                                  {app.groupPartnerName ? `동반할인 (${app.groupPartnerName} ${app.groupPartnerBirthYear}년생)` : '동반할인'}
+                            <td style={{ padding: '0 16px' }}>
+                              <div className="flex flex-col">
+                                <p className={`text-[0.85rem] font-bold tracking-tight ${(user.job || app.job) ? 'text-slate-800' : 'text-slate-400'}`}>
+                                  {user.job || user.workplace?.split(',')[0] || app.job || <span className="font-normal">-</span>}
                                 </p>
-                              )}
-                            </div>
-                          </td>
+                                <span className="text-[0.72rem] text-slate-400">{user.company || ''}</span>
+                              </div>
+                            </td>
 
-                          {/* 선발 관리 */}
-                          <td style={{ padding: '0 16px' }}>
-                            <div className="flex items-center justify-center gap-1.5 transition-all">
-                              {(app.status === 'applied' || app.status === 'held') && (() => {
-                                const isDummy = app.userId?.startsWith('user_m_') || app.userId?.startsWith('user_f_');
-                                if (isDummy) {
-                                  return (
-                                    <button
-                                      onClick={() => {
-                                        if (window.confirm(`[더미] ${app.name || ''}을 선발확정 처리하시겠습니까?`)) {
-                                          updateAppStatus(app, 'confirmed');
-                                        }
-                                      }}
-                                      className="px-3 py-1.5 rounded-xl text-[0.75rem] font-bold border transition-all shadow-sm bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-500 hover:text-white"
-                                    >
-                                      선발확정
-                                    </button>
-                                  );
-                                }
-                                return (
-                                  <>
-                                    {app.status === 'held' && (
-                                      <button
-                                        onClick={() => updateAppStatus(app, 'applied')}
-                                        className="px-2.5 py-1.5 rounded-lg text-[0.7rem] font-black bg-amber-100 text-amber-700 border border-amber-200 hover:bg-amber-200 transition-all shadow-sm flex items-center gap-1 group/held"
-                                        title="검토 중으로 되돌리기"
-                                      >
-                                        보류 중 <X size={12} />
-                                      </button>
-                                    )}
-                                    <button
-                                      onClick={() => {
-                                        if (!user.isJobReviewed) return toast.error('먼저 회원 관리에서 직업 정보를 확인하고 승인(Job Reviewed)해 주세요.');
-                                        if ((app.gender === 'male' && isMaleFull) || (app.gender === 'female' && isFemaleFull)) {
-                                          return toast.error(`해당 성별의 모집 정원이 이미 충족되었습니다. (최대 ${app.gender === 'male' ? activeEvent?.maxMale : activeEvent?.maxFemale}명)`);
-                                        }
-                                        handleOpenPreview(app);
-                                      }}
-                                      disabled={!user.isJobReviewed || (app.gender === 'male' && isMaleFull) || (app.gender === 'female' && isFemaleFull)}
-                                      className={`px-3 py-1.5 rounded-xl text-[0.75rem] font-bold border transition-all shadow-sm ${!user.isJobReviewed || (app.gender === 'male' && isMaleFull) || (app.gender === 'female' && isFemaleFull)
-                                        ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed grayscale'
-                                        : 'bg-[#FF7E7E]/10 text-[#FF7E7E] border-[#FF7E7E]/20 hover:bg-[#FF7E7E] hover:text-white'
-                                        }`}
-                                      title={!user.isJobReviewed ? "먼저 직업 정보를 확인/수정하고 승인해 주세요" : ""}
-                                    >
-                                      선발
-                                    </button>
+                            <td style={{ padding: '0 16px', textAlign: 'center' }}>
+                              <p className="text-[0.85rem] font-bold text-slate-700 whitespace-nowrap">{app.residence || user.residence || user.location || '-'}</p>
+                            </td>
 
-                                    {app.status === 'applied' && (
-                                      <button onClick={() => updateAppStatus(app, 'held')} className="px-3 py-1.5 rounded-xl text-[0.75rem] font-bold bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200 transition-all shadow-sm">보류</button>
-                                    )}
+                            <td style={{ padding: '0 16px', textAlign: 'center' }}>
+                              <div className="flex flex-col items-center gap-1">
+                                <span style={{
+                                  fontSize: '0.72rem',
+                                  fontWeight: 900,
+                                  padding: '4px 10px',
+                                  borderRadius: 6,
+                                  color: aStatus.color,
+                                  background: aStatus.bg,
+                                  border: `1px solid ${aStatus.color}20`
+                                }}>
+                                  {aStatus.label}
+                                </span>
+                                {isAgeMismatch && (app.status === 'applied' || app.status === 'held') && (
+                                  <div className="flex items-center gap-1 text-[0.6rem] font-black text-rose-500 bg-rose-50 border border-rose-100 px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap animate-pulse">
+                                    <Info size={10} /> 연령대 부적합
+                                  </div>
+                                )}
+                              </div>
+                            </td>
 
-                                    <button
-                                      onClick={() => {
-                                        if (!user.isJobReviewed) return toast.error('먼저 회원 관리에서 직업 정보를 확인하고 승인(Job Reviewed)해 주세요.');
-                                        if ((app.gender === 'male' && isMaleFull) || (app.gender === 'female' && isFemaleFull)) {
-                                          return toast.error(`해당 성별의 모집 정원이 이미 충족되었습니다. (최대 ${app.gender === 'male' ? activeEvent?.maxMale : activeEvent?.maxFemale}명)`);
-                                        }
-                                        if (window.confirm('문자 발송 없이 입금 완료 처리하시겠습니까?')) {
-                                          updateAppStatus(app, 'confirmed');
-                                        }
-                                      }}
-                                      disabled={!user.isJobReviewed || (app.gender === 'male' && isMaleFull) || (app.gender === 'female' && isFemaleFull)}
-                                      className={`px-3 py-1.5 rounded-xl text-[0.75rem] font-bold border transition-all shadow-sm ${!user.isJobReviewed || (app.gender === 'male' && isMaleFull) || (app.gender === 'female' && isFemaleFull)
-                                        ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed grayscale'
-                                        : 'bg-[#FFD700]/10 text-[#B8860B] border-[#FFD700]/30 hover:bg-[#FFD700] hover:text-white'
-                                        }`}
-                                      title={!user.isJobReviewed ? "먼저 직업 정보를 확인/수정하고 승인해 주세요" : ""}
-                                    >
-                                      선발확정
-                                    </button>
-                                  </>
-                                );
-                              })()}
-
-                              {app.status === 'selected' && (
-                                <div className="flex items-center gap-1.5">
-                                  <button
-                                    onClick={() => handleOpenPreview(app, 'confirm')}
-                                    className="px-3 py-1.5 rounded-xl text-[0.75rem] font-bold bg-[#FFD700]/10 text-[#B8860B] border border-[#FFD700]/30 hover:bg-[#FFD700] hover:text-white transition-all shadow-sm"
-                                  >
-                                    입금확정
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      if (window.confirm('선발을 취소하고 다시 검토 중 상태로 되돌리시겠습니까?')) {
-                                        updateAppStatus(app, 'applied');
-                                      }
-                                    }}
-                                    className="px-3 py-1.5 rounded-xl text-[0.75rem] font-bold bg-rose-50 text-rose-500 border border-rose-100 hover:bg-rose-500 hover:text-white transition-all shadow-sm"
-                                  >
-                                    선발 취소
-                                  </button>
-                                </div>
-                              )}
-
-                              {app.status === 'cancelled' ? (
-                                <button
-                                  onClick={() => updateAppStatus(app, 'confirmed')}
-                                  className="px-3 py-1.5 rounded-xl text-[0.75rem] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100 hover:bg-emerald-500 hover:text-white transition-all shadow-sm"
-                                >
-                                  복구
-                                </button>
-                              ) : (
-                                <button
-                                  onClick={() => {
-                                    if (window.confirm('정말 삭제하시겠습니까? 데이터가 완전히 삭제되며 복구할 수 없습니다.')) {
-                                      updateAppStatus(app, 'cancelled');
+                            <td style={{ padding: '0 16px' }}>
+                              <div className="relative flex items-center justify-center gap-1.5 transition-all">
+                                {(app.status === 'applied' || app.status === 'held') && (() => {
+                                  const handleSelection = async () => {
+                                    if (!user.isJobReviewed) return toast.error('먼저 회원 관리에서 직업 정보를 확인하고 승인(Job Reviewed)해 주세요.');
+                                    if (isOverQuota) {
+                                      if (!confirm(`현재 신청기수(${regionName} ${event?.episodeNumber}기)의 ${app.gender === 'male' ? '남성' : '여성'} 정원이 이미 가득 찼습니다. 그래도 선발하시겠습니까?`)) return;
                                     }
-                                  }}
-                                  className="w-9 h-9 rounded-xl flex items-center justify-center transition-all bg-rose-50 text-rose-400 border border-rose-100 hover:bg-rose-500 hover:text-white shadow-sm"
-                                >
-                                  <XCircle size={18} />
-                                </button>
-                              )}
-                            </div>
-                          </td>
+                                    handleOpenPreview(app);
+                                  };
 
-                          {/* 연락처 */}
-                          <td style={{ padding: '0 16px', textAlign: 'center' }}>
-                            <p className="text-[0.85rem] text-slate-600 font-bold tracking-tight whitespace-nowrap">{user.phone || '-'}</p>
-                          </td>
-                        </tr>
+                                  return (
+                                    <>
+                                      <button
+                                        onClick={handleSelection}
+                                        disabled={!user.isJobReviewed && !app.id.startsWith('dummy')}
+                                        className={`px-3 py-2 rounded-xl text-[0.8rem] font-black transition-all ${
+                                          isOverQuota ? 'bg-rose-500 text-white hover:bg-rose-600' : 'bg-[#FF6F61] text-white hover:bg-[#ff5a4a]'
+                                        } shadow-md shadow-rose-100 disabled:opacity-50`}
+                                      >
+                                        선발
+                                      </button>
+                                      <button
+                                        onClick={async () => {
+                                          if (!user.isJobReviewed && !app.id.startsWith('dummy')) return toast.error('먼저 직업 승인을 해주세요.');
+                                          if (isOverQuota && !confirm('정원이 가득 찼습니다. 확정하시겠습니까?')) return;
+                                          if (window.confirm('문자 발송 없이 바로 선발확정 처리하시겠습니까?')) {
+                                            updateAppStatus(app, 'confirmed');
+                                          }
+                                        }}
+                                        className="px-3 py-2 bg-[#FFD700] text-[#7A5F00] rounded-xl text-[0.8rem] font-black hover:bg-[#F0C800] shadow-md shadow-yellow-100 transition-all"
+                                      >
+                                        확정
+                                      </button>
+                                      <button
+                                        onClick={() => updateAppStatus(app, 'held')}
+                                        className="px-3 py-2 bg-slate-100 text-slate-600 rounded-xl text-[0.8rem] font-black hover:bg-slate-200 transition-all"
+                                      >
+                                        보류
+                                      </button>
+                                    </>
+                                  );
+                                })()}
+                                {app.status === 'confirmed' && (
+                                  <button
+                                    onClick={() => updateAppStatus(app, 'held')}
+                                    className="px-4 py-2 bg-emerald-500 text-white rounded-xl text-[0.85rem] font-black hover:bg-emerald-600 shadow-md shadow-emerald-100 transition-all"
+                                  >
+                                    확정취소
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+
+                            <td style={{ padding: '0 10px', textAlign: 'center' }}>
+                              <button 
+                                onClick={() => {
+                                  if (window.confirm('정말 삭제하시겠습니까?')) {
+                                    updateAppStatus(app, 'cancelled');
+                                  }
+                                }} 
+                                className="p-2 text-slate-300 hover:text-rose-500 transition-colors"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </td>
+                          </tr>
+
+                          {/* Mobile View: Card Row */}
+                          <tr className="md:hidden">
+                            <td colSpan={7} className="p-0 border-b border-slate-100">
+                              <div className="p-4 bg-white hover:bg-slate-50 transition-colors">
+                                <div className="flex justify-between items-start mb-3">
+                                  <div className="flex items-center gap-3">
+                                    <div 
+                                      className="w-14 h-14 rounded-full border-2 border-[#D4AF37] overflow-hidden bg-slate-100 shrink-0"
+                                      onClick={() => { setSelectedUser(user); setIsModalOpen(true); }}
+                                    >
+                                      {user.photos?.[0] || user.photoUrl || user.photoURL ? (
+                                        <img src={user.photos?.[0] || user.photoUrl || user.photoURL} className="w-full h-full object-cover" />
+                                      ) : (
+                                        <div className="w-full h-full flex items-center justify-center text-[#D4AF37] font-bold">{(user.name || app.name)?.[0]}</div>
+                                      )}
+                                    </div>
+                                    <div>
+                                      <div className="flex items-center gap-1.5">
+                                        <span className="font-black text-slate-800 text-[1.1rem]">{user.name || app.name}</span>
+                                        <span className={`text-[0.65rem] font-bold px-1.5 py-0.5 rounded ${(user.gender || app.gender) === 'male' ? 'text-blue-600 bg-blue-50' : 'text-rose-600 bg-rose-50'}`}>
+                                          {(user.gender || app.gender) === 'male' ? '남성' : '여성'}
+                                        </span>
+                                      </div>
+                                      <div className="text-[0.75rem] text-slate-500 font-bold mt-0.5">
+                                        {(() => { const bd = user.birthDate || app.birthDate; return bd ? <span>{bd.includes('-') ? bd.slice(2, 4) : bd.slice(0, 2)}년생</span> : <span>??</span>; })()}
+                                        {' · '}{regionName} {event?.episodeNumber}기
+                                      </div>
+                                    </div>
+                                  </div>
+                                    <div className="flex flex-col items-end gap-1.5">
+                                      <span style={{
+                                        fontSize: '0.65rem',
+                                        fontWeight: 900,
+                                        padding: '2px 8px',
+                                        borderRadius: 4,
+                                        color: aStatus.color,
+                                        background: aStatus.bg,
+                                      }}>
+                                        {aStatus.label}
+                                      </span>
+                                      {isAgeMismatch && (app.status === 'applied' || app.status === 'held') && (
+                                        <div className="flex items-center gap-1 text-[0.55rem] font-black text-rose-500 bg-rose-50 border border-rose-100 px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap animate-pulse">
+                                          <Info size={10} /> 연령부적합
+                                        </div>
+                                      )}
+                                      <button 
+                                        onClick={() => {
+                                          if (window.confirm('정말 삭제하시겠습니까?')) {
+                                            updateAppStatus(app, 'cancelled');
+                                          }
+                                        }}
+                                        className="text-slate-300 hover:text-rose-500 mt-1"
+                                      >
+                                        <Trash2 size={18} />
+                                      </button>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3 mb-4 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                                  <div>
+                                    <p className="text-[10px] font-black text-slate-400 uppercase mb-0.5">직업</p>
+                                    <p className="text-sm font-bold text-slate-700 leading-tight">{user.job || user.workplace?.split(',')[0] || app.job || '-'}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-[10px] font-black text-slate-400 uppercase mb-0.5">거주지</p>
+                                    <p className="text-sm font-bold text-slate-700 leading-tight">{app.residence || user.residence || user.location || '-'}</p>
+                                  </div>
+                                </div>
+
+
+
+                                <div className="flex gap-1.5">
+                                  {(app.status === 'applied' || app.status === 'held') && (
+                                    <>
+                                      {/* 선발 (문자 발송) */}
+                                      <button
+                                        onClick={async () => {
+                                          if (!user.isJobReviewed && !app.id.startsWith('dummy')) return toast.error('먼저 직업 승인을 해주세요.');
+                                          if (isOverQuota && !confirm('정원이 가득 찼습니다. 선발하시겠습니까?')) return;
+                                          handleOpenPreview(app);
+                                        }}
+                                        className="flex-1 py-2.5 bg-[#FF6F61] text-white rounded-xl font-black text-xs shadow-md active:scale-95 transition-all"
+                                      >
+                                        선발
+                                      </button>
+                                      {/* 선발확정 (문자 없이 바로 확정) */}
+                                      <button
+                                        onClick={async () => {
+                                          if (!user.isJobReviewed && !app.id.startsWith('dummy')) return toast.error('먼저 직업 승인을 해주세요.');
+                                          if (isOverQuota && !confirm('정원이 가득 찼습니다. 선발확정하시겠습니까?')) return;
+                                          if (window.confirm('문자 발송 없이 바로 선발확정 처리하시겠습니까?')) {
+                                            updateAppStatus(app, 'confirmed');
+                                          }
+                                        }}
+                                        className="flex-1 py-2.5 bg-[#FFD700] text-[#7A5F00] rounded-xl font-black text-xs shadow-md active:scale-95 transition-all"
+                                      >
+                                        선발확정
+                                      </button>
+                                      {/* 보류 */}
+                                      <button
+                                        onClick={() => updateAppStatus(app, 'held')}
+                                        className="flex-1 py-2.5 bg-slate-100 text-slate-600 rounded-xl font-black text-xs active:scale-95 transition-all"
+                                      >
+                                        보류
+                                      </button>
+                                    </>
+                                  )}
+                                  {app.status === 'confirmed' && (
+                                    <button
+                                      onClick={() => updateAppStatus(app, 'held')}
+                                      className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl font-black text-xs shadow-md active:scale-95 transition-all"
+                                    >
+                                      선발 취소하기
+                                    </button>
+                                  )}
+                                </div>
+
+                              </div>
+                            </td>
+                          </tr>
+                        </Fragment>
                       );
                     })
                   )}

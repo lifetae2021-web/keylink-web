@@ -493,6 +493,7 @@ export default function UsersPage() {
       </div>
 
       {/* Table */}
+      {/* Desktop Table / Mobile Card View Wrapper */}
       <div style={{ ...panel, overflow: 'hidden' }}>
         {isLoading ? (
           <div style={{ overflowX: 'auto' }}>
@@ -503,272 +504,436 @@ export default function UsersPage() {
             </table>
           </div>
         ) : filtered.length === 0 ? (
-          <div style={{ overflowX: 'auto' }} className="min-h-[400px] flex items-center justify-center">
-            <p style={{ color: '#555', fontSize: '0.88rem' }}>회원 데이터가 없습니다.</p>
+          <div className="min-h-[400px] flex items-center justify-center">
+            <p style={{ color: '#64748B', fontSize: '0.88rem' }}>회원 데이터가 없습니다.</p>
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
-              <colgroup>
-                <col style={{ width: '80px' }} />
-                <col style={{ width: '140px' }} />
-                <col style={{ width: '120px' }} />
-                <col style={{ width: '100px' }} />
-                <col style={{ width: '140px' }} />
-                <col style={{ width: '220px' }} />
-                <col style={{ width: '140px' }} />
-                <col style={{ width: '100px' }} />
-              </colgroup>
-              <thead>
-                <tr>
-                  {['프로필', '이름', '직업', '나이', '상태 / 권한', '활동 지표', '관리', '가입일'].map((h, i) => {
-                    const isSortable = h === '나이' || h === '가입일';
-                    const sortKey = (h === '나이') ? 'age' : (h === '가입일' ? 'createdAt' : null);
-                    const isActive = sortKey && sortConfig.key === sortKey;
+          <>
+            {/* ── Desktop Table (Visible on sm+) ── */}
+            <div className="hidden sm:block overflow-x-auto">
+              <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+                <colgroup>
+                  <col style={{ width: '80px' }} />
+                  <col style={{ width: '140px' }} />
+                  <col style={{ width: '120px' }} />
+                  <col style={{ width: '100px' }} />
+                  <col style={{ width: '140px' }} />
+                  <col style={{ width: '220px' }} />
+                  <col style={{ width: '140px' }} />
+                  <col style={{ width: '100px' }} />
+                </colgroup>
+                <thead>
+                  <tr>
+                    {['프로필', '이름', '직업', '나이', '상태 / 권한', '활동 지표', '관리', '가입일'].map((h, i) => {
+                      const isSortable = h === '나이' || h === '가입일';
+                      const sortKey = (h === '나이') ? 'age' : (h === '가입일' ? 'createdAt' : null);
+                      const isActive = sortKey && sortConfig.key === sortKey;
 
+                      return (
+                        <th
+                          key={h}
+                          onClick={() => isSortable && toggleSort(sortKey as any)}
+                          style={{
+                            padding: '12px 20px',
+                            textAlign: (i === 6) ? 'right' : (i === 3 || i === 7 || i === 5 ? 'center' : 'left'),
+                            fontSize: '0.75rem',
+                            fontWeight: 700,
+                            color: isActive ? '#FF7E7E' : '#64748B',
+                            borderBottom: '1px solid #CBD5E1',
+                            background: '#F8FAFC',
+                            whiteSpace: 'nowrap',
+                            cursor: isSortable ? 'pointer' : 'default',
+                          }}
+                          className={isSortable ? 'hover:bg-slate-100 transition-colors' : ''}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', justifyContent: i === 6 ? 'flex-end' : (i === 3 || i === 7 || i === 5 ? 'center' : 'flex-start') }}>
+                            {h}
+                          </div>
+                        </th>
+                      );
+                    })}
+                  </tr>
+                </thead>
+                <tbody>
+                  {pagedItems.map(u => {
+                    const currentStatus = (u.status || 'pending') as keyof typeof STATUS_CFG;
+                    const sc = STATUS_CFG[currentStatus];
                     return (
-                      <th
-                        key={h}
-                        onClick={() => isSortable && toggleSort(sortKey as any)}
-                        style={{
-                          padding: '12px 20px',
-                          textAlign: (i === 6) ? 'right' : (i === 3 || i === 7 || i === 5 ? 'center' : 'left'),
-                          fontSize: '0.75rem',
-                          fontWeight: 700,
-                          color: isActive ? '#FF7E7E' : '#64748B',
-                          borderBottom: '1px solid #CBD5E1',
-                          background: '#F8FAFC',
-                          whiteSpace: 'nowrap',
-                          cursor: isSortable ? 'pointer' : 'default',
-                        }}
-                        className={isSortable ? 'hover:bg-slate-100 transition-colors' : ''}
+                      <tr
+                        key={u.id}
+                        style={{ borderBottom: '1px solid #E2E8F0', cursor: 'default', height: 60 }}
+                        className="hover:bg-slate-50 transition-colors group h-[60px]"
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', justifyContent: i === 6 ? 'flex-end' : (i === 3 || i === 7 || i === 5 ? 'center' : 'flex-start') }}>
-                          {h}
-                        </div>
-                      </th>
+                        {/* 1. 프로필 */}
+                        <td style={{ padding: '0 20px' }}>
+                          <div className="relative w-fit">
+                            <div
+                              onClick={() => setSelectedUserForProfile(u)}
+                              className="w-10 h-10 rounded-full border-2 border-white shadow-sm flex items-center justify-center overflow-hidden bg-slate-100 shrink-0 cursor-pointer hover:scale-110 transition-transform"
+                            >
+                              {(() => {
+                                const photo = u.photos?.[0] || u.profilePhotos?.[0] || u.facePhotos?.[0] || u.bodyPhotos?.[0] || u.photoUrl || u.photoURL;
+                                return photo ? (
+                                  <img src={photo} className="w-full h-full object-cover" />
+                                ) : (
+                                  <span className="text-xs font-bold text-slate-400">{u.name?.[0] || 'U'}</span>
+                                );
+                              })()}
+                            </div>
+                            {u.isJobReviewed === false && (
+                              <div className="absolute -top-1.5 -right-3 z-10 bg-[#FF7E7E] text-white text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-md border-2 border-white animate-bounce whitespace-nowrap">
+                                정보수정
+                              </div>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* 2. 이름 */}
+                        <td style={{ padding: '0 20px' }}>
+                          <div className="flex flex-col cursor-pointer" onClick={() => setSelectedUserForProfile(u)}>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[0.88rem] font-bold text-slate-800 hover:text-[#FF7E7E] transition-colors">{u.name || '미입력'}</span>
+                              {(() => {
+                                const p = providerMap[u.id];
+                                if (!p) return null;
+                                const cfg: Record<string, { label: string; bg: string; color: string }> = {
+                                  'email': { label: '기본회원', bg: '#F1F5F9', color: '#64748B' },
+                                  'password': { label: '기본회원', bg: '#F1F5F9', color: '#64748B' },
+                                  'google': { label: 'Google', bg: '#FEF2F2', color: '#EF4444' },
+                                  'google.com': { label: 'Google', bg: '#FEF2F2', color: '#EF4444' },
+                                  'kakao': { label: 'Kakao', bg: '#FEF9C3', color: '#CA8A04' },
+                                  'oidc.kakao': { label: 'Kakao', bg: '#FEF9C3', color: '#CA8A04' },
+                                };
+                                const c = cfg[p] || { label: p, bg: '#F1F5F9', color: '#64748B' };
+                                return (
+                                  <span style={{ fontSize: '9px', fontWeight: 800, padding: '1px 5px', borderRadius: 4, background: c.bg, color: c.color }}>
+                                    {c.label}
+                                  </span>
+                                );
+                              })()}
+                            </div>
+                            <span className={`text-[10px] font-bold ${u.gender === 'male' ? 'text-blue-500' : 'text-rose-500'}`}>
+                              {u.gender === 'male' ? '남성' : '여성'}
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* 3. 직업 */}
+                        <td style={{ padding: '0 20px', verticalAlign: 'middle' }}>
+                          <div className="flex flex-col gap-2">
+                            <div className="flex items-center gap-2 group/job relative">
+                              {editingJobId === u.id ? (
+                                <input
+                                  autoFocus
+                                  value={tempJobValue}
+                                  onChange={(e) => setTempJobValue(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') handleJobUpdate(u.id, tempJobValue);
+                                    if (e.key === 'Escape') setEditingJobId(null);
+                                  }}
+                                  onBlur={() => setEditingJobId(null)}
+                                  className="w-full h-8 px-2 rounded border-2 border-blue-400 text-[0.8rem] font-bold outline-none"
+                                />
+                              ) : (
+                                <>
+                                  <p className={`text-[0.82rem] font-bold tracking-tight flex items-center flex-wrap gap-1 ${u.admin_job || u.job ? 'text-blue-600' : 'text-slate-800'}`}>
+                                    <span>{u.admin_job || u.job || u.occupation || <span className="text-slate-300 font-normal">-</span>}</span>
+                                  </p>
+                                  <button
+                                    onClick={() => {
+                                      setEditingJobId(u.id);
+                                      setTempJobValue(u.admin_job || u.job || u.occupation || '');
+                                    }}
+                                    className="p-1.5 rounded-lg bg-slate-100 text-slate-400 opacity-0 group-hover/job:opacity-100 hover:bg-blue-50 hover:text-blue-500 transition-all"
+                                  >
+                                    <Edit3 size={12} />
+                                  </button>
+                                </>
+                              )}
+                            </div>
+
+                            <label className={`flex items-center gap-1.5 w-fit cursor-pointer select-none px-2 py-1 rounded-lg border transition-all ${u.isJobReviewed ? 'bg-blue-50 border-blue-100 text-blue-600' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>
+                              <input
+                                type="checkbox"
+                                checked={!!u.isJobReviewed}
+                                onChange={(e) => toggleJobReviewed(u.id, e.target.checked)}
+                                className="w-3 h-3 rounded"
+                              />
+                              <span className="text-[10px] font-black uppercase tracking-tight">직업승인</span>
+                            </label>
+                          </div>
+                        </td>
+
+                        {/* 나이 */}
+                        <td style={{ padding: '0 20px', verticalAlign: 'middle', textAlign: 'center' }}>
+                          <p style={{ fontSize: '0.88rem', fontWeight: 800, color: u.birthDate ? '#1E293B' : '#94A3B8', textAlign: 'center' }}>
+                            {u.birthDate ? `${u.birthDate.includes('-') ? u.birthDate.slice(2, 4) : u.birthDate.slice(0, 2)}년생` : <span style={{ color: '#94A3B8' }}>-</span>}
+                          </p>
+                        </td>
+
+                        {/* 상태 / 권한 */}
+                        <td style={{ padding: '0 20px', verticalAlign: 'middle' }}>
+                          <div className="flex flex-col gap-2">
+                            <span
+                              onClick={() => currentStatus === 'pending' && setSmsTargetUser(u)}
+                              className={`inline-flex items-center gap-1.5 ${currentStatus === 'pending' ? 'cursor-pointer hover:scale-105 active:scale-95 transition-all' : ''}`}
+                              style={{ width: 'fit-content', fontSize: '0.72rem', fontWeight: 600, padding: '4px 10px', borderRadius: 20, color: sc.color, background: sc.bg }}
+                              title={currentStatus === 'pending' ? '프로필 작성 요청 문자 보내기' : ''}
+                            >
+                              <span style={{ width: 5, height: 5, borderRadius: '50%', background: sc.color, display: 'inline-block' }} />
+                              {sc.label}
+                            </span>
+
+                            {currentStatus === 'pending' && u.profileRequestSent && (
+                              <span style={{ fontSize: '9px', fontWeight: 800, color: '#FF7E7E', display: 'flex', alignItems: 'center', gap: '4px', marginLeft: '4px' }}>
+                                <CheckCircle size={10} /> 요청완료
+                              </span>
+                            )}
+
+                            <select
+                              value={u.role || '일반회원'}
+                              onChange={(e) => updateRole(u.id, e.target.value)}
+                              className="bg-slate-50 border border-slate-200 rounded-lg text-[10px] px-2 py-1 text-slate-700 outline-none focus:border-[#FF7E7E]/50 cursor-pointer shadow-sm"
+                            >
+                              {ROLES.map(r => <option key={r} value={r} className="bg-white">{r}</option>)}
+                            </select>
+                          </div>
+                        </td>
+
+                        {/* 활동 지표 */}
+                        <td style={{ padding: '0 20px', verticalAlign: 'middle' }}>
+                          <div className="flex items-center justify-center gap-2">
+                            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-sky-50 border border-sky-100 shadow-sm">
+                              <span className="text-sky-600 text-[10px] font-black">T</span>
+                              <span className="text-sky-700 text-[11px] font-black">{u.participationCount || 0}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-100 shadow-sm">
+                              <span className="text-emerald-600 text-[10px] font-black">M</span>
+                              <span className="text-emerald-700 text-[11px] font-black">{u.matchCount || 0}</span>
+                            </div>
+                            <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border shadow-sm ${u.noShowCount > 0 ? 'bg-rose-50 border-rose-100' : 'bg-slate-50 border-slate-100'}`}>
+                              <span className={`${u.noShowCount > 0 ? 'text-rose-600' : 'text-slate-300'} text-[10px] font-black`}>N</span>
+                              <span className={`${u.noShowCount > 0 ? 'text-rose-700' : 'text-slate-300'} text-[11px] font-black`}>{u.noShowCount || 0}</span>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* 관리 */}
+                        <td style={{ padding: '0 20px', verticalAlign: 'middle', textAlign: 'right' }}>
+                          <div className="flex items-center justify-end gap-1.5">
+                            {u.status !== 'rejected' && (
+                              <button
+                                onClick={() => reject(u.id, u.name)}
+                                className="flex items-center gap-1.5 rounded-lg transition-all hover:bg-rose-500 hover:text-white"
+                                style={{ padding: '5px 10px', fontSize: '0.75rem', fontWeight: 700, background: '#FEF2F2', color: '#EF4444', border: '1px solid #FEE2E2' }}
+                              >
+                                <XCircle size={12} /> 반려
+                              </button>
+                            )}
+                            <button
+                              onClick={() => setCouponTarget(u)}
+                              className="flex items-center justify-center rounded-lg hover:bg-sky-50 transition-all text-slate-400 hover:text-sky-500"
+                              style={{ width: 32, height: 32 }}
+                              title="쿠폰 발송"
+                            >
+                              <Ticket size={14} />
+                            </button>
+                            <button
+                              onClick={() => setDeleteTarget(u)}
+                              className="flex items-center justify-center rounded-lg hover:bg-rose-50 transition-all text-slate-300 hover:text-rose-500"
+                              style={{ width: 32, height: 32 }}
+                              title="회원 삭제"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </td>
+
+                        {/* 가입일 */}
+                        <td style={{ padding: '0 20px', verticalAlign: 'middle', textAlign: 'center' }}>
+                          <div className="flex flex-col items-center">
+                            <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#64748B' }}>
+                              {u.createdAt?.seconds ? format(new Date(u.createdAt.seconds * 1000), 'yyyy-MM-dd') : <span style={{ color: '#94A3B8' }}>-</span>}
+                            </span>
+                            {u.createdAt?.seconds && (
+                              <span style={{ fontSize: '0.65rem', color: '#94A3B8', fontWeight: 500, marginTop: '1px' }}>
+                                {format(new Date(u.createdAt.seconds * 1000), 'HH:mm')}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
                     );
                   })}
-                </tr>
-              </thead>
-              <tbody>
-                {pagedItems.map(u => {
-                  const currentStatus = (u.status || 'pending') as keyof typeof STATUS_CFG;
-                  const sc = STATUS_CFG[currentStatus];
-                  return (
-                    <tr
-                      key={u.id}
-                      style={{ borderBottom: '1px solid #E2E8F0', cursor: 'default', height: 60 }}
-                      className="hover:bg-slate-50 transition-colors group h-[60px]"
-                    >
-                      {/* 1. 프로필 (v7.8.2) */}
-                      <td style={{ padding: '0 20px' }}>
-                        <div className="relative w-fit">
-                          <div
-                            onClick={() => setSelectedUserForProfile(u)}
-                            className="w-10 h-10 rounded-full border-2 border-white shadow-sm flex items-center justify-center overflow-hidden bg-slate-100 shrink-0 cursor-pointer hover:scale-110 transition-transform"
-                          >
-                            {(() => {
-                              const photo = u.photos?.[0] || u.profilePhotos?.[0] || u.facePhotos?.[0] || u.bodyPhotos?.[0] || u.photoUrl || u.photoURL;
-                              return photo ? (
-                                <img src={photo} className="w-full h-full object-cover" />
-                              ) : (
-                                <span className="text-xs font-bold text-slate-400">{u.name?.[0] || 'U'}</span>
-                              );
-                            })()}
-                          </div>
-                          {u.isJobReviewed === false && (
-                            <div className="absolute -top-1.5 -right-3 z-10 bg-[#FF7E7E] text-white text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-md border-2 border-white animate-bounce whitespace-nowrap">
-                              정보수정
-                            </div>
+                </tbody>
+              </table>
+            </div>
+
+            {/* ── Mobile Card View (Visible on <sm) ── */}
+            <div className="sm:hidden flex flex-col divide-y divide-slate-100">
+              {pagedItems.map(u => {
+                const currentStatus = (u.status || 'pending') as keyof typeof STATUS_CFG;
+                const sc = STATUS_CFG[currentStatus];
+                const photo = u.photos?.[0] || u.profilePhotos?.[0] || u.facePhotos?.[0] || u.bodyPhotos?.[0] || u.photoUrl || u.photoURL;
+
+                return (
+                  <div key={u.id} className="p-5 flex flex-col gap-4 bg-white active:bg-slate-50 transition-colors">
+                    {/* Top Row: Profile & Basic Info */}
+                    <div className="flex items-start gap-4">
+                      <div className="relative shrink-0">
+                        <div
+                          onClick={() => setSelectedUserForProfile(u)}
+                          className="w-14 h-14 rounded-2xl border-2 border-white shadow-md flex items-center justify-center overflow-hidden bg-slate-100 cursor-pointer"
+                        >
+                          {photo ? (
+                            <img src={photo} className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-sm font-bold text-slate-400">{u.name?.[0] || 'U'}</span>
                           )}
                         </div>
-                      </td>
-
-                      {/* 2. 이름 */}
-                      <td style={{ padding: '0 20px' }}>
-                        <div className="flex flex-col cursor-pointer" onClick={() => setSelectedUserForProfile(u)}>
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-[0.88rem] font-bold text-slate-800 hover:text-[#FF7E7E] transition-colors">{u.name || '미입력'}</span>
-                            {(() => {
-                              const p = providerMap[u.id];
-                              if (!p) return null;
-                              const cfg: Record<string, { label: string; bg: string; color: string }> = {
-                                'email': { label: '기본회원', bg: '#F1F5F9', color: '#64748B' },
-                                'password': { label: '기본회원', bg: '#F1F5F9', color: '#64748B' },
-                                'google': { label: 'Google', bg: '#FEF2F2', color: '#EF4444' },
-                                'google.com': { label: 'Google', bg: '#FEF2F2', color: '#EF4444' },
-                                'kakao': { label: 'Kakao', bg: '#FEF9C3', color: '#CA8A04' },
-                                'oidc.kakao': { label: 'Kakao', bg: '#FEF9C3', color: '#CA8A04' },
-                              };
-                              const c = cfg[p] || { label: p, bg: '#F1F5F9', color: '#64748B' };
-                              return (
-                                <span style={{ fontSize: '9px', fontWeight: 800, padding: '1px 5px', borderRadius: 4, background: c.bg, color: c.color }}>
-                                  {c.label}
-                                </span>
-                              );
-                            })()}
+                        {u.isJobReviewed === false && (
+                          <div className="absolute -top-1.5 -right-2 bg-[#FF7E7E] text-white text-[7px] font-black px-1.5 py-0.5 rounded-full shadow-md border-2 border-white animate-bounce">
+                            정보수정
                           </div>
-                          <span className={`text-[10px] font-bold ${u.gender === 'male' ? 'text-blue-500' : 'text-rose-500'}`}>
-                            {u.gender === 'male' ? '남성' : '여성'}
-                          </span>
-                        </div>
-                      </td>
+                        )}
+                      </div>
 
-                      {/* 3. 직업 (인라인 편집 + 검토 체크박스 이관 v8.8.6) */}
-                      <td style={{ padding: '0 20px', verticalAlign: 'middle' }}>
-                        <div className="flex flex-col gap-2">
-                          <div className="flex items-center gap-2 group/job relative">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[1rem] font-extrabold text-slate-900">{u.name || '미입력'}</span>
+                            <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${u.gender === 'male' ? 'bg-blue-50 text-blue-500' : 'bg-rose-50 text-rose-500'}`}>
+                              {u.gender === 'male' ? '남성' : '여성'}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex flex-col gap-0.5 mt-1">
+                          <span className="text-[0.75rem] font-bold text-slate-500">
+                            {u.birthDate ? `${u.birthDate.slice(2, 4)}년생` : '-'}
+                          </span>
+                          <div className="flex items-center gap-2">
                             {editingJobId === u.id ? (
-                              <input
-                                autoFocus
-                                value={tempJobValue}
-                                onChange={(e) => setTempJobValue(e.target.value)}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') handleJobUpdate(u.id, tempJobValue);
-                                  if (e.key === 'Escape') setEditingJobId(null);
-                                }}
-                                onBlur={() => setEditingJobId(null)}
-                                className="w-full h-8 px-2 rounded border-2 border-blue-400 text-[0.8rem] font-bold outline-none"
-                              />
+                              <div className="flex items-center gap-1 w-full">
+                                <input
+                                  autoFocus
+                                  value={tempJobValue}
+                                  onChange={(e) => setTempJobValue(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') handleJobUpdate(u.id, tempJobValue);
+                                    if (e.key === 'Escape') setEditingJobId(null);
+                                  }}
+                                  className="flex-1 h-7 px-2 rounded border-2 border-blue-400 text-[0.75rem] font-bold outline-none"
+                                />
+                                <button 
+                                  onClick={() => handleJobUpdate(u.id, tempJobValue)}
+                                  className="p-1.5 rounded bg-blue-600 text-white"
+                                >
+                                  <CheckCircle size={12} />
+                                </button>
+                              </div>
                             ) : (
                               <>
-                                <p className={`text-[0.82rem] font-bold tracking-tight flex items-center flex-wrap gap-1 ${u.admin_job || u.job ? 'text-blue-600' : 'text-slate-800'}`}>
-                                  <span>{u.admin_job || u.job || u.occupation || <span className="text-slate-300 font-normal">-</span>}</span>
-                                </p>
+                                <span 
+                                  onClick={() => {
+                                    setEditingJobId(u.id);
+                                    setTempJobValue(u.admin_job || u.job || u.occupation || '');
+                                  }}
+                                  className={`text-[0.75rem] font-bold truncate cursor-pointer ${u.admin_job || u.job ? 'text-blue-600' : 'text-slate-400'}`}
+                                >
+                                  {u.admin_job || u.job || u.occupation || '-'}
+                                </span>
                                 <button
                                   onClick={() => {
                                     setEditingJobId(u.id);
                                     setTempJobValue(u.admin_job || u.job || u.occupation || '');
                                   }}
-                                  className="p-1.5 rounded-lg bg-slate-100 text-slate-400 opacity-0 group-hover/job:opacity-100 hover:bg-blue-50 hover:text-blue-500 transition-all"
+                                  className="text-blue-400 hover:text-blue-600 transition-colors"
                                 >
-                                  <Edit3 size={12} />
+                                  <Edit3 size={10} />
                                 </button>
                               </>
                             )}
                           </div>
-
-                          <label className={`flex items-center gap-1.5 w-fit cursor-pointer select-none px-2 py-1 rounded-lg border transition-all ${u.isJobReviewed ? 'bg-blue-50 border-blue-100 text-blue-600' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>
-                            <input
-                              type="checkbox"
-                              checked={!!u.isJobReviewed}
-                              onChange={(e) => toggleJobReviewed(u.id, e.target.checked)}
-                              className="w-3 h-3 rounded"
-                            />
-                            <span className="text-[10px] font-black uppercase tracking-tight">직업승인</span>
-                          </label>
                         </div>
-                      </td>
+                      </div>
+                    </div>
 
-                      {/* 나이 */}
-                      <td style={{ padding: '0 20px', verticalAlign: 'middle', textAlign: 'center' }}>
-                        <p style={{ fontSize: '0.88rem', fontWeight: 800, color: u.birthDate ? '#1E293B' : '#94A3B8', textAlign: 'center' }}>
-                          {u.birthDate ? `${u.birthDate.includes('-') ? u.birthDate.slice(2, 4) : u.birthDate.slice(0, 2)}년생` : <span style={{ color: '#94A3B8' }}>-</span>}
-                        </p>
-                      </td>
-
-                      {/* 상태 / 권한 */}
-                      <td style={{ padding: '0 20px', verticalAlign: 'middle' }}>
-                        <div className="flex flex-col gap-2">
-                          <span
-                            onClick={() => currentStatus === 'pending' && setSmsTargetUser(u)}
-                            className={`inline-flex items-center gap-1.5 ${currentStatus === 'pending' ? 'cursor-pointer hover:scale-105 active:scale-95 transition-all' : ''}`}
-                            style={{ width: 'fit-content', fontSize: '0.72rem', fontWeight: 600, padding: '4px 10px', borderRadius: 20, color: sc.color, background: sc.bg }}
-                            title={currentStatus === 'pending' ? '프로필 작성 요청 문자 보내기' : ''}
-                          >
-                            <span style={{ width: 5, height: 5, borderRadius: '50%', background: sc.color, display: 'inline-block' }} />
-                            {sc.label}
-                          </span>
-
-                          {/* 요청 완료 표시 (v8.13.1) */}
-                          {currentStatus === 'pending' && u.profileRequestSent && (
-                            <span style={{ fontSize: '9px', fontWeight: 800, color: '#FF7E7E', display: 'flex', alignItems: 'center', gap: '4px', marginLeft: '4px' }}>
-                              <CheckCircle size={10} /> 요청완료
-                            </span>
-                          )}
-
-                          <select
-                            value={u.role || '일반회원'}
-                            onChange={(e) => updateRole(u.id, e.target.value)}
-                            className="bg-slate-50 border border-slate-200 rounded-lg text-[10px] px-2 py-1 text-slate-700 outline-none focus:border-[#FF7E7E]/50 cursor-pointer shadow-sm"
-                          >
-                            {ROLES.map(r => <option key={r} value={r} className="bg-white">{r}</option>)}
-                          </select>
+                    {/* Middle Row: Metrics & Job Review */}
+                    <div className="flex items-center justify-between bg-slate-50/80 rounded-xl p-3">
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-1">
+                          <span className="text-sky-600 text-[9px] font-black">T</span>
+                          <span className="text-slate-700 text-[0.8rem] font-extrabold">{u.participationCount || 0}</span>
                         </div>
-                      </td>
-
-                      {/* 활동 지표 (Badges) */}
-                      <td style={{ padding: '0 20px', verticalAlign: 'middle' }}>
-                        <div className="flex items-center justify-center gap-2">
-                          {/* T: Total */}
-                          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-sky-50 border border-sky-100 shadow-sm">
-                            <span className="text-sky-600 text-[10px] font-black">T</span>
-                            <span className="text-sky-700 text-[11px] font-black">{u.participationCount || 0}</span>
-                          </div>
-                          {/* M: Match */}
-                          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-100 shadow-sm">
-                            <span className="text-emerald-600 text-[10px] font-black">M</span>
-                            <span className="text-emerald-700 text-[11px] font-black">{u.matchCount || 0}</span>
-                          </div>
-                          {/* N: No-show */}
-                          <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border shadow-sm ${u.noShowCount > 0 ? 'bg-rose-50 border-rose-100' : 'bg-slate-50 border-slate-100'}`}>
-                            <span className={`${u.noShowCount > 0 ? 'text-rose-600' : 'text-slate-300'} text-[10px] font-black`}>N</span>
-                            <span className={`${u.noShowCount > 0 ? 'text-rose-700' : 'text-slate-300'} text-[11px] font-black`}>{u.noShowCount || 0}</span>
-                          </div>
+                        <div className="flex items-center gap-1">
+                          <span className="text-emerald-600 text-[9px] font-black">M</span>
+                          <span className="text-slate-700 text-[0.8rem] font-extrabold">{u.matchCount || 0}</span>
                         </div>
-                      </td>
-
-                      {/* 관리 */}
-                      <td style={{ padding: '0 20px', verticalAlign: 'middle', textAlign: 'right' }}>
-                        <div className="flex items-center justify-end gap-1.5">
-                          {u.status !== 'rejected' && (
-                            <button
-                              onClick={() => reject(u.id, u.name)}
-                              className="flex items-center gap-1.5 rounded-lg transition-all hover:bg-rose-500 hover:text-white"
-                              style={{ padding: '5px 10px', fontSize: '0.75rem', fontWeight: 700, background: '#FEF2F2', color: '#EF4444', border: '1px solid #FEE2E2' }}
-                            >
-                              <XCircle size={12} /> 반려
-                            </button>
-                          )}
-                          <button
-                            onClick={() => setCouponTarget(u)}
-                            className="flex items-center justify-center rounded-lg hover:bg-sky-50 transition-all text-slate-400 hover:text-sky-500"
-                            style={{ width: 32, height: 32 }}
-                            title="쿠폰 발송"
-                          >
-                            <Ticket size={14} />
-                          </button>
-                          <button
-                            onClick={() => setDeleteTarget(u)}
-                            className="flex items-center justify-center rounded-lg hover:bg-rose-50 transition-all text-slate-300 hover:text-rose-500"
-                            style={{ width: 32, height: 32 }}
-                            title="회원 삭제"
-                          >
-                            <Trash2 size={14} />
-                          </button>
+                        <div className="flex items-center gap-1">
+                          <span className={`${u.noShowCount > 0 ? 'text-rose-600' : 'text-slate-300'} text-[9px] font-black`}>N</span>
+                          <span className={`${u.noShowCount > 0 ? 'text-rose-700' : 'text-slate-400'} text-[0.8rem] font-extrabold`}>{u.noShowCount || 0}</span>
                         </div>
-                      </td>
+                      </div>
+                      <label className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all ${u.isJobReviewed ? 'bg-blue-100 border-blue-200 text-blue-700' : 'bg-white border-slate-200 text-slate-400 shadow-sm'}`}>
+                        <input
+                          type="checkbox"
+                          checked={!!u.isJobReviewed}
+                          onChange={(e) => toggleJobReviewed(u.id, e.target.checked)}
+                          className="w-3.5 h-3.5 rounded"
+                        />
+                        <span className="text-[0.7rem] font-black">직업승인</span>
+                      </label>
+                    </div>
 
-                      {/* 가입일 */}
-                      <td style={{ padding: '0 20px', verticalAlign: 'middle', textAlign: 'center' }}>
-                        <div className="flex flex-col items-center">
-                          <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#64748B' }}>
-                            {u.createdAt?.seconds ? format(new Date(u.createdAt.seconds * 1000), 'yyyy-MM-dd') : <span style={{ color: '#94A3B8' }}>-</span>}
-                          </span>
-                          {u.createdAt?.seconds && (
-                            <span style={{ fontSize: '0.65rem', color: '#94A3B8', fontWeight: 500, marginTop: '1px' }}>
-                              {format(new Date(u.createdAt.seconds * 1000), 'HH:mm')}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                    {/* Bottom Row: Status & Action Buttons */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex flex-col gap-1.5">
+                        <span
+                          onClick={() => currentStatus === 'pending' && setSmsTargetUser(u)}
+                          className="inline-flex items-center gap-1.5"
+                          style={{ fontSize: '0.75rem', fontWeight: 700, padding: '5px 12px', borderRadius: 20, color: sc.color, background: sc.bg }}
+                        >
+                          {sc.label}
+                          {currentStatus === 'pending' && u.profileRequestSent && <CheckCircle size={10} />}
+                        </span>
+                        <select
+                          value={u.role || '일반회원'}
+                          onChange={(e) => updateRole(u.id, e.target.value)}
+                          className="bg-white border border-slate-200 rounded-lg text-[0.7rem] px-2 py-1.5 text-slate-700 font-bold outline-none shadow-sm"
+                        >
+                          {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                        </select>
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => setCouponTarget(u)}
+                          className="flex items-center justify-center rounded-xl bg-sky-50 text-sky-600 border border-sky-100"
+                          style={{ width: 40, height: 40 }}
+                        >
+                          <Ticket size={18} />
+                        </button>
+                        <button
+                          onClick={() => reject(u.id, u.name)}
+                          className="flex items-center justify-center rounded-xl bg-rose-50 text-rose-600 border border-rose-100"
+                          style={{ width: 40, height: 40 }}
+                        >
+                          <XCircle size={18} />
+                        </button>
+                        <button
+                          onClick={() => setDeleteTarget(u)}
+                          className="flex items-center justify-center rounded-xl bg-slate-50 text-slate-400 border border-slate-100"
+                          style={{ width: 40, height: 40 }}
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
         )}
 
         {/* Pagination (v8.14.0) */}

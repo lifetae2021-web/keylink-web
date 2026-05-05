@@ -180,7 +180,8 @@ export default function PrivateMatching() {
         maritalStatus: form.maritalStatus,
         idealTypeConditions: [form.idealType1, form.idealType2, form.idealType3],
         photos: uploadedPhotos,
-        employmentProofUrl: user.employmentProof || '',
+        idProofUrl: uploadedIdProof, // v8.15.11: 누락된 필드 추가
+        employmentProofUrl: uploadedJobProof, // v8.15.11: 업로드된 URL 반영
         status: 'pending_consult', // 상담대기
         updatedAt: serverTimestamp(),
         // v8.15.7: 상세 프로필 정보 포함
@@ -214,6 +215,7 @@ export default function PrivateMatching() {
         religion: form.religion,
         mbti: form.mbti,
         photos: uploadedPhotos,
+        employmentProof: uploadedJobProof, // v8.15.12: 유저 프로필에도 서류 동기화
         updatedAt: serverTimestamp(),
       });
 
@@ -339,6 +341,15 @@ export default function PrivateMatching() {
                   if (user?.status === 'pending') {
                     return toast.error('아직 승인 대기 중입니다. 관리자 승인 후 신청이 가능합니다.');
                   }
+                  
+                  // v8.15.13: 필수 기본 정보 누락 체크
+                  const requiredFields = ['name', 'gender', 'birthDate', 'phone', 'job', 'residence'];
+                  const missingFields = requiredFields.filter(field => !form[field as keyof typeof form]);
+                  
+                  if (missingFields.length > 0) {
+                    return toast.error('이름, 직업, 거주지 등 기본 프로필 정보를 모두 채워주셔야 신청이 가능합니다. (마이페이지에서 수정 가능)');
+                  }
+
                   setStep(2);
                 }}
                 className={`w-full mt-8 font-bold py-4 rounded-xl flex justify-center items-center gap-2 transition-all ${user?.status === 'pending' ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-slate-900 hover:bg-slate-800 text-white shadow-lg shadow-slate-200'}`}

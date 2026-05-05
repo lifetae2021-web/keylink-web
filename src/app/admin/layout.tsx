@@ -16,7 +16,8 @@ import {
   UserPlus, ClipboardList, Clock, Zap
 } from 'lucide-react';
 import Link from 'next/link';
-const version = '1.0.10';
+import { format } from 'date-fns';
+const version = '1.0.12';
 
 const PAGE_TITLE: Record<string, string> = {
   '/admin':               '대시보드',
@@ -91,77 +92,108 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const saved = localStorage.getItem('kl_admin_noti_viewed');
     if (saved) setLastViewedNoti(Number(saved));
 
+    // 리얼타임 감시 (여러 컬렉션 통합)
     const unsubUsers = onSnapshot(
-      query(collection(db, 'users'), where('status', '==', 'pending'), limit(10)),
-      (snap) => handleSync()
+      query(collection(db, 'users'), orderBy('createdAt', 'desc'), limit(5)),
+      () => handleSync()
     );
     const unsubApps = onSnapshot(
-      query(collection(db, 'applications'), where('status', '==', 'applied'), limit(10)),
-      (snap) => handleSync()
+      query(collection(db, 'applications'), orderBy('appliedAt', 'desc'), limit(5)),
+      () => handleSync()
     );
     const unsubPrivate = onSnapshot(
-      query(collection(db, 'private_applications'), limit(10)),
-      (snap) => handleSync()
+      query(collection(db, 'private_applications'), orderBy('appliedAt', 'desc'), limit(5)),
+      () => handleSync()
     );
 
     async function handleSync() {
       const combined: NotificationItem[] = [];
-      const now = new Date();
+      
+      const safeDate = (d: any) => {
+        if (!d) return new Date(0);
+        if (d.toDate) return d.toDate();
+        if (d instanceof Date) return d;
+        if (typeof d === 'number') return new Date(d);
+        if (typeof d === 'string') return new Date(d);
+        return new Date(0);
+      };
 
-      // 유저
-      const uSnap = await getDocs(query(collection(db, 'users'), where('status', '==', 'pending'), limit(10)));
-      uSnap.forEach(d => {
-        const data = d.data();
-        const date = data.createdAt?.toDate() || now;
-        combined.push({
-          id: d.id,
-          type: 'user',
-          text: `${data.name || '신규유저'} 님이 가입 승인을 대기 중입니다.`,
-          date,
-          time: formatTimeAgo(date),
-          path: '/admin/users'
+      try {
+        // 1. 회원가입 (최신순 10명 가져와서 승인 대기 또는 상태 없는 사람 선별)
+        const uSnap = await getDocs(query(collection(db, 'users'), orderBy('createdAt', 'desc'), limit(10)));
+        uSnap.forEach(d => {
+          const data = d.data();
+          const status = data.status || 'pending'; // 상태가 없으면 대기중으로 간주
+          if (status === 'pending') {
+            const date = safeDate(data.createdAt);
+            combined.push({
+              id: d.id,
+              type: 'user',
+              text: `${data.name || '신규유저'}님이 가입 승인을 대기 중입니다.`,
+              date,
+              time: formatTimeAgo(date),
+              path: '/admin/users'
+            });
+          }
         });
-      });
 
-      // 일반 신청
-      const aSnap = await getDocs(query(collection(db, 'applications'), where('status', '==', 'applied'), limit(10)));
-      aSnap.forEach(d => {
-        const data = d.data();
-        const date = data.appliedAt?.toDate() || now;
-        combined.push({
-          id: d.id,
-          type: 'app',
-          text: `${data.name || '신청자'} 님이 새로운 기수에 참가 신청했습니다.`,
-          date,
-          time: formatTimeAgo(date),
-          path: '/admin/applications'
+        // 2. 로테이션 신청 (최신순 10건 가져와서 검토 중인 것 선별)
+        const aSnap = await getDocs(query(collection(db, 'applications'), orderBy('appliedAt', 'desc'), limit(10)));
+        aSnap.forEach(d => {
+          const data = d.data();
+          const status = data.status || 'applied';
+          if (status === 'applied') {
+            const date = safeDate(data.appliedAt);
+            combined.push({
+              id: d.id,
+              type: 'app',
+              text: `${data.name || '신청자'}님이 새로운 로테이션 참가를 신청했습니다.`,
+              date,
+              time: formatTimeAgo(date),
+              path: '/admin/applications'
+            });
+          }
         });
-      });
 
-      // 1:1 매칭
-      const pSnap = await getDocs(query(collection(db, 'private_applications'), limit(10)));
-      pSnap.forEach(d => {
-        const data = d.data();
-        const date = data.createdAt?.toDate() || now;
-        combined.push({
-          id: d.id,
-          type: 'private',
-          text: `${data.name || '신청자'} 님이 1:1 프라이빗 매칭을 신청했습니다.`,
-          date,
-          time: formatTimeAgo(date),
-          path: '/admin/applications'
+        // 3. 1:1 프라이빗 매칭 신청
+        const pSnap = await getDocs(query(collection(db, 'private_applications'), orderBy('appliedAt', 'desc'), limit(10)));
+        pSnap.forEach(d => {
+          const data = d.data();
+          const date = safeDate(data.appliedAt);
+          // 1:1 매칭은 보통 상담 전 상태인 경우 알림
+          if (!data.status || data.status === 'pending_consult' || data.status === 'applied') {
+            combined.push({
+              id: d.id,
+              type: 'private',
+              text: `${data.name || '신청자'}님이 1:1 프라이빗 매칭을 신청했습니다.`,
+              date,
+              time: formatTimeAgo(date),
+              path: '/admin/applications'
+            });
+          }
         });
-      });
 
-      setNotifications(combined.sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 10));
+        // 최종 정렬 (최신순)
+        const sorted = combined
+          .sort((a, b) => b.date.getTime() - a.date.getTime())
+          .slice(0, 15);
+        
+        setNotifications(sorted);
+      } catch (e) {
+        console.error('Notification sync error:', e);
+      }
     }
 
     function formatTimeAgo(date: Date) {
-      const diff = (new Date().getTime() - date.getTime()) / 1000;
+      if (date.getTime() === 0) return '시간 정보 없음';
+      const now = new Date();
+      const diff = (now.getTime() - date.getTime()) / 1000;
+      
       if (diff < 60) return '방금 전';
       if (diff < 3600) return `${Math.floor(diff / 60)}분 전`;
       if (diff < 86400) return `${Math.floor(diff / 3600)}시간 전`;
-      return `${Math.floor(diff / 86400)}일 전`;
+      if (diff < 604800) return `${Math.floor(diff / 86400)}일 전`;
+      return format(date, 'MM/dd');
     }
 
     return () => { unsubUsers(); unsubApps(); unsubPrivate(); };
@@ -385,56 +417,61 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               {notiOpen && (
                 <div
                   className="absolute right-0 flex flex-col overflow-hidden"
-                  style={{ top: 'calc(100% + 12px)', width: 340, background: '#111113', border: '1px solid rgba(255,255,255,0.08)', borderTop: '2px solid #FF6F61', borderRadius: 12, boxShadow: '0 20px 50px rgba(0,0,0,0.6)', zIndex: 1000 }}
+                  style={{ top: 'calc(100% + 12px)', width: 360, background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 20, boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)', zIndex: 1000 }}
                 >
-                  <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                    <div className="flex items-center gap-2">
-                      <span style={{ fontSize: '0.9rem', fontWeight: 800, color: '#fff' }}>최근 알림</span>
+                  <div className="flex items-center justify-between px-6 py-5" style={{ borderBottom: '1px solid #F1F5F9' }}>
+                    <div className="flex items-center gap-2.5">
+                      <span style={{ fontSize: '1rem', fontWeight: 900, color: '#0F172A', tracking: '-0.02em' }}>알림</span>
                       {unreadCount > 0 && (
-                        <span style={{ background: '#FF6F61', color: '#fff', fontSize: '0.7rem', fontWeight: 900, padding: '2px 8px', borderRadius: '100px' }}>{unreadCount}</span>
+                        <span style={{ background: '#FF6F61', color: '#fff', fontSize: '0.7rem', fontWeight: 900, padding: '2px 8px', borderRadius: '100px', boxShadow: '0 2px 6px rgba(255,111,97,0.3)' }}>{unreadCount}</span>
                       )}
                     </div>
-                    <button onClick={markAllReadAction} style={{ fontSize: '0.75rem', color: '#666', cursor: 'pointer', background: 'none', border: 'none', fontWeight: '600' }}>
+                    <button 
+                      onClick={markAllReadAction} 
+                      className="text-[0.75rem] font-bold text-slate-400 hover:text-[#FF6F61] transition-colors cursor-pointer bg-transparent border-none"
+                    >
                       모두 읽음
                     </button>
                   </div>
-                  <div style={{ maxHeight: 380, overflowY: 'auto' }} className="kl-scrollbar">
+                  <div style={{ maxHeight: 420, overflowY: 'auto' }} className="kl-scrollbar">
                     {notifications.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
-                        <Bell size={32} color="#333" style={{ marginBottom: '12px' }} />
-                        <p style={{ color: '#555', fontSize: '0.85rem', fontWeight: '500' }}>새로운 알림이 없습니다.</p>
+                      <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+                        <div className="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center mb-4">
+                          <Bell size={28} className="text-slate-200" />
+                        </div>
+                        <p style={{ color: '#94A3B8', fontSize: '0.85rem', fontWeight: '700' }}>새로운 알림이 없습니다.</p>
                       </div>
                     ) : notifications.map(n => {
                       const isNew = n.date.getTime() > lastViewedNoti;
+                      const iconBg = n.type === 'user' ? '#ECFDF5' : n.type === 'app' ? '#EFF6FF' : '#F5F3FF';
+                      const iconColor = n.type === 'user' ? '#10B981' : n.type === 'app' ? '#3B82F6' : '#8B5CF6';
+                      
                       return (
                         <div
                           key={n.id}
                           onClick={() => { setNotiOpen(false); router.push(n.path); }}
-                          className="flex gap-3 px-5 py-4 cursor-pointer transition-all duration-150"
+                          className="flex gap-4 px-6 py-5 cursor-pointer transition-all duration-200 group"
                           style={{ 
-                            borderBottom: '1px solid rgba(255,255,255,0.04)', 
-                            background: isNew ? 'rgba(255,111,97,0.05)' : 'transparent',
+                            borderBottom: '1px solid #F8FAFC', 
+                            background: isNew ? '#FFF9F9' : '#FFFFFF',
                             position: 'relative'
                           }}
-                          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; }}
-                          onMouseLeave={e => { e.currentTarget.style.background = isNew ? 'rgba(255,111,97,0.05)' : 'transparent'; }}
                         >
-                          {isNew && <div style={{ position: 'absolute', left: '0', top: '50%', transform: 'translateY(-50%)', width: '3px', height: '100%', background: '#FF6F61' }} />}
+                          {isNew && <div style={{ position: 'absolute', left: '0', top: '0', bottom: '0', width: '3px', background: '#FF6F61' }} />}
                           <div
-                            className="flex items-center justify-center rounded-full shrink-0"
+                            className="flex items-center justify-center rounded-2xl shrink-0 shadow-sm transition-transform group-hover:scale-110"
                             style={{
-                              width: 36, height: 36,
-                              background: n.type === 'user' ? 'rgba(74,222,128,0.1)' : n.type === 'app' ? 'rgba(96,165,250,0.1)' : 'rgba(167,139,250,0.1)',
-                              color: n.type === 'user' ? '#4ade80' : n.type === 'app' ? '#60a5fa' : '#a78bfa',
-                              fontSize: '0.85rem',
+                              width: 44, height: 44,
+                              background: iconBg,
+                              color: iconColor,
                             }}
                           >
-                            {n.type === 'user' ? <UserPlus size={16} /> : n.type === 'app' ? <ClipboardList size={16} /> : <Zap size={16} />}
+                            {n.type === 'user' ? <UserPlus size={18} /> : n.type === 'app' ? <ClipboardList size={18} /> : <Zap size={18} />}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p style={{ fontSize: '0.83rem', lineHeight: 1.45, color: isNew ? '#fff' : '#94a3b8', fontWeight: isNew ? '700' : '500' }}>{n.text}</p>
-                            <p style={{ fontSize: '0.72rem', color: '#555', marginTop: 4, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              <Clock size={10} /> {n.time}
+                            <p style={{ fontSize: '0.88rem', lineHeight: 1.5, color: isNew ? '#0F172A' : '#64748B', fontWeight: isNew ? '800' : '600', letterSpacing: '-0.01em' }}>{n.text}</p>
+                            <p style={{ fontSize: '0.75rem', color: '#94A3B8', marginTop: 6, display: 'flex', alignItems: 'center', gap: '5px', fontWeight: 600 }}>
+                              <Clock size={11} className="text-slate-300" /> {n.time}
                             </p>
                           </div>
                         </div>
@@ -442,8 +479,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     })}
                   </div>
                   {notifications.length > 0 && (
-                    <Link href="/admin/applications" onClick={() => setNotiOpen(false)} style={{ display: 'block', textAlign: 'center', padding: '14px', fontSize: '0.8rem', color: '#888', textDecoration: 'none', background: 'rgba(255,255,255,0.02)', fontWeight: '600' }}>
-                      모든 활동 보기
+                    <Link 
+                      href="/admin/applications" 
+                      onClick={() => setNotiOpen(false)} 
+                      className="block text-center py-4 text-[0.8rem] font-bold text-slate-500 bg-slate-50 hover:bg-slate-100 hover:text-[#FF6F61] transition-all border-t border-slate-100"
+                    >
+                      모든 알림 보기
                     </Link>
                   )}
                 </div>
