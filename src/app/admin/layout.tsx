@@ -421,7 +421,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 >
                   <div className="flex items-center justify-between px-6 py-5" style={{ borderBottom: '1px solid #F1F5F9' }}>
                     <div className="flex items-center gap-2.5">
-                      <span style={{ fontSize: '1rem', fontWeight: 900, color: '#0F172A', tracking: '-0.02em' }}>알림</span>
+                      <span style={{ fontSize: '1rem', fontWeight: 900, color: '#0F172A', letterSpacing: '-0.02em' }}>알림</span>
                       {unreadCount > 0 && (
                         <span style={{ background: '#FF6F61', color: '#fff', fontSize: '0.7rem', fontWeight: 900, padding: '2px 8px', borderRadius: '100px', boxShadow: '0 2px 6px rgba(255,111,97,0.3)' }}>{unreadCount}</span>
                       )}
