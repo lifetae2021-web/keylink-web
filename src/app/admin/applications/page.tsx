@@ -276,8 +276,8 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
     try {
       const token = await auth.currentUser?.getIdToken();
       
-      // Step 1: 기존 기수에서 확정 상태였다면 API를 통해 '검토 중'으로 내려 카운터/빈자리 정리
-      if (changeSessionApp.status === 'confirmed') {
+      // Step 1: 기존 기수에서 확정 또는 선발(입금대기) 상태였다면 API를 통해 '검토 중'으로 내려 카운터/빈자리 정리
+      if (changeSessionApp.status === 'confirmed' || changeSessionApp.status === 'selected') {
         const res1 = await fetch('/api/admin/applications/status', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -292,17 +292,17 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
         updatedAt: Timestamp.now()
       });
       
-      // Step 3: 원래 확정 상태였다면 새 기수에서 다시 '확정' 처리 (새 기수 정원 및 슬롯 할당)
-      if (changeSessionApp.status === 'confirmed') {
+      // Step 3: 원래 확정 또는 선발(입금대기) 상태였다면 새 기수에서 다시 해당 상태로 복구 (새 기수 정원 반영)
+      if (changeSessionApp.status === 'confirmed' || changeSessionApp.status === 'selected') {
         // Firestore 인덱싱 및 트리거 딜레이 대비
         await new Promise(r => setTimeout(r, 500));
         
         const res2 = await fetch('/api/admin/applications/status', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({ applicationId: changeSessionApp.id, status: 'confirmed' })
+          body: JSON.stringify({ applicationId: changeSessionApp.id, status: changeSessionApp.status })
         });
-        if (!res2.ok) throw new Error('새로운 기수에 인원을 확정하는 중 오류가 발생했습니다.');
+        if (!res2.ok) throw new Error('새로운 기수에 인원을 등록하는 중 오류가 발생했습니다.');
       }
       
       toast.success('기수 변경이 성공적으로 완료되었습니다.');
@@ -796,7 +796,7 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
 
                             <td style={{ padding: '0 16px' }}>
                               <div className="relative flex items-center justify-center gap-1.5 transition-all">
-                                {(app.status === 'applied' || app.status === 'held') && (() => {
+                                {(app.status === 'applied' || app.status === 'held' || app.status === 'selected') && (() => {
                                   const handleSelection = async () => {
                                     if (!user.isJobReviewed) return toast.error('먼저 회원 관리에서 직업 정보를 확인하고 승인(Job Reviewed)해 주세요.');
                                     if (isOverQuota) {
@@ -950,7 +950,7 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
 
 
                                 <div className="flex gap-1.5">
-                                  {(app.status === 'applied' || app.status === 'held') && (
+                                  {(app.status === 'applied' || app.status === 'held' || app.status === 'selected') && (
                                     <>
                                       {/* 선발 (문자 발송) */}
                                       <button
