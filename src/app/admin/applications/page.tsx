@@ -711,8 +711,8 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
 
                             <td style={{ padding: '0 16px' }}>
                               <div className="flex flex-col">
-                                <p className={`text-[0.85rem] font-bold tracking-tight ${(user.job || app.job) ? 'text-slate-800' : 'text-slate-400'}`}>
-                                  {user.job || user.workplace?.split(',')[0] || app.job || <span className="font-normal">-</span>}
+                                <p className={`text-[0.85rem] font-bold tracking-tight ${(user.admin_job || user.job || app.job) ? 'text-slate-800' : 'text-slate-400'}`}>
+                                  {user.admin_job || (user.job && user.job !== '-' ? user.job : null) || user.workplace?.split(',')[0] || app.job || <span className="font-normal">-</span>}
                                 </p>
                                 <span className="text-[0.72rem] text-slate-400">{user.company || ''}</span>
                               </div>
@@ -872,7 +872,7 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                                 <div className="grid grid-cols-2 gap-3 mb-4 bg-slate-50 p-3 rounded-xl border border-slate-100">
                                   <div>
                                     <p className="text-[10px] font-black text-slate-400 uppercase mb-0.5">직업</p>
-                                    <p className="text-sm font-bold text-slate-700 leading-tight">{user.job || user.workplace?.split(',')[0] || app.job || '-'}</p>
+                                    <p className="text-sm font-bold text-slate-700 leading-tight">{user.admin_job || (user.job && user.job !== '-' ? user.job : null) || user.workplace?.split(',')[0] || app.job || '-'}</p>
                                   </div>
                                   <div>
                                     <p className="text-[10px] font-black text-slate-400 uppercase mb-0.5">거주지</p>
