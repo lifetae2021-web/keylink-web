@@ -794,32 +794,38 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                                   return (
                                     <>
                                       <button
-                                        onClick={handleSelection}
+                                        onClick={app.status === 'selected' ? () => handleOpenPreview(app, 'confirm') : handleSelection}
                                         disabled={!user.isJobReviewed && !app.id.startsWith('dummy')}
                                         className={`px-3 py-2 rounded-xl text-[0.8rem] font-black transition-all ${
                                           isOverQuota ? 'bg-rose-500 text-white hover:bg-rose-600' : 'bg-[#FF6F61] text-white hover:bg-[#ff5a4a]'
                                         } shadow-md shadow-rose-100 disabled:opacity-50`}
                                       >
-                                        선발
+                                        {app.status === 'selected' ? '입금완료' : '선발'}
                                       </button>
-                                      <button
-                                        onClick={async () => {
-                                          if (!user.isJobReviewed && !app.id.startsWith('dummy')) return toast.error('먼저 직업 승인을 해주세요.');
-                                          if (isOverQuota && !confirm('정원이 가득 찼습니다. 확정하시겠습니까?')) return;
-                                          if (window.confirm('문자 발송 없이 바로 선발확정 처리하시겠습니까?')) {
-                                            updateAppStatus(app, 'confirmed');
-                                          }
-                                        }}
-                                        className="px-3 py-2 bg-[#FFD700] text-[#7A5F00] rounded-xl text-[0.8rem] font-black hover:bg-[#F0C800] shadow-md shadow-yellow-100 transition-all"
-                                      >
-                                        확정
-                                      </button>
-                                      <button
-                                        onClick={() => updateAppStatus(app, 'held')}
-                                        className="px-3 py-2 bg-slate-100 text-slate-600 rounded-xl text-[0.8rem] font-black hover:bg-slate-200 transition-all"
-                                      >
-                                        보류
-                                      </button>
+                                      
+                                      {app.status !== 'selected' && (
+                                        <>
+                                          <button
+                                            onClick={async () => {
+                                              if (!user.isJobReviewed && !app.id.startsWith('dummy')) return toast.error('먼저 직업 승인을 해주세요.');
+                                              if (isOverQuota && !confirm('정원이 가득 찼습니다. 확정하시겠습니까?')) return;
+                                              if (window.confirm('문자 발송 없이 바로 선발확정 처리하시겠습니까?')) {
+                                                updateAppStatus(app, 'confirmed');
+                                              }
+                                            }}
+                                            className="px-3 py-2 bg-[#FFD700] text-[#7A5F00] rounded-xl text-[0.8rem] font-black hover:bg-[#F0C800] shadow-md shadow-yellow-100 transition-all"
+                                          >
+                                            확정
+                                          </button>
+                                          <button
+                                            onClick={() => updateAppStatus(app, 'held')}
+                                            className="px-3 py-2 bg-slate-100 text-slate-600 rounded-xl text-[0.8rem] font-black hover:bg-slate-200 transition-all"
+                                          >
+                                            보류
+                                          </button>
+                                        </>
+                                      )}
+                                      
                                       <button
                                         onClick={() => { setChangeSessionApp(app); setChangeSessionModalOpen(true); }}
                                         className="px-3 py-2 bg-blue-50 text-blue-600 rounded-xl text-[0.8rem] font-black hover:bg-blue-100 transition-all ml-1"
@@ -938,37 +944,48 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                                 <div className="flex gap-1.5">
                                   {(app.status === 'applied' || app.status === 'held' || app.status === 'selected') && (
                                     <>
-                                      {/* 선발 (문자 발송) */}
+                                      {/* 입금완료 또는 선발 */}
                                       <button
                                         onClick={async () => {
                                           if (!user.isJobReviewed && !app.id.startsWith('dummy')) return toast.error('먼저 직업 승인을 해주세요.');
-                                          if (isOverQuota && !confirm('정원이 가득 찼습니다. 선발하시겠습니까?')) return;
-                                          handleOpenPreview(app);
-                                        }}
-                                        className="flex-1 py-2.5 bg-[#FF6F61] text-white rounded-xl font-black text-xs shadow-md active:scale-95 transition-all"
-                                      >
-                                        선발
-                                      </button>
-                                      {/* 선발확정 (문자 없이 바로 확정) */}
-                                      <button
-                                        onClick={async () => {
-                                          if (!user.isJobReviewed && !app.id.startsWith('dummy')) return toast.error('먼저 직업 승인을 해주세요.');
-                                          if (isOverQuota && !confirm('정원이 가득 찼습니다. 선발확정하시겠습니까?')) return;
-                                          if (window.confirm('문자 발송 없이 바로 선발확정 처리하시겠습니까?')) {
-                                            updateAppStatus(app, 'confirmed');
+                                          if (isOverQuota && !confirm('정원이 가득 찼습니다. 처리하시겠습니까?')) return;
+                                          
+                                          if (app.status === 'selected') {
+                                            handleOpenPreview(app, 'confirm');
+                                          } else {
+                                            handleOpenPreview(app, 'select');
                                           }
                                         }}
-                                        className="flex-1 py-2.5 bg-[#FFD700] text-[#7A5F00] rounded-xl font-black text-xs shadow-md active:scale-95 transition-all"
+                                        className={`flex-1 py-2.5 ${app.status === 'selected' ? 'bg-emerald-500' : 'bg-[#FF6F61]'} text-white rounded-xl font-black text-xs shadow-md active:scale-95 transition-all`}
                                       >
-                                        선발확정
+                                        {app.status === 'selected' ? '입금완료' : '선발'}
                                       </button>
-                                      {/* 보류 */}
-                                      <button
-                                        onClick={() => updateAppStatus(app, 'held')}
-                                        className="flex-1 py-2.5 bg-slate-100 text-slate-600 rounded-xl font-black text-xs active:scale-95 transition-all"
-                                      >
-                                        보류
-                                      </button>
+
+                                      {app.status !== 'selected' && (
+                                        <>
+                                          {/* 선발확정 (문자 없이 바로 확정) */}
+                                          <button
+                                            onClick={async () => {
+                                              if (!user.isJobReviewed && !app.id.startsWith('dummy')) return toast.error('먼저 직업 승인을 해주세요.');
+                                              if (isOverQuota && !confirm('정원이 가득 찼습니다. 선발확정하시겠습니까?')) return;
+                                              if (window.confirm('문자 발송 없이 바로 선발확정 처리하시겠습니까?')) {
+                                                updateAppStatus(app, 'confirmed');
+                                              }
+                                            }}
+                                            className="flex-1 py-2.5 bg-[#FFD700] text-[#7A5F00] rounded-xl font-black text-xs shadow-md active:scale-95 transition-all"
+                                          >
+                                            확정
+                                          </button>
+                                          {/* 보류 */}
+                                          <button
+                                            onClick={() => updateAppStatus(app, 'held')}
+                                            className="flex-1 py-2.5 bg-slate-100 text-slate-600 rounded-xl font-black text-xs active:scale-95 transition-all"
+                                          >
+                                            보류
+                                          </button>
+                                        </>
+                                      )}
+
                                       {/* 기수 변경 */}
                                       <button
                                         onClick={() => { setChangeSessionApp(app); setChangeSessionModalOpen(true); }}
