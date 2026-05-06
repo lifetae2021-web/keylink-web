@@ -57,7 +57,11 @@ export default function StatusListPage() {
           const apps: Record<string, Application> = {};
           snap.forEach(doc => {
             const data = doc.data() as Application;
-            apps[data.sessionId] = { ...data, id: doc.id };
+            // v8.13.4: 동일 기수에 신청서가 여러 개일 경우 'confirmed' 상태를 최우선으로 저장
+            const existingApp = apps[data.sessionId];
+            if (!existingApp || (data.status === 'confirmed' && existingApp.status !== 'confirmed')) {
+              apps[data.sessionId] = { ...data, id: doc.id };
+            }
           });
           setUserApps(apps);
         } catch (error) {
