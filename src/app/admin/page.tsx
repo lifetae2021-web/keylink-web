@@ -124,7 +124,7 @@ export default function AdminDashboard() {
           // 이번 달 / 전월 신청 수
           if (d >= appMonthStart) monthlyApps++;
           else if (d >= appPrevMonthStart) prevMonthlyApps++;
-          // 확정된 신청
+          // 확정된 신청 (v8.12.8: 입금 대기 상태는 제외하고 오직 입금 완료된 인원만 집계)
           if (app.status === 'confirmed' || app.paymentConfirmed === true) {
             confirmedCount++;
             if (dayMap[key]) dayMap[key].matches++;

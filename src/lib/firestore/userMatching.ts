@@ -10,9 +10,14 @@ import { db } from '@/lib/firebase';
 import { Session, Application, Vote } from '@/lib/types';
 
 async function getSummary(sessionId: string) {
-  const snap = await getDoc(doc(db, 'matchingSummaries', sessionId));
-  if (!snap.exists()) return null;
-  return snap.data() as {
+  const q = query(
+    collection(db, 'matchingSummaries'),
+    where('__name__', '==', sessionId),
+    where('status', '==', 'approved')
+  );
+  const snap = await getDocs(q);
+  if (snap.empty) return null;
+  return snap.docs[0].data() as {
     sessionId: string;
     matchedPairs: { userAId: string; userBId: string }[];
     unmatchedUserIds: string[];
@@ -109,12 +114,16 @@ export async function getUserVoteStats(userId: string, sessionId: string) {
   const summary = await getSummary(sessionId);
   const receivedCount = summary?.voteCountMap[userId] ?? 0;
 
-  const voteDocRef = doc(db, 'votes', `${sessionId}_${userId}`);
-  const voteSnap = await getDoc(voteDocRef);
+  const q = query(
+    collection(db, 'votes'),
+    where('sessionId', '==', sessionId),
+    where('userId', '==', userId)
+  );
+  const voteSnap = await getDocs(q);
 
   let myChoices: any[] = [];
-  if (voteSnap.exists()) {
-    const data = voteSnap.data() as Vote;
+  if (!voteSnap.empty) {
+    const data = voteSnap.docs[0].data() as Vote;
     myChoices = data.choices || [];
   }
 

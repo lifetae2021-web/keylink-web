@@ -46,8 +46,14 @@ export async function getMyVote(
   sessionId: string,
   userId: string
 ): Promise<Vote | null> {
-  const snap = await getDoc(doc(db, COLLECTION, makeVoteId(sessionId, userId)));
-  return fromDoc(snap);
+  const q = query(
+    collection(db, COLLECTION),
+    where('sessionId', '==', sessionId),
+    where('userId', '==', userId)
+  );
+  const snap = await getDocs(q);
+  if (snap.empty) return null;
+  return fromDoc(snap.docs[0]);
 }
 
 /** 특정 기수 전체 투표 목록 (관리자 / 알고리즘용) */
@@ -75,10 +81,14 @@ export async function submitVote(
     feedback?: string;
   }
 ): Promise<void> {
-  const voteId = makeVoteId(sessionId, userId);
-  const existing = await getDoc(doc(db, COLLECTION, voteId));
+  const q = query(
+    collection(db, COLLECTION),
+    where('sessionId', '==', sessionId),
+    where('userId', '==', userId)
+  );
+  const existing = await getDocs(q);
 
-  if (existing.exists()) {
+  if (!existing.empty) {
     throw new Error('이미 투표를 제출하셨습니다. 투표는 1회만 가능합니다.');
   }
 

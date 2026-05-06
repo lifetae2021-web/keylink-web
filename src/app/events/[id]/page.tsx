@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Calendar, MapPin, Users, ArrowLeft, AlertCircle,
   CheckCircle, Clock, Shield, Camera, X, CreditCard, ChevronRight, Upload, ShieldCheck, FileText,
-  CheckCircle2, WalletCards, Sparkles, ArrowRight
+  CheckCircle2, WalletCards, Sparkles, ArrowRight, Ticket, Gift
 } from 'lucide-react';
 import { POLICIES } from '@/lib/constants/policies';
 import { getSession } from '@/lib/firestore/sessions';
@@ -17,7 +17,7 @@ import toast from 'react-hot-toast';
 import { auth, db, storage } from '@/lib/firebase';
 import { compressImage } from '@/lib/utils';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { doc, getDoc, setDoc, deleteField, addDoc, collection, query, where, getDocs, Timestamp, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, deleteField, addDoc, collection, query, where, getDocs, Timestamp, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 
 export default function EventDetailPage() {
@@ -50,6 +50,8 @@ export default function EventDetailPage() {
   const [submitReady, setSubmitReady] = useState(false);
   const [hasProfile, setHasProfile] = useState(false);
   const [userGender, setUserGender] = useState<string>('');
+  const [userCoupons, setUserCoupons] = useState<any[]>([]);
+  const [selectedCoupon, setSelectedCoupon] = useState<any>(null);
 
   // 얼리버드 카운트다운 타이머 (가상)
   const [timeLeft, setTimeLeft] = useState(3600 * 5 + 1200); // 5h 20m
@@ -166,6 +168,37 @@ export default function EventDetailPage() {
 
           setHasProfile(true);
           setUserGender(d.gender || '');
+
+          // v8.15.9: 사용 가능한 쿠폰 가져오기
+          const couponsQ = query(
+            collection(db, 'users', user.uid, 'coupons'),
+            where('isUsed', '==', false)
+          );
+          const couponsSnap = await getDocs(couponsQ);
+          const couponsData = couponsSnap.docs.map(doc => {
+            const data = doc.data();
+            let expireAt = data.expireAt;
+            // v8.16.5: validityMonths 처리 (일부 쿠폰은 기간제로 저장됨)
+            if (!expireAt && data.validityMonths && data.validityMonths !== 'unlimited' && data.createdAt) {
+              const createdDate = data.createdAt.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
+              const expiry = new Date(createdDate);
+              expiry.setMonth(expiry.getMonth() + Number(data.validityMonths));
+              expireAt = expiry;
+            }
+            return {
+              id: doc.id,
+              ...data,
+              expireAt
+            };
+          }).filter(c => {
+            // 만료일 체크 (있는 경우에만)
+            if (c.expireAt) {
+              const expireDate = c.expireAt.toDate ? c.expireAt.toDate() : new Date(c.expireAt);
+              return expireDate > new Date();
+            }
+            return true;
+          });
+          setUserCoupons(couponsData);
         }
       } else {
         setCurrentUser(null);
@@ -222,10 +255,26 @@ export default function EventDetailPage() {
 
   // 성별 및 옵션 기반 가격 로직
   let displayBasePrice = form.gender === 'female' ? 40000 : (form.maleOption === 'safe' ? 60000 : 49000);
-  let finalPrice = form.gender === 'female'
+  let basePriceBeforeCoupon = form.gender === 'female'
     ? (form.femaleOption === 'group' ? 24000 : 29000)
     : displayBasePrice;
-  let isDiscounted = form.gender === 'female';
+
+  // v8.15.9: 쿠폰 할인 계산
+  let couponDiscount = 0;
+  if (selectedCoupon) {
+    const type = selectedCoupon.type;
+    const value = selectedCoupon.value || selectedCoupon.amount || 0;
+    if (type === 'free') {
+      couponDiscount = basePriceBeforeCoupon;
+    } else if (type === 'percent') {
+      couponDiscount = Math.floor(basePriceBeforeCoupon * (value / 100));
+    } else {
+      couponDiscount = value;
+    }
+  }
+
+  let finalPrice = Math.max(0, basePriceBeforeCoupon - couponDiscount);
+  let isDiscounted = form.gender === 'female' || couponDiscount > 0;
 
   const handleStep1Entry = () => {
     if (!currentUser) {
@@ -386,6 +435,12 @@ export default function EventDetailPage() {
         femaleOption: form.gender === 'female' ? form.femaleOption : null,
         groupPartnerName: form.gender === 'female' && form.femaleOption === 'group' ? form.groupPartnerName : null,
         groupPartnerBirthYear: form.gender === 'female' && form.femaleOption === 'group' ? form.groupPartnerBirthYear : null,
+        
+        // v8.15.9: 쿠폰 사용 정보
+        couponId: selectedCoupon?.id || null,
+        couponTitle: selectedCoupon?.title || null,
+        couponDiscount: couponDiscount,
+        
         instaId: form.instaId || '',
         smoking: form.smoking || '',
         drinking: form.drinking || '',
@@ -396,6 +451,16 @@ export default function EventDetailPage() {
         avoidAcquaintance: form.avoidAcquaintance || '',
         etc: form.etc || '',
       });
+
+      // 5. 사용한 쿠폰 사용 처리 (isUsed: true)
+      if (selectedCoupon) {
+        const couponRef = doc(db, 'users', currentUser.uid, 'coupons', selectedCoupon.id);
+        await updateDoc(couponRef, {
+          isUsed: true,
+          usedAt: serverTimestamp(),
+          usedInSession: sessionId
+        });
+      }
 
       toast.success('신청서가 접수되었습니다. 검토 후 연락드리겠습니다.');
       localStorage.removeItem(`kl_unified_profile_draft_${currentUser.uid}`);
@@ -1066,17 +1131,7 @@ export default function EventDetailPage() {
           {step !== 2 && (
             <div style={{ position: 'sticky', top: '90px', alignSelf: 'start' }}>
               <div className="kl-card" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                <div style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: '20px' }}>
-                  <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginBottom: '8px', fontWeight: '600' }}>최종 결제 금액</p>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-                    <p style={{ fontSize: '2.2rem', fontWeight: '900', color: 'var(--color-text-primary)' }}>
-                      {finalPrice.toLocaleString()}<span style={{ fontSize: '1.2rem', fontWeight: '600', color: 'var(--color-text-muted)', marginLeft: '4px' }}>원</span>
-                    </p>
-                    {isDiscounted && (
-                      <p style={{ fontSize: '1rem', color: '#999', textDecoration: 'line-through' }}>{displayBasePrice.toLocaleString()}원</p>
-                    )}
-                  </div>
-                </div>
+                  {/* Price block moved from here to bottom */}
 
                 {step === 0 && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -1099,6 +1154,85 @@ export default function EventDetailPage() {
                         ))}
                       </div>
                     </div>
+
+                    {/* v8.15.9: 쿠폰 선택 섹션 (매칭 옵션 위) */}
+                    {userCoupons.length > 0 && (
+                      <div className="animate-in fade-in slide-in-from-top-2 duration-500">
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                          <p style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <Ticket size={16} color="#FF6F61" /> 쿠폰 적용
+                          </p>
+                          {selectedCoupon && (
+                            <button 
+                              onClick={() => setSelectedCoupon(null)}
+                              style={{ fontSize: '0.75rem', color: '#94A3B8', background: 'none', border: 'none', cursor: 'pointer', fontWeight: '600' }}
+                            >
+                              선택 취소
+                            </button>
+                          )}
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          {userCoupons.map((coupon) => {
+                            const isSelected = selectedCoupon?.id === coupon.id;
+                            const value = coupon.value || coupon.amount || 0;
+                            return (
+                              <motion.div
+                                key={coupon.id}
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => setSelectedCoupon(isSelected ? null : coupon)}
+                                style={{
+                                  padding: '14px 16px',
+                                  borderRadius: '16px',
+                                  border: isSelected ? '2px solid #FF6F61' : '1.5px solid #F1F5F9',
+                                  background: isSelected ? '#FFF5F4' : '#fff',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '12px',
+                                  boxShadow: isSelected ? '0 8px 20px rgba(255,111,97,0.15)' : 'none',
+                                  position: 'relative',
+                                  overflow: 'hidden'
+                                }}
+                              >
+                                {isSelected && (
+                                  <motion.div 
+                                    layoutId="selected-glow"
+                                    style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at center, rgba(255,111,97,0.05) 0%, transparent 70%)', pointerEvents: 'none' }} 
+                                  />
+                                )}
+                                <div style={{ 
+                                  width: '36px', height: '36px', borderRadius: '10px', 
+                                  background: isSelected ? '#FF6F61' : '#F1F5F9',
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 
+                                }}>
+                                  <Gift size={18} color={isSelected ? '#fff' : '#CBD5E1'} />
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                  <p style={{ fontSize: '0.82rem', fontWeight: '800', color: isSelected ? '#FF6F61' : '#334155', letterSpacing: '-0.02em' }}>
+                                    {coupon.title}
+                                  </p>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>
+                                    <p style={{ fontSize: '0.7rem', color: isSelected ? '#FF8B7F' : '#94A3B8', fontWeight: '600' }}>
+                                      {coupon.type === 'free' ? '무료 참가권' : (coupon.type === 'percent' ? `${value}% 할인` : `₩${value.toLocaleString()} 할인`)}
+                                    </p>
+                                    {coupon.expireAt && (
+                                      <p style={{ fontSize: '0.62rem', color: isSelected ? '#FF8B7F' : '#CBD5E1', display: 'flex', alignItems: 'center', gap: '2px', opacity: 0.8 }}>
+                                        <Clock size={10} />
+                                        ~{format(coupon.expireAt instanceof Date ? coupon.expireAt : (coupon.expireAt.toDate ? coupon.expireAt.toDate() : new Date(coupon.expireAt)), 'yyyy.MM.dd')}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                                {isSelected && <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}><CheckCircle size={18} color="#FF6F61" /></motion.div>}
+                              </motion.div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
                     {form.gender === 'male' && (
                       <div>
                         <p style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--color-text-secondary)', marginBottom: '12px' }}>매칭 옵션 선택</p>
@@ -1115,7 +1249,20 @@ export default function EventDetailPage() {
                             >
                               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                                 <span style={{ fontSize: '0.9rem', fontWeight: '700' }}>{opt === 'normal' ? '일반 매칭' : '안심 매칭 패키지'}</span>
-                                <span style={{ fontSize: '0.9rem', fontWeight: '800' }}>{opt === 'normal' ? '49,000원' : '60,000원'}</span>
+                                <div style={{ textAlign: 'right' }}>
+                                  {selectedCoupon ? (
+                                    <>
+                                      <p style={{ fontSize: '0.75rem', color: '#94A3B8', textDecoration: 'line-through', marginBottom: '2px', fontWeight: '500' }}>
+                                        {opt === 'normal' ? '49,000원' : '60,000원'}
+                                      </p>
+                                      <p style={{ fontSize: '0.9rem', fontWeight: '800', color: '#FF6F61' }}>
+                                        {((opt === 'normal' ? 49000 : 60000) - (selectedCoupon.type === 'free' ? (opt === 'normal' ? 49000 : 60000) : (selectedCoupon.type === 'percent' ? Math.floor((opt === 'normal' ? 49000 : 60000) * ((selectedCoupon.value || selectedCoupon.amount || 0) / 100)) : (selectedCoupon.value || selectedCoupon.amount || 0)))).toLocaleString()}원
+                                      </p>
+                                    </>
+                                  ) : (
+                                    <span style={{ fontSize: '0.9rem', fontWeight: '800' }}>{opt === 'normal' ? '49,000원' : '60,000원'}</span>
+                                  )}
+                                </div>
                               </div>
                               <p style={{ fontSize: '0.75rem', color: opt === 'normal' ? 'var(--color-text-muted)' : '#FF6F61' }}>{opt === 'normal' ? '매칭 실패 시 환불 없음' : '미매칭 시 30% 환불 보장'}</p>
                               {opt === 'safe' && (
@@ -1155,7 +1302,20 @@ export default function EventDetailPage() {
                             >
                               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                                 <span style={{ fontSize: '0.9rem', fontWeight: '700' }}>{opt === 'normal' ? '일반 매칭' : '동반할인'}</span>
-                                <span style={{ fontSize: '0.9rem', fontWeight: '800' }}>{opt === 'normal' ? '29,000원' : '5,000원'}</span>
+                                <div style={{ textAlign: 'right' }}>
+                                  {selectedCoupon ? (
+                                    <>
+                                      <p style={{ fontSize: '0.75rem', color: '#94A3B8', textDecoration: 'line-through', marginBottom: '2px', fontWeight: '500' }}>
+                                        {opt === 'normal' ? '29,000원' : '24,000원'}
+                                      </p>
+                                      <p style={{ fontSize: '0.9rem', fontWeight: '800', color: '#FF6F61' }}>
+                                        {((opt === 'normal' ? 29000 : 24000) - (selectedCoupon.type === 'free' ? (opt === 'normal' ? 29000 : 24000) : (selectedCoupon.type === 'percent' ? Math.floor((opt === 'normal' ? 29000 : 24000) * ((selectedCoupon.value || selectedCoupon.amount || 0) / 100)) : (selectedCoupon.value || selectedCoupon.amount || 0)))).toLocaleString()}원
+                                      </p>
+                                    </>
+                                  ) : (
+                                    <span style={{ fontSize: '0.9rem', fontWeight: '800' }}>{opt === 'normal' ? '29,000원' : '24,000원'}</span>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           ))}
@@ -1192,9 +1352,58 @@ export default function EventDetailPage() {
                 )}
 
 
-                {step > 0 && (
-                  <button type="button" onClick={() => setStep(step - 1)} style={{ width: '100%', background: 'none', border: 'none', marginTop: '12px', color: 'var(--color-text-muted)', fontWeight: '600', fontSize: '0.9rem', cursor: 'pointer' }}>이전으로 돌아가기</button>
-                )}
+                    {/* v8.16.2: 최종 결제 금액 블록을 하단으로 이동 */}
+                    <div style={{ marginTop: '12px', paddingTop: '20px', borderTop: '1px solid var(--color-border)' }}>
+                      <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginBottom: '8px', fontWeight: '600' }}>최종 결제 금액</p>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                          <motion.div
+                            key={finalPrice}
+                            initial={{ scale: 1 }}
+                            animate={{ scale: [1, 1.1, 1] }}
+                            transition={{ duration: 0.3 }}
+                            style={{ display: 'flex', alignItems: 'baseline' }}
+                          >
+                            <p style={{ fontSize: '2.2rem', fontWeight: '900', color: couponDiscount > 0 ? '#FF6F61' : 'var(--color-text-primary)', transition: 'color 0.3s' }}>
+                              {finalPrice.toLocaleString()}
+                            </p>
+                            <span style={{ fontSize: '1.2rem', fontWeight: '600', color: 'var(--color-text-muted)', marginLeft: '4px' }}>원</span>
+                          </motion.div>
+                          {isDiscounted && (
+                            <p style={{ fontSize: '1rem', color: '#999', textDecoration: 'line-through' }}>{displayBasePrice.toLocaleString()}원</p>
+                          )}
+                        </div>
+                        
+                        <AnimatePresence>
+                          {couponDiscount > 0 && (
+                            <motion.div
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              exit={{ opacity: 0, x: -10 }}
+                              style={{ 
+                                display: 'inline-flex', 
+                                alignItems: 'center', 
+                                gap: '4px', 
+                                background: 'rgba(255, 111, 97, 0.1)', 
+                                color: '#FF6F61', 
+                                padding: '4px 10px', 
+                                borderRadius: '8px',
+                                fontSize: '0.8rem',
+                                fontWeight: '800',
+                                width: 'fit-content'
+                              }}
+                            >
+                              <Ticket size={12} />
+                              쿠폰 할인 -{couponDiscount.toLocaleString()}원 적용됨
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    </div>
+                    
+                    {step > 0 && (
+                      <button type="button" onClick={() => setStep(step - 1)} style={{ width: '100%', background: 'none', border: 'none', marginTop: '12px', color: 'var(--color-text-muted)', fontWeight: '600', fontSize: '0.9rem', cursor: 'pointer' }}>이전으로 돌아가기</button>
+                    )}
               </div>
             </div>
           )}

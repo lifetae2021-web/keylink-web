@@ -1,4 +1,4 @@
-import { doc, getDoc, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { MatchingResult } from '@/lib/types';
 
@@ -28,9 +28,14 @@ export async function getMyMatchingResult(
   sessionId: string,
   userId: string
 ): Promise<MatchingResult | null> {
-  const snap = await getDoc(doc(db, 'matchingSummaries', sessionId));
-  if (!snap.exists()) return null;
-  return extractUserResult(sessionId, userId, snap.data());
+  const q = query(
+    collection(db, 'matchingSummaries'),
+    where('__name__', '==', sessionId),
+    where('status', '==', 'approved')
+  );
+  const snap = await getDocs(q);
+  if (snap.empty) return null;
+  return extractUserResult(sessionId, userId, snap.docs[0].data());
 }
 
 /** 마이페이지용 실시간 구독 */
@@ -39,11 +44,17 @@ export function subscribeMyMatchingResult(
   userId: string,
   callback: (result: MatchingResult | null) => void
 ) {
+  const q = query(
+    collection(db, 'matchingSummaries'),
+    where('__name__', '==', sessionId),
+    where('status', '==', 'approved')
+  );
+
   return onSnapshot(
-    doc(db, 'matchingSummaries', sessionId),
+    q,
     (snap) => {
-      if (!snap.exists()) { callback(null); return; }
-      callback(extractUserResult(sessionId, userId, snap.data()));
+      if (snap.empty) { callback(null); return; }
+      callback(extractUserResult(sessionId, userId, snap.docs[0].data()));
     }
   );
 }

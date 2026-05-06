@@ -151,7 +151,7 @@ export default function EventsPage() {
   const [avgMatchingRate, setAvgMatchingRate] = useState<number>(0);
 
   useEffect(() => {
-    // 확정 및 입금 대기 상태인 신청자만 실시간 집계하여 사이드바와 대시보드 동기화
+    // v8.12.8: 오직 확정(confirmed) 상태인 신청자만 실시간 집계
     const q = query(
       collection(db, "applications"),
       where("status", "==", "confirmed"),
@@ -382,7 +382,7 @@ export default function EventsPage() {
     }
   };
 
-  // v8.5.4: 참가 확정자 / 대기자 분리
+  // v8.12.8: 오직 참가 확정자만 명단 및 집계에 포함
   const participants = useMemo(
     () => applicants.filter((a) => a.status === "confirmed"),
     [applicants],
