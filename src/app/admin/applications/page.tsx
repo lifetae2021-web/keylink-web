@@ -276,34 +276,20 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
     try {
       const token = await auth.currentUser?.getIdToken();
       
-      // Step 1: 기존 기수에서 확정 또는 선발(입금대기) 상태였다면 API를 통해 '검토 중'으로 내려 카운터/빈자리 정리
-      if (changeSessionApp.status === 'confirmed' || changeSessionApp.status === 'selected') {
-        const res1 = await fetch('/api/admin/applications/status', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({ applicationId: changeSessionApp.id, status: 'applied' })
-        });
-        if (!res1.ok) throw new Error('기존 기수에서 인원을 제외하는 중 오류가 발생했습니다.');
-      }
-      
-      // Step 2: sessionId 업데이트
-      await updateDoc(doc(db, 'applications', changeSessionApp.id), {
-        sessionId: targetSessionId,
-        updatedAt: Timestamp.now()
+      const res = await fetch('/api/admin/applications/change-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          applicationId: changeSessionApp.id,
+          targetSessionId: targetSessionId
+        })
       });
       
-      // Step 3: 원래 확정 또는 선발(입금대기) 상태였다면 새 기수에서 다시 해당 상태로 복구 (새 기수 정원 반영)
-      if (changeSessionApp.status === 'confirmed' || changeSessionApp.status === 'selected') {
-        // Firestore 인덱싱 및 트리거 딜레이 대비
-        await new Promise(r => setTimeout(r, 500));
-        
-        const res2 = await fetch('/api/admin/applications/status', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({ applicationId: changeSessionApp.id, status: changeSessionApp.status })
-        });
-        if (!res2.ok) throw new Error('새로운 기수에 인원을 등록하는 중 오류가 발생했습니다.');
-      }
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '기수 변경 중 오류가 발생했습니다.');
       
       toast.success('기수 변경이 성공적으로 완료되었습니다.');
       setChangeSessionModalOpen(false);
