@@ -65,6 +65,9 @@ export default function ApplicationsPage() {
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
   const [previewData, setPreviewData] = useState<any>(null);
   const [smsTemplates, setSmsTemplates] = useState<any[]>([]);
+  const [changeSessionModalOpen, setChangeSessionModalOpen] = useState(false);
+  const [changeSessionApp, setChangeSessionApp] = useState<any>(null);
+  const [targetSessionId, setTargetSessionId] = useState<string>('');
 
   // v8.4.4: 필터링 상태 초기화 (헤더 필터 제거로 인한 전체 보기 복구)
   const [sortConfig, setSortConfig] = useState<{ field: string; direction: 'asc' | 'desc' }>({ field: 'appliedAt', direction: 'desc' });
@@ -264,6 +267,54 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
 
     setPreviewData({ app, session, defaultMsg, targetStatus: type === 'confirm' ? 'confirmed' : 'selected' });
     setPreviewModalOpen(true);
+  };
+
+  const handleChangeSession = async () => {
+    if (!changeSessionApp || !targetSessionId) return;
+    
+    setIsDataLoading(true);
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      
+      // Step 1: 기존 기수에서 확정 상태였다면 API를 통해 '검토 중'으로 내려 카운터/빈자리 정리
+      if (changeSessionApp.status === 'confirmed') {
+        const res1 = await fetch('/api/admin/applications/status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ applicationId: changeSessionApp.id, status: 'applied' })
+        });
+        if (!res1.ok) throw new Error('기존 기수에서 인원을 제외하는 중 오류가 발생했습니다.');
+      }
+      
+      // Step 2: sessionId 업데이트
+      await updateDoc(doc(db, 'applications', changeSessionApp.id), {
+        sessionId: targetSessionId,
+        updatedAt: Timestamp.now()
+      });
+      
+      // Step 3: 원래 확정 상태였다면 새 기수에서 다시 '확정' 처리 (새 기수 정원 및 슬롯 할당)
+      if (changeSessionApp.status === 'confirmed') {
+        // Firestore 인덱싱 및 트리거 딜레이 대비
+        await new Promise(r => setTimeout(r, 500));
+        
+        const res2 = await fetch('/api/admin/applications/status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ applicationId: changeSessionApp.id, status: 'confirmed' })
+        });
+        if (!res2.ok) throw new Error('새로운 기수에 인원을 확정하는 중 오류가 발생했습니다.');
+      }
+      
+      toast.success('기수 변경이 성공적으로 완료되었습니다.');
+      setChangeSessionModalOpen(false);
+      setChangeSessionApp(null);
+      setTargetSessionId('');
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e.message || '기수 변경 중 오류가 발생했습니다.');
+    } finally {
+      setIsDataLoading(false);
+    }
   };
 
 
@@ -783,16 +834,32 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                                       >
                                         보류
                                       </button>
+                                      <button
+                                        onClick={() => { setChangeSessionApp(app); setChangeSessionModalOpen(true); }}
+                                        className="px-3 py-2 bg-blue-50 text-blue-600 rounded-xl text-[0.8rem] font-black hover:bg-blue-100 transition-all ml-1"
+                                        title="기수 변경"
+                                      >
+                                        <Calendar size={14} />
+                                      </button>
                                     </>
                                   );
                                 })()}
                                 {app.status === 'confirmed' && (
-                                  <button
-                                    onClick={() => updateAppStatus(app, 'held')}
-                                    className="px-4 py-2 bg-emerald-500 text-white rounded-xl text-[0.85rem] font-black hover:bg-emerald-600 shadow-md shadow-emerald-100 transition-all"
-                                  >
-                                    확정취소
-                                  </button>
+                                  <>
+                                    <button
+                                      onClick={() => updateAppStatus(app, 'held')}
+                                      className="px-4 py-2 bg-emerald-500 text-white rounded-xl text-[0.85rem] font-black hover:bg-emerald-600 shadow-md shadow-emerald-100 transition-all"
+                                    >
+                                      확정취소
+                                    </button>
+                                    <button
+                                      onClick={() => { setChangeSessionApp(app); setChangeSessionModalOpen(true); }}
+                                      className="px-3 py-2 bg-blue-500 text-white rounded-xl text-[0.85rem] font-black hover:bg-blue-600 shadow-md shadow-blue-100 transition-all ml-1"
+                                      title="기수 변경"
+                                    >
+                                      <Calendar size={14} />
+                                    </button>
+                                  </>
                                 )}
                               </div>
                             </td>
@@ -916,15 +983,31 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                                       >
                                         보류
                                       </button>
+                                      {/* 기수 변경 */}
+                                      <button
+                                        onClick={() => { setChangeSessionApp(app); setChangeSessionModalOpen(true); }}
+                                        className="flex-[0.5] py-2.5 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center font-black text-xs active:scale-95 transition-all"
+                                        title="기수 변경"
+                                      >
+                                        <Calendar size={16} />
+                                      </button>
                                     </>
                                   )}
                                   {app.status === 'confirmed' && (
-                                    <button
-                                      onClick={() => updateAppStatus(app, 'held')}
-                                      className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl font-black text-xs shadow-md active:scale-95 transition-all"
-                                    >
-                                      선발 취소하기
-                                    </button>
+                                    <>
+                                      <button
+                                        onClick={() => updateAppStatus(app, 'held')}
+                                        className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl font-black text-xs shadow-md active:scale-95 transition-all"
+                                      >
+                                        선발 취소하기
+                                      </button>
+                                      <button
+                                        onClick={() => { setChangeSessionApp(app); setChangeSessionModalOpen(true); }}
+                                        className="flex-[0.5] py-2.5 bg-blue-500 text-white rounded-xl flex items-center justify-center font-black text-xs shadow-md active:scale-95 transition-all"
+                                      >
+                                        <Calendar size={16} />
+                                      </button>
+                                    </>
                                   )}
                                 </div>
 
@@ -957,6 +1040,86 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
         session={previewData?.session}
         defaultMessage={previewData?.defaultMsg || ''}
       />
+      {/* Session Change Modal */}
+      {changeSessionModalOpen && changeSessionApp && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-xl overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+              <div>
+                <h3 className="font-black text-lg text-slate-800">기수 이동</h3>
+                <p className="text-xs text-slate-500 font-bold mt-1">
+                  <span className="text-blue-500">{changeSessionApp.name}</span> 님의 참가 기수를 변경합니다.
+                </p>
+              </div>
+              <button onClick={() => { setChangeSessionModalOpen(false); setChangeSessionApp(null); setTargetSessionId(''); }} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-full transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="p-5">
+              <label className="block text-sm font-bold text-slate-700 mb-3">이동할 기수를 선택하세요</label>
+              <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
+                {events.filter(e => e.id !== changeSessionApp.sessionId).map(event => {
+                  const mCount = event.currentMale || 0;
+                  const fCount = event.currentFemale || 0;
+                  const mMax = event.maxMale || 8;
+                  const fMax = event.maxFemale || 8;
+                  const isSelected = targetSessionId === event.id;
+                  
+                  return (
+                    <div 
+                      key={event.id}
+                      onClick={() => setTargetSessionId(event.id)}
+                      className={`p-3 rounded-xl border-2 cursor-pointer transition-all flex justify-between items-center ${
+                        isSelected ? 'border-blue-500 bg-blue-50' : 'border-slate-100 hover:border-blue-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      <div>
+                        <div className="font-black text-slate-800 text-[0.95rem]">
+                          {event.region === 'busan' ? '부산' : event.region === 'changwon' ? '창원' : event.region} {event.episodeNumber}기
+                        </div>
+                        <div className="text-xs font-bold text-slate-500 mt-0.5">
+                          {event.eventDate ? format(event.eventDate.toDate(), 'MM월 dd일 (E) HH:mm', { locale: ko }) : '날짜 미정'}
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <span className={`text-[0.65rem] font-black px-2 py-1 rounded-lg ${mCount >= mMax ? 'bg-rose-100 text-rose-600' : 'bg-slate-100 text-slate-600'}`}>
+                          남 {mCount}/{mMax}
+                        </span>
+                        <span className={`text-[0.65rem] font-black px-2 py-1 rounded-lg ${fCount >= fMax ? 'bg-rose-100 text-rose-600' : 'bg-slate-100 text-slate-600'}`}>
+                          여 {fCount}/{fMax}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+                {events.filter(e => e.id !== changeSessionApp.sessionId).length === 0 && (
+                  <div className="p-4 text-center text-slate-500 text-sm font-bold bg-slate-50 rounded-xl">
+                    이동 가능한 다른 기수가 없습니다.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-slate-100 bg-slate-50 flex gap-2">
+              <button 
+                onClick={() => { setChangeSessionModalOpen(false); setChangeSessionApp(null); setTargetSessionId(''); }}
+                className="flex-1 py-3 text-sm font-black text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50"
+              >
+                취소
+              </button>
+              <button 
+                onClick={handleChangeSession}
+                disabled={!targetSessionId}
+                className="flex-1 py-3 text-sm font-black text-white bg-blue-600 rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-blue-200"
+              >
+                이동하기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
