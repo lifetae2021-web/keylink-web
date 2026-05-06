@@ -436,6 +436,10 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
 
   return (
     <div className="space-y-6 animate-in fade-in duration-400 pb-20">
+      <div className="flex flex-col gap-1">
+        <h1 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight">신청 관리</h1>
+        <p className="text-slate-400 text-sm font-bold">참가 신청 및 선발 현황을 관리합니다.</p>
+      </div>
 
       {/* v8.12.7: 그룹 매칭 / 1:1 매칭 탭 UI */}
       <div className="flex gap-2 md:gap-4 border-b border-slate-200 overflow-x-auto no-scrollbar">
@@ -794,7 +798,14 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                                   return (
                                     <>
                                       <button
-                                        onClick={app.status === 'selected' ? () => handleOpenPreview(app, 'confirm') : handleSelection}
+                                        onClick={async () => {
+                                          if (app.status === 'selected') {
+                                            if (isOverQuota && !confirm('정원이 가득 찬 상태입니다. 그래도 입금 확인 처리를 진행하시겠습니까?')) return;
+                                            handleOpenPreview(app, 'confirm');
+                                          } else {
+                                            handleSelection();
+                                          }
+                                        }}
                                         disabled={!user.isJobReviewed && !app.id.startsWith('dummy')}
                                         className={`px-3 py-2 rounded-xl text-[0.8rem] font-black transition-all ${
                                           isOverQuota ? 'bg-rose-500 text-white hover:bg-rose-600' : 'bg-[#FF6F61] text-white hover:bg-[#ff5a4a]'
@@ -948,11 +959,12 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                                       <button
                                         onClick={async () => {
                                           if (!user.isJobReviewed && !app.id.startsWith('dummy')) return toast.error('먼저 직업 승인을 해주세요.');
-                                          if (isOverQuota && !confirm('정원이 가득 찼습니다. 처리하시겠습니까?')) return;
                                           
                                           if (app.status === 'selected') {
+                                            if (isOverQuota && !confirm('정원이 가득 찬 상태입니다. 그래도 입금 확인 처리를 진행하시겠습니까?')) return;
                                             handleOpenPreview(app, 'confirm');
                                           } else {
+                                            if (isOverQuota && !confirm('정원이 가득 찼습니다. 처리하시겠습니까?')) return;
                                             handleOpenPreview(app, 'select');
                                           }
                                         }}
