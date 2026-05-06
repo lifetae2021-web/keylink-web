@@ -95,6 +95,7 @@ export async function submitVote(
   // choices가 비어있어도 "다음 새로운 인연을 기대할게요" 옵션 등으로 제출 가능하게 완화 (관리자 설정에 따름)
   // v8.1.7에서는 최소 1명 선택 필수 해제 가능성 고려 (단, 현재 로직은 0이면 에러 던질 수 있음)
 
+  const voteId = makeVoteId(sessionId, userId);
   await setDoc(doc(db, COLLECTION, voteId), {
     userId,
     sessionId,

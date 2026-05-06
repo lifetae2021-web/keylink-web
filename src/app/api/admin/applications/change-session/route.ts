@@ -4,7 +4,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 
 /**
  * 신청자 기수(날짜) 변경 API
- * v1.0.12: 기존 기수 정원 차감, 대기자 승격, 새 기수 정원 반영을 서버 트랜잭션으로 한 번에 처리
+ * v1.0.13: 기존 기수 정원 차감, 대기자 승격, 새 기수 정원 반영을 서버 트랜잭션으로 한 번에 처리
  */
 
 export async function POST(req: NextRequest) {
