@@ -1131,7 +1131,6 @@ export default function EventDetailPage() {
           {step !== 2 && (
             <div style={{ position: 'sticky', top: '90px', alignSelf: 'start' }}>
               <div className="kl-card" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                  {/* Price block moved from here to bottom */}
 
                 {step === 0 && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -1155,7 +1154,7 @@ export default function EventDetailPage() {
                       </div>
                     </div>
 
-                    {/* v8.15.9: 쿠폰 선택 섹션 (매칭 옵션 위) */}
+                    {/* v1.0.13: 쿠폰 선택 섹션 (매칭 옵션 위) */}
                     {userCoupons.length > 0 && (
                       <div className="animate-in fade-in slide-in-from-top-2 duration-500">
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
