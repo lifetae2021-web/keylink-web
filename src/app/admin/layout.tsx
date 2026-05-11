@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { format } from 'date-fns';
-const version = '1.0.15';
+const version = '1.0.16';
 
 const PAGE_TITLE: Record<string, string> = {
   '/admin':               '대시보드',
@@ -296,7 +296,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       {/* ── Sidebar ── */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex flex-col transition-all duration-300 lg:translate-x-0 lg:static ${
+        className={`fixed inset-y-0 left-0 z-50 flex flex-col transition-all duration-300 lg:translate-x-0 lg:sticky lg:top-0 lg:h-screen ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
         style={{ width: collapsed ? 68 : 220, background: '#FFFFFF', borderRight: '1px solid #E2E8F0', overflow: 'hidden' }}
