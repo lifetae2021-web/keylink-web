@@ -69,6 +69,7 @@ export interface Session {
   targetMaleAge?: string;          // 94년생~01년생
   targetFemaleAge?: string;        // 94년생~01년생
   description?: string;
+  openChatLink?: string;           // v9.1.0: 오픈채팅방 링크 (SMS 발송용)
 
   createdAt: Date;
   updatedAt?: Date;
