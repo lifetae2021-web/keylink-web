@@ -28,6 +28,7 @@ import {
   CheckCircle2,
   Trophy,
   UserX,
+  StickyNote,
 } from "lucide-react";
 import { auth, db } from "@/lib/firebase";
 import {
@@ -64,6 +65,9 @@ export default function EventsPage() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [matchingHistory, setMatchingHistory] = useState<any[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(searchParams.get('session'));
+  useEffect(() => {
+    setUserMap({});
+  }, [selectedId]);
   const selectedIdRef = useRef<string | null>(searchParams.get('session'));
   const isInitialSelectRef = useRef(true);
   const [isLoading, setIsLoading] = useState(true);
@@ -98,6 +102,12 @@ export default function EventsPage() {
 
   // Matching Drawer State
   const [matchingDrawerOpen, setMatchingDrawerOpen] = useState(false);
+
+  // Memo Modal State
+  const [memoModalOpen, setMemoModalOpen] = useState(false);
+  const [memoTargetApp, setMemoTargetApp] = useState<Application | null>(null);
+  const [memoContent, setMemoContent] = useState("");
+  const [isMemoSaving, setIsMemoSaving] = useState(false);
 
   // Review Modal State
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
@@ -231,9 +241,12 @@ export default function EventsPage() {
   useEffect(() => {
     if (!selectedId) return;
     setActiveTab("participants");
-    if (isInitialSelectRef.current) {
-      isInitialSelectRef.current = false;
-      return;
+    
+    // v8.15.0: URL 쿼리 파라미터 동기화 (새로고침 시 선택 유지)
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('session') !== selectedId) {
+      params.set('session', selectedId);
+      window.history.replaceState(null, '', `?${params.toString()}`);
     }
   }, [selectedId]);
 
@@ -283,6 +296,9 @@ export default function EventsPage() {
               groupPartnerBirthYear: d.data().groupPartnerBirthYear ?? null,
               birthDate: d.data().birthDate,
               height: d.data().height,
+              adminMemo: d.data().adminMemo,
+              displayJob: d.data().displayJob,
+              isJobReviewed: d.data().isJobReviewed,
             }) as Application,
         );
         list.sort((a, b) => a.appliedAt.getTime() - b.appliedAt.getTime());
@@ -299,7 +315,7 @@ export default function EventsPage() {
             try {
               const uSnap = await getDoc(doc(db, "users", uid));
               if (uSnap.exists()) {
-                newUserMap[uid] = uSnap.data();
+                newUserMap[uid] = { id: uSnap.id, ...uSnap.data() };
                 updated = true;
               }
             } catch (e) {
@@ -538,6 +554,33 @@ ${user.name || app.name || "참가자"}님은 ${fDate} ${fDay} ${fTime} 소개�
     } catch (e: any) {
       toast.error(e.message || "오류가 발생했습니다.");
     }
+  };
+
+  const getBirthYear = (app: Application) => {
+    const user = userMap[app.userId];
+    // v8.13.7: birthDate 필드 우선 참조 (신청 관리 페이지와 로직 통일)
+    const rawBirth = user?.birthDate || app.birthDate;
+    if (rawBirth) {
+      const yearPart = rawBirth.includes("-") ? rawBirth.split('-')[0] : rawBirth;
+      return `${yearPart.length === 4 ? yearPart.slice(2, 4) : yearPart.slice(0, 2)}년생`;
+    }
+    if (!app.age) return "-";
+    // birthDate가 없을 때만 age로 역산 (오차 방지를 위해 2026 기준 고정)
+    const n = Number(app.age);
+    const birthYear = 2026 - n;
+    return `${String(birthYear).slice(-2)}년생`;
+  };
+
+  const getEffectiveJob = (app: Application) => {
+    const user = userMap[app.userId];
+    // 1. 해당 신청서에 별도로 입력된 노출용 직업이 최우선
+    if (app.displayJob) return app.displayJob;
+    // 2. 관리자가 유저 관리에서 승인(Reviewed)한 직업명이 있다면 그것을 사용 (admin_job 우선)
+    if (user?.admin_job) return user.admin_job;
+    // 3. 유저 프로필의 최신 직업명 (admin_job이 없더라도 최신 정보 선호)
+    if (user?.job) return user.job;
+    // 4. 신청서 작성 당시의 직업 (마지막 보루)
+    return app.job || "-";
   };
 
   const handleWaitlistDelete = async (app: Application) => {
@@ -834,6 +877,34 @@ ${user.name || app.name || "참가자"}님은 ${fDate} ${fDay} ${fTime} 소개�
       toast.error("저장 중 오류가 발생했습니다.");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  // v9.0.0: 메모 저장 핸들러
+  const handleOpenMemo = (app: Application) => {
+    setMemoTargetApp(app);
+    setMemoContent(app.adminMemo || "");
+    setMemoModalOpen(true);
+  };
+
+  const handleSaveMemo = async () => {
+    if (!memoTargetApp) return;
+    setIsMemoSaving(true);
+    try {
+      const { updateDoc, doc } = await import("firebase/firestore");
+      await updateDoc(doc(db, "applications", memoTargetApp.id), {
+        adminMemo: memoContent,
+        updatedAt: serverTimestamp(),
+      });
+      toast.success("메모가 저장되었습니다.");
+      setMemoModalOpen(false);
+      setMemoTargetApp(null);
+      setMemoContent("");
+    } catch (err: any) {
+      console.error(err);
+      toast.error("메모 저장 중 오류 발생");
+    } finally {
+      setIsMemoSaving(false);
     }
   };
 
@@ -1275,23 +1346,12 @@ ${user.name || app.name || "참가자"}님은 ${fDate} ${fDay} ${fTime} 소개�
                                       cls: "bg-slate-100 text-slate-400",
                                     },
                                   };
-                                  const getBirthYear = (app: Application) => {
-                                    const user = userMap[app.userId];
-                                    // v8.13.7: birthDate 필드 우선 참조 (신청 관리 페이지와 로직 통일)
-                                    const rawBirth = user?.birthDate || app.birthDate;
-                                    if (rawBirth) {
-                                      const yearPart = rawBirth.includes("-") ? rawBirth.split('-')[0] : rawBirth;
-                                      return `${yearPart.length === 4 ? yearPart.slice(2, 4) : yearPart.slice(0, 2)}년생`;
-                                    }
-                                    if (!app.age) return "-";
-                                    // birthDate가 없을 때만 age로 역산 (오차 방지를 위해 2026 기준 고정)
-                                    const n = Number(app.age);
-                                    const birthYear = 2026 - n;
-                                    return `${String(birthYear).slice(-2)}년생`;
-                                  };
+
                                   return (
                                     <div className="divide-y divide-slate-100">
                                       {slots.map(({ slotNum, app }) => {
+                                        const birthYear = app ? getBirthYear(app) : "-";
+                                        const displayJob = app ? getEffectiveJob(app) : "-";
                                         if (!app)
                                           return (
                                             <div
@@ -1335,6 +1395,13 @@ ${user.name || app.name || "참가자"}님은 ${fDate} ${fDay} ${fTime} 소개�
                                               </div>
                                               <div className="flex items-center gap-1 sm:hidden">
                                                 <button
+                                                  onClick={() => handleOpenMemo(app)}
+                                                  className={`p-2 rounded-xl border transition-all ${app.adminMemo ? "bg-amber-50 text-amber-600 border-amber-200 shadow-sm" : "bg-slate-50 text-slate-400 border-slate-200"}`}
+                                                  title="메모"
+                                                >
+                                                  <StickyNote size={14} fill={app.adminMemo ? "currentColor" : "none"} />
+                                                </button>
+                                                <button
                                                   onClick={() => {
                                                     const _name = app.name || '참가자';
                                                     const _gender = app.gender === 'male' ? '남' : '녀';
@@ -1372,46 +1439,69 @@ ${user.name || app.name || "참가자"}님은 ${fDate} ${fDay} ${fTime} 소개�
                                                   {badge.label}
                                                 </span>
                                               </div>
-                                              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.72rem] text-slate-500 font-bold">
-                                                <span className="flex items-center gap-1 text-blue-600 bg-blue-50/50 px-1.5 py-0.5 rounded">
-                                                  <Phone size={10} className="text-blue-400" />
-                                                  {app.phone || "-"}
-                                                </span>
-                                                <span className="text-slate-300">·</span>
-                                                <span className="text-slate-600">{getBirthYear(app)}</span>
-                                                <span className="text-slate-300">·</span>
-                                                <span className="text-slate-600 truncate max-w-[100px]">
-                                                  {app.job || "-"}
-                                                </span>
-                                                <span className="text-slate-300">·</span>
-                                                <span className="text-slate-600">
-                                                  {app.residence || "-"}
-                                                </span>
-                                                {app.gender === 'female' && app.femaleOption === 'group' && (
-                                                  <span className="text-pink-500 font-black ml-1">
-                                                    동반할인 {app.groupPartnerName ? `(${app.groupPartnerName})` : ''}
-                                                  </span>
-                                                )}
-                                              </div>
+                                              <div className="flex flex-col gap-1.5 ml-11 sm:ml-0">
+                                                 {/* Row 1: 나이, 직업, 거주지 */}
+                                                 <div className="flex items-center gap-x-2 text-[0.72rem] text-slate-600 font-bold">
+                                                   <span className="whitespace-nowrap">{birthYear}</span>
+                                                   <span className="text-slate-300">·</span>
+                                                   <span className="truncate max-w-[120px] sm:max-w-[100px]">
+                                                     {displayJob}
+                                                   </span>
+                                                   <span className="text-slate-300">·</span>
+                                                   <span className="whitespace-nowrap">
+                                                     {app.residence || "-"}
+                                                   </span>
+                                                 </div>
+                                                 {/* Row 2: 휴대폰번호, 동반참여 */}
+                                                 <div className="flex items-center gap-x-2 text-[0.72rem] text-slate-400 font-medium">
+                                                   <span className="flex items-center gap-1 text-blue-600/70 bg-blue-50/50 px-1.5 py-0.5 rounded shrink-0">
+                                                     <Phone size={10} className="text-blue-400/70" />
+                                                     {app.phone || "-"}
+                                                   </span>
+                                                   {app.gender === 'female' && app.femaleOption === 'group' && (
+                                                     <>
+                                                       <span className="text-slate-300">·</span>
+                                                       <span className="text-pink-500 font-bold whitespace-nowrap">
+                                                         동반할인 {app.groupPartnerName ? `(${app.groupPartnerName})` : ''}
+                                                       </span>
+                                                     </>
+                                                   )}
+                                                 </div>
+                                               </div>
+                                              {app.adminMemo && (
+                                                <div className="mt-1 flex items-start gap-1 bg-amber-50/50 px-2 py-1 rounded-lg border border-amber-100/50 max-w-fit">
+                                                  <StickyNote size={10} className="text-amber-500 mt-0.5 shrink-0" />
+                                                  <p className="text-[0.65rem] text-amber-700 font-bold truncate max-w-[200px]">
+                                                    {app.adminMemo}
+                                                  </p>
+                                                </div>
+                                              )}
                                             </div>
 
                                             {/* Desktop Right: Actions */}
-                                            <div className="hidden sm:flex items-center gap-2">
-                                              <button
-                                                onClick={() => {
-                                                  const _name = app.name || '참가자';
-                                                  const _gender = app.gender === 'male' ? '남' : '녀';
-                                                  const _slot = app.slotNumber != null ? String(app.slotNumber) : '?';
-                                                  setSmsTargets([{ phone: app.phone, name: _name, gender: app.gender, slotNumber: app.slotNumber, userId: app.userId }]);
-                                                  setSmsRecipientLabel(`${app.name}님`);
-                                                  setSmsDefaultMsg(`안녕하세요😊 키링크입니다 :)\n일시 : ${active?.eventDate ? format(active.eventDate, 'MM/dd E HH:mm', { locale: ko }) : ''} (약 2시간 소요)\n장소 : 부산진구 중앙대로 763-1 데일리팡 4층\n\n❤️${_name}님은 키링${_gender} ${_slot}호입니다❤️\n입장 전 신분증(모바일 가능)을 미리 꺼내놔주세요\n\n슬리퍼, 운동복 등 소개팅 분위기와 맞지 않는 복장은 ❌❌\n{오픈채팅링크}\n카카오프렌즈 익명으로 입장해주시면 됩니다 ! 내일 오픈채팅으로 진행과정에 대해 설명드리니 지금 바로 입장부탁드립니다 :)`);
-                                                  setSmsModalOpen(true);
-                                                }}
-                                                className="shrink-0 p-2 rounded-xl bg-white border border-[#FF7E7E]/30 text-[#FF6F61] hover:bg-orange-50 hover:border-[#FF7E7E] transition-all"
-                                                title="문자 보내기"
-                                              >
-                                                <MessageSquare size={13} />
-                                              </button>
+                                              <div className="hidden sm:flex items-center gap-2">
+                                                <button
+                                                  onClick={() => handleOpenMemo(app)}
+                                                  className={`shrink-0 p-2 rounded-xl border transition-all ${app.adminMemo ? "bg-amber-50 border-amber-300 text-amber-600 shadow-sm" : "bg-white border-slate-200 text-slate-400 hover:bg-slate-50 hover:border-slate-300"}`}
+                                                  title="메모"
+                                                >
+                                                  <StickyNote size={13} fill={app.adminMemo ? "currentColor" : "none"} />
+                                                </button>
+                                                <button
+                                                  onClick={() => {
+                                                    const _name = app.name || '참가자';
+                                                    const _gender = app.gender === 'male' ? '남' : '녀';
+                                                    const _slot = app.slotNumber != null ? String(app.slotNumber) : '?';
+                                                    setSmsTargets([{ phone: app.phone, name: _name, gender: app.gender, slotNumber: app.slotNumber, userId: app.userId }]);
+                                                    setSmsRecipientLabel(`${app.name}님`);
+                                                    setSmsDefaultMsg(`안녕하세요😊 키링크입니다 :)\n일시 : ${active?.eventDate ? format(active.eventDate, 'MM/dd E HH:mm', { locale: ko }) : ''} (약 2시간 소요)\n장소 : 부산진구 중앙대로 763-1 데일리팡 4층\n\n❤️${_name}님은 키링${_gender} ${_slot}호입니다❤️\n입장 전 신분증(모바일 가능)을 미리 꺼내놔주세요\n\n슬리퍼, 운동복 등 소개팅 분위기와 맞지 않는 복장은 ❌❌\n{오픈채팅링크}\n카카오프렌즈 익명으로 입장해주시면 됩니다 ! 내일 오픈채팅으로 진행과정에 대해 설명드리니 지금 바로 입장부탁드립니다 :)`);
+                                                    setSmsModalOpen(true);
+                                                  }}
+                                                  className="shrink-0 p-2 rounded-xl bg-white border border-[#FF7E7E]/30 text-[#FF6F61] hover:bg-orange-50 hover:border-[#FF7E7E] transition-all"
+                                                  title="문자 보내기"
+                                                >
+                                                  <MessageSquare size={13} />
+                                                </button>
                                               <button
                                                 onClick={() => handleCancelSelection(app)}
                                                 className="shrink-0 px-3 py-1.5 rounded-xl text-[0.7rem] font-black bg-white border border-slate-200 text-slate-500 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all shadow-sm"
@@ -1433,53 +1523,71 @@ ${user.name || app.name || "참가자"}님은 ${fDate} ${fDay} ${fTime} 소개�
                                         return (
                                           <div
                                             key={app.id}
-                                            className={`flex items-center gap-3 px-5 py-3.5 hover:bg-slate-50 transition-colors ${isOverQuota ? "bg-red-50 animate-pulse" : "bg-amber-50/40"}`}
+                                            className={`flex flex-col gap-2 px-4 py-4 sm:px-5 sm:py-3.5 hover:bg-slate-50 transition-colors ${isOverQuota ? "bg-red-50 animate-pulse" : "bg-amber-50/40"}`}
                                           >
-                                            <span className="text-xs font-black w-8 shrink-0 text-amber-500">
-                                              미배정
-                                            </span>
-                                            <div className="flex-1 min-w-0">
-                                              <div className="flex items-center gap-2 mb-0.5">
-                                                <span className="text-sm font-bold text-slate-800">
-                                                  {app.name || "-"}
-                                                </span>
-                                                <span
-                                                  className={`text-[0.65rem] font-bold px-2 py-0.5 rounded-full ${badge.cls}`}
-                                                >
-                                                  {badge.label}
-                                                </span>
-                                              </div>
-                                              <div className="flex items-center gap-2 text-[0.72rem] text-slate-400 font-medium flex-wrap">
-                                                <span className="flex items-center gap-0.5">
-                                                  <Phone size={10} />
-                                                  {app.phone || "-"}
-                                                </span>
-                                                <span>·</span>
-                                                <span>{getBirthYear(app)}</span>
-                                                <span>·</span>
-                                                <span className="truncate max-w-[80px]">
-                                                  {app.job || "-"}
-                                                </span>
-                                                <span>·</span>
-                                                <span>
-                                                  {app.residence || "-"}
-                                                </span>
-                                                {app.gender === 'female' && app.femaleOption === 'group' && (
-                                                  <>
-                                                    <span>·</span>
-                                                    <span className="text-pink-500 font-bold">{app.groupPartnerName ? `동반할인 (${app.groupPartnerName} ${app.groupPartnerBirthYear}년생)` : '동반할인'}</span>
-                                                  </>
-                                                )}
+                                            <div className="flex items-center gap-3">
+                                              <span className="text-xs font-black w-8 shrink-0 text-amber-500">
+                                                미배정
+                                              </span>
+                                              <div className="flex-1 min-w-0">
+                                                <div className="flex items-center justify-between sm:justify-start gap-2 mb-0.5">
+                                                  <span className="text-sm font-bold text-slate-800">
+                                                    {app.name || "-"}
+                                                  </span>
+                                                  <div className="sm:hidden">
+                                                    <span className={`text-[0.65rem] font-bold px-2 py-0.5 rounded-full ${badge.cls}`}>
+                                                      {badge.label}
+                                                    </span>
+                                                  </div>
+                                                </div>
                                               </div>
                                             </div>
-                                            <button
-                                              onClick={() =>
-                                                handleCancelSelection(app)
-                                              }
-                                              className="shrink-0 px-2.5 py-1 rounded-lg text-[0.65rem] font-black bg-white border border-slate-200 text-slate-400 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all"
-                                            >
-                                              선발 취소
-                                            </button>
+                                            <div className="flex flex-col gap-1 ml-9 sm:ml-0">
+                                              <span className="flex items-center gap-0.5">
+                                                <Phone size={10} />
+                                                {app.phone || "-"}
+                                              </span>
+                                              <span>·</span>
+                                              <span>{getBirthYear(app)}</span>
+                                              <span>·</span>
+                                              <span className="truncate max-w-[80px]">
+                                                {getEffectiveJob(app)}
+                                              </span>
+                                              <span>·</span>
+                                              <span>
+                                                {app.residence || "-"}
+                                              </span>
+                                              {app.gender === 'female' && app.femaleOption === 'group' && (
+                                                <>
+                                                  <span>·</span>
+                                                  <span className="text-pink-500 font-bold">{app.groupPartnerName ? `동반할인 (${app.groupPartnerName} ${app.groupPartnerBirthYear}년생)` : '동반할인'}</span>
+                                                </>
+                                              )}
+                                              <div className="flex items-center gap-2">
+                                                <button
+                                                  onClick={() => handleOpenMemo(app)}
+                                                  className={`px-2 py-1 rounded-lg text-[0.65rem] font-black border transition-all ${app.adminMemo ? "bg-amber-50 text-amber-600 border-amber-200" : "bg-white text-slate-400 border-slate-200"}`}
+                                                >
+                                                  메모
+                                                </button>
+                                                <button
+                                                  onClick={() =>
+                                                    handleCancelSelection(app)
+                                                  }
+                                                  className="shrink-0 px-2.5 py-1 rounded-lg text-[0.65rem] font-black bg-white border border-slate-200 text-slate-400 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all"
+                                                >
+                                                  선발 취소
+                                                </button>
+                                              </div>
+                                            </div>
+                                            {app.adminMemo && (
+                                              <div className="mt-1 ml-11 flex items-start gap-1 bg-amber-50/50 px-2 py-1 rounded-lg border border-amber-100/50 max-w-fit">
+                                                <StickyNote size={10} className="text-amber-500 mt-0.5 shrink-0" />
+                                                <p className="text-[0.65rem] text-amber-700 font-bold truncate max-w-[200px]">
+                                                  {app.adminMemo}
+                                                </p>
+                                              </div>
+                                            )}
                                           </div>
                                         );
                                       })}
@@ -1574,41 +1682,59 @@ ${user.name || app.name || "참가자"}님은 ${fDate} ${fDay} ${fTime} 소개�
                                   return (
                                     <div
                                       key={app.id}
-                                      className="flex items-center gap-3 px-5 py-3.5 hover:bg-amber-50/30 transition-colors"
+                                      className="flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-4 sm:px-5 sm:py-3.5 hover:bg-amber-50/30 transition-colors"
                                     >
-                                      <span className="text-xs font-black w-6 shrink-0 text-amber-600">
-                                        {idx + 1}
-                                      </span>
-                                      <div
-                                        className="w-10 h-10 rounded-full border-2 border-[#D4AF37] shadow-sm flex items-center justify-center overflow-hidden bg-slate-100 shrink-0 cursor-pointer hover:scale-110 transition-transform"
-                                        style={{ boxShadow: "0 0 8px rgba(212,175,55,0.2)" }}
-                                        onClick={() => { setSelectedUser(userMap[app.userId] || {}); setIsProfileModalOpen(true); }}
-                                      >
-                                        {(userMap[app.userId]?.photoUrl || userMap[app.userId]?.photoURL || userMap[app.userId]?.photos?.[0]) ? (
-                                          <img src={userMap[app.userId]?.photoUrl || userMap[app.userId]?.photoURL || userMap[app.userId]?.photos?.[0]} className="w-full h-full object-cover" />
-                                        ) : (
-                                          <span className="text-xs font-bold text-[#D4AF37]">{(app.name || "U")[0]}</span>
-                                        )}
-                                      </div>
-                                      <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 mb-0.5">
-                                          <span className="text-sm font-bold text-slate-800">
-                                            {app.name || "-"}
-                                          </span>
+                                      <div className="flex items-center gap-3 w-full sm:w-auto">
+                                        <span className="text-xs font-black w-6 shrink-0 text-amber-600">
+                                          {idx + 1}
+                                        </span>
+                                        <div
+                                          className="w-10 h-10 rounded-full border-2 border-[#D4AF37] shadow-sm flex items-center justify-center overflow-hidden bg-slate-100 shrink-0 cursor-pointer hover:scale-110 transition-transform"
+                                          style={{ boxShadow: "0 0 8px rgba(212,175,55,0.2)" }}
+                                          onClick={() => { setSelectedUser(userMap[app.userId] || {}); setIsProfileModalOpen(true); }}
+                                        >
+                                          {(userMap[app.userId]?.photoUrl || userMap[app.userId]?.photoURL || userMap[app.userId]?.photos?.[0]) ? (
+                                            <img src={userMap[app.userId]?.photoUrl || userMap[app.userId]?.photoURL || userMap[app.userId]?.photos?.[0]} className="w-full h-full object-cover" />
+                                          ) : (
+                                            <span className="text-xs font-bold text-[#D4AF37]">{(app.name || "U")[0]}</span>
+                                          )}
                                         </div>
-                                        <div className="flex items-center gap-2 text-[0.72rem] text-slate-400 font-medium flex-wrap">
-                                          <span className="flex items-center gap-0.5">
+                                        <div className="flex-1 min-w-0">
+                                          <div className="flex items-center justify-between sm:justify-start gap-2 mb-0.5">
+                                            <span className="text-sm font-bold text-slate-800">
+                                              {app.name || "-"}
+                                            </span>
+                                            <div className="sm:hidden">
+                                              {app.status === "applied" && (
+                                                <span className="text-[0.6rem] font-black px-1.5 py-0.5 rounded-md" style={{ color: '#D97706', background: '#FFFBEB' }}>검토 중</span>
+                                              )}
+                                              {app.status === "held" && (
+                                                <span className="text-[0.6rem] font-black px-1.5 py-0.5 rounded-md" style={{ color: '#EA580C', background: '#FFF7ED' }}>보류</span>
+                                              )}
+                                              {app.status === "selected" && (
+                                                <span className="text-[0.6rem] font-black px-1.5 py-0.5 rounded-md" style={{ color: '#7C3AED', background: '#F5F3FF' }}>입금 대기</span>
+                                              )}
+                                              {app.status === "waitlisted" && (
+                                                <span className="text-[0.6rem] font-black px-1.5 py-0.5 rounded-md bg-orange-100 text-orange-600">정원초과대기</span>
+                                              )}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </div>
+                                      <div className="flex-1 min-w-0 ml-9 sm:ml-0">
+                                        <div className="flex flex-col gap-1">
+                                          <span className="flex items-center gap-0.5 shrink-0">
                                             <Phone size={10} />
                                             {app.phone || "-"}
                                           </span>
-                                          <span>·</span>
-                                          <span>{birthYear}</span>
-                                          <span>·</span>
+                                          <span className="text-slate-300">·</span>
+                                          <span className="whitespace-nowrap">{birthYear}</span>
+                                          <span className="text-slate-300">·</span>
                                           <span className="truncate max-w-[80px]">
-                                            {app.job || "-"}
+                                            {app.displayJob || app.job || "-"}
                                           </span>
-                                          <span>·</span>
-                                          <span>{app.residence || "-"}</span>
+                                          <span className="text-slate-300">·</span>
+                                          <span className="whitespace-nowrap">{app.residence || "-"}</span>
                                           {app.gender === 'female' && app.femaleOption === 'group' && (
                                             <>
                                               <span>·</span>
@@ -1617,8 +1743,8 @@ ${user.name || app.name || "참가자"}님은 ${fDate} ${fDay} ${fTime} 소개�
                                           )}
                                         </div>
                                       </div>
-                                      <div className="shrink-0 flex items-center gap-6">
-                                        <div>
+                                      <div className="shrink-0 flex items-center justify-between sm:justify-end gap-3 sm:gap-6 ml-9 sm:ml-0 mt-2 sm:mt-0">
+                                        <div className="hidden sm:block">
                                           {app.status === "applied" && (
                                             <span className="text-[0.65rem] font-black px-1.5 py-0.5 rounded-md" style={{ color: '#D97706', background: '#FFFBEB' }}>검토 중</span>
                                           )}
@@ -2589,6 +2715,59 @@ ${user.name || app.name || "참가자"}님은 ${fDate} ${fDay} ${fTime} 소개�
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* v9.0.0: 참가자 메모 모달 */}
+      {memoModalOpen && memoTargetApp && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-amber-50/30">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-100 flex items-center justify-center text-amber-600">
+                  <StickyNote size={20} />
+                </div>
+                <div>
+                  <h3 className="text-slate-900 font-bold text-lg">참가자 메모</h3>
+                  <p className="text-xs text-slate-500 font-medium">
+                    {memoTargetApp.name} ({memoTargetApp.gender === 'male' ? '남' : '여'}, {memoTargetApp.slotNumber}호)
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setMemoModalOpen(false)}
+                className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-100 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-6">
+              <textarea
+                value={memoContent}
+                onChange={(e) => setMemoContent(e.target.value)}
+                placeholder="참가자의 특별 요청사항이나 특징을 메모해두세요."
+                className="w-full h-40 p-4 rounded-2xl border border-slate-200 bg-slate-50 text-slate-800 font-medium focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all resize-none placeholder:text-slate-300"
+              />
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => setMemoModalOpen(false)}
+                  className="flex-1 h-12 rounded-xl font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 transition-all"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleSaveMemo}
+                  disabled={isMemoSaving}
+                  className="flex-[2] h-12 rounded-xl font-bold text-white bg-amber-500 hover:bg-amber-600 shadow-lg shadow-amber-100 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {isMemoSaving ? (
+                    <Loader2 size={18} className="animate-spin" />
+                  ) : (
+                    "메모 저장하기"
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

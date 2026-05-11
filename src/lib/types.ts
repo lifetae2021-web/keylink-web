@@ -124,6 +124,9 @@ export interface Application {
   // v8.5.4: 고정 호수 (정원 내 확정 시 빈 슬롯 순서대로 배정)
   slotNumber?: number;
 
+  // v9.0.0: 관리자 메모 (참가자별 요청사항 등)
+  adminMemo?: string;
+
   // 더미 계정 지원: users 컬렉션 없이 application에 직접 저장되는 필드
   birthDate?: string;          // 더미 생년월일 (예: "1994-03-15")
   height?: number;             // 더미 키 (cm)

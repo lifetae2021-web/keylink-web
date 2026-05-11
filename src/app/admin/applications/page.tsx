@@ -58,7 +58,6 @@ export default function ApplicationsPage() {
   // Filtering & Modal States
   const [activeTab, setActiveTab] = useState<'group' | '1on1'>('group'); // v8.12.7: 탭 상태 추가
   const [filterGender, setFilterGender] = useState<'all' | 'male' | 'female'>('all');
-  const [filterUnselectedOnly, setFilterUnselectedOnly] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedUser, setSelectedUser] = useState<any | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -202,7 +201,7 @@ export default function ApplicationsPage() {
     }
   };
 
-  const handleOpenPreview = (app: any, type: 'select' | 'confirm' = 'select') => {
+  const handleOpenPreview = (app: any, type: 'select' | 'confirm' | 're-request' = 'select') => {
     const session = events.find(e => e.id === app.sessionId);
     if (!session) return toast.error('세션 정보를 찾을 수 없습니다.');
     const user = userMap[app.userId] || {};
@@ -225,7 +224,7 @@ export default function ApplicationsPage() {
       : (app.femaleOption === 'group' ? 24000 : (session.femalePrice || 29000));
 
     // v8.12.3: 저장된 템플릿 자동 적용 (v8.13.2: 타입에 따라 분기)
-    const templateName = type === 'confirm' ? '참가 확정 안내' : '입금 요청 (기본)';
+    const templateName = type === 'confirm' ? '참가 확정 안내' : (type === 're-request' ? '입금 재요청' : '입금 요청 (기본)');
     const targetTemplate = smsTemplates.find(t => t.name === templateName);
     let defaultMsg = '';
 
@@ -242,10 +241,9 @@ export default function ApplicationsPage() {
         .replace(/{{금액}}/g, (app.price || genderPrice).toLocaleString('ko-KR'))
         .replace(/{{기수}}/g, sessionName)
         .replace(/{{장소}}/g, session.venue || session.location || '');
-    } else {
-      if (type === 'confirm') {
-        const location = session.venue || session.location || '부산진구 중앙대로 763-1 데일리팡 4층 [모노리 파티룸]';
-        defaultMsg = `[키링크] 안녕하세요, ${user.name || '참가자'}님! 키링크입니다.
+    } else if (type === 'confirm') {
+      const location = session.venue || session.location || '부산진구 중앙대로 763-1 데일리팡 4층 [모노리 파티룸]';
+      defaultMsg = `[키링크] 안녕하세요, ${user.name || '참가자'}님! 키링크입니다.
 입금이 확인되어 참가가 최종 확정되었습니다.
 
 일시: ${fDate} ${fDay} ${fTime} (약 2시간 소요)
@@ -253,8 +251,17 @@ export default function ApplicationsPage() {
 준비물: 신분증 및 소개팅에 맞는 복장
 
 당일 현장에서 뵙겠습니다! 감사합니다 :)`;
-      } else {
-        defaultMsg = `안녕하세요 ! 키링크에 지원해주셔서 감사합니다☺️
+    } else if (type === 're-request') {
+      defaultMsg = `안녕하세요 ${user.name || '참가자'}님, 키링크입니다 :)
+${fDate} (${getPart('weekday') || ''}) 소개팅 입금 안내드렸으나 아직 확인이 되지 않아 다시 연락드렸습니다 !
+
+참여 확정을 위해 ${(app.price || genderPrice).toLocaleString('ko-KR')}원 입금 부탁드리며, 입금이 어려우시거나 늦어지시는 경우 꼭 말씀 부탁드립니다😭
+입금순으로 마감되다보니 회신이 없으시면 기회가 다른 분께 넘어갈 수 있습니다 :(
+
+3333359229548 카카오뱅크 태영훈(키링크)
+항상 감사합니다 ! 좋은 하루 되세요🥰`;
+    } else {
+      defaultMsg = `안녕하세요 ! 키링크에 지원해주셔서 감사합니다☺️
 ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 지정되었습니다
 
 아래 계좌번호로 ${(app.price || genderPrice).toLocaleString('ko-KR')}원 입금해주셔야 라인업에 확정등록되니 참고 부탁드립니다 :)
@@ -262,7 +269,6 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
 혹시나 입금이 늦을 것 같은 경우 말씀해주세요.
 
 좋은 인연 만날 수 있도록 키링크가 끝까지 책임질게요🥰`;
-      }
     }
 
     setPreviewData({ app, session, defaultMsg, targetStatus: type === 'confirm' ? 'confirmed' : 'selected' });
@@ -392,7 +398,6 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
         (user.residence || user.location || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
         (normalizedQuery !== '' && userPhoneDigits.includes(normalizedQuery));
       const matchesGender = filterGender === 'all' || app.gender === filterGender;
-      const matchesUnselected = !filterUnselectedOnly || app.status === 'applied';
 
       // v8.4.1: 나이 대별 필터링
       let matchesAge = true;
@@ -406,7 +411,7 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
       // v8.4.1: 상태 필터링
       const matchesStatus = statusFilter === 'all' || app.status === statusFilter;
 
-      return matchesSearch && matchesGender && matchesUnselected && matchesAge && matchesStatus;
+      return matchesSearch && matchesGender && matchesAge && matchesStatus;
     });
 
     // v8.4.1: 정렬 로직
@@ -432,7 +437,7 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
     });
 
     return result;
-  }, [applications, userMap, searchQuery, filterGender, filterUnselectedOnly, ageFilter, statusFilter, sortConfig]);
+  }, [applications, userMap, searchQuery, filterGender, ageFilter, statusFilter, sortConfig]);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-400 pb-20">
@@ -479,11 +484,18 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                 ))}
               </div>
               <button
-                onClick={() => setFilterUnselectedOnly(!filterUnselectedOnly)}
-                className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all ${filterUnselectedOnly ? 'bg-[#FF7E7E] text-white border-[#FF7E7E] shadow-md' : 'bg-white text-slate-400 border-slate-200 hover:border-[#FF7E7E]/30'}`}
+                onClick={() => setStatusFilter(statusFilter === 'selected' ? 'all' : 'selected')}
+                className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all whitespace-nowrap ${statusFilter === 'selected' ? 'bg-[#7C3AED] text-white border-[#7C3AED] shadow-md' : 'bg-white text-slate-400 border-slate-200 hover:border-[#7C3AED]/30'}`}
                 style={{ height: '40px' }}
               >
-                미선발만 보기
+                입금대기
+              </button>
+              <button
+                onClick={() => setStatusFilter(statusFilter === 'applied' ? 'all' : 'applied')}
+                className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all whitespace-nowrap ${statusFilter === 'applied' ? 'bg-[#FF7E7E] text-white border-[#FF7E7E] shadow-md' : 'bg-white text-slate-400 border-slate-200 hover:border-[#FF7E7E]/30'}`}
+                style={{ height: '40px' }}
+              >
+                미선발
               </button>
             </div>
 
@@ -652,8 +664,8 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                         <div className="flex flex-col items-center gap-4">
                           <FileText size={48} className="opacity-10 text-slate-400" />
                           <p style={{ fontSize: '0.9rem', color: '#64748B' }}>검색 결과와 일치하는 신청 내역이 없습니다.</p>
-                          {(filterGender !== 'all' || filterUnselectedOnly || searchQuery) && (
-                            <button onClick={() => { setFilterGender('all'); setFilterUnselectedOnly(false); setSearchQuery(''); }} className="text-[#FF6F61] text-xs font-bold underline">필터 초기화</button>
+                          {(filterGender !== 'all' || statusFilter !== 'all' || searchQuery) && (
+                            <button onClick={() => { setFilterGender('all'); setStatusFilter('all'); setSearchQuery(''); }} className="text-[#FF6F61] text-xs font-bold underline">필터 초기화</button>
                           )}
                         </div>
                       </td>
@@ -811,8 +823,17 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                                           isOverQuota ? 'bg-rose-500 text-white hover:bg-rose-600' : 'bg-[#FF6F61] text-white hover:bg-[#ff5a4a]'
                                         } shadow-md shadow-rose-100 disabled:opacity-50`}
                                       >
-                                        {app.status === 'selected' ? '입금완료' : '선발'}
+                                        {app.status === 'selected' ? '입금확인' : '선발'}
                                       </button>
+                                      
+                                      {app.status === 'selected' && (
+                                        <button
+                                          onClick={() => handleOpenPreview(app, 're-request')}
+                                          className="px-3 py-2 bg-purple-500 text-white rounded-xl text-[0.8rem] font-black hover:bg-purple-600 shadow-md shadow-purple-100 transition-all"
+                                        >
+                                          재요청
+                                        </button>
+                                      )}
                                       
                                       {app.status !== 'selected' && (
                                         <>
@@ -955,7 +976,7 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                                 <div className="flex gap-1.5">
                                   {(app.status === 'applied' || app.status === 'held' || app.status === 'selected') && (
                                     <>
-                                      {/* 입금완료 또는 선발 */}
+                                      {/* 입금확인 또는 선발 */}
                                       <button
                                         onClick={async () => {
                                           if (!user.isJobReviewed && !app.id.startsWith('dummy')) return toast.error('먼저 직업 승인을 해주세요.');
@@ -970,8 +991,17 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                                         }}
                                         className={`flex-1 py-2.5 ${app.status === 'selected' ? 'bg-emerald-500' : 'bg-[#FF6F61]'} text-white rounded-xl font-black text-xs shadow-md active:scale-95 transition-all`}
                                       >
-                                        {app.status === 'selected' ? '입금완료' : '선발'}
+                                        {app.status === 'selected' ? '입금확인' : '선발'}
                                       </button>
+
+                                      {app.status === 'selected' && (
+                                        <button
+                                          onClick={() => handleOpenPreview(app, 're-request')}
+                                          className="flex-1 py-2.5 bg-purple-500 text-white rounded-xl font-black text-xs shadow-md active:scale-95 transition-all"
+                                        >
+                                          재요청
+                                        </button>
+                                      )}
 
                                       {app.status !== 'selected' && (
                                         <>
