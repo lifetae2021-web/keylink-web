@@ -205,6 +205,9 @@ function MyPageContent() {
   }, [mode]);
 
   const handleSave = async () => {
+    if (!editForm.name) return toast.error('성함을 입력해주세요.');
+    if (!editForm.gender) return toast.error('성별을 선택해주세요.');
+    if (!editForm.birthDate) return toast.error('생년월일을 입력해주세요.');
     if (!editForm.workplace) return toast.error('회사명 / 직무를 입력해주세요.');
     
     // v7.8.5: 재직 증명 필수 검사 (employmentProof 필드명 표준화)
@@ -214,6 +217,8 @@ function MyPageContent() {
 
     // v5.1.0 추가 필수 항목 검사
     if (!editForm.phone) return toast.error('연락처를 입력해주세요.');
+    if (!editForm.height) return toast.error('키를 입력해주세요.');
+    if (!editForm.weight) return toast.error('몸무게를 입력해주세요.');
     if (!editForm.residence) return toast.error('거주지를 입력해주세요.');
     if (!editForm.smoking) return toast.error('흡연 유무를 선택해주세요.');
     if (!editForm.drinking) return toast.error('음주 빈도를 선택해주세요.');
@@ -242,11 +247,12 @@ function MyPageContent() {
         finalVerificationUrl = await getDownloadURL(verifyRef);
       }
 
-      // Sanitize editForm to ensure no undefined values are sent to Firestore
+      // Sanitize editForm and explicitly set isJobReviewed to false for admin notification
       const sanitizedForm = Object.keys(editForm).reduce((acc: any, key) => {
         acc[key] = editForm[key] === undefined ? '' : editForm[key];
         return acc;
       }, {});
+      sanitizedForm.isJobReviewed = false;
 
       const updateData: any = {
         ...sanitizedForm,
@@ -264,21 +270,19 @@ function MyPageContent() {
         updatedAt: serverTimestamp()
       };
       
-      // v8.8.8: Audit Log - 회사명/직무 변경 감지
-      const oldWorkplace = userData?.workplace || '';
-      const newWorkplace = sanitizedForm.workplace || '';
-      if (oldWorkplace !== newWorkplace) {
-        updateData.isJobReviewed = false;
-        updateData.user_logs = arrayUnion({
-          field: 'workplace',
-          oldValue: oldWorkplace,
-          newValue: newWorkplace,
-          changedAt: new Date().toISOString()
-        });
-      }
+      // v8.15.3: 프로필 저장 시 항상 isJobReviewed=false → 관리자에게 알림/뱃지 표시
+      updateData.isJobReviewed = false;
+      updateData.user_logs = arrayUnion({
+        field: 'profile',
+        changedAt: new Date().toISOString()
+      });
+
+      console.log('Saving profile, setting isJobReviewed to false for admin notification');
 
       await updateDoc(doc(db, 'users', user!.uid), updateData);
-      setUserData((p: any) => ({ ...p, ...updateData }));
+      
+      // Update local state, ensuring isJobReviewed is explicitly false
+      setUserData((p: any) => ({ ...p, ...updateData, isJobReviewed: false }));
       setPhotos(uploadedUrls); // Update local state with URLs
       setIsEditing(false);
       

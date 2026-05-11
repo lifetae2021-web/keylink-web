@@ -56,11 +56,33 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose }:
 
   // Sync state with props when modal opens or user changes
   useEffect(() => {
-    if (initialUser) {
+    if (!initialUser || !isOpen) return;
+    
+    // v8.15.1: 프로필 모달 오픈 시 최신 데이터 실시간 조회 (캐시 문제 해결)
+    const userId = initialUser.id || initialUser.uid;
+    if (!userId) {
       setUser(initialUser);
-      setPhotoIndex(0);
-      setPrivateAppPhotos([]);
+      return;
     }
+
+    const fetchLatest = async () => {
+      try {
+        const { getDoc, doc } = await import('firebase/firestore');
+        const snap = await getDoc(doc(db, 'users', userId));
+        if (snap.exists()) {
+          setUser({ id: snap.id, ...snap.data() });
+        } else {
+          setUser(initialUser);
+        }
+      } catch (e) {
+        console.error("Error fetching latest user data:", e);
+        setUser(initialUser);
+      }
+    };
+
+    fetchLatest();
+    setPhotoIndex(0);
+    setPrivateAppPhotos([]);
   }, [initialUser, isOpen]);
 
   // v8.15.9: users 콬렉션에 사진이 없으면 private_applications에서 보완

@@ -49,6 +49,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [showText, setShowText] = useState(true);
   const [notiOpen, setNotiOpen]       = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [userNotis, setUserNotis] = useState<NotificationItem[]>([]);
+  const [appNotis, setAppNotis] = useState<NotificationItem[]>([]);
+  const [privateNotis, setPrivateNotis] = useState<NotificationItem[]>([]);
   const [lastViewedNoti, setLastViewedNoti] = useState<number>(0);
   const [authState, setAuthState] = useState<'loading' | 'admin' | 'denied'>('loading');
   const [pendingCount, setPendingCount] = useState(0);
@@ -84,50 +87,35 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return () => unsub();
   }, [authState]);
 
-  // 2. 통합 알림 시스템 (최근 10건)
+  // 2. 통합 알림 시스템 (회원, 신청, 매칭 리얼타임 통합)
   useEffect(() => {
     if (authState !== 'admin') return;
 
-    // 로컬 스토리지에서 마지막 확인 시간 로드
     const saved = localStorage.getItem('kl_admin_noti_viewed');
     if (saved) setLastViewedNoti(Number(saved));
 
-    // 리얼타임 감시 (여러 컬렉션 통합)
+    const safeDate = (d: any) => {
+      if (!d) return new Date(0);
+      if (d.toDate) return d.toDate();
+      if (d instanceof Date) return d;
+      if (typeof d === 'number') return new Date(d);
+      if (typeof d === 'string') return new Date(d);
+      return new Date(0);
+    };
+
+    // 2a. 회원 알림 (가입 대기 + 프로필 수정)
     const unsubUsers = onSnapshot(
-      query(collection(db, 'users'), orderBy('createdAt', 'desc'), limit(5)),
-      () => handleSync()
-    );
-    const unsubApps = onSnapshot(
-      query(collection(db, 'applications'), orderBy('appliedAt', 'desc'), limit(5)),
-      () => handleSync()
-    );
-    const unsubPrivate = onSnapshot(
-      query(collection(db, 'private_applications'), orderBy('appliedAt', 'desc'), limit(5)),
-      () => handleSync()
-    );
-
-    async function handleSync() {
-      const combined: NotificationItem[] = [];
-      
-      const safeDate = (d: any) => {
-        if (!d) return new Date(0);
-        if (d.toDate) return d.toDate();
-        if (d instanceof Date) return d;
-        if (typeof d === 'number') return new Date(d);
-        if (typeof d === 'string') return new Date(d);
-        return new Date(0);
-      };
-
-      try {
-        // 1. 회원가입 (최신순 10명 가져와서 승인 대기 또는 상태 없는 사람 선별)
-        const uSnap = await getDocs(query(collection(db, 'users'), orderBy('createdAt', 'desc'), limit(10)));
-        uSnap.forEach(d => {
+      query(collection(db, 'users'), orderBy('updatedAt', 'desc'), limit(50)),
+      (snapshot) => {
+        const items = snapshot.docs.map(d => {
           const data = d.data();
-          const status = data.status || 'pending'; // 상태가 없으면 대기중으로 간주
+          const status = data.status || 'pending';
+          const list: NotificationItem[] = [];
+
           if (status === 'pending') {
             const date = safeDate(data.createdAt);
-            combined.push({
-              id: d.id,
+            list.push({
+              id: d.id + '_join',
               type: 'user',
               text: `${data.name || '신규유저'}님이 가입 승인을 대기 중입니다.`,
               date,
@@ -135,69 +123,90 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               path: '/admin/users'
             });
           }
-        });
 
-        // 2. 로테이션 신청 (최신순 10건 가져와서 검토 중인 것 선별)
-        const aSnap = await getDocs(query(collection(db, 'applications'), orderBy('appliedAt', 'desc'), limit(10)));
-        aSnap.forEach(d => {
-          const data = d.data();
-          const status = data.status || 'applied';
-          if (status === 'applied') {
-            const date = safeDate(data.appliedAt);
-            combined.push({
-              id: d.id,
-              type: 'app',
-              text: `${data.name || '신청자'}님이 새로운 로테이션 참가를 신청했습니다.`,
+          if (data.isJobReviewed === false) {
+            let date = safeDate(data.updatedAt) || safeDate(data.createdAt);
+            if (data.user_logs && data.user_logs.length > 0) {
+              const lastLog = data.user_logs[data.user_logs.length - 1];
+              if (lastLog.changedAt) date = safeDate(lastLog.changedAt);
+            }
+            list.push({
+              id: d.id + '_update',
+              type: 'user',
+              text: `${data.name || '회원'}님이 프로필 정보를 수정했습니다.`,
               date,
               time: formatTimeAgo(date),
-              path: '/admin/applications'
+              path: '/admin/users'
             });
           }
-        });
+          return list;
+        }).flat();
+        setUserNotis(items);
+      }
+    );
 
-        // 3. 1:1 프라이빗 매칭 신청
-        const pSnap = await getDocs(query(collection(db, 'private_applications'), orderBy('appliedAt', 'desc'), limit(10)));
-        pSnap.forEach(d => {
+    // 2b. 로테이션 신청 알림
+    const unsubApps = onSnapshot(
+      query(collection(db, 'applications'), orderBy('appliedAt', 'desc'), limit(20)),
+      (snapshot) => {
+        const items = snapshot.docs.filter(d => (d.data().status || 'applied') === 'applied').map(d => {
           const data = d.data();
           const date = safeDate(data.appliedAt);
-          // 1:1 매칭은 보통 상담 전 상태인 경우 알림
-          if (!data.status || data.status === 'pending_consult' || data.status === 'applied') {
-            combined.push({
-              id: d.id,
-              type: 'private',
-              text: `${data.name || '신청자'}님이 1:1 프라이빗 매칭을 신청했습니다.`,
-              date,
-              time: formatTimeAgo(date),
-              path: '/admin/applications'
-            });
-          }
+          return {
+            id: d.id,
+            type: 'app' as const,
+            text: `${data.name || '신청자'}님이 새로운 로테이션 참가를 신청했습니다.`,
+            date,
+            time: formatTimeAgo(date),
+            path: '/admin/applications'
+          };
         });
-
-        // 최종 정렬 (최신순)
-        const sorted = combined
-          .sort((a, b) => b.date.getTime() - a.date.getTime())
-          .slice(0, 15);
-        
-        setNotifications(sorted);
-      } catch (e) {
-        console.error('Notification sync error:', e);
+        setAppNotis(items);
       }
-    }
+    );
 
-    function formatTimeAgo(date: Date) {
-      if (date.getTime() === 0) return '시간 정보 없음';
-      const now = new Date();
-      const diff = (now.getTime() - date.getTime()) / 1000;
-      
-      if (diff < 60) return '방금 전';
-      if (diff < 3600) return `${Math.floor(diff / 60)}분 전`;
-      if (diff < 86400) return `${Math.floor(diff / 3600)}시간 전`;
-      if (diff < 604800) return `${Math.floor(diff / 86400)}일 전`;
-      return format(date, 'MM/dd');
-    }
+    // 2c. 프라이빗 매칭 알림
+    const unsubPrivate = onSnapshot(
+      query(collection(db, 'private_applications'), orderBy('appliedAt', 'desc'), limit(20)),
+      (snapshot) => {
+        const items = snapshot.docs.filter(d => !d.data().status || d.data().status === 'pending_consult' || d.data().status === 'applied').map(d => {
+          const data = d.data();
+          const date = safeDate(data.appliedAt);
+          return {
+            id: d.id,
+            type: 'private' as const,
+            text: `${data.name || '신청자'}님이 1:1 프라이빗 매칭을 신청했습니다.`,
+            date,
+            time: formatTimeAgo(date),
+            path: '/admin/applications'
+          };
+        });
+        setPrivateNotis(items);
+      }
+    );
 
     return () => { unsubUsers(); unsubApps(); unsubPrivate(); };
   }, [authState]);
+
+  // 3. 알림 통합 및 정렬
+  useEffect(() => {
+    const combined = [...userNotis, ...appNotis, ...privateNotis]
+      .sort((a, b) => b.date.getTime() - a.date.getTime())
+      .slice(0, 20);
+    setNotifications(combined);
+  }, [userNotis, appNotis, privateNotis]);
+
+  function formatTimeAgo(date: Date) {
+    if (date.getTime() === 0) return '시간 정보 없음';
+    const now = new Date();
+    const diff = (now.getTime() - date.getTime()) / 1000;
+    
+    if (diff < 60) return '방금 전';
+    if (diff < 3600) return `${Math.floor(diff / 60)}분 전`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}시간 전`;
+    if (diff < 604800) return `${Math.floor(diff / 86400)}일 전`;
+    return format(date, 'MM/dd');
+  }
 
   const unreadCount = notifications.filter(n => n.date.getTime() > lastViewedNoti).length;
 
