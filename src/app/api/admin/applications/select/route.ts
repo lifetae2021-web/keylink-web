@@ -141,6 +141,13 @@ ${name}님은 ${formattedDate} ${formattedDay} ${formattedTime} 소개팅 날짜
     let smsResult;
     try {
       smsResult = await sendSMS({ to: phone, text: message });
+      if (smsResult?.success) {
+        // SMS 발송 완료 후 상태 업데이트
+        await adminDb.doc(`applications/${applicationId}`).update({
+          isSmsSent: true,
+          lastSmsSentAt: FieldValue.serverTimestamp()
+        });
+      }
     } catch (smsError: any) {
       console.error('SMS Send Error:', smsError);
       return NextResponse.json({ 

@@ -42,6 +42,15 @@ function applyVariables(content: string, applicant: any, session: any): string {
     ? `${session?.region === 'busan' ? '부산' : '창원'} ${session?.episodeNumber}기`
     : '';
 
+  // {{남은일수}} 계산
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const eventDateOnly = new Date(eventTime);
+  eventDateOnly.setHours(0, 0, 0, 0);
+  const diffTime = eventDateOnly.getTime() - today.getTime();
+  const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+  const remainingDays = diffDays > 0 ? String(diffDays) : '0';
+
   return content
     .replace(/{{이름}}/g, applicant?.name || applicant?.userName || '참가자')
     .replace(/{{날짜}}/g, `${getPart('month')}/${getPart('day')}`)
@@ -49,7 +58,8 @@ function applyVariables(content: string, applicant: any, session: any): string {
     .replace(/{{시간}}/g, `${getPart('hour')}:${getPart('minute')}`)
     .replace(/{{금액}}/g, (applicant?.price || genderPrice).toLocaleString('ko-KR'))
     .replace(/{{기수}}/g, sessionName)
-    .replace(/{{장소}}/g, session?.venue || session?.location || '');
+    .replace(/{{장소}}/g, session?.venue || session?.location || '')
+    .replace(/{{남은일수}}/g, remainingDays);
 }
 
 const SMSPreviewModal: React.FC<SMSPreviewModalProps> = ({

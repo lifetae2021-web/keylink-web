@@ -21,6 +21,7 @@ const VARIABLES = [
   { key: '{{금액}}',  desc: '결제 금액' },
   { key: '{{기수}}',  desc: '기수 정보 (예: 부산 125기)' },
   { key: '{{장소}}',  desc: '행사 장소' },
+  { key: '{{남은일수}}', desc: '행사까지 남은 일수' },
 ];
 
 const CATEGORIES = ['입금 요청', '참가 확정', '미선발 안내', '선발 제안', '공지 / 이벤트', '기타'];
@@ -257,14 +258,18 @@ export default function SmsTemplatesPage() {
 
           {/* 새 템플릿 생성 폼 */}
           {isCreating && (
-            <TemplateForm
-              form={form}
-              setForm={setForm}
-              onSave={handleCreate}
-              onCancel={() => setIsCreating(false)}
-              onInsertVariable={insertVariable}
-              title="새 템플릿 작성"
-            />
+            <div style={panel} className="overflow-hidden border-[#FF7E7E]/30 shadow-lg shadow-[#FF7E7E]/5">
+              <div className="p-6">
+                <TemplateForm
+                  form={form}
+                  setForm={setForm}
+                  onSave={handleCreate}
+                  onCancel={() => setIsCreating(false)}
+                  onInsertVariable={insertVariable}
+                  title="새 템플릿 작성"
+                />
+              </div>
+            </div>
           )}
 
           {/* 템플릿 리스트 */}
@@ -277,7 +282,7 @@ export default function SmsTemplatesPage() {
             </div>
           ) : (
             filteredTemplates.map(t => (
-              <div key={t.id} style={panel} className="overflow-hidden">
+              <div key={t.id} style={panel} className="overflow-hidden transition-all hover:shadow-md">
                 {editingId === t.id ? (
                   <div className="p-6">
                     <TemplateForm
@@ -294,7 +299,7 @@ export default function SmsTemplatesPage() {
                     <div className="flex items-start justify-between gap-4 mb-3">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-base font-black text-slate-800">{t.name}</span>
-                        <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#FF7E7E]/10 text-[#FF7E7E]">
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#FF7E7E]/10 text-[#FF7E7E] border border-[#FF7E7E]/20">
                           {t.category}
                         </span>
                       </div>
@@ -320,7 +325,7 @@ export default function SmsTemplatesPage() {
                         </button>
                       </div>
                     </div>
-                    <pre className="text-sm text-slate-600 whitespace-pre-wrap font-sans leading-relaxed bg-slate-50 rounded-xl p-4 max-h-48 overflow-y-auto">
+                    <pre className="text-sm text-slate-600 whitespace-pre-wrap font-sans leading-relaxed bg-slate-50 rounded-xl p-4 max-h-48 overflow-y-auto kl-scrollbar border border-slate-100">
                       {t.content}
                     </pre>
                     <p className="text-xs text-slate-300 mt-3 font-medium">{t.content.length}자</p>
@@ -338,24 +343,29 @@ export default function SmsTemplatesPage() {
               <Info size={16} className="text-[#FF7E7E]" />
               <h3 className="text-sm font-black text-slate-800">사용 가능한 변수</h3>
             </div>
-            <p className="text-xs text-slate-400 mb-4 leading-relaxed">
-              아래 변수를 템플릿에 입력하면 문자 발송 시 실제 데이터로 자동 치환됩니다.
+            <p className="text-[11px] text-slate-400 mb-4 leading-relaxed font-medium">
+              아래 버튼을 클릭하거나 변수명을 직접 입력하면 실제 데이터로 자동 치환됩니다.
             </p>
-            <div className="space-y-2">
+            <div className="grid grid-cols-1 gap-1.5">
               {VARIABLES.map(v => (
-                <div key={v.key} className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-slate-50 border border-slate-100">
-                  <div>
-                    <code className="text-xs font-black text-[#FF7E7E]">{v.key}</code>
-                    <p className="text-[10px] text-slate-400 mt-0.5">{v.desc}</p>
+                <button
+                  key={v.key}
+                  onClick={() => insertVariable(v.key)}
+                  className="flex items-center justify-between gap-2 p-2 px-3 rounded-xl bg-slate-50 border border-slate-100 hover:border-[#FF7E7E]/30 hover:bg-white transition-all group text-left"
+                >
+                  <div className="flex-1">
+                    <code className="text-[11px] font-black text-[#FF7E7E] group-hover:scale-110 transition-transform inline-block">{v.key}</code>
+                    <span className="text-[10px] text-slate-400 ml-2 font-medium">{v.desc}</span>
                   </div>
-                </div>
+                  <Plus size={10} className="text-slate-300 group-hover:text-[#FF7E7E]" />
+                </button>
               ))}
             </div>
           </div>
 
           <div style={panel} className="p-6">
             <h3 className="text-sm font-black text-slate-800 mb-3">이모티콘 주의사항</h3>
-            <div className="space-y-2 text-xs text-slate-500 leading-relaxed">
+            <div className="space-y-2 text-xs text-slate-500 leading-relaxed font-medium">
               <p>⚠️ <b className="text-slate-600">이모티콘 포함 시</b> 일부 기기에서 깨져 보일 수 있습니다.</p>
               <p>✅ LMS(장문)로 발송되는 경우 대부분 지원되지만, 수신자 기기에 따라 다를 수 있습니다.</p>
               <p>💡 안전한 발송을 원하신다면 이모티콘 대신 <b>:)</b>, <b>^-^</b> 같은 텍스트 표현을 권장합니다.</p>
@@ -378,60 +388,77 @@ function TemplateForm({
   title: string;
 }) {
   return (
-    <div className="space-y-4">
-      <h4 className="text-sm font-black text-slate-700">{title}</h4>
-      <div className="grid grid-cols-2 gap-3">
+    <div className="space-y-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+        <h4 className="text-sm font-black text-slate-800">{title}</h4>
+        <div className="flex flex-wrap gap-1">
+          {CATEGORIES.map(c => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => setForm((f: any) => ({ ...f, category: c }))}
+              className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all border ${
+                form.category === c
+                  ? 'bg-[#FF7E7E] border-[#FF7E7E] text-white shadow-sm'
+                  : 'bg-white border-slate-200 text-slate-400 hover:bg-slate-50'
+              }`}
+            >
+              {c}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-4">
         <input
           type="text"
-          placeholder="템플릿 이름"
+          placeholder="템플릿 이름을 입력하세요 (예: 입금 요청 - 부산)"
           value={form.name}
           onChange={e => setForm((f: any) => ({ ...f, name: e.target.value }))}
-          className="col-span-2 md:col-span-1 h-10 px-4 rounded-xl border border-slate-200 text-sm font-semibold text-slate-700 focus:ring-2 focus:ring-[#FF7E7E]/20 focus:border-[#FF7E7E] outline-none"
+          className="w-full h-11 px-4 rounded-xl border border-slate-200 text-sm font-bold text-slate-700 focus:ring-4 focus:ring-[#FF7E7E]/10 focus:border-[#FF7E7E] outline-none transition-all bg-white"
         />
-        <select
-          value={form.category}
-          onChange={e => setForm((f: any) => ({ ...f, category: e.target.value }))}
-          className="h-10 px-3 rounded-xl border border-slate-200 text-sm font-semibold text-slate-700 focus:ring-2 focus:ring-[#FF7E7E]/20 focus:border-[#FF7E7E] outline-none bg-white"
-        >
-          {CATEGORIES.map(c => <option key={c}>{c}</option>)}
-        </select>
+
+        <div className="relative group">
+          <textarea
+            rows={10}
+            placeholder="문자 내용을 입력하세요..."
+            value={form.content}
+            onChange={e => setForm((f: any) => ({ ...f, content: e.target.value }))}
+            className="w-full px-4 py-4 rounded-2xl border border-slate-200 text-sm text-slate-700 font-medium resize-none focus:ring-4 focus:ring-[#FF7E7E]/10 focus:border-[#FF7E7E] outline-none leading-relaxed bg-white transition-all kl-scrollbar"
+          />
+          <div className="absolute bottom-4 right-4 px-2 py-1 bg-slate-900/5 backdrop-blur-md rounded-md">
+            <p className="text-[10px] font-black text-slate-400">{form.content.length}자</p>
+          </div>
+        </div>
+
+        {/* 변수 빠른 삽입 */}
+        <div className="flex flex-wrap gap-1.5 p-3 bg-slate-50/80 rounded-xl border border-slate-100">
+          <span className="text-[10px] font-black text-slate-400 w-full mb-1 ml-1">클릭하여 변수 삽입:</span>
+          {VARIABLES.map(v => (
+            <button
+              key={v.key}
+              type="button"
+              onClick={() => onInsertVariable(v.key)}
+              className="px-2.5 py-1 rounded-lg text-[10px] font-black bg-white border border-slate-200 text-slate-600 hover:border-[#FF7E7E] hover:text-[#FF7E7E] transition-all shadow-sm"
+            >
+              {v.key}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* 변수 빠른 삽입 */}
-      <div className="flex flex-wrap gap-1.5">
-        {VARIABLES.map(v => (
-          <button
-            key={v.key}
-            type="button"
-            onClick={() => onInsertVariable(v.key)}
-            className="px-2.5 py-1 rounded-lg text-xs font-bold bg-[#FF7E7E]/10 text-[#FF7E7E] hover:bg-[#FF7E7E]/20 transition-all"
-          >
-            {v.key}
-          </button>
-        ))}
-      </div>
-
-      <textarea
-        rows={8}
-        placeholder="문자 내용을 입력하세요..."
-        value={form.content}
-        onChange={e => setForm((f: any) => ({ ...f, content: e.target.value }))}
-        className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm text-slate-700 font-medium resize-none focus:ring-2 focus:ring-[#FF7E7E]/20 focus:border-[#FF7E7E] outline-none leading-relaxed"
-      />
-      <p className="text-xs text-slate-400 -mt-2">{form.content.length}자</p>
-
-      <div className="flex items-center gap-2 justify-end">
+      <div className="flex items-center gap-2 justify-end pt-2">
         <button
           onClick={onCancel}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold text-slate-400 hover:bg-slate-100 transition-all"
+          className="flex items-center gap-1.5 px-4 h-10 rounded-xl text-sm font-bold text-slate-400 hover:bg-slate-100 transition-all"
         >
-          <X size={14} /> 취소
+          <X size={16} /> 취소
         </button>
         <button
           onClick={onSave}
-          className="flex items-center gap-1.5 px-5 py-2 rounded-xl bg-[#FF7E7E] text-white text-sm font-black shadow-md shadow-[#FF7E7E]/25 hover:opacity-90 transition-all"
+          className="flex items-center gap-2 px-6 h-10 rounded-xl bg-[#FF7E7E] text-white text-sm font-black shadow-lg shadow-[#FF7E7E]/30 hover:scale-[1.02] active:scale-95 transition-all"
         >
-          <Check size={14} /> 저장
+          <Check size={16} /> 템플릿 저장하기
         </button>
       </div>
     </div>

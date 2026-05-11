@@ -350,11 +350,11 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
 
   const activeEvent = events.find(e => e.id === selectedEventId);
 
-  // v8.1.7: 실시간 선발 현황 계산 (selected + confirmed)
+  // v8.1.7: 실시간 선발 현황 계산 (confirmed only, excluding selected/waiting)
   const selectionStats = useMemo(() => {
     if (selectedEventId === 'all') return { male: 0, female: 0 };
-    const male = applications.filter(a => a.gender === 'male' && (a.status === 'selected' || a.status === 'confirmed')).length;
-    const female = applications.filter(a => a.gender === 'female' && (a.status === 'selected' || a.status === 'confirmed')).length;
+    const male = applications.filter(a => a.gender === 'male' && a.status === 'confirmed').length;
+    const female = applications.filter(a => a.gender === 'female' && a.status === 'confirmed').length;
     return { male, female };
   }, [applications, selectedEventId]);
 
@@ -366,10 +366,10 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
     const ids = new Set<string>();
     if (selectedEventId === 'all' || !activeEvent) return ids;
 
-    // 적용 순(또는 변경 순) 정렬: 가장 먼저 신청한 사람이 정원 내, 늦게 신청한 사람이 초과
+    // 적용 순(또는 변경 순) 정렬: 가장 먼저 확정된 사람이 정원 내, 늦게 확정된 사람이 초과
     const getSortedSelected = (gender: string) =>
       applications
-        .filter(a => a.gender === gender && (a.status === 'selected' || a.status === 'confirmed'))
+        .filter(a => a.gender === gender && a.status === 'confirmed')
         // 신청일 기준 오름차순 (먼저 신청한 사람 1순위)
         .sort((a, b) => {
           const aTime = a.appliedAt?.toMillis?.() || a.appliedAt || 0;
@@ -524,7 +524,7 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                   style={{ minWidth: '130px', height: '36px', paddingLeft: '10px' }}
                 >
                   <option value="all">전체 기수 보기</option>
-                  {events.map(ev => {
+                  {[...events].reverse().map(ev => {
                     const now = new Date();
                     const eventDate = ev.eventDate?.toDate?.() || new Date();
                     const twoHoursAfter = new Date(eventDate.getTime() + 2 * 60 * 60 * 1000);
@@ -828,7 +828,12 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                                       
                                       {app.status === 'selected' && (
                                         <button
-                                          onClick={() => handleOpenPreview(app, 're-request')}
+                                          onClick={() => {
+                                            if (app.isSmsSent) {
+                                              if (!window.confirm('이미 문자를 보낸 유저입니다. 다시 보내시겠습니까?')) return;
+                                            }
+                                            handleOpenPreview(app, 're-request');
+                                          }}
                                           className="px-3 py-2 bg-purple-500 text-white rounded-xl text-[0.8rem] font-black hover:bg-purple-600 shadow-md shadow-purple-100 transition-all"
                                         >
                                           재요청
@@ -924,6 +929,14 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                                         <span className={`text-[0.65rem] font-bold px-1.5 py-0.5 rounded ${(user.gender || app.gender) === 'male' ? 'text-blue-600 bg-blue-50' : 'text-rose-600 bg-rose-50'}`}>
                                           {(user.gender || app.gender) === 'male' ? '남성' : '여성'}
                                         </span>
+                                        {app.isSmsSent && (
+                                          <span 
+                                            className="text-[0.65rem] font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-600 border border-emerald-100 cursor-help flex items-center gap-1"
+                                            title={`최근 발송: ${app.lastSmsSentAt?.toDate ? format(app.lastSmsSentAt.toDate(), 'MM/dd HH:mm') : '알 수 없음'}`}
+                                          >
+                                            <CheckCircle size={10} /> 요청완료
+                                          </span>
+                                        )}
                                       </div>
                                       <div className="text-[0.75rem] text-slate-500 font-bold mt-0.5">
                                         {(() => { const bd = user.birthDate || app.birthDate; return bd ? <span>{bd.includes('-') ? bd.slice(2, 4) : bd.slice(0, 2)}년생</span> : <span>??</span>; })()}
@@ -996,7 +1009,12 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
 
                                       {app.status === 'selected' && (
                                         <button
-                                          onClick={() => handleOpenPreview(app, 're-request')}
+                                          onClick={() => {
+                                            if (app.isSmsSent) {
+                                              if (!window.confirm('이미 문자를 보낸 유저입니다. 다시 보내시겠습니까?')) return;
+                                            }
+                                            handleOpenPreview(app, 're-request');
+                                          }}
                                           className="flex-1 py-2.5 bg-purple-500 text-white rounded-xl font-black text-xs shadow-md active:scale-95 transition-all"
                                         >
                                           재요청
