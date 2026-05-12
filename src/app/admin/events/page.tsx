@@ -117,8 +117,9 @@ export default function EventsPage() {
   // v9.1.2: 단일 발송 시 대상 참가자 정보 (금액 표시 연동용)
   const [smsSingleTarget, setSmsSingleTarget] = useState<Application | null>(null);
 
-  // Modal State
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  // v9.1.5: 더미 계정 직업명 수정 전용 상태
+  const [editingAppJobId, setEditingAppJobId] = useState<string | null>(null);
+  const [tempAppJobValue, setTempAppJobValue] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null); // v7.0.0: 수정 중인 문서 ID
   const ageEndRef = useRef<HTMLInputElement>(null); // v7.5.2: 자동 포커스 이동용
@@ -456,6 +457,23 @@ export default function EventsPage() {
       toast.success(msg);
     }
   };
+
+  const handleEditAppJob = async (app: any, newValue: string) => {
+    if (!app || !newValue.trim()) return;
+    try {
+      const { doc, updateDoc } = await import('firebase/firestore');
+      await updateDoc(doc(db, 'applications', app.id), {
+        job: newValue.trim(),
+        updatedAt: new Date()
+      });
+      toast.success('직업명이 수정되었습니다.');
+      setEditingAppJobId(null);
+    } catch (e) {
+      toast.error('수정 중 오류가 발생했습니다.');
+    }
+  };
+
+  const isDummyApp = (app: any) => (app.userId?.startsWith("user_m_") || app.userId?.startsWith("user_f_") || app.id?.startsWith("dummy_"));
 
   const callStatusApi = async (applicationId: string, status: string) => {
     const token = await auth.currentUser?.getIdToken();
@@ -1493,8 +1511,37 @@ ${chatLink}
                                                 <div className="flex items-center gap-x-2 text-[0.72rem] text-slate-600 font-bold">
                                                   <span className="whitespace-nowrap">{birthYear}</span>
                                                   <span className="text-slate-300">·</span>
-                                                  <span className="truncate max-w-[120px] sm:max-w-[100px]">
-                                                    {displayJob}
+                                                  <span className="flex items-center gap-1">
+                                                    {isDummyApp(app) ? (
+                                                      editingAppJobId === app.id ? (
+                                                        <input
+                                                          autoFocus
+                                                          value={tempAppJobValue}
+                                                          onChange={(e) => setTempAppJobValue(e.target.value)}
+                                                          onKeyDown={(e) => {
+                                                            if (e.key === 'Enter') handleEditAppJob(app, tempAppJobValue);
+                                                            if (e.key === 'Escape') setEditingAppJobId(null);
+                                                          }}
+                                                          onBlur={() => setEditingAppJobId(null)}
+                                                          className="text-[0.72rem] font-bold bg-white border border-blue-400 rounded px-1 outline-none w-[100px]"
+                                                        />
+                                                      ) : (
+                                                        <span 
+                                                          onClick={() => {
+                                                            setEditingAppJobId(app.id);
+                                                            setTempAppJobValue(displayJob);
+                                                          }}
+                                                          className="truncate max-w-[120px] sm:max-w-[100px] cursor-pointer hover:text-blue-500 hover:underline"
+                                                          title="더미 직업명 수정"
+                                                        >
+                                                          {displayJob}
+                                                        </span>
+                                                      )
+                                                    ) : (
+                                                      <span className="truncate max-w-[120px] sm:max-w-[100px]">
+                                                        {displayJob}
+                                                      </span>
+                                                    )}
                                                   </span>
                                                   <span className="text-slate-300">·</span>
                                                   <span className="whitespace-nowrap">
@@ -1600,8 +1647,37 @@ ${chatLink}
                                               <span>·</span>
                                               <span>{getBirthYear(app)}</span>
                                               <span>·</span>
-                                              <span className="truncate max-w-[80px]">
-                                                {getEffectiveJob(app)}
+                                              <span className="flex items-center gap-1">
+                                                {isDummyApp(app) ? (
+                                                  editingAppJobId === app.id ? (
+                                                    <input
+                                                      autoFocus
+                                                      value={tempAppJobValue}
+                                                      onChange={(e) => setTempAppJobValue(e.target.value)}
+                                                      onKeyDown={(e) => {
+                                                        if (e.key === 'Enter') handleEditAppJob(app, tempAppJobValue);
+                                                        if (e.key === 'Escape') setEditingAppJobId(null);
+                                                      }}
+                                                      onBlur={() => setEditingAppJobId(null)}
+                                                      className="text-[0.72rem] font-bold bg-white border border-blue-400 rounded px-1 outline-none w-[80px]"
+                                                    />
+                                                  ) : (
+                                                    <span 
+                                                      onClick={() => {
+                                                        setEditingAppJobId(app.id);
+                                                        setTempAppJobValue(getEffectiveJob(app));
+                                                      }}
+                                                      className="truncate max-w-[80px] cursor-pointer hover:text-blue-500 hover:underline"
+                                                      title="더미 직업명 수정"
+                                                    >
+                                                      {getEffectiveJob(app)}
+                                                    </span>
+                                                  )
+                                                ) : (
+                                                  <span className="truncate max-w-[80px]">
+                                                    {getEffectiveJob(app)}
+                                                  </span>
+                                                )}
                                               </span>
                                               <span>·</span>
                                               <span>
@@ -1771,7 +1847,36 @@ ${chatLink}
                                           <div className="flex items-center gap-x-2 text-[0.72rem] text-slate-600 font-bold">
                                             <span className="whitespace-nowrap">{birthYear}</span>
                                             <span className="text-slate-300">·</span>
-                                            <span className="truncate max-w-[120px] sm:max-w-[100px]">{app.displayJob || app.job || "-"}</span>
+                                            <span className="flex items-center gap-1">
+                                              {isDummyApp(app) ? (
+                                                editingAppJobId === app.id ? (
+                                                  <input
+                                                    autoFocus
+                                                    value={tempAppJobValue}
+                                                    onChange={(e) => setTempAppJobValue(e.target.value)}
+                                                    onKeyDown={(e) => {
+                                                      if (e.key === 'Enter') handleEditAppJob(app, tempAppJobValue);
+                                                      if (e.key === 'Escape') setEditingAppJobId(null);
+                                                    }}
+                                                    onBlur={() => setEditingAppJobId(null)}
+                                                    className="text-[0.72rem] font-bold bg-white border border-blue-400 rounded px-1 outline-none w-[100px]"
+                                                  />
+                                                ) : (
+                                                  <span 
+                                                    onClick={() => {
+                                                      setEditingAppJobId(app.id);
+                                                      setTempAppJobValue(app.job || '');
+                                                    }}
+                                                    className="truncate max-w-[120px] sm:max-w-[100px] cursor-pointer hover:text-blue-500 hover:underline"
+                                                    title="더미 직업명 수정"
+                                                  >
+                                                    {app.job || "-"}
+                                                  </span>
+                                                )
+                                              ) : (
+                                                <span className="truncate max-w-[120px] sm:max-w-[100px]">{app.displayJob || app.job || "-"}</span>
+                                              )}
+                                            </span>
                                             <span className="text-slate-300">·</span>
                                             <span className="whitespace-nowrap">{app.residence || "-"}</span>
                                           </div>

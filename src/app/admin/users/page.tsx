@@ -16,7 +16,7 @@ import { format } from 'date-fns';
 import UserProfileModal from './UserProfileModal';
 import SMSPreviewModal from '@/components/admin/SMSPreviewModal';
 
-type Status = 'all' | 'pending' | 'verified' | 'rejected';
+type Status = 'all' | 'pending' | 'verified' | 'rejected' | 'dummy';
 
 const STATUS_CFG = {
   verified: { label: '인증 완료', color: '#10B981', bg: '#ECFDF5' },
@@ -31,6 +31,7 @@ const TABS: { key: Status; label: string }[] = [
   { key: 'pending', label: '승인 대기' },
   { key: 'verified', label: '인증 완료' },
   { key: 'rejected', label: '반려' },
+  { key: 'dummy', label: '더미계정' },
 ];
 
 const panel = { background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' };
@@ -197,12 +198,16 @@ export default function UsersPage() {
     return () => unsubscribe();
   }, []);
 
-  const counts = useMemo(() => ({
-    all: users.length,
-    pending: users.filter(u => (u.status || 'pending') === 'pending').length,
-    verified: users.filter(u => u.status === 'verified').length,
-    rejected: users.filter(u => u.status === 'rejected').length,
-  }), [users]);
+  const counts = useMemo(() => {
+    const isDummy = (u: any) => u.isDummy === true || u.id?.startsWith('dummy') || u.id?.startsWith('user_m_') || u.id?.startsWith('user_f_');
+    return {
+      all: users.filter(u => !isDummy(u)).length,
+      pending: users.filter(u => !isDummy(u) && (u.status || 'pending') === 'pending').length,
+      verified: users.filter(u => !isDummy(u) && u.status === 'verified').length,
+      rejected: users.filter(u => !isDummy(u) && u.status === 'rejected').length,
+      dummy: users.filter(u => isDummy(u)).length,
+    };
+  }, [users]);
 
   const filtered = useMemo(() => {
     return users.filter(u => {
@@ -211,7 +216,18 @@ export default function UsersPage() {
         (u.name || '').toLowerCase().includes(q) ||
         (u.job || '').toLowerCase().includes(q) ||
         (u.email || '').toLowerCase().includes(q);
-      const matchFilter = filter === 'all' || (u.status || 'pending') === filter;
+      
+      const isDummy = u.isDummy === true || u.id?.startsWith('dummy') || u.id?.startsWith('user_m_') || u.id?.startsWith('user_f_');
+      
+      let matchFilter = false;
+      if (filter === 'dummy') {
+        matchFilter = isDummy;
+      } else if (filter === 'all') {
+        matchFilter = !isDummy;
+      } else {
+        matchFilter = !isDummy && (u.status || 'pending') === filter;
+      }
+
       const matchGender = genderFilter === 'all' || u.gender === genderFilter;
       return matchSearch && matchFilter && matchGender;
     }).sort((a, b) => {
