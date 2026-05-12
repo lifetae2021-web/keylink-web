@@ -8,7 +8,8 @@ import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
 import toast from 'react-hot-toast';
-const version = '1.0.13';
+import { APP_VERSION } from '@/lib/constants';
+const version = APP_VERSION;
 // v8.1.7: Premium Navigation Bar
 
 // '진행 과정' → /#process, '참여 신청' → /#apply 로 스무스 스크롤

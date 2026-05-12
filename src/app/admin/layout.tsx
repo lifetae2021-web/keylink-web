@@ -17,7 +17,8 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { format } from 'date-fns';
-const version = '1.0.17';
+import { APP_VERSION } from '@/lib/constants';
+const version = APP_VERSION;
 
 const PAGE_TITLE: Record<string, string> = {
   '/admin':               '대시보드',
