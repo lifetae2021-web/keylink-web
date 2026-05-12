@@ -120,6 +120,8 @@ export default function EventsPage() {
   // v9.1.5: 더미 계정 직업명 수정 전용 상태
   const [editingAppJobId, setEditingAppJobId] = useState<string | null>(null);
   const [tempAppJobValue, setTempAppJobValue] = useState<string>('');
+  // Modal State
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null); // v7.0.0: 수정 중인 문서 ID
   const ageEndRef = useRef<HTMLInputElement>(null); // v7.5.2: 자동 포커스 이동용
