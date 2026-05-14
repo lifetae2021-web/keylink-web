@@ -90,7 +90,7 @@ export default function EventsPage() {
 
   // SMS Modal State
   const [smsModalOpen, setSmsModalOpen] = useState(false);
-  const [smsTargets, setSmsTargets] = useState<{ phone: string; name: string; gender: string; slotNumber?: number; userId: string }[]>([]);
+  const [smsTargets, setSmsTargets] = useState<{ phone: string; name: string; gender: string; slotNumber?: number; userId: string; appId?: string }[]>([]);
   const [smsDefaultMsg, setSmsDefaultMsg] = useState('');
   const [smsRecipientLabel, setSmsRecipientLabel] = useState('');
 
@@ -476,6 +476,55 @@ export default function EventsPage() {
   };
 
   const isDummyApp = (app: any) => (app.userId?.startsWith("user_m_") || app.userId?.startsWith("user_f_") || app.id?.startsWith("dummy_"));
+
+  // v9.1.6: 2차 안내문자 발송 여부 렌더링 헬퍼
+  const renderSmsButton = (app: any, isDesktop = false) => {
+    const isSent = !!app.secondSmsSentAt;
+    const sentTimeStr = isSent
+      ? (app.secondSmsSentAt.toDate ? app.secondSmsSentAt.toDate() : new Date(app.secondSmsSentAt)).toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+      : '';
+      
+    const handleSmsClick = () => {
+      const _name = app.name || '참가자';
+      setSmsTargets([{ phone: app.phone, name: _name, gender: app.gender, slotNumber: app.slotNumber, userId: app.userId, appId: app.id }]);
+      setSmsSingleTarget(app);
+      setSmsRecipientLabel(`${app.name}님`);
+      setSmsDefaultMsg(generateSecondGuidanceMsg(app));
+      setSmsModalOpen(true);
+    };
+
+    if (isDesktop) {
+      return (
+        <button
+          onClick={handleSmsClick}
+          className={`shrink-0 p-2 rounded-xl border transition-all relative ${isSent ? "bg-slate-50 text-slate-400 border-slate-200" : "bg-white border-[#FF7E7E]/30 text-[#FF6F61] hover:bg-orange-50 hover:border-[#FF7E7E]"}`}
+          title={isSent ? `최근 발송: ${sentTimeStr}` : "문자 보내기"}
+        >
+          <MessageSquare size={13} />
+          {isSent && (
+            <div className="absolute -top-1.5 -right-1.5 bg-white rounded-full">
+              <CheckCircle2 size={13} className="text-green-500" fill="white" />
+            </div>
+          )}
+        </button>
+      );
+    }
+
+    return (
+      <button
+        onClick={handleSmsClick}
+        className={`p-2 rounded-xl border relative ${isSent ? "bg-slate-50 text-slate-400 border-slate-200" : "bg-orange-50 text-[#FF6F61] border-orange-100"}`}
+        title={isSent ? `최근 발송: ${sentTimeStr}` : "문자 보내기"}
+      >
+        <MessageSquare size={14} />
+        {isSent && (
+          <div className="absolute -top-1.5 -right-1.5 bg-white rounded-full">
+            <CheckCircle2 size={14} className="text-green-500" fill="white" />
+          </div>
+        )}
+      </button>
+    );
+  };
 
   const callStatusApi = async (applicationId: string, status: string) => {
     const token = await auth.currentUser?.getIdToken();
@@ -1469,21 +1518,7 @@ ${chatLink}
                                                 >
                                                   <StickyNote size={14} fill={app.adminMemo ? "currentColor" : "none"} />
                                                 </button>
-                                                <button
-                                                  onClick={() => {
-                                                    const _name = app.name || '참가자';
-                                                    const _gender = app.gender === 'male' ? '남' : '녀';
-                                                    const _slot = app.slotNumber != null ? String(app.slotNumber) : '?';
-                                                    setSmsTargets([{ phone: app.phone, name: _name, gender: app.gender, slotNumber: app.slotNumber, userId: app.userId }]);
-                                                    setSmsSingleTarget(app);
-                                                    setSmsRecipientLabel(`${app.name}님`);
-                                                    setSmsDefaultMsg(generateSecondGuidanceMsg(app));
-                                                    setSmsModalOpen(true);
-                                                  }}
-                                                  className="p-2 rounded-xl bg-orange-50 text-[#FF6F61] border border-orange-100"
-                                                >
-                                                  <MessageSquare size={14} />
-                                                </button>
+                                                {renderSmsButton(app)}
                                                 <button
                                                   onClick={() => handleCancelSelection(app)}
                                                   className="p-2 rounded-xl bg-slate-50 text-slate-400 border border-slate-200"
@@ -1585,22 +1620,7 @@ ${chatLink}
                                               >
                                                 <StickyNote size={13} fill={app.adminMemo ? "currentColor" : "none"} />
                                               </button>
-                                              <button
-                                                onClick={() => {
-                                                  const _name = app.name || '참가자';
-                                                  const _gender = app.gender === 'male' ? '남' : '녀';
-                                                  const _slot = app.slotNumber != null ? String(app.slotNumber) : '?';
-                                                  setSmsTargets([{ phone: app.phone, name: _name, gender: app.gender, slotNumber: app.slotNumber, userId: app.userId }]);
-                                                  setSmsSingleTarget(app);
-                                                  setSmsRecipientLabel(`${app.name}님`);
-                                                  setSmsDefaultMsg(generateSecondGuidanceMsg(app));
-                                                  setSmsModalOpen(true);
-                                                }}
-                                                className="shrink-0 p-2 rounded-xl bg-white border border-[#FF7E7E]/30 text-[#FF6F61] hover:bg-orange-50 hover:border-[#FF7E7E] transition-all"
-                                                title="문자 보내기"
-                                              >
-                                                <MessageSquare size={13} />
-                                              </button>
+                                              {renderSmsButton(app, true)}
                                               <button
                                                 onClick={() => handleCancelSelection(app)}
                                                 className="shrink-0 px-3 py-1.5 rounded-xl text-[0.7rem] font-black bg-white border border-slate-200 text-slate-500 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all shadow-sm"
@@ -1814,18 +1834,7 @@ ${chatLink}
                                           <button onClick={() => handleOpenMemo(app)} className={`p-2 rounded-xl border transition-all ${app.adminMemo ? "bg-amber-50 text-amber-600 border-amber-200 shadow-sm" : "bg-slate-50 text-slate-400 border-slate-200"}`} title="메모">
                                             <StickyNote size={14} fill={app.adminMemo ? "currentColor" : "none"} />
                                           </button>
-                                          <button onClick={() => {
-                                            const _name = app.name || '참가자';
-                                            const _gender = app.gender === 'male' ? '남' : '녀';
-                                            const _slot = app.slotNumber != null ? String(app.slotNumber) : '?';
-                                            setSmsTargets([{ phone: app.phone, name: _name, gender: app.gender, slotNumber: app.slotNumber, userId: app.userId }]);
-                                            setSmsSingleTarget(app);
-                                            setSmsRecipientLabel(`${app.name}님`);
-                                            setSmsDefaultMsg(generateSecondGuidanceMsg(app));
-                                            setSmsModalOpen(true);
-                                          }} className="p-2 rounded-xl bg-orange-50 text-[#FF6F61] border border-orange-100" title="2차 안내문자 보내기">
-                                            <MessageSquare size={14} />
-                                          </button>
+                                          {renderSmsButton(app)}
                                           <button onClick={() => handleWaitlistDelete(app)} className="p-2 rounded-xl bg-slate-50 text-slate-400 border border-slate-200">
                                             <Trash2 size={14} />
                                           </button>
@@ -1917,22 +1926,7 @@ ${chatLink}
                                         >
                                           <StickyNote size={13} fill={app.adminMemo ? "currentColor" : "none"} />
                                         </button>
-                                        <button
-                                          onClick={() => {
-                                            const _name = app.name || '참가자';
-                                            const _gender = app.gender === 'male' ? '남' : '녀';
-                                            const _slot = app.slotNumber != null ? String(app.slotNumber) : '?';
-                                            setSmsTargets([{ phone: app.phone, name: _name, gender: app.gender, slotNumber: app.slotNumber, userId: app.userId }]);
-                                            setSmsSingleTarget(app);
-                                            setSmsRecipientLabel(`${app.name}님`);
-                                            setSmsDefaultMsg(generateSecondGuidanceMsg(app));
-                                            setSmsModalOpen(true);
-                                          }}
-                                          className="shrink-0 p-2 rounded-xl bg-white border border-[#FF7E7E]/30 text-[#FF6F61] hover:bg-orange-50 hover:border-[#FF7E7E] transition-all"
-                                          title="2차 안내문자 보내기"
-                                        >
-                                          <MessageSquare size={13} />
-                                        </button>
+                                        {renderSmsButton(app, true)}
 
                                         {/* Waitlist Specific Buttons */}
                                         <div className="flex items-center gap-1.5 ml-1 pl-3 border-l border-slate-100">

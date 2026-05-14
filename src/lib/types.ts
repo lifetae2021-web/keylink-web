@@ -131,6 +131,9 @@ export interface Application {
   // 더미 계정 지원: users 컬렉션 없이 application에 직접 저장되는 필드
   birthDate?: string;          // 더미 생년월일 (예: "1994-03-15")
   height?: number;             // 더미 키 (cm)
+
+  // v9.1.6: 2차 안내문자 발송 여부 추적
+  secondSmsSentAt?: Date | any; // Firestore Timestamp 대응
 }
 
 // ─────────────────────────────────────────────
