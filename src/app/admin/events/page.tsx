@@ -306,6 +306,7 @@ export default function EventsPage() {
               adminMemo: d.data().adminMemo,
               displayJob: d.data().displayJob,
               isJobReviewed: d.data().isJobReviewed,
+              attended: d.data().attended ?? false,
             }) as Application,
         );
         list.sort((a, b) => a.appliedAt.getTime() - b.appliedAt.getTime());
@@ -629,6 +630,22 @@ ${user.name || app.name || "참가자"}님은 ${fDate} ${fDay} ${fTime} 소개�
     }
   };
 
+  const handleToggleAttendance = async (app: Application) => {
+    try {
+      console.log('Toggling attendance for:', app.name, 'current status:', app.attended);
+      const { doc, updateDoc } = await import('firebase/firestore');
+      const newStatus = !app.attended;
+      await updateDoc(doc(db, 'applications', app.id), {
+        attended: newStatus,
+        updatedAt: new Date()
+      });
+      toast.success(newStatus ? "출석 완료되었습니다." : "출석이 취소되었습니다.");
+    } catch (e) {
+      console.error('Error toggling attendance:', e);
+      toast.error('출석 상태 변경 중 오류가 발생했습니다.');
+    }
+  };
+
   const getBirthYear = (app: Application) => {
     const user = userMap[app.userId];
     // v8.13.7: birthDate 필드 우선 참조 (신청 관리 페이지와 로직 통일)
@@ -739,6 +756,25 @@ ${chatLink}
     } catch (e: any) {
       toast.error(e.message || "오류가 발생했습니다.");
     }
+  };
+
+  const getDrinkCode = (drinkData: string | string[] | undefined) => {
+    if (!drinkData) return null;
+    const drinks = Array.isArray(drinkData) ? drinkData : [drinkData];
+    if (drinks.length === 0) return null;
+
+    const isHot = drinks.includes('따뜻한 음료');
+    const codes: string[] = [];
+
+    if (drinks.includes('아이스 아메리카노') || drinks.includes('아메리카노')) codes.push('C');
+    if (drinks.includes('복숭아 아이스티') || drinks.includes('아이스티')) codes.push('T');
+    if (drinks.includes('페퍼민트')) codes.push('P');
+    if (drinks.includes('얼그레이')) codes.push('E');
+    if (drinks.includes('카라멜 블랙티') || drinks.includes('캬라멜블랙티') || drinks.includes('카라멜블랙티')) codes.push('B');
+    
+    if (codes.length === 0) return null;
+    
+    return codes.map(code => isHot ? code + 'H' : code).join(', ');
   };
 
 
@@ -907,20 +943,52 @@ ${chatLink}
 
   // 4. 삭제 처리
   const handleDeleteSession = async (id: string, name: string) => {
+    const sessionToDelete = sessions.find(s => s.id === id);
+    if (!sessionToDelete) {
+      toast.error("기수 정보를 찾을 수 없습니다.");
+      return;
+    }
+
     if (
       !window.confirm(
-        `[${name}] 정말 이 기수를 삭제하시겠습니까? 삭제 후에는 복구할 수 없습니다.`,
+        `[${name}] 정말 이 기수를 삭제하시겠습니까?\n삭제 후에는 126기가 125기가 되는 등 이후 기수 번호가 자동으로 앞당겨집니다.`,
       )
     )
       return;
 
     try {
-      const { deleteDoc, doc } = await import("firebase/firestore");
-      await deleteDoc(doc(db, "sessions", id));
-      toast.success("기수가 삭제되었습니다.");
+      const { writeBatch, getDocs, updateDoc } = await import("firebase/firestore");
+      const batch = writeBatch(db);
+
+      // 1. 대상 기수 삭제
+      batch.delete(doc(db, "sessions", id));
+
+      // 2. 이후 기수들 번호 조정 (동일 지역, 더 높은 기수 번호)
+      const q = query(
+        collection(db, "sessions"),
+        where("region", "==", sessionToDelete.region),
+        where("episodeNumber", ">", sessionToDelete.episodeNumber)
+      );
+      const snap = await getDocs(q);
+
+      snap.docs.forEach((d) => {
+        const data = d.data();
+        const newEpisodeNumber = (data.episodeNumber || 0) - 1;
+        const newTitle = `${data.region === "busan" ? "부산" : "창원"} 로테이션 소개팅 ${newEpisodeNumber}기`;
+
+        batch.update(d.ref, {
+          episodeNumber: newEpisodeNumber,
+          title: newTitle,
+          updatedAt: serverTimestamp(),
+        });
+      });
+
+      await batch.commit();
+      toast.success("기수가 삭제되었으며, 이후 기수 번호가 조정되었습니다.");
       if (selectedId === id) setSelectedId(null);
-    } catch (err) {
-      toast.error("삭제 중 오류 발생");
+    } catch (err: any) {
+      console.error(err);
+      toast.error("삭제 및 번호 조정 중 오류 발생: " + err.message);
     }
   };
 
@@ -1387,6 +1455,48 @@ ${chatLink}
                         </div>
                       </div>
 
+                      {/* 출석 및 음료 요약 */}
+                      {participants.length > 0 && (
+                        <div className="flex flex-col sm:flex-row gap-3 px-1 py-1">
+                          <div className="flex items-center gap-3 bg-green-50 px-3 py-1.5 rounded-lg border border-green-100">
+                            <span className="text-[0.7rem] font-bold text-green-700">출석 현황</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-black text-blue-600 bg-white/50 px-1.5 py-0.5 rounded">
+                                남 {participants.filter(a => a.gender === 'male' && a.attended).length}/{participants.filter(a => a.gender === 'male').length}
+                              </span>
+                              <span className="text-xs font-black text-pink-600 bg-white/50 px-1.5 py-0.5 rounded">
+                                여 {participants.filter(a => a.gender === 'female' && a.attended).length}/{participants.filter(a => a.gender === 'female').length}
+                              </span>
+                            </div>
+                          </div>
+                          {(() => {
+                            const drinkCounts = participants.reduce((acc, p) => {
+                              const code = getDrinkCode(p.drink);
+                              if (code) {
+                                code.split(', ').forEach(c => {
+                                  acc[c] = (acc[c] || 0) + 1;
+                                });
+                              }
+                              return acc;
+                            }, {} as Record<string, number>);
+                            
+                            const codes = Object.keys(drinkCounts).sort();
+                            if (codes.length === 0) return null;
+                            
+                            return (
+                              <div className="flex items-center flex-wrap gap-2 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100">
+                                <span className="text-[0.7rem] font-bold text-blue-700 mr-1">음료 요약</span>
+                                {codes.map(c => (
+                                  <span key={c} className="text-xs font-black text-blue-600 bg-white px-2 py-0.5 rounded shadow-sm">
+                                    {c} {drinkCounts[c]}
+                                  </span>
+                                ))}
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      )}
+
                       {/* v8.15.3: 로딩 중일 때 명단이 사라지는 '번쩍' 현상 방지 및 레이아웃 유지 */}
                       {(!applicantsLoading && applicants.length === 0) ? (
                         <div
@@ -1475,11 +1585,11 @@ ${chatLink}
                                               key={`empty-${slotNum}`}
                                               className="flex items-center gap-3 px-5 py-3 bg-slate-50/60"
                                             >
-                                              <span
-                                                className={`text-xs font-black w-8 shrink-0 ${isMaleSection ? "text-blue-400" : "text-pink-400"}`}
-                                              >
-                                                {slotNum}호
-                                              </span>
+                                              <div className="flex flex-col items-center w-8 shrink-0">
+                                                <span className={`text-xs font-black ${isMaleSection ? "text-blue-400" : "text-pink-400"}`}>
+                                                  {slotNum}호
+                                                </span>
+                                              </div>
                                               <span className="text-xs text-slate-300 font-medium">
                                                 미정
                                               </span>
@@ -1500,9 +1610,16 @@ ${chatLink}
                                             {/* Left: Slot & Status */}
                                             <div className="flex items-center justify-between sm:justify-start gap-3">
                                               <div className="flex items-center gap-2">
-                                                <span className={`text-xs font-black w-8 shrink-0 ${isMaleSection ? "text-blue-500" : "text-pink-500"}`}>
-                                                  {slotNum}호
-                                                </span>
+                                                <div className="flex flex-col items-center w-8 shrink-0">
+                                                  <span className={`text-xs font-black ${isMaleSection ? "text-blue-500" : "text-pink-500"}`}>
+                                                    {slotNum}호
+                                                  </span>
+                                                  {getDrinkCode(app.drink) && (
+                                                    <span className="text-[0.6rem] font-black text-blue-600 leading-none mt-0.5">
+                                                      {getDrinkCode(app.drink)}
+                                                    </span>
+                                                  )}
+                                                </div>
                                                 <div className="flex items-center gap-1.5 sm:hidden">
                                                   <span className="text-sm font-bold text-slate-800">{app.name || "-"}</span>
                                                   <span className={`text-[0.65rem] font-bold px-2 py-0.5 rounded-full ${badge.cls}`}>
@@ -1511,6 +1628,13 @@ ${chatLink}
                                                 </div>
                                               </div>
                                               <div className="flex items-center gap-1 sm:hidden">
+                                                <button
+                                                  onClick={() => handleToggleAttendance(app)}
+                                                  className={`p-2 rounded-xl border transition-all ${app.attended ? "bg-emerald-500 text-white border-emerald-500 shadow-md scale-105" : "bg-slate-50 text-slate-400 border-slate-200"}`}
+                                                  title="출석 체크"
+                                                >
+                                                  <UserCheck size={14} fill={app.attended ? "white" : "none"} />
+                                                </button>
                                                 <button
                                                   onClick={() => handleOpenMemo(app)}
                                                   className={`p-2 rounded-xl border transition-all ${app.adminMemo ? "bg-amber-50 text-amber-600 border-amber-200 shadow-sm" : "bg-slate-50 text-slate-400 border-slate-200"}`}
@@ -1542,6 +1666,11 @@ ${chatLink}
                                                 <span className={`text-[0.65rem] font-bold px-2 py-0.5 rounded-full ${badge.cls}`}>
                                                   {badge.label}
                                                 </span>
+                                                {app.attended && (
+                                                  <span className="text-[0.65rem] font-bold px-2 py-0.5 rounded-full bg-emerald-500 text-white shadow-sm">
+                                                    출석 완료
+                                                  </span>
+                                                )}
                                               </div>
                                               <div className="flex flex-col gap-1.5 ml-11 sm:ml-0">
                                                 {/* Row 1: 나이, 직업, 거주지 */}
@@ -1614,6 +1743,12 @@ ${chatLink}
                                             {/* Desktop Right: Actions */}
                                             <div className="hidden sm:flex items-center gap-2">
                                               <button
+                                                onClick={() => handleToggleAttendance(app)}
+                                                className={`shrink-0 px-3 py-1.5 rounded-xl text-[0.7rem] font-black border transition-all shadow-sm ${app.attended ? "bg-emerald-500 border-emerald-500 text-white" : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50"}`}
+                                              >
+                                                {app.attended ? "출석 취소" : "출석 체크"}
+                                              </button>
+                                              <button
                                                 onClick={() => handleOpenMemo(app)}
                                                 className={`shrink-0 p-2 rounded-xl border transition-all ${app.adminMemo ? "bg-amber-50 border-amber-300 text-amber-600 shadow-sm" : "bg-white border-slate-200 text-slate-400 hover:bg-slate-50 hover:border-slate-300"}`}
                                                 title="메모"
@@ -1645,9 +1780,16 @@ ${chatLink}
                                             className={`flex flex-col gap-2 px-4 py-4 sm:px-5 sm:py-3.5 hover:bg-slate-50 transition-colors ${isOverQuota ? "bg-red-50 animate-pulse" : "bg-amber-50/40"}`}
                                           >
                                             <div className="flex items-center gap-3">
-                                              <span className="text-xs font-black w-8 shrink-0 text-amber-500">
-                                                미배정
-                                              </span>
+                                              <div className="flex flex-col items-center w-8 shrink-0">
+                                                <span className="text-xs font-black text-amber-500">
+                                                  미배정
+                                                </span>
+                                                {getDrinkCode(app.drink) && (
+                                                  <span className="text-[0.6rem] font-black text-blue-600 leading-none mt-0.5">
+                                                    {getDrinkCode(app.drink)}
+                                                  </span>
+                                                )}
+                                              </div>
                                               <div className="flex-1 min-w-0">
                                                 <div className="flex items-center justify-between sm:justify-start gap-2 mb-0.5">
                                                   <span className="text-sm font-bold text-slate-800">
@@ -1712,6 +1854,12 @@ ${chatLink}
                                                 </>
                                               )}
                                               <div className="flex items-center gap-2">
+                                                <button
+                                                  onClick={() => handleToggleAttendance(app)}
+                                                  className={`px-2 py-1 rounded-lg text-[0.65rem] font-black border transition-all ${app.attended ? "bg-emerald-500 text-white border-emerald-500" : "bg-white text-slate-400 border-slate-200"}`}
+                                                >
+                                                  {app.attended ? "출석완료" : "출석체크"}
+                                                </button>
                                                 <button
                                                   onClick={() => handleOpenMemo(app)}
                                                   className={`px-2 py-1 rounded-lg text-[0.65rem] font-black border transition-all ${app.adminMemo ? "bg-amber-50 text-amber-600 border-amber-200" : "bg-white text-slate-400 border-slate-200"}`}

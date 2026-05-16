@@ -134,6 +134,9 @@ export interface Application {
 
   // v9.1.6: 2차 안내문자 발송 여부 추적
   secondSmsSentAt?: Date | any; // Firestore Timestamp 대응
+
+  // v9.2.0: 행사 당일 출석 여부
+  attended?: boolean;
 }
 
 // ─────────────────────────────────────────────

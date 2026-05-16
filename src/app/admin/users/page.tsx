@@ -215,6 +215,7 @@ export default function UsersPage() {
       const matchSearch =
         (u.name || '').toLowerCase().includes(q) ||
         (u.job || '').toLowerCase().includes(q) ||
+        (u.phone || '').toLowerCase().includes(q) ||
         (u.email || '').toLowerCase().includes(q);
       
       const isDummy = u.isDummy === true || u.id?.startsWith('dummy') || u.id?.startsWith('user_m_') || u.id?.startsWith('user_f_');
@@ -489,7 +490,7 @@ export default function UsersPage() {
           <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
           <input
             type="text"
-            placeholder="회원 이름, 직업 등으로 검색..."
+            placeholder="이름, 직업, 연락처 검색..."
             value={search}
             onChange={e => setSearch(e.target.value)}
             style={{
