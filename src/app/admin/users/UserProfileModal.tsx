@@ -57,7 +57,7 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose }:
   // Sync state with props when modal opens or user changes
   useEffect(() => {
     if (!initialUser || !isOpen) return;
-    
+
     // v8.15.1: 프로필 모달 오픈 시 최신 데이터 실시간 조회 (캐시 문제 해결)
     const userId = initialUser.id || initialUser.uid;
     if (!userId) {
@@ -126,11 +126,11 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose }:
     try {
       const newStatus = !user.isVerified;
       const userRef = doc(db, 'users', user.uid || user.id);
-      const updateData: any = { 
+      const updateData: any = {
         isVerified: newStatus,
-        status: newStatus ? 'verified' : 'rejected' 
+        status: newStatus ? 'verified' : 'rejected'
       };
-      
+
       await updateDoc(userRef, updateData);
       setUser((prev: any) => ({ ...prev, ...updateData }));
       toast.success(newStatus ? '재직 인증 및 승인이 완료되었습니다.' : '반려 처리되었습니다.');
@@ -148,7 +148,7 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose }:
     try {
       const userRef = doc(db, 'users', user.uid || user.id);
       const updateData: any = { admin_job: latestWorkplace, job: latestWorkplace, isJobReviewed: true };
-      
+
       await updateDoc(userRef, updateData);
       setUser((prev: any) => ({ ...prev, ...updateData }));
       toast.success('유저가 입력한 직업이 마스터 정보로 반영되고 승인되었습니다.');
@@ -206,7 +206,7 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose }:
             </div>
 
             <div className="overflow-y-auto kl-scrollbar pb-12">
-              
+
               {/* Profile Image & Name Section */}
               <div className="relative h-96 bg-slate-100 border-b border-slate-100 overflow-hidden">
                 {currentPhoto ? (
@@ -248,7 +248,7 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose }:
                     </div>
                   </>
                 )}
-                
+
               </div>
 
               {/* 이름 / 기본 정보 */}
@@ -266,14 +266,14 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose }:
                     {user.gender === 'male' ? '남성' : '여성'}
                   </span>
                   <span className="text-slate-400">/</span>
-                  <span className="text-slate-700">{user.birthDate ? `${user.birthDate.includes('-') ? user.birthDate.slice(2,4) : user.birthDate.slice(0,2)}년생` : '??'}</span>
+                  <span className="text-slate-700">{user.birthDate ? `${user.birthDate.includes('-') ? user.birthDate.slice(2, 4) : user.birthDate.slice(0, 2)}년생` : '??'}</span>
                 </div>
                 <DetailRow label="거주지" value={user.residence || user.location} icon={MapPin} />
               </div>
 
               {/* Detail Content */}
               <div className="px-8 pt-8 space-y-10">
-                
+
                 {/* v8.8.8: Audit Logs & Master Data Reflection */}
                 {(!user.isJobReviewed && user.user_logs && user.user_logs.length > 0) && (
                   <div className="bg-rose-50 border border-rose-200 rounded-3xl p-5 mb-6">
@@ -298,8 +298,8 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose }:
                         </div>
                       ))}
                     </div>
-                    
-                    <button 
+
+                    <button
                       onClick={() => handleApproveWorkplace(user.user_logs[user.user_logs.length - 1].newValue)}
                       disabled={isUpdating}
                       className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-black text-[0.85rem] transition-all shadow-md shadow-rose-200"
@@ -327,8 +327,8 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose }:
                     <DetailRow label="몸무게" value={user.weight ? `${user.weight}kg` : null} icon={Weight} />
                   </div>
                   <DetailRow label="회사명/직무" value={user.workplace || user.jobRole || user.job} icon={Briefcase} />
-                  <DetailRow label="출생" value={user.birthDate ? `${user.birthDate.includes('-') ? user.birthDate.slice(2,4) : user.birthDate.slice(0,2)}년생` : null} icon={Calendar} />
-                  
+                  <DetailRow label="출생" value={user.birthDate ? `${user.birthDate.includes('-') ? user.birthDate.slice(2, 4) : user.birthDate.slice(0, 2)}년생` : null} icon={Calendar} />
+
                   {/* v7.8.0 재직 증명 확인 섹션 */}
                   <div className="flex items-center justify-between py-4 border-b border-slate-50">
                     <div className="flex items-center">
@@ -349,11 +349,10 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose }:
                     <button
                       onClick={handleToggleVerify}
                       disabled={isUpdating}
-                      className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
-                        user.isVerified 
-                          ? 'bg-rose-50 text-rose-500 hover:bg-rose-100' 
+                      className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${user.isVerified
+                          ? 'bg-rose-50 text-rose-500 hover:bg-rose-100'
                           : 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-md shadow-emerald-200'
-                      }`}
+                        }`}
                     >
                       {isUpdating ? '처리 중...' : user.isVerified ? '반려' : '인증 승인'}
                     </button>

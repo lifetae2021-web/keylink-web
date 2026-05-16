@@ -189,15 +189,6 @@ export default function SocialProfilePage() {
           background: '#FFFFFF', border: '1px solid var(--color-border)',
           borderRadius: '24px', padding: '48px 32px', boxShadow: '0 8px 32px rgba(0,0,0,0.03)'
         }}>
-          {/* Header */}
-          <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-            <h1 style={{ fontSize: '1.8rem', fontWeight: '900', color: '#111', letterSpacing: '-0.02em' }}>
-              {user?.uid.startsWith('kakao_') ? '카카오 회원가입' : '구글 회원가입'}
-            </h1>
-          </div>
-
-          <div style={{ height: '1px', background: '#f0f0f0', margin: '32px 0' }} />
-
           <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
             {/* 1. 가입 방식 표시 */}
             {isKakao ? (

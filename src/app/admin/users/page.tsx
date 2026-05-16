@@ -10,7 +10,7 @@ import {
 import toast from 'react-hot-toast';
 import { auth, db } from '@/lib/firebase';
 import {
-  collection, onSnapshot, doc, updateDoc, query, orderBy, Timestamp, serverTimestamp, getDocs, where
+  collection, onSnapshot, doc, updateDoc, deleteDoc, query, orderBy, Timestamp, serverTimestamp, getDocs, where
 } from 'firebase/firestore';
 import { format } from 'date-fns';
 import UserProfileModal from './UserProfileModal';
@@ -86,6 +86,8 @@ export default function UsersPage() {
   const [discountValue, setDiscountValue] = useState('');
   const [validityPeriod, setValidityPeriod] = useState<number | 'unlimited'>(1);
   const [isSendingCoupon, setIsSendingCoupon] = useState(false);
+  const [couponMap, setCouponMap] = useState<Record<string, any[]>>({});
+  const [selectedCouponUser, setSelectedCouponUser] = useState<any | null>(null);
 
   const handleSendCoupon = async () => {
     const finalCouponTitle = couponTitle === '직접 입력' ? customCouponTitle : couponTitle;
@@ -108,6 +110,10 @@ export default function UsersPage() {
       await addDoc(coll(userRef, 'coupons'), newCoupon);
       
       toast.success(`${couponTarget.name} 회원에게 쿠폰이 발송되었습니다.`);
+      setCouponMap(prev => ({
+        ...prev,
+        [couponTarget.id]: [...(prev[couponTarget.id] || []), newCoupon]
+      }));
       setCouponTarget(null);
       setCouponTitle('웰컴 가입 축하 쿠폰');
       setCustomCouponTitle('');
@@ -116,6 +122,21 @@ export default function UsersPage() {
       toast.error('쿠폰 발송 중 오류가 발생했습니다.');
     } finally {
       setIsSendingCoupon(false);
+    }
+  };
+
+  const handleDeleteCoupon = async (userId: string, couponId: string) => {
+    if (!window.confirm('정말로 이 쿠폰을 삭제하시겠습니까? 발급 내역에서 완전히 제거됩니다.')) return;
+    try {
+      await deleteDoc(doc(db, 'users', userId, 'coupons', couponId));
+      setCouponMap(prev => ({
+        ...prev,
+        [userId]: (prev[userId] || []).filter(c => c.id !== couponId)
+      }));
+      toast.success('쿠폰이 삭제되었습니다.');
+    } catch (e) {
+      console.error(e);
+      toast.error('쿠폰 삭제 중 오류가 발생했습니다.');
     }
   };
 
@@ -255,6 +276,36 @@ export default function UsersPage() {
     const start = (currentPage - 1) * pageSize;
     return filtered.slice(start, start + pageSize);
   }, [filtered, currentPage, pageSize]);
+
+  // v9.0: Fetch coupons for currently visible items
+  useEffect(() => {
+    const fetchCouponsForPage = async () => {
+      const newCouponMap = { ...couponMap };
+      let updated = false;
+
+      await Promise.all(
+        pagedItems.map(async (u) => {
+          if (!newCouponMap[u.id]) {
+            try {
+              const snap = await getDocs(collection(db, 'users', u.id, 'coupons'));
+              newCouponMap[u.id] = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+              updated = true;
+            } catch (e) {
+              console.error(`Error fetching coupons for ${u.id}:`, e);
+            }
+          }
+        })
+      );
+
+      if (updated) {
+        setCouponMap(newCouponMap);
+      }
+    };
+
+    if (pagedItems.length > 0) {
+      fetchCouponsForPage();
+    }
+  }, [pagedItems]);
 
   const totalPages = Math.ceil(filtered.length / pageSize);
 
@@ -719,19 +770,41 @@ export default function UsersPage() {
 
                         {/* 활동 지표 */}
                         <td style={{ padding: '0 20px', verticalAlign: 'middle' }}>
-                          <div className="flex items-center justify-center gap-2">
-                            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-sky-50 border border-sky-100 shadow-sm">
-                              <span className="text-sky-600 text-[10px] font-black">T</span>
-                              <span className="text-sky-700 text-[11px] font-black">{u.participationCount || 0}</span>
+                          <div className="flex flex-col gap-1.5 items-center justify-center">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-sky-50 border border-sky-100 shadow-sm">
+                                <span className="text-sky-600 text-[10px] font-black">T</span>
+                                <span className="text-sky-700 text-[11px] font-black">{u.participationCount || 0}</span>
+                              </div>
+                              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-100 shadow-sm">
+                                <span className="text-emerald-600 text-[10px] font-black">M</span>
+                                <span className="text-emerald-700 text-[11px] font-black">{u.matchCount || 0}</span>
+                              </div>
+                              <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border shadow-sm ${u.noShowCount > 0 ? 'bg-rose-50 border-rose-100' : 'bg-slate-50 border-slate-100'}`}>
+                                <span className={`${u.noShowCount > 0 ? 'text-rose-600' : 'text-slate-300'} text-[10px] font-black`}>N</span>
+                                <span className={`${u.noShowCount > 0 ? 'text-rose-700' : 'text-slate-300'} text-[11px] font-black`}>{u.noShowCount || 0}</span>
+                              </div>
                             </div>
-                            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-100 shadow-sm">
-                              <span className="text-emerald-600 text-[10px] font-black">M</span>
-                              <span className="text-emerald-700 text-[11px] font-black">{u.matchCount || 0}</span>
-                            </div>
-                            <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border shadow-sm ${u.noShowCount > 0 ? 'bg-rose-50 border-rose-100' : 'bg-slate-50 border-slate-100'}`}>
-                              <span className={`${u.noShowCount > 0 ? 'text-rose-600' : 'text-slate-300'} text-[10px] font-black`}>N</span>
-                              <span className={`${u.noShowCount > 0 ? 'text-rose-700' : 'text-slate-300'} text-[11px] font-black`}>{u.noShowCount || 0}</span>
-                            </div>
+                            {(() => {
+                              const userCoupons = couponMap[u.id] || [];
+                              const activeCoupons = userCoupons.filter(c => {
+                                if (c.isUsed) return false;
+                                if (c.validityMonths === 'unlimited') return true;
+                                const createdDate = c.createdAt?.toDate ? c.createdAt.toDate() : new Date(c.createdAt);
+                                const expiryDate = new Date(createdDate);
+                                expiryDate.setMonth(expiryDate.getMonth() + c.validityMonths);
+                                return new Date() < expiryDate;
+                              });
+                              if (activeCoupons.length > 0) {
+                                return (
+                                  <div onClick={() => setSelectedCouponUser(u)} className="flex items-center gap-1 px-2 py-0.5 rounded border border-blue-200 bg-blue-50 w-fit cursor-pointer hover:bg-blue-100 transition-colors" title="사용 가능한 보유 쿠폰 수">
+                                    <Ticket size={10} className="text-blue-500" />
+                                    <span className="text-[10px] font-black text-blue-600">{activeCoupons.length}</span>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            })()}
                           </div>
                         </td>
 
@@ -877,7 +950,7 @@ export default function UsersPage() {
 
                     {/* Middle Row: Metrics & Job Review */}
                     <div className="flex items-center justify-between bg-slate-50/80 rounded-xl p-3">
-                      <div className="flex items-center gap-3">
+                      <div className="flex flex-wrap items-center gap-3">
                         <div className="flex items-center gap-1">
                           <span className="text-sky-600 text-[9px] font-black">T</span>
                           <span className="text-slate-700 text-[0.8rem] font-extrabold">{u.participationCount || 0}</span>
@@ -890,6 +963,26 @@ export default function UsersPage() {
                           <span className={`${u.noShowCount > 0 ? 'text-rose-600' : 'text-slate-300'} text-[9px] font-black`}>N</span>
                           <span className={`${u.noShowCount > 0 ? 'text-rose-700' : 'text-slate-400'} text-[0.8rem] font-extrabold`}>{u.noShowCount || 0}</span>
                         </div>
+                        {(() => {
+                          const userCoupons = couponMap[u.id] || [];
+                          const activeCoupons = userCoupons.filter(c => {
+                            if (c.isUsed) return false;
+                            if (c.validityMonths === 'unlimited') return true;
+                            const createdDate = c.createdAt?.toDate ? c.createdAt.toDate() : new Date(c.createdAt);
+                            const expiryDate = new Date(createdDate);
+                            expiryDate.setMonth(expiryDate.getMonth() + c.validityMonths);
+                            return new Date() < expiryDate;
+                          });
+                          if (activeCoupons.length > 0) {
+                            return (
+                              <div onClick={() => setSelectedCouponUser(u)} className="flex items-center gap-1 cursor-pointer hover:bg-slate-100 p-1 -ml-1 rounded transition-colors" title="사용 가능한 보유 쿠폰 수">
+                                <Ticket size={12} className="text-blue-500" />
+                                <span className="text-blue-600 text-[0.8rem] font-extrabold">{activeCoupons.length}</span>
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
                       </div>
                       <label className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all ${u.isJobReviewed ? 'bg-blue-100 border-blue-200 text-blue-700' : 'bg-white border-slate-200 text-slate-400 shadow-sm'}`}>
                         <input
@@ -1182,7 +1275,11 @@ export default function UsersPage() {
                 <label className="block text-xs font-bold text-slate-500 mb-2">유효기간 설정</label>
                 <div className="flex flex-wrap gap-2">
                   {[1, 3, 6, 12, 'unlimited'].map((v) => (
-                    <label key={v} className="flex items-center gap-1.5 cursor-pointer group">
+                    <label
+                      key={v}
+                      onClick={() => setValidityPeriod(v as any)}
+                      className="flex items-center gap-1.5 cursor-pointer group"
+                    >
                       <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors ${validityPeriod === v ? 'border-blue-500' : 'border-slate-300 group-hover:border-blue-400'}`}>
                         {validityPeriod === v && <div className="w-2 h-2 rounded-full bg-blue-500" />}
                       </div>
@@ -1211,6 +1308,112 @@ export default function UsersPage() {
               >
                 {isSendingCoupon ? <><Loader2 size={16} className="animate-spin" /> 발송 중...</> : '발송하기'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 보유 쿠폰 현황 모달 */}
+      {selectedCouponUser && (
+        <div
+          onClick={() => setSelectedCouponUser(null)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ background: '#fff', borderRadius: '24px', width: '100%', maxWidth: '420px', padding: '32px' }}
+            className="shadow-2xl animate-in zoom-in-95 duration-200"
+          >
+            <div className="flex justify-between items-start mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-500">
+                  <Ticket size={20} />
+                </div>
+                <div>
+                  <h2 className="text-lg font-black text-slate-900 leading-tight">보유 쿠폰 내역</h2>
+                  <p className="text-xs font-bold text-slate-400 mt-0.5">{selectedCouponUser.name} 회원</p>
+                </div>
+              </div>
+              <button onClick={() => setSelectedCouponUser(null)} className="p-2 text-slate-400 hover:bg-slate-100 rounded-full transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="max-h-[60vh] overflow-y-auto kl-scrollbar pr-2 space-y-3">
+              {(() => {
+                const coupons = [...(couponMap[selectedCouponUser.id] || [])];
+                if (coupons.length === 0) {
+                  return (
+                    <div className="py-12 flex flex-col items-center justify-center text-center bg-slate-50 rounded-2xl border border-slate-100">
+                      <Ticket size={32} className="text-slate-200 mb-3" />
+                      <p className="text-sm font-bold text-slate-400">보유한 쿠폰이 없습니다.</p>
+                    </div>
+                  );
+                }
+
+                coupons.sort((a, b) => {
+                  const aTime = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : new Date(a.createdAt).getTime();
+                  const bTime = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : new Date(b.createdAt).getTime();
+                  return bTime - aTime;
+                });
+
+                return coupons.map(coupon => {
+                  const createdDate = coupon.createdAt?.toDate ? coupon.createdAt.toDate() : new Date(coupon.createdAt);
+                  const expiryDate = new Date(createdDate);
+                  if (coupon.validityMonths !== 'unlimited') {
+                    expiryDate.setMonth(expiryDate.getMonth() + coupon.validityMonths);
+                  }
+                  
+                  const isExpired = coupon.validityMonths !== 'unlimited' && new Date() > expiryDate;
+                  const isUsable = !coupon.isUsed && !isExpired;
+
+                  return (
+                    <div 
+                      key={coupon.id} 
+                      className={`p-4 rounded-2xl border flex items-center justify-between transition-all ${
+                        coupon.isUsed ? 'bg-slate-50 border-slate-200 opacity-60' :
+                        isExpired ? 'bg-rose-50 border-rose-100 opacity-60' :
+                        'bg-white border-blue-100 shadow-sm'
+                      }`}
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center gap-2">
+                            <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                              coupon.isUsed ? 'bg-slate-200 text-slate-500' :
+                              isExpired ? 'bg-rose-200 text-rose-600' :
+                              'bg-blue-100 text-blue-600'
+                            }`}>
+                              {coupon.isUsed ? '사용 완료' : isExpired ? '기한 만료' : '사용 가능'}
+                            </span>
+                            <span className="text-[0.85rem] font-bold text-slate-800">{coupon.title}</span>
+                          </div>
+                          <button
+                            onClick={() => handleDeleteCoupon(selectedCouponUser.id, coupon.id)}
+                            className="p-1.5 rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-all"
+                            title="쿠폰 삭제"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                        <div className="flex items-center flex-nowrap gap-3 text-[11px] font-bold mt-2 whitespace-nowrap overflow-x-auto kl-scrollbar pb-1">
+                          <span className="text-blue-600 shrink-0">
+                            {coupon.type === 'percent' ? `${coupon.value}% 할인` : `₩${coupon.value.toLocaleString()} 할인`}
+                          </span>
+                          <span className="text-slate-300 shrink-0">|</span>
+                          <span className="text-slate-500 shrink-0">
+                            {format(createdDate, 'yyyy.MM.dd')} 발급
+                          </span>
+                          <span className="text-slate-300 shrink-0">|</span>
+                          <span className={`${isExpired ? 'text-rose-500' : 'text-slate-500'} shrink-0`}>
+                            {coupon.validityMonths === 'unlimited' ? '무제한' : `${format(expiryDate, 'yyyy.MM.dd')} 까지`}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
             </div>
           </div>
         </div>
