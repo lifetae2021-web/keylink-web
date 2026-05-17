@@ -2204,7 +2204,7 @@ ${chatLink}
                                                   </span>
                                                 )
                                               ) : (
-                                                <span className="truncate max-w-[120px] sm:max-w-[100px]">{app.displayJob || app.job || "-"}</span>
+                                                <span className="truncate max-w-[120px] sm:max-w-[100px]">{getEffectiveJob(app)}</span>
                                               )}
                                             </span>
                                             <span className="text-slate-300">·</span>
