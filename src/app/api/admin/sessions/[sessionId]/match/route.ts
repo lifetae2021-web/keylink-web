@@ -32,7 +32,8 @@ export async function POST(
     
     // Check for admin role in Firestore
     const userDoc = await adminDb.collection('users').doc(decodedToken.uid).get();
-    if (!userDoc.exists || userDoc.data()?.role !== 'admin') {
+    const callerRole = userDoc.data()?.role;
+    if (!userDoc.exists || (callerRole !== 'admin' && callerRole !== 'super_admin')) {
       return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
     }
 

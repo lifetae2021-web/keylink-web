@@ -48,7 +48,8 @@ export default function MatchingAdminPage() {
     const unsub = onAuthStateChanged(auth, async (user) => {
       if (!user) { router.push('/admin/login'); return; }
       const snap = await getDoc(doc(db, 'users', user.uid));
-      if (!snap.exists() || snap.data().role !== 'admin') { router.push('/'); return; }
+      const callerRole = snap.data()?.role;
+      if (!snap.exists() || (callerRole !== 'admin' && callerRole !== 'super_admin')) { router.push('/'); return; }
       loadData();
     });
     return () => unsub();

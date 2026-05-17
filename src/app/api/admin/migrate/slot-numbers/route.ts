@@ -14,7 +14,8 @@ export async function POST(req: NextRequest) {
     const token = authHeader.split('Bearer ')[1];
     const decoded = await adminAuth.verifyIdToken(token);
     const userSnap = await adminDb.doc(`users/${decoded.uid}`).get();
-    if (!userSnap.exists || userSnap.data()?.role !== 'admin') {
+    const callerRole = userSnap.data()?.role;
+    if (!userSnap.exists || (callerRole !== 'admin' && callerRole !== 'super_admin')) {
       return NextResponse.json({ error: '관리자 권한이 없습니다.' }, { status: 403 });
     }
 

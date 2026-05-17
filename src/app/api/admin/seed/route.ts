@@ -14,7 +14,8 @@ export async function POST(req: Request) {
     
     // Admin check
     const userDoc = await adminDb.collection('users').doc(decodedToken.uid).get();
-    if (userDoc.data()?.role !== 'admin') {
+    const callerRole = userDoc.data()?.role;
+    if (callerRole !== 'admin' && callerRole !== 'super_admin') {
       return NextResponse.json({ error: 'Admin only' }, { status: 403 });
     }
 

@@ -66,7 +66,8 @@ export async function GET(req: NextRequest) {
     const { firebaseUid, isNewUser, existingData } = await getOrCreateFirebaseUser(kakaoId, nickname);
 
     if (isAdmin) {
-      if (isNewUser || existingData?.role !== 'admin') {
+      const r = existingData?.role;
+      if (isNewUser || (r !== 'admin' && r !== 'super_admin')) {
         return NextResponse.redirect(`${origin}/login?error=not_admin`);
       }
     }
@@ -94,7 +95,8 @@ export async function POST(req: NextRequest) {
     const { firebaseUid, isNewUser, existingData } = await getOrCreateFirebaseUser(kakaoId, nickname);
 
     if (isAdmin) {
-      if (isNewUser || existingData?.role !== 'admin') {
+      const r = existingData?.role;
+      if (isNewUser || (r !== 'admin' && r !== 'super_admin')) {
         return NextResponse.json({ error: '관리자 권한이 없는 계정입니다.' }, { status: 403 });
       }
     }
