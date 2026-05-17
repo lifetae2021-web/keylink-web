@@ -3053,8 +3053,18 @@ ${chatLink}
                 {/* Date & Time */}
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">
-                      행사 일자
+                    <label className="flex items-center justify-between text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">
+                      <span>행사 일자</span>
+                      {formData.eventDate && (() => {
+                        const [y, m, d] = formData.eventDate.split('-');
+                        if (!y || !m || !d) return null;
+                        const dateObj = new Date(Number(y), Number(m) - 1, Number(d));
+                        const dayNames = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'];
+                        const dayColor = dateObj.getDay() === 0 ? 'text-rose-500' : dateObj.getDay() === 6 ? 'text-sky-500' : 'text-slate-400';
+                        return <span className={`text-[11px] font-black px-1.5 py-0.5 rounded-md bg-slate-50 border border-slate-100 ${dayColor}`}>
+                          {dayNames[dateObj.getDay()]}
+                        </span>;
+                      })()}
                     </label>
                     <input
                       type="date"
