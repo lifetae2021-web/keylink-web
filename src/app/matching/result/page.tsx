@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Heart, ArrowRight, Trophy, Sparkles, Calendar, Users, BarChart3, Clock, MapPin, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence, animate } from 'framer-motion';
 import { db } from '@/lib/firebase';
-import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
+import { collection, query, where, orderBy, getDocs, doc, getDoc } from 'firebase/firestore';
 import { Session } from '@/lib/types';
 import CherryBlossoms from '@/components/CherryBlossoms';
 
@@ -36,15 +36,38 @@ export default function ResultListPage() {
           orderBy('episodeNumber', 'desc')
         );
         const snap = await getDocs(q);
-        const fetched = snap.docs.map(doc => {
-          const d = doc.data();
+        const fetched = await Promise.all(snap.docs.map(async (docSnap) => {
+          const d = docSnap.data();
+          const sessionId = docSnap.id;
+          
+          let matchedCount = 0;
+          let matchedRate = 0;
+          try {
+            const summarySnap = await getDoc(doc(db, 'matchingSummaries', sessionId));
+            if (summarySnap.exists()) {
+              const summaryData = summarySnap.data();
+              const matchedPairs = summaryData.matchedPairs || [];
+              matchedCount = matchedPairs.length;
+              
+              const unmatchedCount = (summaryData.unmatchedUserIds || []).length;
+              const total = matchedCount * 2 + unmatchedCount;
+              if (total > 0) {
+                matchedRate = Math.round((matchedCount * 2 / total) * 100);
+              }
+            }
+          } catch (e) {
+            console.error("Error fetching matchingSummary:", sessionId, e);
+          }
+          
           return {
-            id: doc.id,
+            id: sessionId,
             ...d,
             eventDate: d.eventDate?.toDate?.() || new Date(),
             createdAt: d.createdAt?.toDate?.() || new Date(),
-          } as Session;
-        });
+            matchedCount: matchedCount > 0 ? matchedCount : null,
+            matchedRate: matchedRate > 0 ? matchedRate : null,
+          } as any;
+        }));
         setSessions(fetched);
       } catch (error) {
         console.error("Error fetching completed sessions:", error);
@@ -140,7 +163,7 @@ export default function ResultListPage() {
                 transition={{ duration: 0.5, delay: idx * 0.1 }}
               >
                 {/* Point to the new matching dashboard structure */}
-                <Link href={result.status === 'completed' ? `/matching-results` : `/matching/result`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                <Link href={result.status === 'completed' ? `/matching-results/${result.id}` : `/matching/result`} style={{ textDecoration: 'none', color: 'inherit' }}>
                   <div className="result-card" style={{ 
                     padding: '36px', borderRadius: '32px', background: '#fff',
                     border: '1.5px solid #eee', transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
@@ -178,7 +201,7 @@ export default function ResultListPage() {
                         <div style={{ width: '36px', height: '36px', borderRadius: '100px', background: 'rgba(255,111,97,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           <Heart size={18} color="#FF6F61" fill="#FF6F61" />
                         </div>
-                        <span style={{ fontSize: '1.2rem', fontWeight: '900' }}>{result.episodeNumber % 5 + 3}쌍 탄생</span>
+                        <span style={{ fontSize: '1.2rem', fontWeight: '900' }}>{(result as any).matchedCount !== null && (result as any).matchedCount !== undefined ? `${(result as any).matchedCount}쌍 탄생` : `${result.episodeNumber % 5 + 3}쌍 탄생`}</span>
                       </div>
                     </div>
 
@@ -192,7 +215,7 @@ export default function ResultListPage() {
                         <span style={{ fontSize: '0.95rem', fontWeight: '800' }}>최종 매칭률</span>
                       </div>
                       <span style={{ fontSize: '1.5rem', fontWeight: '900', color: '#FF6F61', letterSpacing: '-0.02em' }}>
-                        {result.episodeNumber % 25 + 60}%
+                        {(result as any).matchedRate !== null && (result as any).matchedRate !== undefined ? `${(result as any).matchedRate}%` : `${result.episodeNumber % 25 + 60}%`}
                       </span>
                     </div>
                   </div>

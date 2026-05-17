@@ -94,6 +94,39 @@ export async function getUserMatchResult(userId: string, sessionId: string): Pro
   const inResults = isMatched || summary.unmatchedUserIds.includes(userId);
   if (!inResults) return null;
 
+  let partnerProfile: any = undefined;
+  if (isMatched && partnerIds[0]) {
+    const partnerId = partnerIds[0];
+    const appQuery = query(
+      collection(db, 'applications'),
+      where('sessionId', '==', sessionId),
+      where('userId', '==', partnerId)
+    );
+    const appSnap = await getDocs(appQuery);
+    if (!appSnap.empty) {
+      const appData = appSnap.docs[0].data();
+      const sessionSnap = await getDoc(doc(db, 'sessions', sessionId));
+      const batchTitle = sessionSnap.exists() ? `${sessionSnap.data().episodeNumber || ''}기` : '';
+      
+      let calculatedAge = '미입력';
+      if (appData.birthDate) {
+        calculatedAge = `${new Date().getFullYear() - new Date(appData.birthDate).getFullYear() + 1}세`;
+      } else if (appData.age) {
+        calculatedAge = `${appData.age}세`;
+      }
+
+      partnerProfile = {
+        number: appData.slotNumber ? String(appData.slotNumber) : '?',
+        gender: appData.gender,
+        age: calculatedAge,
+        job: appData.displayJob || appData.job || '미입력',
+        height: appData.height ? `${appData.height}cm` : '미입력',
+        residence: appData.residence || '미입력',
+        batch: batchTitle || '알 수 없음',
+      };
+    }
+  }
+
   return {
     id: sessionId,
     sessionId,
@@ -101,6 +134,7 @@ export async function getUserMatchResult(userId: string, sessionId: string): Pro
     matched: isMatched,
     partnerId: partnerIds[0] ?? null,
     partnerIds,
+    partnerProfile,
     receivedVotes: summary.voteCountMap[userId] ?? 0,
     status: summary.status,
     approvedAt: summary.approvedAt?.toDate?.() ?? null,

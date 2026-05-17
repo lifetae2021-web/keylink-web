@@ -13,7 +13,7 @@ import {
   Settings, LogOut, Bell, Menu, X,
   ExternalLink, ChevronDown,
   FileText, Loader2, Timer, ChevronsLeft, ChevronsRight, MessageSquare,
-  UserPlus, ClipboardList, Clock, Zap
+  UserPlus, ClipboardList, Clock, Zap, Lock, Crown
 } from 'lucide-react';
 import Link from 'next/link';
 import { format } from 'date-fns';
@@ -54,7 +54,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [appNotis, setAppNotis] = useState<NotificationItem[]>([]);
   const [privateNotis, setPrivateNotis] = useState<NotificationItem[]>([]);
   const [lastViewedNoti, setLastViewedNoti] = useState<number>(0);
-  const [authState, setAuthState] = useState<'loading' | 'admin' | 'denied'>('loading');
+  const [authState, setAuthState] = useState<'loading' | 'super_admin' | 'admin' | 'denied'>('loading');
+  const isSuperAdmin = authState === 'super_admin';
   const [pendingCount, setPendingCount] = useState(0);
   const notiRef = useRef<HTMLDivElement>(null);
 
@@ -64,15 +65,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { label: '신청 관리',      icon: FileText,        path: '/admin/applications', badge: pendingCount },
     { label: '행사 / 매칭',   icon: Calendar,        path: '/admin/events' },
     { label: '키링크 타이머', icon: Timer,           path: '/admin/timer' },
-    { label: '매출 통계',     icon: TrendingUp,      path: '/admin/revenue' },
+    { label: '매출 통계',     icon: TrendingUp,      path: '/admin/revenue',       superOnly: true },
     { label: 'SMS 템플릿',     icon: MessageSquare,   path: '/admin/sms-templates' },
     { label: '콘텐츠 편집',   icon: FileText,        path: '/admin/cms' },
-    { label: '시스템 설정',   icon: Settings,        path: '/admin/settings' },
+    { label: '시스템 설정',   icon: Settings,        path: '/admin/settings',       superOnly: true },
   ];
 
   // 1. 신청 관리 뱃지 리얼타임 연동 (applied OR selected)
   useEffect(() => {
-    if (authState !== 'admin') return;
+    if (authState !== 'admin' && authState !== 'super_admin') return;
 
     const q = query(
       collection(db, 'applications'),
@@ -90,7 +91,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   // 2. 통합 알림 시스템 (회원, 신청, 매칭 리얼타임 통합)
   useEffect(() => {
-    if (authState !== 'admin') return;
+    if (authState !== 'admin' && authState !== 'super_admin') return;
 
     const saved = localStorage.getItem('kl_admin_noti_viewed');
     if (saved) setLastViewedNoti(Number(saved));
@@ -229,7 +230,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       }
       try {
         const snap = await getDoc(doc(db, 'users', user.uid));
-        if (snap.exists() && snap.data().role === 'admin') {
+        const role = snap.exists() ? snap.data().role : null;
+        if (role === 'super_admin') {
+          setAuthState('super_admin');
+        } else if (role === 'admin') {
           setAuthState('admin');
         } else {
           await auth.signOut();
@@ -332,6 +336,25 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <nav className="flex-1 overflow-y-auto" style={{ padding: '16px 12px' }}>
           {NAV.map(item => {
             const active = pathname === item.path;
+            const locked = (item as any).superOnly && !isSuperAdmin;
+
+            if (locked) {
+              return (
+                <div
+                  key={item.path}
+                  title={collapsed ? item.label : undefined}
+                  className="flex items-center rounded-lg mb-0.5 cursor-not-allowed"
+                  style={{ padding: '0 10px', height: 40, color: '#CBD5E1', background: 'transparent', fontWeight: 500, fontSize: '0.9rem' }}
+                >
+                  <span style={{ width: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <item.icon size={16} />
+                  </span>
+                  {showText && <span className="flex-1 whitespace-nowrap" style={{ marginLeft: 10 }}>{item.label}</span>}
+                  {showText && <Lock size={12} style={{ color: '#CBD5E1', flexShrink: 0 }} />}
+                </div>
+              );
+            }
+
             return (
               <Link
                 key={item.path}
@@ -504,16 +527,24 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             {/* Admin profile */}
             <div className="flex items-center gap-2.5 cursor-pointer" style={{ paddingLeft: 12, borderLeft: '1px solid rgba(255,255,255,0.06)' }}>
               <div
-                className="flex items-center justify-center rounded-full"
-                style={{ width: 34, height: 34, background: '#FF7E7E', color: '#fff', fontWeight: 700, fontSize: '0.85rem', boxShadow: '0 2px 8px rgba(255,126,126,0.3)' }}
+                className="flex items-center justify-center rounded-full relative"
+                style={{
+                  width: 34, height: 34,
+                  background: isSuperAdmin ? 'linear-gradient(135deg, #F59E0B, #D97706)' : '#FF7E7E',
+                  color: '#fff', fontWeight: 700, fontSize: '0.85rem',
+                  boxShadow: isSuperAdmin ? '0 2px 10px rgba(245,158,11,0.4)' : '0 2px 8px rgba(255,126,126,0.3)',
+                  border: isSuperAdmin ? '2px solid #FCD34D' : 'none',
+                }}
               >
-                {auth.currentUser?.email?.[0]?.toUpperCase() ?? 'A'}
+                {isSuperAdmin ? <Crown size={16} /> : (auth.currentUser?.email?.[0]?.toUpperCase() ?? 'A')}
               </div>
               <div className="hidden sm:block">
                 <p style={{ fontSize: '0.8rem', fontWeight: 600, lineHeight: 1.2 }}>
                   {auth.currentUser?.email?.split('@')[0] ?? 'Admin'}
                 </p>
-                <p style={{ fontSize: '0.65rem', color: '#555' }}>Administrator</p>
+                <p style={{ fontSize: '0.65rem', color: isSuperAdmin ? '#D97706' : '#555', fontWeight: isSuperAdmin ? 700 : 400 }}>
+                  {isSuperAdmin ? '👑 최고관리자' : 'Administrator'}
+                </p>
               </div>
               <ChevronDown size={13} style={{ color: '#555' }} />
             </div>

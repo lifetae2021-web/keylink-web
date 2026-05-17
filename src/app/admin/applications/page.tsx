@@ -524,29 +524,40 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                   style={{ minWidth: '130px', height: '36px', paddingLeft: '10px' }}
                 >
                   <option value="all">전체 기수 보기</option>
-                  {[...events].reverse().map(ev => {
-                    const now = new Date();
-                    const eventDate = ev.eventDate?.toDate?.() || new Date();
-                    const twoHoursAfter = new Date(eventDate.getTime() + 2 * 60 * 60 * 1000);
-                    
-                    const totalParticipants = (ev.currentMale || 0) + (ev.currentFemale || 0);
-                    const maxParticipants = (ev.maxMale || 0) + (ev.maxFemale || 0);
-                    const isOver = maxParticipants > 0 && totalParticipants >= maxParticipants;
-                    
-                    let statusLabel = '모집중';
-                    if (now >= twoHoursAfter) statusLabel = '종료';
-                    else if (now >= eventDate) statusLabel = '진행중';
-                    else if (isOver) statusLabel = '마감';
-                    else statusLabel = '모집중';
+                  {[...events]
+                    .sort((a, b) => {
+                      const now = new Date();
+                      const dateA = a.eventDate?.toDate?.() || new Date();
+                      const endedA = a.status === 'completed' || now >= new Date(dateA.getTime() + 2 * 60 * 60 * 1000);
+                      const dateB = b.eventDate?.toDate?.() || new Date();
+                      const endedB = b.status === 'completed' || now >= new Date(dateB.getTime() + 2 * 60 * 60 * 1000);
 
-                    const dateLabel = eventDate ? `(${format(eventDate, 'MM/dd')})` : '';
+                      if (endedA !== endedB) return endedA ? 1 : -1;
+                      return (b.episodeNumber || 0) - (a.episodeNumber || 0);
+                    })
+                    .map(ev => {
+                      const now = new Date();
+                      const eventDate = ev.eventDate?.toDate?.() || new Date();
+                      const twoHoursAfter = new Date(eventDate.getTime() + 2 * 60 * 60 * 1000);
+                      
+                      const totalParticipants = (ev.currentMale || 0) + (ev.currentFemale || 0);
+                      const maxParticipants = (ev.maxMale || 0) + (ev.maxFemale || 0);
+                      const isOver = maxParticipants > 0 && totalParticipants >= maxParticipants;
+                      
+                      let statusLabel = '모집중';
+                      if (ev.status === 'completed' || now >= twoHoursAfter) statusLabel = '종료';
+                      else if (now >= eventDate) statusLabel = '진행중';
+                      else if (isOver) statusLabel = '마감';
+                      else statusLabel = '모집중';
 
-                    return (
-                      <option key={ev.id} value={ev.id}>
-                        {ev.region === 'busan' ? '부산' : ev.region === 'changwon' ? '창원' : (ev.region ?? '부산')} {ev.episodeNumber}기 {dateLabel} [{statusLabel}]
-                      </option>
-                    );
-                  })}
+                      const dateLabel = eventDate ? `(${format(eventDate, 'MM/dd')})` : '';
+
+                      return (
+                        <option key={ev.id} value={ev.id}>
+                          {ev.region === 'busan' ? '부산' : ev.region === 'changwon' ? '창원' : (ev.region ?? '부산')} {ev.episodeNumber}기 {dateLabel} [{statusLabel}]
+                        </option>
+                      );
+                    })}
                 </select>
                 <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
                   <ChevronDown size={10} />

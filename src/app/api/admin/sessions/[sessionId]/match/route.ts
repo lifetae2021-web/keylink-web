@@ -47,7 +47,9 @@ export async function POST(
         .get()
     ]);
 
-    const participants: { id: string; gender: string }[] = appsSnap.docs.map((doc: FirebaseFirestore.QueryDocumentSnapshot) => ({ id: doc.data().userId, gender: doc.data().gender }));
+    const participants: { id: string; gender: string }[] = appsSnap.docs
+      .filter((doc: FirebaseFirestore.QueryDocumentSnapshot) => doc.data().attended === true)
+      .map((doc: FirebaseFirestore.QueryDocumentSnapshot) => ({ id: doc.data().userId, gender: doc.data().gender }));
     const votes: Vote[] = votesSnap.docs.map((doc: FirebaseFirestore.QueryDocumentSnapshot) => doc.data() as Vote);
 
     if (participants.length === 0 || votes.length === 0) {

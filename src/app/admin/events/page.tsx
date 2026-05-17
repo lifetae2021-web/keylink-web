@@ -29,6 +29,7 @@ import {
   Trophy,
   UserX,
   StickyNote,
+  Pencil,
 } from "lucide-react";
 import { auth, db } from "@/lib/firebase";
 import {
@@ -42,6 +43,9 @@ import {
   where,
   doc,
   getDoc,
+  setDoc,
+  deleteDoc,
+  Timestamp,
 } from "firebase/firestore";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
@@ -113,6 +117,14 @@ export default function EventsPage() {
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [reviewList, setReviewList] = useState<{ name: string; gender: string; content: string; slotNumber: number }[]>([]);
   const [reviewsLoading, setReviewsLoading] = useState(false);
+
+  // 대리 투표 모달 상태
+  const [proxyVoteModalOpen, setProxyVoteModalOpen] = useState(false);
+  const [proxyVoteTarget, setProxyVoteTarget] = useState<Application | null>(null);
+  const [proxyVoteLoading, setProxyVoteLoading] = useState(false);
+  const [proxyVoteChoices, setProxyVoteChoices] = useState({ priority1: '', priority2: '', priority3: '' });
+  const [existingProxyVote, setExistingProxyVote] = useState<any | null>(null);
+  const [proxyVoteCheckLoading, setProxyVoteCheckLoading] = useState(false);
 
   // v9.1.2: 단일 발송 시 대상 참가자 정보 (금액 표시 연동용)
   const [smsSingleTarget, setSmsSingleTarget] = useState<Application | null>(null);
@@ -633,9 +645,9 @@ ${user.name || app.name || "참가자"}님은 ${fDate} ${fDay} ${fTime} 소개�
   const handleToggleAttendance = async (app: Application) => {
     try {
       console.log('Toggling attendance for:', app.name, 'current status:', app.attended);
-      const { doc, updateDoc } = await import('firebase/firestore');
+      const { doc: docRef, updateDoc } = await import('firebase/firestore');
       const newStatus = !app.attended;
-      await updateDoc(doc(db, 'applications', app.id), {
+      await updateDoc(docRef(db, 'applications', app.id), {
         attended: newStatus,
         updatedAt: new Date()
       });
@@ -643,6 +655,92 @@ ${user.name || app.name || "참가자"}님은 ${fDate} ${fDay} ${fTime} 소개�
     } catch (e) {
       console.error('Error toggling attendance:', e);
       toast.error('출석 상태 변경 중 오류가 발생했습니다.');
+    }
+  };
+
+  const handleOpenProxyVote = async (app: Application) => {
+    if (!selectedId) return;
+    setProxyVoteTarget(app);
+    setProxyVoteChoices({ priority1: '', priority2: '', priority3: '' });
+    setExistingProxyVote(null);
+    setProxyVoteModalOpen(true);
+    setProxyVoteCheckLoading(true);
+    try {
+      const { getDocs: gd, query: q, collection: col, where: wh } = await import('firebase/firestore');
+      const snap = await gd(q(col(db, 'votes'), wh('sessionId', '==', selectedId), wh('userId', '==', app.userId)));
+      if (!snap.empty) {
+        const voteData = snap.docs[0].data();
+        setExistingProxyVote({ id: snap.docs[0].id, ...voteData });
+        const choices = voteData.choices || [];
+        setProxyVoteChoices({
+          priority1: choices.find((c: any) => c.priority === 1)?.targetUserId || '',
+          priority2: choices.find((c: any) => c.priority === 2)?.targetUserId || '',
+          priority3: choices.find((c: any) => c.priority === 3)?.targetUserId || '',
+        });
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setProxyVoteCheckLoading(false);
+    }
+  };
+
+  const handleSubmitProxyVote = async () => {
+    if (!proxyVoteTarget || !selectedId) return;
+    if (existingProxyVote) {
+      toast.error('기존 투표를 먼저 삭제해 주세요.');
+      return;
+    }
+    if (!proxyVoteChoices.priority1) {
+      toast.error('최소 1순위는 선택해야 합니다.');
+      return;
+    }
+    setProxyVoteLoading(true);
+    try {
+      const choices: any[] = [];
+      const oppParticipants = participants.filter(p => p.gender !== proxyVoteTarget.gender);
+      const findName = (uid: string) => oppParticipants.find(p => p.userId === uid)?.name || uid;
+      if (proxyVoteChoices.priority1) choices.push({ priority: 1, targetUserId: proxyVoteChoices.priority1, targetUserName: findName(proxyVoteChoices.priority1) });
+      if (proxyVoteChoices.priority2) choices.push({ priority: 2, targetUserId: proxyVoteChoices.priority2, targetUserName: findName(proxyVoteChoices.priority2) });
+      if (proxyVoteChoices.priority3) choices.push({ priority: 3, targetUserId: proxyVoteChoices.priority3, targetUserName: findName(proxyVoteChoices.priority3) });
+
+      const voteId = `${selectedId}_${proxyVoteTarget.userId}`;
+      await setDoc(doc(db, 'votes', voteId), {
+        userId: proxyVoteTarget.userId,
+        sessionId: selectedId,
+        choices,
+        realName: proxyVoteTarget.name,
+        myAlias: proxyVoteTarget.slotNumber ? `${proxyVoteTarget.gender === 'male' ? '키링남' : '키링여'} ${proxyVoteTarget.slotNumber}호` : '',
+        finalCheck: true,
+        disclosureMode: 'public',
+        feedback: '',
+        submittedAt: Timestamp.now(),
+        isProxyVote: true,
+      });
+      toast.success(`[${proxyVoteTarget.name}] 대리 투표가 저장되었습니다.`);
+      setProxyVoteModalOpen(false);
+    } catch (e: any) {
+      console.error(e);
+      toast.error('저장 중 오류가 발생했습니다.');
+    } finally {
+      setProxyVoteLoading(false);
+    }
+  };
+
+  const handleDeleteProxyVote = async () => {
+    if (!existingProxyVote) return;
+    if (!window.confirm('기존 투표를 삭제하시겠습니까? 삭제 후 재입력할 수 있습니다.')) return;
+    setProxyVoteLoading(true);
+    try {
+      await deleteDoc(doc(db, 'votes', existingProxyVote.id));
+      setExistingProxyVote(null);
+      setProxyVoteChoices({ priority1: '', priority2: '', priority3: '' });
+      toast.success('기존 투표가 삭제되었습니다. 이제 재입력하세요.');
+    } catch (e) {
+      console.error(e);
+      toast.error('삭제 중 오류가 발생했습니다.');
+    } finally {
+      setProxyVoteLoading(false);
     }
   };
 
@@ -2517,17 +2615,26 @@ ${chatLink}
                           .sort((a, b) => (a.slotNumber || 0) - (b.slotNumber || 0))
                           .map(p => {
                             const isSubmitted = votingStatusData.submitted.some(s => s.userId === p.userId);
+                            const isAbsent = !p.attended && !isSubmitted;
                             return (
                               <div
                                 key={p.id}
-                                className={`flex items-center justify-between p-3.5 rounded-xl border transition-all duration-300 ${isSubmitted
-                                  ? 'bg-blue-600 border-blue-700 shadow-md shadow-blue-100 scale-[1.02]'
-                                  : 'bg-white border-slate-200'
-                                  }`}
+                                className={`flex items-center justify-between p-3.5 rounded-xl border transition-all duration-300 ${
+                                  isSubmitted
+                                    ? 'bg-blue-600 border-blue-700 shadow-md shadow-blue-100 scale-[1.02]'
+                                    : isAbsent
+                                      ? 'bg-slate-50 border-slate-200/60 opacity-60'
+                                      : 'bg-white border-slate-200'
+                                }`}
                               >
                                 <div className="flex items-center gap-3">
-                                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[0.75rem] font-black shrink-0 ${isSubmitted ? 'bg-blue-500 text-white' : 'bg-blue-50 text-blue-600'
-                                    }`}>
+                                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[0.75rem] font-black shrink-0 ${
+                                    isSubmitted 
+                                      ? 'bg-blue-500 text-white' 
+                                      : isAbsent
+                                        ? 'bg-slate-100 text-slate-400'
+                                        : 'bg-blue-50 text-blue-600'
+                                  }`}>
                                     {p.slotNumber}
                                   </div>
                                   <div className="flex flex-col">
@@ -2536,14 +2643,27 @@ ${chatLink}
                                     </span>
                                   </div>
                                 </div>
-                                {isSubmitted ? (
-                                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 animate-in fade-in zoom-in duration-300">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                                    <span className="text-[0.65rem] font-black text-white">제출완료</span>
-                                  </div>
-                                ) : (
-                                  <span className="text-[0.65rem] font-bold text-slate-300">미제출</span>
-                                )}
+                                <div className="flex items-center gap-1.5">
+                                  {isSubmitted ? (
+                                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 animate-in fade-in zoom-in duration-300">
+                                      <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                                      <span className="text-[0.65rem] font-black text-white">제출완료</span>
+                                    </div>
+                                  ) : isAbsent ? (
+                                    <span className="text-[0.65rem] font-black text-rose-500/80 bg-rose-50 px-2 py-0.5 rounded border border-rose-100">미출석</span>
+                                  ) : (
+                                    <span className="text-[0.65rem] font-bold text-slate-300">미제출</span>
+                                  )}
+                                  {!isAbsent && (
+                                    <button
+                                      onClick={() => { setVotingStatusModalOpen(false); handleOpenProxyVote(p); }}
+                                      className={`p-1.5 rounded-lg transition-all ${isSubmitted ? 'text-white/60 hover:bg-white/20' : 'text-slate-300 hover:text-indigo-500 hover:bg-indigo-50'}`}
+                                      title="투표 입력/수정"
+                                    >
+                                      <Pencil size={13} />
+                                    </button>
+                                  )}
+                                </div>
                               </div>
                             );
                           })}
@@ -2567,17 +2687,26 @@ ${chatLink}
                           .sort((a, b) => (a.slotNumber || 0) - (b.slotNumber || 0))
                           .map(p => {
                             const isSubmitted = votingStatusData.submitted.some(s => s.userId === p.userId);
+                            const isAbsent = !p.attended && !isSubmitted;
                             return (
                               <div
                                 key={p.id}
-                                className={`flex items-center justify-between p-3.5 rounded-xl border transition-all duration-300 ${isSubmitted
-                                  ? 'bg-pink-600 border-pink-700 shadow-md shadow-pink-100 scale-[1.02]'
-                                  : 'bg-white border-slate-200'
-                                  }`}
+                                className={`flex items-center justify-between p-3.5 rounded-xl border transition-all duration-300 ${
+                                  isSubmitted
+                                    ? 'bg-pink-600 border-pink-700 shadow-md shadow-pink-100 scale-[1.02]'
+                                    : isAbsent
+                                      ? 'bg-slate-50 border-slate-200/60 opacity-60'
+                                      : 'bg-white border-slate-200'
+                                }`}
                               >
                                 <div className="flex items-center gap-3">
-                                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[0.75rem] font-black shrink-0 ${isSubmitted ? 'bg-pink-500 text-white' : 'bg-pink-50 text-pink-600'
-                                    }`}>
+                                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[0.75rem] font-black shrink-0 ${
+                                    isSubmitted 
+                                      ? 'bg-pink-500 text-white' 
+                                      : isAbsent
+                                        ? 'bg-slate-100 text-slate-400'
+                                        : 'bg-pink-50 text-pink-600'
+                                  }`}>
                                     {p.slotNumber}
                                   </div>
                                   <div className="flex flex-col">
@@ -2586,14 +2715,27 @@ ${chatLink}
                                     </span>
                                   </div>
                                 </div>
-                                {isSubmitted ? (
-                                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 animate-in fade-in zoom-in duration-300">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                                    <span className="text-[0.65rem] font-black text-white">제출완료</span>
-                                  </div>
-                                ) : (
-                                  <span className="text-[0.65rem] font-bold text-slate-300">미제출</span>
-                                )}
+                                <div className="flex items-center gap-1.5">
+                                  {isSubmitted ? (
+                                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 animate-in fade-in zoom-in duration-300">
+                                      <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                                      <span className="text-[0.65rem] font-black text-white">제출완료</span>
+                                    </div>
+                                  ) : isAbsent ? (
+                                    <span className="text-[0.65rem] font-black text-rose-500/80 bg-rose-50 px-2 py-0.5 rounded border border-rose-100">미출석</span>
+                                  ) : (
+                                    <span className="text-[0.65rem] font-bold text-slate-300">미제출</span>
+                                  )}
+                                  {!isAbsent && (
+                                    <button
+                                      onClick={() => { setVotingStatusModalOpen(false); handleOpenProxyVote(p); }}
+                                      className={`p-1.5 rounded-lg transition-all ${isSubmitted ? 'text-white/60 hover:bg-white/20' : 'text-slate-300 hover:text-indigo-500 hover:bg-indigo-50'}`}
+                                      title="투표 입력/수정"
+                                    >
+                                      <Pencil size={13} />
+                                    </button>
+                                  )}
+                                </div>
                               </div>
                             );
                           })}
@@ -3104,6 +3246,123 @@ ${chatLink}
           </div>
         </div>
       )}
+
+      {/* 대리 투표 입력 모달 */}
+      {proxyVoteModalOpen && proxyVoteTarget && (() => {
+        const oppParticipants = participants
+          .filter(p => p.gender !== proxyVoteTarget.gender)
+          .sort((a, b) => (a.slotNumber || 99) - (b.slotNumber || 99));
+
+        const makeOption = (uid: string, priority: 1 | 2 | 3) => (
+          <select
+            key={priority}
+            value={proxyVoteChoices[`priority${priority}` as keyof typeof proxyVoteChoices]}
+            onChange={e => setProxyVoteChoices(prev => ({ ...prev, [`priority${priority}`]: e.target.value }))}
+            disabled={!!existingProxyVote}
+            className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-700 bg-white focus:ring-2 focus:ring-indigo-400/30 focus:border-indigo-400 outline-none transition-all disabled:bg-slate-50 disabled:text-slate-400"
+          >
+            <option value="">{priority}순위 선택 안 함</option>
+            {oppParticipants.map(p => (
+              <option key={p.userId} value={p.userId}>
+                {p.slotNumber}호 {p.name}
+              </option>
+            ))}
+          </select>
+        );
+
+        return (
+          <div
+            onClick={() => setProxyVoteModalOpen(false)}
+            className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
+          >
+            <div
+              onClick={e => e.stopPropagation()}
+              className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200"
+            >
+              {/* 헤더 */}
+              <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-indigo-50 flex items-center justify-center">
+                    <Pencil size={18} className="text-indigo-500" />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-black text-slate-900">대리 투표 입력</h2>
+                    <p className="text-xs font-bold text-slate-400 mt-0.5">
+                      {proxyVoteTarget.slotNumber}호 {proxyVoteTarget.name}
+                      {proxyVoteTarget.gender === 'male' ? ' (남)' : ' (여)'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setProxyVoteModalOpen(false)}
+                  className="p-2 rounded-full text-slate-400 hover:bg-slate-100 transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-4">
+                {/* 기존 투표 있을 때 */}
+                {proxyVoteCheckLoading ? (
+                  <div className="flex items-center justify-center py-6">
+                    <Loader2 size={24} className="animate-spin text-indigo-400" />
+                  </div>
+                ) : existingProxyVote ? (
+                  <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <AlertCircle size={16} className="text-amber-500 shrink-0" />
+                      <p className="text-sm font-bold text-amber-700">이미 투표가 등록되어 있습니다.</p>
+                    </div>
+                    <div className="space-y-1.5">
+                      {(existingProxyVote.choices || []).map((c: any) => (
+                        <div key={c.priority} className="flex items-center gap-2 text-sm">
+                          <span className="text-xs font-black px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-600">{c.priority}순위</span>
+                          <span className="font-bold text-slate-700">{c.targetUserName || c.targetUserId}</span>
+                        </div>
+                      ))}
+                    </div>
+                    {existingProxyVote.isProxyVote && (
+                      <p className="text-[11px] font-bold text-amber-500">✏️ 관리자 대리 입력</p>
+                    )}
+                    <button
+                      onClick={handleDeleteProxyVote}
+                      disabled={proxyVoteLoading}
+                      className="w-full py-2.5 rounded-xl bg-rose-500 text-white text-sm font-black hover:bg-rose-600 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      {proxyVoteLoading ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={14} />}
+                      기존 투표 삭제 후 재입력
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-3">
+                      <p className="text-xs font-bold text-indigo-600">📋 네이버폼 투표 결과를 보며 1~3순위를 선택해 주세요.</p>
+                    </div>
+                    <div className="space-y-3">
+                      {([1, 2, 3] as const).map(p => makeOption('', p))}
+                    </div>
+                    <div className="flex gap-3 pt-2">
+                      <button
+                        onClick={() => setProxyVoteModalOpen(false)}
+                        className="flex-1 h-12 rounded-xl font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 transition-all"
+                      >
+                        취소
+                      </button>
+                      <button
+                        onClick={handleSubmitProxyVote}
+                        disabled={proxyVoteLoading || !proxyVoteChoices.priority1}
+                        className="flex-[2] h-12 rounded-xl font-black text-white bg-indigo-500 hover:bg-indigo-600 shadow-lg shadow-indigo-100 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                      >
+                        {proxyVoteLoading ? <Loader2 size={18} className="animate-spin" /> : '투표 저장하기'}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

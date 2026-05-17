@@ -3,6 +3,18 @@ import { adminAuth, adminDb, adminStorage } from '@/lib/firebaseAdmin';
 
 export async function POST(req: NextRequest) {
   try {
+    // ── 권한 검증: super_admin만 삭제 가능 ──
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 });
+    }
+    const token = authHeader.split('Bearer ')[1];
+    const decoded = await adminAuth.verifyIdToken(token);
+    const callerDoc = await adminDb.collection('users').doc(decoded.uid).get();
+    if (!callerDoc.exists || callerDoc.data()?.role !== 'super_admin') {
+      return NextResponse.json({ error: '회원 삭제는 최고관리자만 가능합니다.' }, { status: 403 });
+    }
+
     const { uid } = await req.json();
     if (!uid) return NextResponse.json({ error: 'uid가 필요합니다.' }, { status: 400 });
 

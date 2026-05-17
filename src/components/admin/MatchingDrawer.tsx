@@ -68,6 +68,7 @@ export default function MatchingDrawer({ session, onClose }: Props) {
           name: data.name, age: data.age, gender: data.gender, job: data.job,
           residence: data.residence, phone: data.phone ?? '', status: data.status,
           paymentConfirmed: data.paymentConfirmed ?? false, slotNumber: data.slotNumber,
+          attended: data.attended ?? false,
           appliedAt: data.appliedAt?.toDate?.() ?? new Date(),
           updatedAt: data.updatedAt?.toDate?.() ?? new Date(),
         } as Application;
@@ -323,11 +324,18 @@ export default function MatchingDrawer({ session, onClose }: Props) {
                 <>
                   {/* 요약 카드 */}
                   <div className="grid grid-cols-3 gap-3">
-                    {[
-                      { label: '매칭 성공 쌍', value: result.matchedPairs.length, icon: <Heart size={20} className="text-[#FF6F61]" />, cls: 'text-[#FF6F61]' },
-                      { label: '미매칭', value: result.unmatchedUserIds.length, icon: <UserX size={20} className="text-slate-400" />, cls: 'text-slate-500' },
-                      { label: '미투표자', value: Object.keys(participantMap).length - new Set(votes.filter(v => !v.userId.startsWith('system_')).map(v => v.userId)).size, icon: <Users size={20} className="text-amber-500" />, cls: 'text-amber-600' },
-                    ].map(({ label, value, icon, cls }) => (
+                    {(() => {
+                      const attendedParticipants = Object.values(participantMap).filter(p => p.attended);
+                      const votedUserIds = new Set(votes.filter(v => !v.userId.startsWith('system_')).map(v => v.userId));
+                      const activeUnmatchedCount = result.unmatchedUserIds.filter(uid => participantMap[uid]?.attended).length;
+                      const activeNonVotersCount = attendedParticipants.filter(p => !votedUserIds.has(p.userId)).length;
+
+                      return [
+                        { label: '매칭 성공 쌍', value: result.matchedPairs.length, icon: <Heart size={20} className="text-[#FF6F61]" />, cls: 'text-[#FF6F61]' },
+                        { label: '미매칭 (출석자 중)', value: activeUnmatchedCount, icon: <UserX size={20} className="text-slate-400" />, cls: 'text-slate-500' },
+                        { label: '미투표자 (출석자 중)', value: activeNonVotersCount, icon: <Users size={20} className="text-amber-500" />, cls: 'text-amber-600' },
+                      ];
+                    })().map(({ label, value, icon, cls }) => (
                       <div key={label} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 text-center">
                         <div className="flex justify-center mb-2">{icon}</div>
                         <p className={`text-2xl font-black ${cls}`}>{value}</p>
@@ -344,9 +352,19 @@ export default function MatchingDrawer({ session, onClose }: Props) {
                       </h3>
                     </div>
                     <div className="divide-y divide-slate-100">
-                      {result.matchedPairs.map((pair, i) => {
-                        const a = participantMap[pair.userAId];
-                        const b = participantMap[pair.userBId];
+                      {[...result.matchedPairs]
+                        .sort((pairX, pairY) => {
+                          const maleAppX = participantMap[pairX.userAId]?.gender === 'male' 
+                            ? participantMap[pairX.userAId] 
+                            : participantMap[pairX.userBId];
+                          const maleAppY = participantMap[pairY.userAId]?.gender === 'male' 
+                            ? participantMap[pairY.userAId] 
+                            : participantMap[pairY.userBId];
+                          return (maleAppX?.slotNumber || 999) - (maleAppY?.slotNumber || 999);
+                        })
+                        .map((pair, i) => {
+                          const a = participantMap[pair.userAId];
+                          const b = participantMap[pair.userBId];
                         return (
                           <div key={i} className="px-5 py-3.5 flex items-center hover:bg-slate-50 transition-colors">
                             <div className="flex-1 flex items-center gap-2">
@@ -375,11 +393,12 @@ export default function MatchingDrawer({ session, onClose }: Props) {
                   <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                     <div className="px-5 py-3.5 border-b border-slate-100 bg-slate-50">
                       <h3 className="font-extrabold text-slate-600 text-sm flex items-center gap-2">
-                        <Users size={14} /> 미매칭 인원 ({result.unmatchedUserIds.length}명)
+                        <Users size={14} /> 미매칭 인원 ({result.unmatchedUserIds.filter(uid => participantMap[uid]?.attended).length}명)
                       </h3>
                     </div>
                     <div className="divide-y divide-slate-100">
                       {[...result.unmatchedUserIds]
+                        .filter(uid => participantMap[uid]?.attended)
                         .sort((a, b) => {
                           const ua = participantMap[a];
                           const ub = participantMap[b];
@@ -419,7 +438,7 @@ export default function MatchingDrawer({ session, onClose }: Props) {
                   {/* 미투표자 */}
                   {(() => {
                     const votedIds = new Set(votes.filter(v => !v.userId.startsWith('system_')).map(v => v.userId));
-                    const nonVoters = Object.values(participantMap).filter(p => !votedIds.has(p.userId));
+                    const nonVoters = Object.values(participantMap).filter(p => p.attended && !votedIds.has(p.userId));
                     if (nonVoters.length === 0) return null;
                     return (
                       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
@@ -437,6 +456,34 @@ export default function MatchingDrawer({ session, onClose }: Props) {
                                   {p.gender === 'male' ? '남' : '여'} {p.slotNumber}호
                                 </span>
                                 <span className="font-bold text-sm text-slate-800">{p.name}</span>
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* 미출석자 */}
+                  {(() => {
+                    const absentParticipants = Object.values(participantMap).filter(p => !p.attended);
+                    if (absentParticipants.length === 0) return null;
+                    return (
+                      <div className="bg-white rounded-2xl border border-rose-200 shadow-sm overflow-hidden">
+                        <div className="px-5 py-3.5 border-b border-rose-100 bg-rose-50/50">
+                          <h3 className="font-extrabold text-rose-600 text-sm flex items-center gap-2">
+                            <UserX size={14} className="text-rose-500" /> 미출석자 ({absentParticipants.length}명)
+                          </h3>
+                        </div>
+                        <div className="divide-y divide-slate-100">
+                          {absentParticipants
+                            .sort((a, b) => (a.slotNumber || 999) - (b.slotNumber || 999))
+                            .map(p => (
+                              <div key={p.userId} className="px-5 py-3.5 flex items-center gap-3 hover:bg-slate-50 transition-colors opacity-65">
+                                <span className={`text-xs font-bold px-2 py-0.5 rounded-full shrink-0 ${p.gender === 'male' ? 'bg-blue-50 text-blue-600' : 'bg-pink-50 text-pink-600'}`}>
+                                  {p.gender === 'male' ? '남' : '여'} {p.slotNumber}호
+                                </span>
+                                <span className="font-bold text-sm text-slate-800">{p.name}</span>
+                                <span className="text-[0.65rem] font-bold px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-500 border border-rose-100 ml-auto">미출석 (매칭 제외)</span>
                               </div>
                             ))}
                         </div>

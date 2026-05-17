@@ -10,8 +10,9 @@ import {
 import toast from 'react-hot-toast';
 import { auth, db } from '@/lib/firebase';
 import {
-  collection, onSnapshot, doc, updateDoc, deleteDoc, query, orderBy, Timestamp, serverTimestamp, getDocs, where
+  collection, onSnapshot, doc, updateDoc, deleteDoc, query, orderBy, Timestamp, serverTimestamp, getDocs, where, getDoc
 } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
 import { format } from 'date-fns';
 import UserProfileModal from './UserProfileModal';
 import SMSPreviewModal from '@/components/admin/SMSPreviewModal';
@@ -24,7 +25,8 @@ const STATUS_CFG = {
   rejected: { label: '인증 반려', color: '#EF4444', bg: '#FEF2F2' },
 };
 
-const ROLES = ['일반회원', '신뢰회원', 'VIP회원', '블랙리스트', 'admin'];
+const ALL_ROLES = ['일반회원', '신뢰회원', 'VIP회원', '블랙리스트', 'admin'];
+const ADMIN_ROLES = ['일반회원', '신뢰회원', 'VIP회원', '블랙리스트']; // admin 항목 없음
 
 const TABS: { key: Status; label: string }[] = [
   { key: 'all', label: '전체' },
@@ -74,6 +76,26 @@ export default function UsersPage() {
   // 회원 삭제
   const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // 최고관리자 여부
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [isAuthChecked, setIsAuthChecked] = useState(false);
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        setIsAuthChecked(true);
+        return;
+      }
+      try {
+        const snap = await getDoc(doc(db, 'users', user.uid));
+        setIsSuperAdmin(snap.exists() && snap.data().role === 'super_admin');
+      } finally {
+        setIsAuthChecked(true);
+      }
+    });
+    return () => unsub();
+  }, []);
 
   // SMS 발송 모달 (v8.12.9)
   const [smsTargetUser, setSmsTargetUser] = useState<any | null>(null);
@@ -142,13 +164,26 @@ export default function UsersPage() {
 
   const handleDeleteUser = async () => {
     if (!deleteTarget) return;
+    if (!isSuperAdmin) {
+      toast.error('회원 삭제는 최고관리자만 가능합니다.');
+      return;
+    }
     setIsDeleting(true);
     try {
+      const token = await auth.currentUser?.getIdToken();
       const res = await fetch('/api/admin/users/delete', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({ uid: deleteTarget.id }),
       });
+      if (res.status === 403) {
+        const data = await res.json();
+        toast.error(data.error || '권한이 없습니다.');
+        return;
+      }
       if (!res.ok) throw new Error();
       toast.success(`${deleteTarget.name} 회원이 삭제되었습니다.`);
       setDeleteTarget(null);
@@ -473,6 +508,14 @@ export default function UsersPage() {
     document.body.removeChild(link);
   }, [filtered]);
 
+  if (!isAuthChecked) {
+    return (
+      <div className="flex items-center justify-center min-h-[500px]">
+        <Loader2 className="animate-spin text-slate-300" size={32} />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 animate-in fade-in duration-400">
 
@@ -758,13 +801,19 @@ export default function UsersPage() {
                               </span>
                             )}
 
+                            {u.role === 'super_admin' ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-1 rounded-full" style={{ background: 'linear-gradient(135deg, #FCD34D, #F59E0B)', color: '#78350F', border: '1px solid #FCD34D' }}>
+                                👑 최고관리자
+                              </span>
+                            ) : (
                             <select
                               value={u.role || '일반회원'}
                               onChange={(e) => updateRole(u.id, e.target.value)}
                               className="bg-slate-50 border border-slate-200 rounded-lg text-[10px] px-2 py-1 text-slate-700 outline-none focus:border-[#FF7E7E]/50 cursor-pointer shadow-sm"
                             >
-                              {ROLES.map(r => <option key={r} value={r} className="bg-white">{r}</option>)}
+                              {(isSuperAdmin ? ALL_ROLES : ADMIN_ROLES).map(r => <option key={r} value={r} className="bg-white">{r}</option>)}
                             </select>
+                            )}
                           </div>
                         </td>
 
@@ -828,14 +877,16 @@ export default function UsersPage() {
                             >
                               <Ticket size={14} />
                             </button>
+                            {isSuperAdmin && u.role !== 'admin' && u.role !== 'super_admin' ? (
                             <button
                               onClick={() => setDeleteTarget(u)}
                               className="flex items-center justify-center rounded-lg hover:bg-rose-50 transition-all text-slate-300 hover:text-rose-500"
                               style={{ width: 32, height: 32 }}
-                              title="회원 삭제"
+                              title="회원 삭제 (최고관리자 전용)"
                             >
                               <Trash2 size={14} />
                             </button>
+                            ) : null}
                           </div>
                         </td>
 
@@ -1006,13 +1057,19 @@ export default function UsersPage() {
                           {sc.label}
                           {currentStatus === 'pending' && u.profileRequestSent && <CheckCircle size={10} />}
                         </span>
+                        {u.role === 'super_admin' ? (
+                          <span className="inline-flex items-center gap-1 text-xs font-black px-3 py-1.5 rounded-full" style={{ background: 'linear-gradient(135deg, #FCD34D, #F59E0B)', color: '#78350F', border: '1px solid #FCD34D' }}>
+                            👑 최고관리자
+                          </span>
+                        ) : (
                         <select
                           value={u.role || '일반회원'}
                           onChange={(e) => updateRole(u.id, e.target.value)}
                           className="bg-white border border-slate-200 rounded-lg text-[0.7rem] px-2 py-1.5 text-slate-700 font-bold outline-none shadow-sm"
                         >
-                          {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                          {(isSuperAdmin ? ALL_ROLES : ADMIN_ROLES).map(r => <option key={r} value={r}>{r}</option>)}
                         </select>
+                        )}
                       </div>
 
                       <div className="flex items-center gap-1.5">
@@ -1030,13 +1087,16 @@ export default function UsersPage() {
                         >
                           <XCircle size={18} />
                         </button>
+                        {isSuperAdmin && u.role !== 'admin' && u.role !== 'super_admin' ? (
                         <button
                           onClick={() => setDeleteTarget(u)}
                           className="flex items-center justify-center rounded-xl bg-slate-50 text-slate-400 border border-slate-100"
                           style={{ width: 40, height: 40 }}
+                          title="회원 삭제 (최고관리자 전용)"
                         >
                           <Trash2 size={18} />
                         </button>
+                        ) : null}
                       </div>
                     </div>
                   </div>

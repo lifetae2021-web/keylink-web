@@ -28,7 +28,8 @@ export default function AdminLoginPage() {
 
   const checkAdmin = async (uid: string): Promise<boolean> => {
     const snap = await getDoc(doc(db, 'users', uid));
-    return snap.exists() && snap.data().role === 'admin';
+    const role = snap.exists() ? snap.data().role : null;
+    return role === 'admin' || role === 'super_admin';
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -50,8 +51,12 @@ export default function AdminLoginPage() {
         }
         email = found.data().email;
         if (!email) {
-          toast.error('이메일 정보가 없는 계정입니다.');
-          return;
+          if (found.data().username) {
+            email = `${found.data().username}@keylink.user`;
+          } else {
+            toast.error('이메일 정보가 없는 계정입니다.');
+            return;
+          }
         }
       }
 
