@@ -19,6 +19,11 @@ service cloud.firestore {
          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'super_admin');
     }
 
+    function isSuperAdmin() {
+      return isSignedIn() &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'super_admin';
+    }
+
     // ─────────────────────────────────────
     // users 컬렉션
     // ─────────────────────────────────────
@@ -29,7 +34,7 @@ service cloud.firestore {
       allow create: if isUser(userId) && request.resource.data.role == 'user';
       // 기존 문서 수정: 본인 수정 가능하되 role 필드 변경 불가 (관리자만 role 변경 가능)
       allow update: if isAdmin() || (isUser(userId) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']));
-      allow delete: if isAdmin();
+      allow delete: if isSuperAdmin();
 
       // v8.15.9: 쿠폰 및 포인트 내역 서브 컬렉션 권한 추가
       match /coupons/{couponId} {
