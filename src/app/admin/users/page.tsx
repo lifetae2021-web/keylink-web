@@ -805,6 +805,10 @@ export default function UsersPage() {
                               <span className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-1 rounded-full" style={{ background: 'linear-gradient(135deg, #FCD34D, #F59E0B)', color: '#78350F', border: '1px solid #FCD34D' }}>
                                 👑 최고관리자
                               </span>
+                            ) : !isSuperAdmin && u.role === 'admin' ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-1 rounded-full" style={{ background: '#F8FAFC', color: '#475569', border: '1px solid #E2E8F0' }}>
+                                관리자
+                              </span>
                             ) : (
                             <select
                               value={u.role || '일반회원'}
@@ -1060,6 +1064,10 @@ export default function UsersPage() {
                         {u.role === 'super_admin' ? (
                           <span className="inline-flex items-center gap-1 text-xs font-black px-3 py-1.5 rounded-full" style={{ background: 'linear-gradient(135deg, #FCD34D, #F59E0B)', color: '#78350F', border: '1px solid #FCD34D' }}>
                             👑 최고관리자
+                          </span>
+                        ) : !isSuperAdmin && u.role === 'admin' ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-1 rounded-full" style={{ background: '#F8FAFC', color: '#475569', border: '1px solid #E2E8F0' }}>
+                            관리자
                           </span>
                         ) : (
                         <select
