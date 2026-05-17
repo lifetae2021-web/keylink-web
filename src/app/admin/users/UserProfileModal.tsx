@@ -53,6 +53,7 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose }:
   const [isUpdating, setIsUpdating] = useState(false);
   const [photoIndex, setPhotoIndex] = useState(0);
   const [privateAppPhotos, setPrivateAppPhotos] = useState<string[]>([]);
+  const [showProofPopup, setShowProofPopup] = useState(false);
 
   // Sync state with props when modal opens or user changes
   useEffect(() => {
@@ -338,9 +339,12 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose }:
                       <div className="ml-4">
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">재직 인증 서류</p>
                         {(user.employmentProof || user.verificationUrl) ? (
-                          <a href={user.employmentProof || user.verificationUrl} target="_blank" rel="noreferrer" className="text-[0.85rem] font-black text-blue-600 hover:underline flex items-center gap-1">
+                          <button
+                            onClick={() => setShowProofPopup(true)}
+                            className="text-[0.85rem] font-black text-blue-600 hover:underline flex items-center gap-1 cursor-pointer"
+                          >
                             서류 확인하기 <ExternalLink size={12} />
-                          </a>
+                          </button>
                         ) : (
                           <p className="text-[0.85rem] font-bold text-slate-300 italic">미업로드</p>
                         )}
@@ -402,6 +406,54 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose }:
               </div>
             </div>
           </motion.div>
+
+          {/* ── 재직 증명 서류 팝업 모달 ── */}
+          <AnimatePresence>
+            {showProofPopup && (user.employmentProof || user.verificationUrl) && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[20000] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md"
+                onClick={() => setShowProofPopup(false)}
+              >
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="relative w-full max-w-4xl max-h-[90vh] bg-white rounded-3xl p-3 shadow-2xl flex flex-col items-center overflow-hidden"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <button
+                    onClick={() => setShowProofPopup(false)}
+                    className="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 transition-colors shadow-sm"
+                  >
+                    <X size={20} />
+                  </button>
+                  <div className="w-full h-full overflow-auto flex items-center justify-center max-h-[75vh] p-4">
+                    <img
+                      src={user.employmentProof || user.verificationUrl}
+                      alt="재직 인증 서류"
+                      className="max-w-full max-h-[70vh] object-contain rounded-2xl shadow-sm"
+                    />
+                  </div>
+                  <div className="w-full text-center py-4 bg-slate-50 border-t border-slate-100 rounded-b-2xl flex items-center justify-center gap-3">
+                    <span className="text-xs font-black text-slate-500 uppercase tracking-widest">
+                      {user.name} 님의 재직 인증 서류
+                    </span>
+                    <a
+                      href={user.employmentProof || user.verificationUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-xs font-black text-blue-600 hover:underline flex items-center gap-1.5"
+                    >
+                      원본 파일 보기 <ExternalLink size={12} />
+                    </a>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       )}
     </AnimatePresence>
