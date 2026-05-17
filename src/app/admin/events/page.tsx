@@ -157,6 +157,49 @@ export default function EventsPage() {
 
   const [formData, setFormData] = useState(initialFormData);
 
+  // v9.2.0: 기수 번호 자동 계산 (신규 등록일 때만)
+  useEffect(() => {
+    if (editingId) return; // 수정 모드일 때는 작동하지 않음
+    if (!formData.eventDate || !formData.region) return;
+
+    const [year, month, day] = formData.eventDate.split('-');
+    if (!year || !month || !day) return;
+    const newDate = new Date(Number(year), Number(month) - 1, Number(day));
+
+    // 현재 선택된 지역의 기수들만 모아서 날짜 오름차순 정렬
+    const regionSessions = sessions
+      .filter(s => s.region === formData.region)
+      .sort((a, b) => a.eventDate.getTime() - b.eventDate.getTime());
+
+    let calculatedEpisode = 1;
+    let foundPrevious = false;
+
+    // 뒤에서부터(가장 최근 기수부터) 확인하여, 새 날짜보다 이전이거나 같은 기수를 찾음
+    for (let i = regionSessions.length - 1; i >= 0; i--) {
+      // eventDate의 시간을 00:00:00으로 맞춰서 날짜만 비교
+      const sDate = new Date(regionSessions[i].eventDate.getFullYear(), regionSessions[i].eventDate.getMonth(), regionSessions[i].eventDate.getDate());
+      if (sDate <= newDate) {
+        calculatedEpisode = regionSessions[i].episodeNumber + 1;
+        foundPrevious = true;
+        break;
+      }
+    }
+
+    // 만약 이전 기수가 아예 없다면(가장 첫 번째 기수로 삽입), 
+    // 기존 첫 번째 기수의 번호를 그대로 가져오고(그 첫 번째 기수가 나중에 +1로 밀림)
+    if (!foundPrevious) {
+      if (regionSessions.length > 0) {
+        calculatedEpisode = regionSessions[0].episodeNumber;
+      } else {
+        calculatedEpisode = 1;
+      }
+    }
+
+    if (formData.episodeNumber !== calculatedEpisode.toString()) {
+      setFormData(prev => ({ ...prev, episodeNumber: calculatedEpisode.toString() }));
+    }
+  }, [formData.eventDate, formData.region, editingId, sessions.length]);
+
   // v8.1.7: 투표 설정 모달 상태
 
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
@@ -1061,25 +1104,26 @@ ${chatLink}
       // 1. 대상 기수 삭제
       batch.delete(doc(db, "sessions", id));
 
-      // 2. 이후 기수들 번호 조정 (동일 지역, 더 높은 기수 번호)
+      // 2. 이후 기수들 번호 조정 (동일 지역, 더 높은 기수 번호) - 복합 색인(Index) 에러 방지를 위해 클라이언트 필터링 적용
       const q = query(
         collection(db, "sessions"),
-        where("region", "==", sessionToDelete.region),
-        where("episodeNumber", ">", sessionToDelete.episodeNumber)
+        where("region", "==", sessionToDelete.region)
       );
       const snap = await getDocs(q);
 
-      snap.docs.forEach((d) => {
-        const data = d.data();
-        const newEpisodeNumber = (data.episodeNumber || 0) - 1;
-        const newTitle = `${data.region === "busan" ? "부산" : "창원"} 로테이션 소개팅 ${newEpisodeNumber}기`;
+      snap.docs
+        .filter((d) => (d.data().episodeNumber || 0) > sessionToDelete.episodeNumber)
+        .forEach((d) => {
+          const data = d.data();
+          const newEpisodeNumber = (data.episodeNumber || 0) - 1;
+          const newTitle = `${data.region === "busan" ? "부산" : "창원"} 로테이션 소개팅 ${newEpisodeNumber}기`;
 
-        batch.update(d.ref, {
-          episodeNumber: newEpisodeNumber,
-          title: newTitle,
-          updatedAt: serverTimestamp(),
+          batch.update(d.ref, {
+            episodeNumber: newEpisodeNumber,
+            title: newTitle,
+            updatedAt: serverTimestamp(),
+          });
         });
-      });
 
       await batch.commit();
       toast.success("기수가 삭제되었으며, 이후 기수 번호가 조정되었습니다.");
@@ -1138,18 +1182,47 @@ ${chatLink}
 
       if (editingId) {
         // v8.2.3: 수정(Update) 로직
+        const { updateDoc, doc } = await import("firebase/firestore");
         await updateDoc(doc(db, "sessions", editingId), payload);
         toast.success("기수 정보가 수정되었습니다.");
       } else {
-        // v8.2.3: 신규 등록 로직
-        await addDoc(collection(db, "sessions"), {
+        // v9.2.0: 신규 등록 및 자동 밀어내기(Shifting) 로직
+        const { writeBatch, getDocs, collection, query, where, doc } = await import("firebase/firestore");
+        const newEpNumber = Number(formData.episodeNumber);
+        const batch = writeBatch(db);
+
+        // 1. 이후 기수들 번호 조정 (동일 지역, 크거나 같은 기수 번호) - 복합 색인(Index) 에러 방지를 위해 클라이언트 필터링 적용
+        const qShift = query(
+          collection(db, "sessions"),
+          where("region", "==", formData.region)
+        );
+        const snapShift = await getDocs(qShift);
+
+        snapShift.docs
+          .filter((d) => (d.data().episodeNumber || 0) >= newEpNumber)
+          .forEach((d) => {
+            const data = d.data();
+            const shiftedEp = (data.episodeNumber || 0) + 1;
+            const shiftedTitle = `${data.region === "busan" ? "부산" : "창원"} 로테이션 소개팅 ${shiftedEp}기`;
+            batch.update(d.ref, {
+              episodeNumber: shiftedEp,
+              title: shiftedTitle,
+              updatedAt: serverTimestamp(),
+            });
+          });
+
+        // 2. 신규 기수 추가
+        const newSessionRef = doc(collection(db, "sessions"));
+        batch.set(newSessionRef, {
           ...payload,
           currentMale: 0,
           currentFemale: 0,
           votingUnlockedAt: null,
           createdAt: serverTimestamp(),
         });
-        toast.success("새 기수가 등록되었습니다.");
+
+        await batch.commit();
+        toast.success("새 기수가 등록되었으며, 번호가 자동 정렬되었습니다.");
       }
 
       setIsModalOpen(false);
