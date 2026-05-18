@@ -87,7 +87,8 @@ export default function VotePage() {
       setUserId(user.uid);
 
       const userSnap = await getDoc(doc(db, 'users', user.uid));
-      if (userSnap.exists() && userSnap.data()?.role === 'admin') {
+      const role = userSnap.exists() ? userSnap.data()?.role : '';
+      if (role === 'admin' || role === 'super_admin') {
         setIsAdmin(true);
       }
 

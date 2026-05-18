@@ -45,7 +45,8 @@ export default function SocialAuth({ isAdmin, isLoading, setIsLoading, lastMetho
 
       if (isAdmin) {
         const userDoc = await getDoc(doc(db, 'users', user.uid));
-        if (userDoc.exists() && userDoc.data().role === 'admin') {
+        const role = userDoc.exists() ? userDoc.data()?.role : '';
+        if (role === 'admin' || role === 'super_admin') {
           toast.success('관리자 구글 로그인 성공!');
           router.push('/admin');
         } else {

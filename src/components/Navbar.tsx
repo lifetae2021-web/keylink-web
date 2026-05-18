@@ -111,7 +111,8 @@ export default function Navbar() {
       if (unsubDoc) { unsubDoc(); unsubDoc = null; }
       if (currentUser) {
         unsubDoc = onSnapshot(doc(db, 'users', currentUser.uid), (snap) => {
-          setIsAdmin(snap.exists() && snap.data()?.role === 'admin');
+          const role = snap.exists() ? snap.data()?.role : '';
+          setIsAdmin(snap.exists() && (role === 'admin' || role === 'super_admin'));
         });
       } else {
         setIsAdmin(false);

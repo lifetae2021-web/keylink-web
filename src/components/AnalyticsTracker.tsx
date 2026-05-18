@@ -66,7 +66,8 @@ export default function AnalyticsTracker() {
         // 사용자가 있는 경우: 관리자 여부 확인 후 결정
         try {
           const userSnap = await getDoc(doc(db, 'users', user.uid));
-          const isAdmin = userSnap.exists() && userSnap.data()?.role === 'admin';
+          const role = userSnap.exists() ? userSnap.data()?.role : '';
+          const isAdmin = role === 'admin' || role === 'super_admin';
           
           if (isAdmin) {
             localStorage.setItem('kl_is_admin', 'true');
