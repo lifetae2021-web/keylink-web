@@ -125,7 +125,7 @@ export default function VotePage() {
           userId: appData.userId,
           name: appData.name,
           age: appData.age,
-          job: appData.job,
+          job: appData.displayJob || appData.job || '미입력',
           residence: appData.residence,
           gender: appData.gender,
           photos: userData?.photos || [],

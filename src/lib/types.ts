@@ -31,6 +31,7 @@ export interface Session {
   region: 'busan' | 'changwon';    // 운영 지역 추가
   status: SessionStatus;
   votingUnlockedAt: Date | null;   // 투표 잠금 해제 시각
+  isTest?: boolean;                // v10.0.0: 테스트 기수 여부 (관리자만 조회 가능)
 
   // v8.1.1: 호감도 투표 상세 설정
   voteConfig?: {

@@ -44,6 +44,7 @@ function fromDoc(snap: DocumentSnapshot): Session | null {
       region: (d.region ?? 'busan') as 'busan' | 'changwon',
       status: d.status as SessionStatus,
       votingUnlockedAt: d.votingUnlockedAt?.toDate?.() ?? null,
+      isTest: !!d.isTest,
       createdAt: d.createdAt?.toDate?.() ?? new Date(),
       updatedAt: d.updatedAt?.toDate?.() ?? new Date(),
     };

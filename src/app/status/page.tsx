@@ -20,7 +20,8 @@ export default function StatusListPage() {
   useEffect(() => {
     async function fetchSessions() {
       try {
-        const data = await getAllSessions();
+        const rawData = await getAllSessions();
+        const data = rawData.filter(s => !s.isTest); // v10.0.0: 테스트 기수는 일반 현황 목록에서 제외
         // v8.4.9: 스마트 정렬 로직 적용
         const now = new Date();
         const sorted = data.sort((a, b) => {

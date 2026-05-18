@@ -238,7 +238,7 @@ export default function EventDetailPage() {
     );
   }
 
-  if (!event) {
+  if (!event || event.isTest) {
     return (
       <div style={{ paddingTop: '120px', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ textAlign: 'center' }}>

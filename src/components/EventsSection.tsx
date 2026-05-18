@@ -57,6 +57,7 @@ export function EventsSection({ standalone = false }: { standalone?: boolean }) 
     const unsubscribe = subscribeAllSessions((sessions) => {
       // v1.9.8: 완료(completed) 상태를 제외한 모든 기수를 불러와 마감 기수 누락 방지
       const displayable = sessions.filter((s) => {
+        if (s.isTest) return false; // v10.0.0: 테스트 기수는 일반 유저 대상 목록에서 제외
         const twoHoursAfter = new Date(s.eventDate.getTime() + 2 * 60 * 60 * 1000);
         const isFinished = new Date() >= twoHoursAfter;
         if (isFinished) return false;

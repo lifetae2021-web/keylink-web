@@ -152,7 +152,7 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
     );
   }
 
-  if (!session) {
+  if (!session || session.isTest) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-6 text-center">
         <Sparkles className="text-gray-200 mb-4" size={60} />

@@ -153,6 +153,7 @@ export default function EventsPage() {
     maxFemale: "8",
     status: "open" as SessionStatus,
     openChatLink: "", // v9.1.0: 오픈채팅방 링크
+    isTest: false, // v10.0.0: 테스트 기수 여부
   };
 
   const [formData, setFormData] = useState(initialFormData);
@@ -985,6 +986,7 @@ ${chatLink}
       maxFemale: String(session.maxFemale),
       status: session.status,
       openChatLink: session.openChatLink || "",
+      isTest: !!session.isTest, // v10.0.0: 테스트 기수 여부
     });
     setIsModalOpen(true);
   };
@@ -1182,7 +1184,7 @@ ${chatLink}
       const payload = {
         region: formData.region,
         episodeNumber: Number(formData.episodeNumber),
-        title: `${formData.region === "busan" ? "부산" : "창원"} 로테이션 소개팅 ${formData.episodeNumber}기`,
+        title: `${formData.region === "busan" ? "부산" : "창원"} 로테이션 소개팅 ${formData.episodeNumber}기${formData.isTest ? " (테스트)" : ""}`,
         eventDate: combinedDate,
         venue: formData.venue,
         location: formData.venue, // v8.6.2: 데이터 일관성을 위해 두 필드 모두 저장
@@ -1195,6 +1197,7 @@ ${chatLink}
         maxFemale: Number(formData.maxFemale),
         status: formData.status,
         openChatLink: formData.openChatLink,
+        isTest: !!formData.isTest, // v10.0.0: 테스트 기수 여부
         updatedAt: serverTimestamp(),
       };
 
@@ -1210,24 +1213,27 @@ ${chatLink}
         const batch = writeBatch(db);
 
         // 1. 이후 기수들 번호 조정 (동일 지역, 크거나 같은 기수 번호) - 복합 색인(Index) 에러 방지를 위해 클라이언트 필터링 적용
-        const qShift = query(
-          collection(db, "sessions"),
-          where("region", "==", formData.region)
-        );
-        const snapShift = await getDocs(qShift);
+        // 단, 신규 기수가 테스트 기수일 경우에는 다른 기수들의 번호 이동을 건너뜁니다.
+        if (!formData.isTest) {
+          const qShift = query(
+            collection(db, "sessions"),
+            where("region", "==", formData.region)
+          );
+          const snapShift = await getDocs(qShift);
 
-        snapShift.docs
-          .filter((d) => (d.data().episodeNumber || 0) >= newEpNumber)
-          .forEach((d) => {
-            const data = d.data();
-            const shiftedEp = (data.episodeNumber || 0) + 1;
-            const shiftedTitle = `${data.region === "busan" ? "부산" : "창원"} 로테이션 소개팅 ${shiftedEp}기`;
-            batch.update(d.ref, {
-              episodeNumber: shiftedEp,
-              title: shiftedTitle,
-              updatedAt: serverTimestamp(),
+          snapShift.docs
+            .filter((d) => (d.data().episodeNumber || 0) >= newEpNumber && !d.data().isTest)
+            .forEach((d) => {
+              const data = d.data();
+              const shiftedEp = (data.episodeNumber || 0) + 1;
+              const shiftedTitle = `${data.region === "busan" ? "부산" : "창원"} 로테이션 소개팅 ${shiftedEp}기`;
+              batch.update(d.ref, {
+                episodeNumber: shiftedEp,
+                title: shiftedTitle,
+                updatedAt: serverTimestamp(),
+              });
             });
-          });
+        }
 
         // 2. 신규 기수 추가
         const newSessionRef = doc(collection(db, "sessions"));
@@ -1240,7 +1246,7 @@ ${chatLink}
         });
 
         await batch.commit();
-        toast.success("새 기수가 등록되었으며, 번호가 자동 정렬되었습니다.");
+        toast.success(formData.isTest ? "테스트 기수가 등록되었습니다." : "새 기수가 등록되었으며, 번호가 자동 정렬되었습니다.");
       }
 
       setIsModalOpen(false);
@@ -1440,10 +1446,15 @@ ${chatLink}
                 >
                   <div className="flex items-center justify-between mb-2">
                     <p
-                      className={`text-[0.9rem] font-bold ${sel ? "text-[#FF6F61]" : "text-slate-800"}`}
+                      className={`text-[0.9rem] font-bold flex items-center gap-1.5 ${sel ? "text-[#FF6F61]" : "text-slate-800"}`}
                     >
                       {ev.region === "busan" ? "부산" : "창원"}{" "}
                       {ev.episodeNumber}기
+                      {ev.isTest && (
+                        <span className="text-[10px] font-extrabold text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded-md border border-amber-200">
+                          테스트
+                        </span>
+                      )}
                     </p>
                     <span className={`text-[0.65rem] font-bold px-2 py-0.5 rounded-full ${badgeCls}`}>
                       {badgeLabel}
@@ -1503,9 +1514,14 @@ ${chatLink}
                     </div>
                     <div>
                       <div className="flex items-center gap-2 mb-0.5">
-                        <h3 className="text-slate-900 text-xl font-black tracking-tight">
+                        <h3 className="text-slate-900 text-xl font-black tracking-tight flex items-center gap-1.5">
                           {active.region === "busan" ? "부산" : "창원"}{" "}
                           {active.episodeNumber}기
+                          {active.isTest && (
+                            <span className="text-[10px] font-extrabold text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded-md border border-amber-200">
+                              테스트
+                            </span>
+                          )}
                         </h3>
                         <span className={`text-[0.65rem] font-black px-2 py-0.5 rounded-full ${activeBadgeCls}`}>
                           {activeBadgeLabel}
@@ -3268,6 +3284,26 @@ ${chatLink}
                     </span>
                   </p>
                 </div>
+              </div>
+
+              {/* 테스트 기수 여부 (v10.0.0) */}
+              <div className="mb-6 flex items-center justify-between p-4 rounded-2xl bg-amber-50 border border-amber-100">
+                <div className="pr-4">
+                  <label className="block text-sm font-bold text-amber-800">
+                    ⚠️ 테스트 기수 설정
+                  </label>
+                  <p className="text-[11px] text-amber-600 font-medium mt-0.5 leading-relaxed">
+                    체크하면 일반 신청 페이지 및 신청 현황에 노출되지 않으며, 관리자만 대시보드에서 볼 수 있습니다.
+                  </p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={!!formData.isTest}
+                  onChange={(e) =>
+                    setFormData({ ...formData, isTest: e.target.checked })
+                  }
+                  className="w-5 h-5 rounded border-amber-300 text-amber-600 focus:ring-amber-500 cursor-pointer"
+                />
               </div>
 
               {/* Form Actions */}
