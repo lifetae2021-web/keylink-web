@@ -72,7 +72,7 @@ export default function ApplicationsPage() {
   const [sortConfig, setSortConfig] = useState<{ field: string; direction: 'asc' | 'desc' }>({ field: 'appliedAt', direction: 'desc' });
   const [ageFilter, setAgeFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [dummyFilter, setDummyFilter] = useState<'exclude' | 'include' | 'only'>('exclude');
+  const [dummyFilter, setDummyFilter] = useState<'exclude' | 'only'>('exclude');
 
   // 1. sessions 컬렉션 실시간 동기화
   useEffect(() => {
@@ -500,7 +500,6 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
               <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
                 {[
                   { id: 'exclude', label: '실제회원' },
-                  { id: 'include', label: '더미포함' },
                   { id: 'only', label: '더미만' }
                 ].map(t => (
                   <button
