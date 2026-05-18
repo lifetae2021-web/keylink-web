@@ -1340,7 +1340,7 @@ function ReceivedHeartsFeed({ session, userId }: { session: Session, userId: str
           const slotLabel = voter.slotNumber ? `${genderPrefix} ${voter.slotNumber}호` : '익명';
           const displayName = isAnonymous
             ? (isMutual && voter.slotNumber ? slotLabel : '익명')
-            : (voter.voteData?.myAlias ? `${genderPrefix} ${voter.voteData.myAlias}호` : '공개');
+            : (voter.voteData?.myAlias || '공개');
           const displayPhoto = isAnonymous ? '/images/placeholder-user.png' : ((voter.photos && voter.photos[0]) || '/images/placeholder-user.png');
           const displaySubtext = '';
 
