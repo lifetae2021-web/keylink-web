@@ -21,6 +21,7 @@ interface Candidate {
   residence: string;
   gender: 'male' | 'female';
   photos?: string[];
+  birthYear: string; // v10.0.1: 출생연도 (ex. 94년생)
 }
 
 function SectionCard({ number, icon, title, required, children }: {
@@ -121,6 +122,14 @@ export default function VotePage() {
         const appData = d.data();
         const userSnap = await getDoc(doc(db, 'users', appData.userId));
         const userData = userSnap.data();
+
+        // v10.0.1: 생년월일로부터 '년생' 추출 로직
+        const rawBirth = appData.birthDate || userData?.birthDate || '';
+        const year = rawBirth.includes('-')
+          ? rawBirth.split('-')[0].slice(2, 4)
+          : (rawBirth.length >= 2 ? rawBirth.slice(0, 2) : '??');
+        const birthYear = year ? `${year}년생` : '??년생';
+
         candidateList.push({
           userId: appData.userId,
           name: appData.name,
@@ -129,6 +138,7 @@ export default function VotePage() {
           residence: appData.residence,
           gender: appData.gender,
           photos: userData?.photos || [],
+          birthYear,
         });
       }
       setCandidates(candidateList);
@@ -446,7 +456,7 @@ export default function VotePage() {
                       {label} {idx + 1}호
                     </p>
                     <p className="text-xs font-bold text-slate-400 mt-0.5">
-                      {candidate.age}세 · {candidate.job} · {candidate.residence?.split(' ')[0]}
+                      {candidate.birthYear} · {candidate.job}
                     </p>
                   </div>
 
