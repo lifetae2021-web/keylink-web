@@ -621,18 +621,48 @@ function MyPageContent() {
             <EditRow label="희망 음료 (중복 선택 가능)">
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 {['아이스 아메리카노', '복숭아 아이스티', '얼그레이', '페퍼민트', '카라멜 블랙티', '물', '따뜻한 음료'].map(d => {
-                  const selected = (editForm.drink || []).includes(d);
+                  const currentDrinks = editForm.drink || [];
+                  const selected = currentDrinks.includes(d);
+                  
+                  const MAIN_DRINKS = ['아이스 아메리카노', '복숭아 아이스티', '얼그레이', '페퍼민트', '카라멜 블랙티', '물'];
+                  const hasIceOnlySelected = currentDrinks.some((v: string) => ['아이스 아메리카노', '복숭아 아이스티'].includes(v));
+                  const isWarmDisabled = d === '따뜻한 음료' && hasIceOnlySelected;
+
                   return (
                     <button 
                       key={d} 
+                      type="button"
+                      disabled={isWarmDisabled}
                       onClick={() => {
-                        const current = editForm.drink || [];
-                        const next = selected ? current.filter((v: string) => v !== d) : [...current, d];
+                        if (isWarmDisabled) return;
+                        let next: string[] = [];
+
+                        if (MAIN_DRINKS.includes(d)) {
+                          if (currentDrinks.includes(d)) {
+                            next = currentDrinks.filter((v: string) => v !== d);
+                          } else {
+                            next = currentDrinks.filter((v: string) => !MAIN_DRINKS.includes(v));
+                            next.push(d);
+                            if (['아이스 아메리카노', '복숭아 아이스티'].includes(d)) {
+                              next = next.filter((v: string) => v !== '따뜻한 음료');
+                            }
+                          }
+                        } else if (d === '따뜻한 음료') {
+                          if (currentDrinks.includes(d)) {
+                            next = currentDrinks.filter((v: string) => v !== d);
+                          } else {
+                            next = [...currentDrinks, d];
+                          }
+                        }
                         setEditForm((p: any) => ({ ...p, drink: next }));
                       }}
                       style={{ 
-                        padding: '10px 16px', borderRadius: '12px', fontSize: '0.82rem', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s',
-                        background: selected ? '#FF6F61' : '#fff', color: selected ? '#fff' : '#64748B', border: selected ? '1.5px solid #FF6F61' : '1.5px solid #E2E8F0'
+                        padding: '10px 16px', borderRadius: '12px', fontSize: '0.82rem', fontWeight: '700', 
+                        cursor: isWarmDisabled ? 'not-allowed' : 'pointer', transition: 'all 0.2s',
+                        background: selected ? '#FF6F61' : (isWarmDisabled ? '#F1F5F9' : '#fff'), 
+                        color: selected ? '#fff' : (isWarmDisabled ? '#94A3B8' : '#64748B'), 
+                        border: selected ? '1.5px solid #FF6F61' : (isWarmDisabled ? '1.5px solid #E2E8F0' : '1.5px solid #E2E8F0'),
+                        opacity: isWarmDisabled ? 0.6 : 1
                       }}
                     >
                       {d}
