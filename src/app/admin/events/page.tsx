@@ -929,6 +929,7 @@ ${chatLink}
     if (drinks.includes('페퍼민트')) codes.push('P');
     if (drinks.includes('얼그레이')) codes.push('E');
     if (drinks.includes('카라멜 블랙티') || drinks.includes('캬라멜블랙티') || drinks.includes('카라멜블랙티')) codes.push('B');
+    if (drinks.includes('물')) codes.push('W');
     
     if (codes.length === 0) return null;
     
