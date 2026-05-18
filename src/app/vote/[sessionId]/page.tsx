@@ -211,7 +211,10 @@ export default function VotePage() {
       toast.error('호감 가는 이성을 선택해주세요.');
       return;
     }
-    if (!feedback.trim()) { toast.error('참여 후기를 필수로 작성해주세요.'); return; }
+    if (feedback.trim().length < 5) {
+      toast.error('소중한 의견을 5자 이상 들려주시면 키링크가 더 발전하는 데 큰 힘이 됩니다! 😊');
+      return;
+    }
     if (!userId) return;
 
     setSubmitting(true);
@@ -537,9 +540,12 @@ export default function VotePage() {
           <textarea
             value={feedback}
             onChange={e => setFeedback(e.target.value)}
-            placeholder="오늘 행사는 어떠셨나요? 소중한 후기를 들려주세요!"
+            placeholder="작성해주신 소중한 후기는 키링크가 한 걸음 더 발전하는 데 정말 큰 힘이 됩니다! ❤️ (최소 5자 이상)"
             className="w-full h-28 p-4 rounded-2xl border-2 border-slate-100 bg-slate-50 focus:border-[#FF6F61] focus:bg-white focus:ring-0 outline-none font-medium text-slate-700 transition-all resize-none text-sm"
           />
+          <p className="text-[11px] text-slate-400 font-semibold mt-2.5 ml-1 leading-relaxed">
+            * 보내주신 소중한 후기는 키링크가 더 발전할 수 있는 밑거름이 됩니다. 5자 이상 작성해 주세요!
+          </p>
         </SectionCard>
 
         {/* 제출 */}
