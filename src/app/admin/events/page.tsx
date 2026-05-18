@@ -586,13 +586,13 @@ export default function EventsPage() {
     return (
       <button
         onClick={handleSmsClick}
-        className={`p-2 rounded-xl border relative ${isSent ? "bg-slate-50 text-slate-400 border-slate-200" : "bg-orange-50 text-[#FF6F61] border-orange-100"}`}
+        className={`p-1.5 rounded-lg border relative ${isSent ? "bg-slate-50 text-slate-400 border-slate-200" : "bg-orange-50 text-[#FF6F61] border-orange-100"}`}
         title={isSent ? `최근 발송: ${sentTimeStr}` : "문자 보내기"}
       >
-        <MessageSquare size={14} />
+        <MessageSquare size={13} />
         {isSent && (
           <div className="absolute -top-1.5 -right-1.5 bg-white rounded-full">
-            <CheckCircle2 size={14} className="text-green-500" fill="white" />
+            <CheckCircle2 size={13} className="text-green-500" fill="white" />
           </div>
         )}
       </button>
@@ -1610,7 +1610,7 @@ ${chatLink}
                 </div>
 
                 {/* 탭 컨텐츠 */}
-                <div className="p-4 sm:p-7">
+                <div className="p-3 sm:p-7">
 
                   {/* 참가자 탭 */}
                   {activeTab === "participants" && (
@@ -1709,7 +1709,7 @@ ${chatLink}
                                 className={`${card} overflow-hidden`}
                               >
                                 <div
-                                  className={`flex items-center gap-2 px-6 py-4 border-b border-slate-100 ${isMaleSection ? "bg-blue-50" : "bg-pink-50"}`}
+                                  className={`flex items-center gap-2 px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-100 ${isMaleSection ? "bg-blue-50" : "bg-pink-50"}`}
                                 >
                                   <span
                                     className={`text-[0.85rem] font-extrabold ${isMaleSection ? "text-blue-700" : "text-pink-700"}`}
@@ -1772,7 +1772,7 @@ ${chatLink}
                                           return (
                                             <div
                                               key={`empty-${slotNum}`}
-                                              className="flex items-center gap-3 px-5 py-3 bg-slate-50/60"
+                                              className="flex items-center gap-3 px-3 sm:px-5 py-2.5 sm:py-3 bg-slate-50/60"
                                             >
                                               <div className="flex flex-col items-center w-8 shrink-0">
                                                 <span className={`text-xs font-black ${isMaleSection ? "text-blue-400" : "text-pink-400"}`}>
@@ -1816,27 +1816,27 @@ ${chatLink}
                                                   </span>
                                                 </div>
                                               </div>
-                                              <div className="flex items-center gap-1 sm:hidden">
+                                              <div className="flex items-center gap-0.5 sm:hidden">
                                                 <button
                                                   onClick={() => handleToggleAttendance(app)}
-                                                  className={`p-2 rounded-xl border transition-all ${app.attended ? "bg-emerald-500 text-white border-emerald-500 shadow-md scale-105" : "bg-slate-50 text-slate-400 border-slate-200"}`}
+                                                  className={`p-1.5 rounded-lg border transition-all ${app.attended ? "bg-emerald-500 text-white border-emerald-500 shadow-md scale-105" : "bg-slate-50 text-slate-400 border-slate-200"}`}
                                                   title="출석 체크"
                                                 >
-                                                  <UserCheck size={14} fill={app.attended ? "white" : "none"} />
+                                                  <UserCheck size={13} fill={app.attended ? "white" : "none"} />
                                                 </button>
                                                 <button
                                                   onClick={() => handleOpenMemo(app)}
-                                                  className={`p-2 rounded-xl border transition-all ${app.adminMemo ? "bg-amber-50 text-amber-600 border-amber-200 shadow-sm" : "bg-slate-50 text-slate-400 border-slate-200"}`}
+                                                  className={`p-1.5 rounded-lg border transition-all ${app.adminMemo ? "bg-amber-50 text-amber-600 border-amber-200 shadow-sm" : "bg-slate-50 text-slate-400 border-slate-200"}`}
                                                   title="메모"
                                                 >
-                                                  <StickyNote size={14} fill={app.adminMemo ? "currentColor" : "none"} />
+                                                  <StickyNote size={13} fill={app.adminMemo ? "currentColor" : "none"} />
                                                 </button>
                                                 {renderSmsButton(app)}
                                                 <button
                                                   onClick={() => handleCancelSelection(app)}
-                                                  className="p-2 rounded-xl bg-slate-50 text-slate-400 border border-slate-200"
+                                                  className="p-1.5 rounded-lg bg-slate-50 text-slate-400 border border-slate-200"
                                                 >
-                                                  <Trash2 size={14} />
+                                                  <Trash2 size={13} />
                                                 </button>
                                               </div>
                                             </div>
@@ -2124,7 +2124,7 @@ ${chatLink}
                               className={`${card} overflow-hidden`}
                             >
                               <div
-                                className={`flex items-center gap-2 px-6 py-4 border-b border-slate-100 bg-orange-50/50`}
+                                className={`flex items-center gap-2 px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-100 bg-orange-50/50`}
                               >
                                 <span
                                   className={`text-[0.85rem] font-extrabold text-orange-700`}
@@ -2151,7 +2151,7 @@ ${chatLink}
                                   return (
                                     <div
                                       key={app.id}
-                                      className="flex flex-col sm:flex-row sm:items-center gap-3 px-5 py-4 hover:bg-slate-50/80 transition-colors"
+                                      className="flex flex-col sm:flex-row sm:items-center gap-3 px-3 sm:px-5 py-3 sm:py-4 hover:bg-slate-50/80 transition-colors"
                                     >
                                       {/* Left: Slot & Status (Mobile) */}
                                       <div className="flex items-center justify-between sm:justify-start gap-3">
@@ -2167,13 +2167,13 @@ ${chatLink}
                                             {app.status === "waitlisted" && <span className="text-[0.6rem] font-black px-1.5 py-0.5 rounded-md shrink-0 whitespace-nowrap bg-orange-100 text-orange-600">정원초과대기</span>}
                                           </div>
                                         </div>
-                                        <div className="flex items-center gap-1 sm:hidden">
-                                          <button onClick={() => handleOpenMemo(app)} className={`p-2 rounded-xl border transition-all ${app.adminMemo ? "bg-amber-50 text-amber-600 border-amber-200 shadow-sm" : "bg-slate-50 text-slate-400 border-slate-200"}`} title="메모">
-                                            <StickyNote size={14} fill={app.adminMemo ? "currentColor" : "none"} />
+                                        <div className="flex items-center gap-0.5 sm:hidden">
+                                          <button onClick={() => handleOpenMemo(app)} className={`p-1.5 rounded-lg border transition-all ${app.adminMemo ? "bg-amber-50 text-amber-600 border-amber-200 shadow-sm" : "bg-slate-50 text-slate-400 border-slate-200"}`} title="메모">
+                                            <StickyNote size={13} fill={app.adminMemo ? "currentColor" : "none"} />
                                           </button>
                                           {renderSmsButton(app)}
-                                          <button onClick={() => handleWaitlistDelete(app)} className="p-2 rounded-xl bg-slate-50 text-slate-400 border border-slate-200">
-                                            <Trash2 size={14} />
+                                          <button onClick={() => handleWaitlistDelete(app)} className="p-1.5 rounded-lg bg-slate-50 text-slate-400 border border-slate-200">
+                                            <Trash2 size={13} />
                                           </button>
                                         </div>
                                       </div>
