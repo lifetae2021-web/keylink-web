@@ -105,11 +105,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       return new Date(0);
     };
 
-    // 2a. 회원 알림 (가입 대기 + 프로필 수정)
+    // 2a. 회원 알림 (가입 대기 + 프로필 수정, 더미계정 제외)
     const unsubUsers = onSnapshot(
       query(collection(db, 'users'), orderBy('updatedAt', 'desc'), limit(50)),
       (snapshot) => {
-        const items = snapshot.docs.map(d => {
+        const items = snapshot.docs.filter(d => {
+          const data = d.data();
+          const isDummy = data.isDummy === true || d.id.startsWith('dummy') || d.id.startsWith('user_m_') || d.id.startsWith('user_f_');
+          return !isDummy;
+        }).map(d => {
           const data = d.data();
           const status = data.status || 'pending';
           const list: NotificationItem[] = [];
@@ -147,11 +151,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       }
     );
 
-    // 2b. 로테이션 신청 알림
+    // 2b. 로테이션 신청 알림 (더미계정 제외)
     const unsubApps = onSnapshot(
       query(collection(db, 'applications'), orderBy('appliedAt', 'desc'), limit(20)),
       (snapshot) => {
-        const items = snapshot.docs.filter(d => (d.data().status || 'applied') === 'applied').map(d => {
+        const items = snapshot.docs.filter(d => {
+          const data = d.data();
+          if ((data.status || 'applied') !== 'applied') return false;
+          const isDummy = d.id.startsWith('dummy') || data.userId?.startsWith('user_m_') || data.userId?.startsWith('user_f_') || data.isDummy === true;
+          return !isDummy;
+        }).map(d => {
           const data = d.data();
           const date = safeDate(data.appliedAt);
           return {
@@ -167,11 +176,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       }
     );
 
-    // 2c. 프라이빗 매칭 알림
+    // 2c. 프라이빗 매칭 알림 (더미계정 제외)
     const unsubPrivate = onSnapshot(
       query(collection(db, 'private_applications'), orderBy('appliedAt', 'desc'), limit(20)),
       (snapshot) => {
-        const items = snapshot.docs.filter(d => !d.data().status || d.data().status === 'pending_consult' || d.data().status === 'applied').map(d => {
+        const items = snapshot.docs.filter(d => {
+          const data = d.data();
+          const status = data.status;
+          if (status && status !== 'pending_consult' && status !== 'applied') return false;
+          const isDummy = d.id.startsWith('dummy') || data.userId?.startsWith('user_m_') || data.userId?.startsWith('user_f_') || data.isDummy === true;
+          return !isDummy;
+        }).map(d => {
           const data = d.data();
           const date = safeDate(data.appliedAt);
           return {
