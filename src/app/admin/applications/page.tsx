@@ -12,7 +12,7 @@ import toast from 'react-hot-toast';
 import { auth, db } from '@/lib/firebase';
 import UserProfileModal from '../users/UserProfileModal';
 import {
-  collection, getDocs, doc, query, where, orderBy, Timestamp, getDoc, onSnapshot, writeBatch, increment
+  collection, getDocs, doc, query, where, orderBy, Timestamp, getDoc, onSnapshot, writeBatch, increment, limit
 } from 'firebase/firestore';
 import {
   selectApplicant,
@@ -72,6 +72,7 @@ export default function ApplicationsPage() {
   const [sortConfig, setSortConfig] = useState<{ field: string; direction: 'asc' | 'desc' }>({ field: 'appliedAt', direction: 'desc' });
   const [ageFilter, setAgeFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [dummyFilter, setDummyFilter] = useState<'exclude' | 'include' | 'only'>('exclude');
 
   // 1. sessions 컬렉션 실시간 동기화
   useEffect(() => {
@@ -99,7 +100,7 @@ export default function ApplicationsPage() {
 
     setIsDataLoading(true);
     const q = selectedEventId === 'all'
-      ? query(collection(db, 'applications'), orderBy('appliedAt', 'desc'))
+      ? query(collection(db, 'applications'), orderBy('appliedAt', 'desc'), limit(150))
       : query(
         collection(db, 'applications'),
         where('sessionId', '==', selectedEventId),
@@ -117,12 +118,18 @@ export default function ApplicationsPage() {
 
       const missingUids = uids.filter(uid => !newUserMap[uid]);
       if (missingUids.length > 0) {
-        for (const uid of missingUids) {
-          const uSnap = await getDoc(doc(db, 'users', uid));
-          if (uSnap.exists()) {
-            newUserMap[uid] = uSnap.data();
-            updated = true;
-          }
+        try {
+          const snaps = await Promise.all(
+            missingUids.map(uid => getDoc(doc(db, 'users', uid)))
+          );
+          snaps.forEach((uSnap, index) => {
+            if (uSnap.exists()) {
+              newUserMap[missingUids[index]] = uSnap.data();
+              updated = true;
+            }
+          });
+        } catch (e) {
+          console.error("Error batch-fetching user profiles:", e);
         }
       }
 
@@ -411,7 +418,13 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
       // v8.4.1: 상태 필터링
       const matchesStatus = statusFilter === 'all' || app.status === statusFilter;
 
-      return matchesSearch && matchesGender && matchesAge && matchesStatus;
+      // 더미 계정 필터링
+      const isDummy = app.id?.startsWith('dummy') || app.userId?.startsWith('user_m_') || app.userId?.startsWith('user_f_') || user.isDummy === true;
+      let matchesDummy = true;
+      if (dummyFilter === 'exclude') matchesDummy = !isDummy;
+      else if (dummyFilter === 'only') matchesDummy = isDummy;
+
+      return matchesSearch && matchesGender && matchesAge && matchesStatus && matchesDummy;
     });
 
     // v8.4.1: 정렬 로직
@@ -437,7 +450,7 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
     });
 
     return result;
-  }, [applications, userMap, searchQuery, filterGender, ageFilter, statusFilter, sortConfig]);
+  }, [applications, userMap, searchQuery, filterGender, ageFilter, statusFilter, dummyFilter, sortConfig]);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-400 pb-20">
@@ -467,7 +480,7 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
           {/* Top Controls Bar (Integrated Header & Filters) */}
           <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
             {/* Left: Filters */}
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
                 {[
                   { id: 'all', label: '전체' },
@@ -483,6 +496,23 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                   </button>
                 ))}
               </div>
+
+              <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
+                {[
+                  { id: 'exclude', label: '실제회원' },
+                  { id: 'include', label: '더미포함' },
+                  { id: 'only', label: '더미만' }
+                ].map(t => (
+                  <button
+                    key={t.id}
+                    onClick={() => setDummyFilter(t.id as any)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${dummyFilter === t.id ? 'bg-white text-amber-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+
               <button
                 onClick={() => setStatusFilter(statusFilter === 'selected' ? 'all' : 'selected')}
                 className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all whitespace-nowrap ${statusFilter === 'selected' ? 'bg-[#7C3AED] text-white border-[#7C3AED] shadow-md' : 'bg-white text-slate-400 border-slate-200 hover:border-[#7C3AED]/30'}`}
@@ -642,7 +672,7 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
           )}
 
           {/* Main Content Table (Light Premium Theme - Clean White) */}
-          <div className="mx-auto w-full" style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 16, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+          <div className="hidden md:block mx-auto w-full" style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 16, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
             <div className="overflow-auto max-h-[75vh]">
               <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' }}>
                 <thead className="hidden md:table-header-group sticky top-0 z-20" style={{ background: '#F8FAFC' }}>
@@ -693,13 +723,14 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                       const isFull = (app.gender === 'male' && isMaleFull) || (app.gender === 'female' && isFemaleFull);
                       const canSelect = app.status === 'applied' || app.status === 'held';
                       const isOverQuota = overQuotaAppIds.has(app.id);
+                      const isDummy = app.id?.startsWith('dummy') || app.userId?.startsWith('user_m_') || app.userId?.startsWith('user_f_') || user.isDummy === true;
 
                       // v8.13.5: 연령대 미일치 여부 계산
                       const targetAgeRange = app.gender === 'male' ? event?.targetMaleAge : event?.targetFemaleAge;
                       const userBirthDate = user.birthDate || app.birthDate || '';
                       
                       let isAgeMismatch = false;
-                      if (targetAgeRange && userBirthDate) {
+                      if (app.gender === 'male' && targetAgeRange && userBirthDate) {
                         const birthYearMatch = userBirthDate.match(/(\d{2,4})/);
                         const rangeMatch = targetAgeRange.match(/(\d{2})~(\d{2})/);
                         
@@ -765,6 +796,11 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                                     <span className={`text-[0.65rem] font-bold px-1.5 py-0.5 rounded ${(user.gender || app.gender) === 'male' ? 'text-blue-600 bg-blue-50' : 'text-rose-600 bg-rose-50'}`}>
                                       {(user.gender || app.gender) === 'male' ? '남성' : '여성'}
                                     </span>
+                                    {isDummy && (
+                                      <span className="text-[0.6rem] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 border border-amber-200 shadow-sm whitespace-nowrap">
+                                        더미
+                                      </span>
+                                    )}
                                   </div>
                                   <div className="flex items-center gap-2 mt-1">
                                     {(() => { const bd = user.birthDate || app.birthDate; return bd ? <span className="text-[0.85rem] font-bold text-slate-600">{bd.includes('-') ? bd.slice(2, 4) : bd.slice(0, 2)}년생</span> : <span className="text-[0.85rem] text-slate-400">??</span>; })()}
@@ -1095,6 +1131,238 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                 </tbody>
               </table>
             </div>
+          </div>
+
+          {/* Mobile View: Card List (Light Premium Theme - Clean White, Compliant with Compact Spacing) */}
+          <div className="md:hidden space-y-3 mt-3">
+            {isDataLoading ? (
+              [1, 2, 3, 4].map(i => (
+                <div key={i} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-3 animate-pulse">
+                  <div className="flex gap-3">
+                    <div className="w-14 h-14 bg-slate-100 rounded-full shrink-0" />
+                    <div className="flex-1 space-y-2 mt-1">
+                      <div className="h-4 bg-slate-100 rounded w-1/3" />
+                      <div className="h-3 bg-slate-100 rounded w-1/2" />
+                    </div>
+                  </div>
+                  <div className="h-14 bg-slate-100 rounded-xl w-full" />
+                  <div className="h-9 bg-slate-100 rounded-xl w-full" />
+                </div>
+              ))
+            ) : filtered.length === 0 ? (
+              <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center text-slate-500 shadow-sm flex flex-col items-center gap-4">
+                <FileText size={48} className="opacity-10 text-slate-400" />
+                <p className="text-sm font-bold text-slate-600">검색 결과와 일치하는 신청 내역이 없습니다.</p>
+                {(filterGender !== 'all' || statusFilter !== 'all' || searchQuery) && (
+                  <button onClick={() => { setFilterGender('all'); setStatusFilter('all'); setSearchQuery(''); }} className="text-[#FF6F61] text-xs font-bold underline">필터 초기화</button>
+                )}
+              </div>
+            ) : (
+              filtered.map((app) => {
+                const user = userMap[app.userId] || {};
+                const event = events.find(e => e.id === app.sessionId);
+                const regionName = event?.region === 'busan' ? '부산' : (event?.region === 'changwon' ? '창원' : '');
+                const aStatus = APP_STATUS[app.status] || { label: app.status, color: '#64748B', bg: '#F1F5F9' };
+                const isFull = (app.gender === 'male' && isMaleFull) || (app.gender === 'female' && isFemaleFull);
+                const isOverQuota = overQuotaAppIds.has(app.id);
+                const isDummy = app.id?.startsWith('dummy') || app.userId?.startsWith('user_m_') || app.userId?.startsWith('user_f_') || user.isDummy === true;
+
+                // 연령대 미일치 여부 계산
+                const targetAgeRange = app.gender === 'male' ? event?.targetMaleAge : event?.targetFemaleAge;
+                const userBirthDate = user.birthDate || app.birthDate || '';
+                let isAgeMismatch = false;
+                if (app.gender === 'male' && targetAgeRange && userBirthDate) {
+                  const birthYearMatch = userBirthDate.match(/(\d{2,4})/);
+                  const rangeMatch = targetAgeRange.match(/(\d{2})~(\d{2})/);
+                  if (birthYearMatch && rangeMatch) {
+                    let birthYear = parseInt(birthYearMatch[1]);
+                    if (birthYear > 1900) birthYear = birthYear % 100;
+                    const startYear = parseInt(rangeMatch[1]);
+                    const endYear = parseInt(rangeMatch[2]);
+                    const fullBirth = birthYear < 40 ? 2000 + birthYear : 1900 + birthYear;
+                    const fullStart = startYear < 40 ? 2000 + startYear : 1900 + startYear;
+                    const fullEnd = endYear < 40 ? 2000 + endYear : 1900 + endYear;
+                    const minYear = Math.min(fullStart, fullEnd);
+                    const maxYear = Math.max(fullStart, fullEnd);
+                    if (fullBirth < minYear || fullBirth > maxYear) {
+                      isAgeMismatch = true;
+                    }
+                  }
+                }
+
+                return (
+                  <div 
+                    key={app.id} 
+                    className="p-4 bg-white border border-slate-200 rounded-2xl shadow-sm hover:border-slate-300 transition-colors"
+                    style={{
+                      background: isOverQuota ? '#FFE4E6' : 'transparent'
+                    }}
+                  >
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="flex items-center gap-3">
+                        <div 
+                          className="w-14 h-14 rounded-full border-2 border-[#D4AF37] overflow-hidden bg-slate-100 shrink-0 cursor-pointer"
+                          onClick={() => { setSelectedUser(user); setIsModalOpen(true); }}
+                        >
+                          {user.photos?.[0] || user.photoUrl || user.photoURL ? (
+                            <img src={user.photos?.[0] || user.photoUrl || user.photoURL} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-[#D4AF37] font-bold">{(user.name || app.name)?.[0]}</div>
+                          )}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-black text-slate-800 text-[1.1rem] hover:underline cursor-pointer" onClick={() => { setSelectedUser(user); setIsModalOpen(true); }}>{user.name || app.name}</span>
+                            <span className={`text-[0.65rem] font-bold px-1.5 py-0.5 rounded ${(user.gender || app.gender) === 'male' ? 'text-blue-600 bg-blue-50' : 'text-rose-600 bg-rose-50'}`}>
+                              {(user.gender || app.gender) === 'male' ? '남성' : '여성'}
+                            </span>
+                            {isDummy && (
+                              <span className="text-[0.6rem] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 border border-amber-200 shadow-sm whitespace-nowrap">
+                                더미
+                              </span>
+                            )}
+                            {app.isSmsSent && (
+                              <span 
+                                className="text-[0.65rem] font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-600 border border-emerald-100 cursor-help flex items-center gap-1"
+                                title={`최근 발송: ${app.lastSmsSentAt?.toDate ? format(app.lastSmsSentAt.toDate(), 'MM/dd HH:mm') : '알 수 없음'}`}
+                              >
+                                <CheckCircle size={10} /> 요청완료
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-[0.75rem] text-slate-500 font-bold mt-0.5">
+                            {(() => { const bd = user.birthDate || app.birthDate; return bd ? <span>{bd.includes('-') ? bd.slice(2, 4) : bd.slice(0, 2)}년생</span> : <span>??</span>; })()}
+                            {' · '}{regionName} {event?.episodeNumber}기
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex flex-col items-end gap-1">
+                        <span style={{
+                          fontSize: '0.65rem',
+                          fontWeight: 900,
+                          padding: '2px 8px',
+                          borderRadius: 4,
+                          color: aStatus.color,
+                          background: aStatus.bg,
+                        }}>
+                          {aStatus.label}
+                        </span>
+                        {isAgeMismatch && (app.status === 'applied' || app.status === 'held') && (
+                          <div className="flex items-center gap-1 text-[0.55rem] font-black text-rose-500 bg-rose-50 border border-rose-100 px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap animate-pulse">
+                            <Info size={10} /> 연령부적합
+                          </div>
+                        )}
+                        <button 
+                          onClick={() => {
+                            if (window.confirm('정말 삭제하시겠습니까?')) {
+                              updateAppStatus(app, 'cancelled');
+                            }
+                          }}
+                          className="text-slate-300 hover:text-rose-500 mt-1"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 mb-4 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                      <div>
+                        <p className="text-[10px] font-black text-slate-400 uppercase mb-0.5">직업</p>
+                        <p className="text-sm font-bold text-slate-700 leading-tight">{user.admin_job || (user.job && user.job !== '-' ? user.job : null) || user.workplace?.split(',')[0] || app.job || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black text-slate-400 uppercase mb-0.5">거주지</p>
+                        <p className="text-sm font-bold text-slate-700 leading-tight">{app.residence || user.residence || user.location || '-'}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-1.5">
+                      {(app.status === 'applied' || app.status === 'held' || app.status === 'selected') && (
+                        <>
+                          <button
+                            onClick={async () => {
+                              if (!user.isJobReviewed && !app.id.startsWith('dummy')) return toast.error('먼저 직업 승인을 해주세요.');
+                              if (app.status === 'selected') {
+                                if (isOverQuota && !confirm('정원이 가득 찬 상태입니다. 그래도 입금 확인 처리를 진행하시겠습니까?')) return;
+                                handleOpenPreview(app, 'confirm');
+                              } else {
+                                if (isOverQuota && !confirm('정원이 가득 찼습니다. 처리하시겠습니까?')) return;
+                                handleOpenPreview(app, 'select');
+                              }
+                            }}
+                            className={`flex-1 py-2.5 ${app.status === 'selected' ? 'bg-emerald-500' : 'bg-[#FF6F61]'} text-white rounded-xl font-black text-xs shadow-md active:scale-95 transition-all`}
+                          >
+                            {app.status === 'selected' ? '입금확인' : '선발'}
+                          </button>
+
+                          {app.status === 'selected' && (
+                            <button
+                              onClick={() => {
+                                if (app.isSmsSent) {
+                                  if (!window.confirm('이미 문자를 보낸 유저입니다. 다시 보내시겠습니까?')) return;
+                                }
+                                handleOpenPreview(app, 're-request');
+                              }}
+                              className="flex-1 py-2.5 bg-purple-500 text-white rounded-xl font-black text-xs shadow-md active:scale-95 transition-all"
+                            >
+                              재요청
+                            </button>
+                          )}
+
+                          {app.status !== 'selected' && (
+                            <>
+                              <button
+                                onClick={async () => {
+                                  if (!user.isJobReviewed && !app.id.startsWith('dummy')) return toast.error('먼저 직업 승인을 해주세요.');
+                                  if (isOverQuota && !confirm('정원이 가득 찼습니다. 선발확정하시겠습니까?')) return;
+                                  if (window.confirm('문자 발송 없이 바로 선발확정 처리하시겠습니까?')) {
+                                    updateAppStatus(app, 'confirmed');
+                                  }
+                                }}
+                                className="flex-1 py-2.5 bg-[#FFD700] text-[#7A5F00] rounded-xl font-black text-xs shadow-md active:scale-95 transition-all"
+                              >
+                                확정
+                              </button>
+                              <button
+                                onClick={() => updateAppStatus(app, 'held')}
+                                className="flex-1 py-2.5 bg-slate-100 text-slate-600 rounded-xl font-black text-xs active:scale-95 transition-all"
+                              >
+                                보류
+                              </button>
+                            </>
+                          )}
+
+                          <button
+                            onClick={() => { setChangeSessionApp(app); setChangeSessionModalOpen(true); }}
+                            className="flex-[0.5] py-2.5 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center font-black text-xs active:scale-95 transition-all"
+                            title="기수 변경"
+                          >
+                            <Calendar size={16} />
+                          </button>
+                        </>
+                      )}
+                      {app.status === 'confirmed' && (
+                        <>
+                          <button
+                            onClick={() => updateAppStatus(app, 'held')}
+                            className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl font-black text-xs shadow-md active:scale-95 transition-all"
+                          >
+                            선발 취소하기
+                          </button>
+                          <button
+                            onClick={() => { setChangeSessionApp(app); setChangeSessionModalOpen(true); }}
+                            className="flex-[0.5] py-2.5 bg-blue-500 text-white rounded-xl flex items-center justify-center font-black text-xs shadow-md active:scale-95 transition-all"
+                          >
+                            <Calendar size={16} />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         </>
       ) : (

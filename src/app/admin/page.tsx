@@ -297,27 +297,31 @@ export default function AdminDashboard() {
               {isLoading ? (
                 <Skeleton className="h-8 w-2/3" />
               ) : (
-                <div className="flex items-baseline justify-between gap-2">
+                <div className="space-y-3">
                   <div>
-                    <div className="flex items-center gap-2">
-                      <p style={{ fontSize: '1.6rem', fontWeight: 700, letterSpacing: '-0.02em', color: '#0f172a', lineHeight: 1.1 }}>
-                        {s.label === '매출' ? formatRevenue(s.monthlyNew as number) : (s.monthlyNew ?? 0)}
-                        {(s.label === '가입자' || s.label === '신청') && <span style={{ fontSize: '1rem', fontWeight: 600, marginLeft: 2 }}>명</span>}
-                        {s.label === '매칭 커플' && <span style={{ fontSize: '1rem', fontWeight: 600, marginLeft: 2 }}>커플</span>}
-                      </p>
+                    <p style={{ fontSize: '1.65rem', fontWeight: 800, letterSpacing: '-0.03em', color: '#0f172a', lineHeight: 1.1 }}>
+                      {s.label === '매출' ? formatRevenue(s.monthlyNew as number) : (s.monthlyNew ?? 0).toLocaleString()}
+                      {(s.label === '가입자' || s.label === '신청') && <span style={{ fontSize: '1rem', fontWeight: 600, marginLeft: 2, color: '#64748B' }}>명</span>}
+                      {s.label === '매칭 커플' && <span style={{ fontSize: '1rem', fontWeight: 600, marginLeft: 2, color: '#64748B' }}>커플</span>}
+                    </p>
+                  </div>
+                  
+                  <div className="flex items-center justify-between text-[0.72rem] text-slate-400 font-medium">
+                    <div className="flex items-center gap-1.5">
                       <span style={{
-                        fontSize: '0.68rem', fontWeight: 700, padding: '2px 5px', borderRadius: 5,
+                        fontSize: '0.68rem', fontWeight: 700, padding: '1px 5px', borderRadius: 4,
                         color: s.trend >= 0 ? '#16a34a' : '#dc2626',
                         background: s.trend >= 0 ? '#dcfce7' : '#fee2e2',
                       }}>
                         {s.trend >= 0 ? '+' : ''}{s.trend}%
                       </span>
+                      <span style={{ color: '#94a3b8' }}>{s.monthlyNewLabel}</span>
                     </div>
-                    <p style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: 4 }}>{s.monthlyNewLabel}</p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p style={{ fontSize: '1.05rem', fontWeight: 700, letterSpacing: '-0.02em', color: '#cbd5e1', lineHeight: 1.1 }}>{s.subValue}</p>
-                    <p style={{ fontSize: '0.75rem', color: '#cbd5e1', marginTop: 4 }}>{s.subLabel}</p>
+                    
+                    <div className="flex items-center gap-1 text-[0.72rem]">
+                      <span style={{ color: '#cbd5e1' }}>{s.subLabel}</span>
+                      <span className="font-bold text-slate-500">{s.subValue}</span>
+                    </div>
                   </div>
                 </div>
               )}

@@ -288,7 +288,24 @@ export default function EventsPage() {
       });
       setSessions(fetched);
       if (!selectedIdRef.current && fetched.length > 0) {
-        setSelectedId(fetched[0].id);
+        // 종료되지 않은 (진행 중인) 기수 중에서 가장 빨리 시작하는 기수 선택
+        const now = new Date();
+        const activeSessions = fetched.filter(ev => {
+          const twoHoursAfter = new Date(ev.eventDate.getTime() + 2 * 60 * 60 * 1000);
+          return now < twoHoursAfter;
+        });
+
+        if (activeSessions.length > 0) {
+          const earliestActive = [...activeSessions].sort((a, b) => {
+            const tA = a.eventDate ? new Date(a.eventDate).getTime() : Infinity;
+            const tB = b.eventDate ? new Date(b.eventDate).getTime() : Infinity;
+            return tA - tB;
+          })[0];
+          setSelectedId(earliestActive.id);
+        } else {
+          // 만약 진행 중인 기수가 아예 없다면 전체 기수 중 가장 최신 기수 선택
+          setSelectedId(fetched[0].id);
+        }
       }
       setIsLoading(false);
     });

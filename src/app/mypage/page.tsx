@@ -254,11 +254,102 @@ function MyPageContent() {
       }, {});
       sanitizedForm.isJobReviewed = false;
 
+      // v8.15.3: 프로필 저장 시 항상 isJobReviewed=false → 관리자에게 알림/뱃지 표시
+      // v9.1.0: 개인정보 수정 시 인증 상태 취소(승인 대기 전환) 및 변경 로깅 강화
+      const newLogs = [];
+      const changedAt = new Date().toISOString();
+
+      if (userData?.name !== sanitizedForm.name) {
+        newLogs.push({
+          field: 'name',
+          oldValue: userData?.name || '미입력',
+          newValue: sanitizedForm.name || '미입력',
+          changedAt
+        });
+      }
+
+      if (userData?.gender !== sanitizedForm.gender) {
+        newLogs.push({
+          field: 'gender',
+          oldValue: userData?.gender === 'male' ? '남성' : userData?.gender === 'female' ? '여성' : '미입력',
+          newValue: sanitizedForm.gender === 'male' ? '남성' : sanitizedForm.gender === 'female' ? '여성' : '미입력',
+          changedAt
+        });
+      }
+
+      if (userData?.birthDate !== sanitizedForm.birthDate) {
+        newLogs.push({
+          field: 'birthDate',
+          oldValue: userData?.birthDate || '미입력',
+          newValue: sanitizedForm.birthDate || '미입력',
+          changedAt
+        });
+      }
+
+      if (userData?.phone !== sanitizedForm.phone) {
+        newLogs.push({
+          field: 'phone',
+          oldValue: userData?.phone || '미입력',
+          newValue: sanitizedForm.phone || '미입력',
+          changedAt
+        });
+      }
+      
+      const oldWorkplace = userData?.workplace || userData?.jobRole || userData?.job || '미입력';
+      const newWorkplace = sanitizedForm.workplace || '미입력';
+      if (oldWorkplace !== newWorkplace) {
+        newLogs.push({
+          field: 'workplace',
+          oldValue: oldWorkplace,
+          newValue: newWorkplace,
+          changedAt
+        });
+      }
+
+      if (userData?.employmentProof !== finalVerificationUrl) {
+        newLogs.push({
+          field: 'employmentProof',
+          oldValue: userData?.employmentProof ? '이전 재직 증명 서류' : '미입력',
+          newValue: finalVerificationUrl ? '새로운 재직 증명 서류' : '삭제됨',
+          changedAt
+        });
+      }
+
+      const oldPhotos = userData?.photos || [];
+      if (JSON.stringify(oldPhotos) !== JSON.stringify(uploadedUrls)) {
+        newLogs.push({
+          field: 'photos',
+          oldValue: `이전 사진 ${oldPhotos.length}장`,
+          newValue: `새로운 사진 ${uploadedUrls.length}장`,
+          changedAt
+        });
+      }
+
+      const hasCoreInfoChanged = newLogs.length > 0;
+      let nextIsVerified = userData?.isVerified ?? false;
+      let nextStatus = userData?.status ?? 'pending';
+
+      if (hasCoreInfoChanged && userData?.isVerified) {
+        nextIsVerified = false;
+        nextStatus = 'pending';
+        newLogs.push({
+          field: 'verification_revoked',
+          oldValue: '인증 완료',
+          newValue: '개인정보 수정으로 인한 인증 취소 (재승인 대기)',
+          changedAt
+        });
+      }
+
+      if (newLogs.length === 0) {
+        newLogs.push({ field: 'profile', changedAt });
+      }
+
       const updateData: any = {
         ...sanitizedForm,
         photos: uploadedUrls,
         employmentProof: finalVerificationUrl,
-        isVerified: userData?.isVerified ?? false,
+        isVerified: nextIsVerified,
+        status: nextStatus,
         // Explicitly clear legacy fields to prevent schema conflicts (v3.5.1 Cleanup)
         profilePhotos: deleteField(),
         facePhotos: deleteField(),
@@ -269,15 +360,11 @@ function MyPageContent() {
         verificationUrl: deleteField(),
         updatedAt: serverTimestamp()
       };
-      
-      // v8.15.3: 프로필 저장 시 항상 isJobReviewed=false → 관리자에게 알림/뱃지 표시
-      updateData.isJobReviewed = false;
-      updateData.user_logs = arrayUnion({
-        field: 'profile',
-        changedAt: new Date().toISOString()
-      });
 
-      console.log('Saving profile, setting isJobReviewed to false for admin notification');
+      updateData.isJobReviewed = false;
+      updateData.user_logs = arrayUnion(...newLogs);
+
+      console.log('Saving profile, setting isJobReviewed to false for admin notification. Revoking isVerified if core info changed.');
 
       await updateDoc(doc(db, 'users', user!.uid), updateData);
       
@@ -289,7 +376,11 @@ function MyPageContent() {
       // [Draft] Clear UNIFIED draft on success
       localStorage.removeItem(`kl_unified_profile_draft_${user!.uid}`);
       
-      toast.success('프로필 정보가 안전하게 업데이트되었습니다.');
+      if (hasCoreInfoChanged && userData?.isVerified) {
+        toast.success('개인정보가 변경되어 인증 상태가 승인 대기로 전환되었습니다. 관리자 확인 후 곧 재승인됩니다.');
+      } else {
+        toast.success('프로필 정보가 안전하게 업데이트되었습니다.');
+      }
     } catch (error: any) {
       console.error('Profile Save Error:', error);
       let errorMessage = '저장 중 오류가 발생했습니다.';
