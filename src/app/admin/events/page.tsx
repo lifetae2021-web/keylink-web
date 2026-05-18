@@ -1809,9 +1809,9 @@ ${chatLink}
                                                     </span>
                                                   )}
                                                 </div>
-                                                <div className="flex items-center gap-1.5 sm:hidden">
-                                                  <span className="text-sm font-bold text-slate-800">{app.name || "-"}</span>
-                                                  <span className={`text-[0.65rem] font-bold px-2 py-0.5 rounded-full ${badge.cls}`}>
+                                                <div className="flex items-center gap-1.5 sm:hidden flex-nowrap overflow-hidden">
+                                                  <span className="text-sm font-bold text-slate-800 whitespace-nowrap shrink-0">{app.name || "-"}</span>
+                                                  <span className={`text-[0.65rem] font-bold px-2 py-0.5 rounded-full whitespace-nowrap shrink-0 ${badge.cls}`}>
                                                     {badge.label}
                                                   </span>
                                                 </div>
@@ -1863,10 +1863,10 @@ ${chatLink}
                                               </div>
                                               <div className="flex flex-col gap-1.5 ml-11 sm:ml-0">
                                                 {/* Row 1: 나이, 직업, 거주지 */}
-                                                <div className="flex items-center gap-x-2 text-[0.72rem] text-slate-600 font-bold">
+                                                <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[0.72rem] text-slate-600 font-bold">
                                                   <span className="whitespace-nowrap">{birthYear}</span>
                                                   <span className="text-slate-300">·</span>
-                                                  <span className="flex items-center gap-1">
+                                                  <span className="flex items-center gap-1 min-w-0">
                                                     {isDummyApp(app) ? (
                                                       editingAppJobId === app.id ? (
                                                         <input
@@ -1886,14 +1886,14 @@ ${chatLink}
                                                             setEditingAppJobId(app.id);
                                                             setTempAppJobValue(displayJob);
                                                           }}
-                                                          className="truncate max-w-[120px] sm:max-w-[100px] cursor-pointer hover:text-blue-500 hover:underline"
-                                                          title="더미 직업명 수정"
+                                                          className="truncate max-w-[160px] sm:max-w-[140px] cursor-pointer hover:text-blue-500 hover:underline"
+                                                          title={displayJob}
                                                         >
                                                           {displayJob}
                                                         </span>
                                                       )
                                                     ) : (
-                                                      <span className="truncate max-w-[120px] sm:max-w-[100px]">
+                                                      <span className="truncate max-w-[160px] sm:max-w-[140px]" title={displayJob}>
                                                         {displayJob}
                                                       </span>
                                                     )}
@@ -1904,8 +1904,8 @@ ${chatLink}
                                                   </span>
                                                 </div>
                                                 {/* Row 2: 휴대폰번호, 동반참여 */}
-                                                <div className="flex items-center gap-x-2 text-[0.72rem] text-slate-400 font-medium">
-                                                  <span className="flex items-center gap-1 text-blue-600/70 bg-blue-50/50 px-1.5 py-0.5 rounded shrink-0">
+                                                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[0.72rem] text-slate-400 font-medium">
+                                                  <span className="flex items-center gap-1 text-blue-600/70 bg-blue-50/50 px-1.5 py-0.5 rounded shrink-0 whitespace-nowrap">
                                                     <Phone size={10} className="text-blue-400/70" />
                                                     {app.phone || "-"}
                                                   </span>
@@ -2159,12 +2159,12 @@ ${chatLink}
                                           <span className="text-xs font-black w-8 shrink-0 text-amber-500">
                                             {idx + 1}
                                           </span>
-                                          <div className="flex items-center gap-1.5 sm:hidden">
-                                            <span className="text-sm font-bold text-slate-800">{app.name || "-"}</span>
-                                            {app.status === "applied" && <span className="text-[0.6rem] font-black px-1.5 py-0.5 rounded-md" style={{ color: '#D97706', background: '#FFFBEB' }}>검토 중</span>}
-                                            {app.status === "held" && <span className="text-[0.6rem] font-black px-1.5 py-0.5 rounded-md" style={{ color: '#EA580C', background: '#FFF7ED' }}>보류</span>}
-                                            {app.status === "selected" && <span className="text-[0.6rem] font-black px-1.5 py-0.5 rounded-md" style={{ color: '#7C3AED', background: '#F5F3FF' }}>입금 대기</span>}
-                                            {app.status === "waitlisted" && <span className="text-[0.6rem] font-black px-1.5 py-0.5 rounded-md bg-orange-100 text-orange-600">정원초과대기</span>}
+                                          <div className="flex items-center gap-1.5 sm:hidden flex-nowrap overflow-hidden">
+                                            <span className="text-sm font-bold text-slate-800 whitespace-nowrap shrink-0">{app.name || "-"}</span>
+                                            {app.status === "applied" && <span className="text-[0.6rem] font-black px-1.5 py-0.5 rounded-md shrink-0 whitespace-nowrap" style={{ color: '#D97706', background: '#FFFBEB' }}>검토 중</span>}
+                                            {app.status === "held" && <span className="text-[0.6rem] font-black px-1.5 py-0.5 rounded-md shrink-0 whitespace-nowrap" style={{ color: '#EA580C', background: '#FFF7ED' }}>보류</span>}
+                                            {app.status === "selected" && <span className="text-[0.6rem] font-black px-1.5 py-0.5 rounded-md shrink-0 whitespace-nowrap" style={{ color: '#7C3AED', background: '#F5F3FF' }}>입금 대기</span>}
+                                            {app.status === "waitlisted" && <span className="text-[0.6rem] font-black px-1.5 py-0.5 rounded-md shrink-0 whitespace-nowrap bg-orange-100 text-orange-600">정원초과대기</span>}
                                           </div>
                                         </div>
                                         <div className="flex items-center gap-1 sm:hidden">
@@ -2192,10 +2192,10 @@ ${chatLink}
                                         </div>
                                         <div className="flex flex-col gap-1.5 ml-11 sm:ml-0">
                                           {/* Row 1: 나이, 직업, 거주지 */}
-                                          <div className="flex items-center gap-x-2 text-[0.72rem] text-slate-600 font-bold">
+                                          <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[0.72rem] text-slate-600 font-bold">
                                             <span className="whitespace-nowrap">{birthYear}</span>
                                             <span className="text-slate-300">·</span>
-                                            <span className="flex items-center gap-1">
+                                            <span className="flex items-center gap-1 min-w-0">
                                               {isDummyApp(app) ? (
                                                 editingAppJobId === app.id ? (
                                                   <input
@@ -2215,22 +2215,22 @@ ${chatLink}
                                                       setEditingAppJobId(app.id);
                                                       setTempAppJobValue(app.job || '');
                                                     }}
-                                                    className="truncate max-w-[120px] sm:max-w-[100px] cursor-pointer hover:text-blue-500 hover:underline"
-                                                    title="더미 직업명 수정"
+                                                    className="truncate max-w-[160px] sm:max-w-[140px] cursor-pointer hover:text-blue-500 hover:underline"
+                                                    title={app.job || "-"}
                                                   >
                                                     {app.job || "-"}
                                                   </span>
                                                 )
                                               ) : (
-                                                <span className="truncate max-w-[120px] sm:max-w-[100px]">{getEffectiveJob(app)}</span>
+                                                <span className="truncate max-w-[160px] sm:max-w-[140px]" title={getEffectiveJob(app)}>{getEffectiveJob(app)}</span>
                                               )}
                                             </span>
                                             <span className="text-slate-300">·</span>
                                             <span className="whitespace-nowrap">{app.residence || "-"}</span>
                                           </div>
                                           {/* Row 2: 휴대폰번호, 동반참여 */}
-                                          <div className="flex items-center gap-x-2 text-[0.72rem] text-slate-400 font-medium">
-                                            <span className="flex items-center gap-1 text-blue-600/70 bg-blue-50/50 px-1.5 py-0.5 rounded shrink-0">
+                                          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[0.72rem] text-slate-400 font-medium">
+                                            <span className="flex items-center gap-1 text-blue-600/70 bg-blue-50/50 px-1.5 py-0.5 rounded shrink-0 whitespace-nowrap">
                                               <Phone size={10} className="text-blue-400/70" />
                                               {app.phone || "-"}
                                             </span>
