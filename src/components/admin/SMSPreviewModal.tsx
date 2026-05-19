@@ -51,9 +51,14 @@ function applyVariables(content: string, applicant: any, session: any): string {
   const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
   const remainingDays = diffDays > 0 ? String(diffDays) : '0';
 
-  const couponText = applicant?.couponDiscount && applicant.couponDiscount > 0
-    ? ' (쿠폰 할인 적용)'
-    : (applicant?.gender === 'female' && applicant?.femaleOption === 'group' ? ' (동반할인 적용)' : '');
+  // 쿠폰 할인 로직: couponDiscount 필드 기반 최종 금액과 할인 사유 계산
+  const finalPrice = applicant?.price || genderPrice;
+  const couponDiscount = applicant?.couponDiscount && applicant.couponDiscount > 0 ? applicant.couponDiscount : 0;
+  const isGroupDiscount = applicant?.gender === 'female' && applicant?.femaleOption === 'group';
+  const discountSuffix = couponDiscount > 0
+    ? ` (할인쿠폰 적용, ${couponDiscount.toLocaleString('ko-KR')}원 할인)`
+    : (isGroupDiscount ? ' (동반할인 적용)' : '');
+  const formattedPrice = `${finalPrice.toLocaleString('ko-KR')}원${discountSuffix}`;
 
   let result = content
     .replace(/{{이름}}/g, applicant?.name || applicant?.userName || '참가자')
@@ -64,14 +69,14 @@ function applyVariables(content: string, applicant: any, session: any): string {
     .replace(/{{장소}}/g, session?.venue || session?.location || '')
     .replace(/{{남은일수}}/g, remainingDays);
 
-  const formattedPrice = (applicant?.price || genderPrice).toLocaleString('ko-KR');
-
   if (result.includes('{{쿠폰적용여부}}')) {
+    // 구버전 호환: {{쿠폰적용여부}} 사용 시 절러주기
+    const couponText = couponDiscount > 0 ? ' (쿠폰 할인 적용)' : (isGroupDiscount ? ' (동반할인 적용)' : '');
     result = result
-      .replace(/{{금액}}/g, formattedPrice)
+      .replace(/{{금액}}/g, finalPrice.toLocaleString('ko-KR'))
       .replace(/{{쿠폰적용여부}}/g, couponText);
   } else {
-    result = result.replace(/{{금액}}/g, `${formattedPrice}${couponText}`);
+    result = result.replace(/{{금액}}/g, formattedPrice);
   }
 
   return result;
@@ -348,9 +353,38 @@ const SMSPreviewModal: React.FC<SMSPreviewModalProps> = ({
                       <MapPin size={14} className="text-[#FF7E7E]" />
                       <span className="text-xs font-bold truncate">{session?.venue || session?.location || '장소 미정'}</span>
                     </div>
-                    <div className="flex items-center gap-3 text-slate-600">
-                      <CreditCard size={14} className="text-[#FF7E7E]" />
-                      <span className="text-xs font-bold">{(applicant?.price || session?.price || 60000).toLocaleString()}원</span>
+                    <div className="flex items-start gap-3 text-slate-600">
+                      <CreditCard size={14} className="text-[#FF7E7E] mt-0.5 shrink-0" />
+                      {(() => {
+                        const gp = applicant?.gender === 'male'
+                          ? (applicant?.maleOption === 'safe' ? 60000 : (session?.malePrice || 49000))
+                          : (applicant?.femaleOption === 'group' ? 24000 : (session?.femalePrice || 29000));
+                        const fp = applicant?.price || gp;
+                        const cd = applicant?.couponDiscount && applicant.couponDiscount > 0 ? applicant.couponDiscount : 0;
+                        const isGrp = applicant?.gender === 'female' && applicant?.femaleOption === 'group';
+                        if (cd > 0) {
+                          const orig = fp + cd;
+                          return (
+                            <div className="flex flex-col gap-1">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="text-xs text-slate-400 line-through">기존 {orig.toLocaleString('ko-KR')}원</span>
+                                <span className="text-[0.6rem] font-bold text-rose-400 bg-rose-50 px-1 rounded">-{cd.toLocaleString('ko-KR')}원</span>
+                              </div>
+                              <span className="text-sm font-black text-emerald-600">실가 {fp.toLocaleString('ko-KR')}원</span>
+                              <span className="text-[0.55rem] font-bold text-purple-500 bg-purple-50 border border-purple-100 px-1.5 py-0.5 rounded w-fit">할인쿠폰 적용</span>
+                            </div>
+                          );
+                        } else if (isGrp) {
+                          return (
+                            <div className="flex flex-col gap-0.5">
+                              <span className="text-xs font-bold">{fp.toLocaleString('ko-KR')}원</span>
+                              <span className="text-[0.55rem] font-bold text-blue-500 bg-blue-50 border border-blue-100 px-1.5 py-0.5 rounded w-fit">동반할인 적용</span>
+                            </div>
+                          );
+                        } else {
+                          return <span className="text-xs font-bold">{fp.toLocaleString('ko-KR')}원</span>;
+                        }
+                      })()}
                     </div>
                   </div>
                 </div>
