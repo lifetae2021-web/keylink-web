@@ -6,7 +6,7 @@ import {
   Download, ShieldCheck, ChevronLeft, ChevronRight, ChevronDown, Loader2,
   FileText, Users, CreditCard, Filter, Calendar, MapPin,
   X, Phone, Briefcase, Ruler, Smile, Cigarette, Beer, Camera, Info,
-  Ticket, Edit3, Trash2, UserPlus, User, MessageSquare
+  Ticket, Edit3, Trash2, UserPlus, User, MessageSquare, Heart, UserX
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { auth, db } from '@/lib/firebase';
@@ -69,11 +69,14 @@ export default function ApplicationsPage() {
   const [changeSessionApp, setChangeSessionApp] = useState<any>(null);
   const [targetSessionId, setTargetSessionId] = useState<string>('');
 
-  // v8.4.4: 필터링 상태 초기화 (헤더 필터 제거로 인한 전체 보기 복구)
+  // v8.4.4: 필터링 상태 초기화
   const [sortConfig, setSortConfig] = useState<{ field: string; direction: 'asc' | 'desc' }>({ field: 'appliedAt', direction: 'desc' });
   const [ageFilter, setAgeFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [dummyFilter, setDummyFilter] = useState<'exclude' | 'only'>('exclude');
+
+  // 매칭 결과 (matchingSummaries 컬렉션)
+  const [matchingSummary, setMatchingSummary] = useState<any>(null);
 
   // 1. sessions 컬렉션 실시간 동기화
   useEffect(() => {
@@ -150,6 +153,21 @@ export default function ApplicationsPage() {
       setSmsTemplates(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     });
   }, []);
+
+  // 4. 매칭 요약 로드 (기수 선택 시)
+  useEffect(() => {
+    if (!selectedEventId || selectedEventId === 'all') {
+      setMatchingSummary(null);
+      return;
+    }
+    getDoc(doc(db, 'matchingSummaries', selectedEventId)).then(snap => {
+      if (snap.exists() && snap.data()?.status === 'approved') {
+        setMatchingSummary(snap.data());
+      } else {
+        setMatchingSummary(null);
+      }
+    }).catch(() => setMatchingSummary(null));
+  }, [selectedEventId]);
 
   // status 변경 로직
   const updateAppStatus = async (app: any, status: string, customMessage?: string) => {
@@ -398,7 +416,51 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
 
   const activeEvent = events.find(e => e.id === selectedEventId);
 
-  // v8.1.7: 실시간 선발 현황 계산 (confirmed only, excluding selected/waiting)
+  // \ud589\uc0ac \uc885\ub8cc \uc5ec\ubd80 \ud310\ub2e8 (\ucefb\ud50c\ub9ac\ub3c4 \uc218 \uc788\ub294 \uae30\uc900)
+  const isSessionEnded = useMemo(() => {
+    if (!activeEvent) return false;
+    if (activeEvent.status === 'completed') return true;
+    const eventDate = activeEvent.eventDate?.toDate?.() || new Date();
+    return new Date() >= new Date(eventDate.getTime() + 2 * 60 * 60 * 1000);
+  }, [activeEvent]);
+
+  // \ud589\uc0ac \ud6c4 \uacb0\uacfc \uc9d1\uacc4 (matchingSummary \uae30\ubc18)
+  const postEventStats = useMemo(() => {
+    if (!matchingSummary) return null;
+    const matchedUserIds = new Set<string>(
+      (matchingSummary.matchedPairs || []).flatMap((p: any) => [p.userAId, p.userBId])
+    );
+    const confirmedApps = applications.filter((a: any) => a.status === 'confirmed');
+    const attendedCount = confirmedApps.filter((a: any) => a.attended === true).length;
+    const noShowCount = confirmedApps.filter((a: any) => a.attended === false).length;
+    return {
+      matchedCount: matchedUserIds.size,
+      attendedCount,
+      noShowCount,
+      matchedUserIds,
+      unmatchedUserIds: new Set<string>(matchingSummary.unmatchedUserIds || []),
+    };
+  }, [matchingSummary, applications]);
+
+  // \ub178\uc1fc \ucc98\ub9ac \ud578\ub4e4\ub7ec
+  const handleMarkNoShow = async (app: any) => {
+    if (!window.confirm(`${userMap[app.userId]?.name || app.name}님을 노쇼 처리하시겠습니까?\n(출석 체크가 false로 설정되고, 회원의 노쇼 횟수가 +1 증가합니다.)`)) return;
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      // application의 attended를 false로
+      await updateDoc(doc(db, 'applications', app.id), { attended: false });
+      // users의 noShowCount 증가
+      if (app.userId && !app.userId.startsWith('user_m_') && !app.userId.startsWith('user_f_')) {
+        await updateDoc(doc(db, 'users', app.userId), { noShowCount: increment(1) });
+      }
+      toast.success(`${userMap[app.userId]?.name || app.name}님이 노쇼 처리되었습니다.`);
+    } catch (e: any) {
+      console.error(e);
+      toast.error('노쇼 처리에 실패했습니다.');
+    }
+  };
+
+  // v8.1.7: \uc2e4\uc2dc\uac04 \uc120\ubc1c \ud604\ud669 \uacc4\uc0b0 (confirmed only, excluding selected/waiting)
   const selectionStats = useMemo(() => {
     if (selectedEventId === 'all') return { male: 0, female: 0 };
     const male = applications.filter(a => a.gender === 'male' && a.status === 'confirmed').length;
@@ -697,6 +759,39 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
             </div>
           )}
 
+          {/* 행사 후 결과 카드 (종료 기수 + 매칭 결과 승인 시) */}
+          {activeEvent && isSessionEnded && postEventStats && (
+            <div className="grid grid-cols-3 gap-3">
+              <div style={{ ...panel, padding: '16px 20px' }} className="flex items-center justify-between bg-gradient-to-br from-pink-50 to-rose-50 border-pink-100">
+                <div>
+                  <p style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748B' }}>매칭 성공</p>
+                  <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#ec4899', marginTop: 2 }}>{postEventStats.matchedCount}명</div>
+                </div>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-pink-100">
+                  <Heart size={18} className="text-pink-500" fill="#ec4899" />
+                </div>
+              </div>
+              <div style={{ ...panel, padding: '16px 20px' }} className="flex items-center justify-between bg-gradient-to-br from-emerald-50 to-green-50 border-emerald-100">
+                <div>
+                  <p style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748B' }}>참여 완료</p>
+                  <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#10b981', marginTop: 2 }}>{postEventStats.attendedCount}명</div>
+                </div>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-emerald-100">
+                  <CheckCircle size={18} className="text-emerald-500" />
+                </div>
+              </div>
+              <div style={{ ...panel, padding: '16px 20px' }} className="flex items-center justify-between bg-gradient-to-br from-rose-50 to-red-50 border-rose-100">
+                <div>
+                  <p style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748B' }}>노쇼</p>
+                  <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#ef4444', marginTop: 2 }}>{postEventStats.noShowCount}명</div>
+                </div>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-rose-100">
+                  <UserX size={18} className="text-rose-500" />
+                </div>
+              </div>
+            </div>
+          )}
+
 
           {/* v8.1.7: 초과 인원 경고 배너 */}
           {activeEvent && (selectionStats.male > (activeEvent.maxMale || 8) || selectionStats.female > (activeEvent.maxFemale || 8)) && (
@@ -826,10 +921,10 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                                   )}
                                 </div>
                                 <div className="flex flex-col">
-                                  <div className="flex items-center gap-2">
+                                  <div className="flex items-center gap-2 flex-wrap">
                                     <button
                                       onClick={() => { setSelectedUser(user); setIsModalOpen(true); }}
-                                      className="text-[1rem] font-black text-slate-800 hover:text-[#FF7E7E] transition-colors"
+                                      className={`text-[1rem] font-black transition-colors ${app.attended === false && app.status === 'confirmed' ? 'text-rose-600 hover:text-rose-800' : 'text-slate-800 hover:text-[#FF7E7E]'}`}
                                     >
                                       {user.name || app.name}
                                     </button>
@@ -839,6 +934,27 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                                     {isDummy && (
                                       <span className="text-[0.6rem] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 border border-amber-200 shadow-sm whitespace-nowrap">
                                         더미
+                                      </span>
+                                    )}
+                                    {/* 행사 후 결과 뱃지 */}
+                                    {postEventStats?.matchedUserIds.has(app.userId) && (
+                                      <span className="text-[0.6rem] font-black px-1.5 py-0.5 rounded-full bg-pink-100 text-pink-600 border border-pink-200 flex items-center gap-0.5 whitespace-nowrap">
+                                        <Heart size={8} fill="#ec4899" /> 매칭성공
+                                      </span>
+                                    )}
+                                    {postEventStats && postEventStats.unmatchedUserIds.has(app.userId) && (
+                                      <span className="text-[0.6rem] font-black px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200 whitespace-nowrap">
+                                        미매칭
+                                      </span>
+                                    )}
+                                    {app.attended === true && (
+                                      <span className="text-[0.6rem] font-black px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-600 border border-emerald-200 flex items-center gap-0.5 whitespace-nowrap">
+                                        ✅ 참여완료
+                                      </span>
+                                    )}
+                                    {app.attended === false && app.status === 'confirmed' && (
+                                      <span className="text-[0.6rem] font-black px-1.5 py-0.5 rounded-full bg-rose-100 text-rose-600 border border-rose-200 flex items-center gap-0.5 whitespace-nowrap animate-pulse">
+                                        🚫 노쇼
                                       </span>
                                     )}
                                   </div>
@@ -908,6 +1024,17 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                                 >
                                   <MessageSquare size={14} />
                                 </button>
+                                {/* 노쇼 처리 버튼 (종료 기수 + confirmed + attended가 false가 아닌 경우만) */}
+                                {isSessionEnded && app.status === 'confirmed' && app.attended !== false && (
+                                  <button
+                                    onClick={() => handleMarkNoShow(app)}
+                                    className="flex items-center justify-center rounded-xl bg-rose-50 text-rose-500 border border-rose-100 hover:bg-rose-100 transition-all shrink-0"
+                                    style={{ width: 32, height: 32 }}
+                                    title="노쇼 처리"
+                                  >
+                                    <UserX size={14} />
+                                  </button>
+                                )}
                                 {(app.status === 'applied' || app.status === 'held' || app.status === 'selected') && (() => {
                                   const handleSelection = async () => {
                                     if (!user.isJobReviewed) return toast.error('먼저 회원 관리에서 직업 정보를 확인하고 승인(Job Reviewed)해 주세요.');
@@ -1034,8 +1161,8 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                                       )}
                                     </div>
                                     <div>
-                                      <div className="flex items-center gap-1.5">
-                                        <span className="font-black text-slate-800 text-[1.1rem]">{user.name || app.name}</span>
+                                      <div className="flex items-center gap-1.5 flex-wrap">
+                                        <span className={`font-black text-[1.1rem] ${app.attended === false && app.status === 'confirmed' ? 'text-rose-600' : 'text-slate-800'}`}>{user.name || app.name}</span>
                                         <span className={`text-[0.65rem] font-bold px-1.5 py-0.5 rounded ${(user.gender || app.gender) === 'male' ? 'text-blue-600 bg-blue-50' : 'text-rose-600 bg-rose-50'}`}>
                                           {(user.gender || app.gender) === 'male' ? '남성' : '여성'}
                                         </span>
@@ -1045,6 +1172,26 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                                             title={`최근 발송: ${app.lastSmsSentAt?.toDate ? format(app.lastSmsSentAt.toDate(), 'MM/dd HH:mm') : '알 수 없음'}`}
                                           >
                                             <CheckCircle size={10} /> 요청완료
+                                          </span>
+                                        )}
+                                        {postEventStats?.matchedUserIds.has(app.userId) && (
+                                          <span className="text-[0.6rem] font-black px-1.5 py-0.5 rounded-full bg-pink-100 text-pink-600 border border-pink-200 flex items-center gap-0.5 whitespace-nowrap">
+                                            <Heart size={8} fill="#ec4899" /> 매칭성공
+                                          </span>
+                                        )}
+                                        {postEventStats && postEventStats.unmatchedUserIds.has(app.userId) && (
+                                          <span className="text-[0.6rem] font-black px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200 whitespace-nowrap">
+                                            미매칭
+                                          </span>
+                                        )}
+                                        {app.attended === true && (
+                                          <span className="text-[0.6rem] font-black px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-600 border border-emerald-200 whitespace-nowrap">
+                                            ✅ 참여완료
+                                          </span>
+                                        )}
+                                        {app.attended === false && app.status === 'confirmed' && (
+                                          <span className="text-[0.6rem] font-black px-1.5 py-0.5 rounded-full bg-rose-100 text-rose-600 border border-rose-200 whitespace-nowrap animate-pulse">
+                                            🚫 노쇼
                                           </span>
                                         )}
                                       </div>
@@ -1114,6 +1261,15 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                                    >
                                      <MessageSquare size={16} />
                                    </button>
+                                   {isSessionEnded && app.status === 'confirmed' && app.attended !== false && (
+                                     <button
+                                       onClick={() => handleMarkNoShow(app)}
+                                       className="w-10 h-10 bg-rose-50 text-rose-500 border border-rose-100 rounded-xl flex items-center justify-center active:scale-95 transition-all shrink-0"
+                                       title="노쇼 처리"
+                                     >
+                                       <UserX size={16} />
+                                     </button>
+                                   )}
                                   {(app.status === 'applied' || app.status === 'held' || app.status === 'selected') && (
                                     <>
                                       {/* 입금확인 또는 선발 */}
@@ -1291,8 +1447,8 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                           )}
                         </div>
                         <div>
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-black text-slate-800 text-[1.1rem] hover:underline cursor-pointer" onClick={() => { setSelectedUser(user); setIsModalOpen(true); }}>{user.name || app.name}</span>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className={`font-black text-[1.1rem] hover:underline cursor-pointer ${app.attended === false && app.status === 'confirmed' ? 'text-rose-600' : 'text-slate-800'}`} onClick={() => { setSelectedUser(user); setIsModalOpen(true); }}>{user.name || app.name}</span>
                             <span className={`text-[0.65rem] font-bold px-1.5 py-0.5 rounded ${(user.gender || app.gender) === 'male' ? 'text-blue-600 bg-blue-50' : 'text-rose-600 bg-rose-50'}`}>
                               {(user.gender || app.gender) === 'male' ? '남성' : '여성'}
                             </span>
@@ -1307,6 +1463,26 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                                 title={`최근 발송: ${app.lastSmsSentAt?.toDate ? format(app.lastSmsSentAt.toDate(), 'MM/dd HH:mm') : '알 수 없음'}`}
                               >
                                 <CheckCircle size={10} /> 요청완료
+                              </span>
+                            )}
+                            {postEventStats?.matchedUserIds.has(app.userId) && (
+                              <span className="text-[0.6rem] font-black px-1.5 py-0.5 rounded-full bg-pink-100 text-pink-600 border border-pink-200 flex items-center gap-0.5 whitespace-nowrap">
+                                <Heart size={8} fill="#ec4899" /> 매칭성공
+                              </span>
+                            )}
+                            {postEventStats && postEventStats.unmatchedUserIds.has(app.userId) && (
+                              <span className="text-[0.6rem] font-black px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200 whitespace-nowrap">
+                                미매칭
+                              </span>
+                            )}
+                            {app.attended === true && (
+                              <span className="text-[0.6rem] font-black px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-600 border border-emerald-200 whitespace-nowrap">
+                                ✅ 참여완료
+                              </span>
+                            )}
+                            {app.attended === false && app.status === 'confirmed' && (
+                              <span className="text-[0.6rem] font-black px-1.5 py-0.5 rounded-full bg-rose-100 text-rose-600 border border-rose-200 whitespace-nowrap animate-pulse">
+                                🚫 노쇼
                               </span>
                             )}
                           </div>
