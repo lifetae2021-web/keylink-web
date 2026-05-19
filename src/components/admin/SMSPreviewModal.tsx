@@ -51,15 +51,30 @@ function applyVariables(content: string, applicant: any, session: any): string {
   const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
   const remainingDays = diffDays > 0 ? String(diffDays) : '0';
 
-  return content
+  const couponText = applicant?.couponDiscount && applicant.couponDiscount > 0
+    ? ' (쿠폰 할인 적용)'
+    : (applicant?.gender === 'female' && applicant?.femaleOption === 'group' ? ' (동반할인 적용)' : '');
+
+  let result = content
     .replace(/{{이름}}/g, applicant?.name || applicant?.userName || '참가자')
     .replace(/{{날짜}}/g, `${getPart('month')}/${getPart('day')}`)
     .replace(/{{요일}}/g, getPart('weekday'))
     .replace(/{{시간}}/g, `${getPart('hour')}:${getPart('minute')}`)
-    .replace(/{{금액}}/g, (applicant?.price || genderPrice).toLocaleString('ko-KR'))
     .replace(/{{기수}}/g, sessionName)
     .replace(/{{장소}}/g, session?.venue || session?.location || '')
     .replace(/{{남은일수}}/g, remainingDays);
+
+  const formattedPrice = (applicant?.price || genderPrice).toLocaleString('ko-KR');
+
+  if (result.includes('{{쿠폰적용여부}}')) {
+    result = result
+      .replace(/{{금액}}/g, formattedPrice)
+      .replace(/{{쿠폰적용여부}}/g, couponText);
+  } else {
+    result = result.replace(/{{금액}}/g, `${formattedPrice}${couponText}`);
+  }
+
+  return result;
 }
 
 const SMSPreviewModal: React.FC<SMSPreviewModalProps> = ({

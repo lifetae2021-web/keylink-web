@@ -6,7 +6,7 @@ import {
   Download, ShieldCheck, ChevronLeft, ChevronRight, ChevronDown, Loader2,
   FileText, Users, CreditCard, Filter, Calendar, MapPin,
   X, Phone, Briefcase, Ruler, Smile, Cigarette, Beer, Camera, Info,
-  Ticket, Edit3, Trash2, UserPlus, User
+  Ticket, Edit3, Trash2, UserPlus, User, MessageSquare
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { auth, db } from '@/lib/firebase';
@@ -63,6 +63,7 @@ export default function ApplicationsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
   const [previewData, setPreviewData] = useState<any>(null);
+  const [generalSmsTarget, setGeneralSmsTarget] = useState<any | null>(null);
   const [smsTemplates, setSmsTemplates] = useState<any[]>([]);
   const [changeSessionModalOpen, setChangeSessionModalOpen] = useState(false);
   const [changeSessionApp, setChangeSessionApp] = useState<any>(null);
@@ -313,6 +314,37 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
       toast.error(e.message || '기수 변경 중 오류가 발생했습니다.');
     } finally {
       setIsDataLoading(false);
+    }
+  };
+
+  const handleSendGeneralSms = async (message: string) => {
+    if (!generalSmsTarget) return;
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      const user = userMap[generalSmsTarget.userId] || {};
+      const res = await fetch('/api/admin/sms/send', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          targets: [{
+            phone: user.phone || generalSmsTarget.phone,
+            name: user.name || generalSmsTarget.name,
+            gender: generalSmsTarget.gender || user.gender,
+            userId: generalSmsTarget.userId
+          }],
+          message
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '발송 실패');
+
+      toast.success(`${user.name || generalSmsTarget.name}님께 문자를 발송했습니다.`);
+    } catch (e) {
+      console.error(e);
+      throw e;
     }
   };
 
@@ -844,6 +876,14 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
 
                             <td style={{ padding: '0 16px' }}>
                               <div className="relative flex items-center justify-center gap-1.5 transition-all">
+                                <button
+                                  onClick={() => setGeneralSmsTarget(app)}
+                                  className="flex items-center justify-center rounded-xl bg-amber-50 text-amber-600 border border-amber-100 hover:bg-amber-100 transition-all shrink-0 animate-in fade-in"
+                                  style={{ width: 32, height: 32 }}
+                                  title="문자 발송"
+                                >
+                                  <MessageSquare size={14} />
+                                </button>
                                 {(app.status === 'applied' || app.status === 'held' || app.status === 'selected') && (() => {
                                   const handleSelection = async () => {
                                     if (!user.isJobReviewed) return toast.error('먼저 회원 관리에서 직업 정보를 확인하고 승인(Job Reviewed)해 주세요.');
@@ -1033,6 +1073,13 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
 
 
                                 <div className="flex gap-1.5">
+                                   <button
+                                     onClick={() => setGeneralSmsTarget(app)}
+                                     className="w-10 h-10 bg-amber-50 text-amber-600 border border-amber-100 rounded-xl flex items-center justify-center font-black text-xs active:scale-95 transition-all shrink-0 animate-in fade-in"
+                                     title="문자 발송"
+                                   >
+                                     <MessageSquare size={16} />
+                                   </button>
                                   {(app.status === 'applied' || app.status === 'held' || app.status === 'selected') && (
                                     <>
                                       {/* 입금확인 또는 선발 */}
@@ -1277,6 +1324,13 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                     </div>
 
                     <div className="flex gap-1.5">
+                                   <button
+                                     onClick={() => setGeneralSmsTarget(app)}
+                                     className="w-10 h-10 bg-amber-50 text-amber-600 border border-amber-100 rounded-xl flex items-center justify-center font-black text-xs active:scale-95 transition-all shrink-0 animate-in fade-in"
+                                     title="문자 발송"
+                                   >
+                                     <MessageSquare size={16} />
+                                   </button>
                       {(app.status === 'applied' || app.status === 'held' || app.status === 'selected') && (
                         <>
                           <button
@@ -1381,6 +1435,23 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
         session={previewData?.session}
         defaultMessage={previewData?.defaultMsg || ''}
       />
+      {generalSmsTarget && (
+        <SMSPreviewModal
+          isOpen={!!generalSmsTarget}
+          onClose={() => setGeneralSmsTarget(null)}
+          onConfirm={handleSendGeneralSms}
+          applicant={{
+            ...generalSmsTarget,
+            name: userMap[generalSmsTarget.userId]?.name || generalSmsTarget.name,
+            phone: userMap[generalSmsTarget.userId]?.phone || generalSmsTarget.phone,
+            gender: generalSmsTarget.gender || userMap[generalSmsTarget.userId]?.gender,
+          }}
+          session={events.find(e => e.id === generalSmsTarget.sessionId)}
+          recipientLabel={`${userMap[generalSmsTarget.userId]?.name || generalSmsTarget.name}님 (${userMap[generalSmsTarget.userId]?.phone || generalSmsTarget.phone || '번호없음'})`}
+          confirmLabel="문자 발송"
+          defaultMessage={`[키링크] 안녕하세요, ${userMap[generalSmsTarget.userId]?.name || generalSmsTarget.name}님! `}
+        />
+      )}
       {/* Session Change Modal */}
       {changeSessionModalOpen && changeSessionApp && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">

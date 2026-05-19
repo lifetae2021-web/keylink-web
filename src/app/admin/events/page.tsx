@@ -637,24 +637,39 @@ export default function EventsPage() {
     const targetTemplate = smsTemplates.find(t => t.name === '입금 요청 (기본)');
     let defaultMsg = '';
 
+    const couponText = app.couponDiscount && app.couponDiscount > 0
+      ? ' (쿠폰 할인 적용)'
+      : (app.gender === 'female' && app.femaleOption === 'group' ? ' (동반할인 적용)' : '');
+
     if (targetTemplate) {
       const sessionName = session.episodeNumber
         ? `${session.region === 'busan' ? '부산' : '창원'} ${session.episodeNumber}기`
         : '';
 
-      defaultMsg = targetTemplate.content
+      const formattedPrice = (app.price || genderPrice).toLocaleString('ko-KR');
+
+      let result = targetTemplate.content
         .replace(/{{이름}}/g, user.name || app.name || '참가자')
         .replace(/{{날짜}}/g, fDate)
         .replace(/{{요일}}/g, getPart('weekday') || '')
         .replace(/{{시간}}/g, fTime)
-        .replace(/{{금액}}/g, (app.price || genderPrice).toLocaleString('ko-KR'))
         .replace(/{{기수}}/g, sessionName)
         .replace(/{{장소}}/g, session.venue || session.location || '');
+
+      if (result.includes('{{쿠폰적용여부}}')) {
+        result = result
+          .replace(/{{금액}}/g, formattedPrice)
+          .replace(/{{쿠폰적용여부}}/g, couponText);
+      } else {
+        result = result.replace(/{{금액}}/g, `${formattedPrice}${couponText}`);
+      }
+
+      defaultMsg = result;
     } else {
       defaultMsg = `안녕하세요 ! 키링크에 지원해주셔서 감사합니다☺️
 ${user.name || app.name || "참가자"}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 지정되었습니다
 
-아래 계좌번호로 ${(app.price || genderPrice).toLocaleString("ko-KR")}원 입금해주셔야 라인업에 확정등록되니 참고 부탁드립니다 :)
+아래 계좌번호로 ${(app.price || genderPrice).toLocaleString("ko-KR")}원${couponText} 입금해주셔야 라인업에 확정등록되니 참고 부탁드립니다 :)
 3333359229548 카카오뱅크 태영훈(키링크) 입금 또는 참석가능 여부 알려주세요😭
 혹시나 입금이 늦을 것 같은 경우 말씀해주세요.
 
@@ -1826,7 +1841,16 @@ ${chatLink}
                                                   )}
                                                 </div>
                                                 <div className="flex items-center gap-1.5 sm:hidden flex-nowrap overflow-hidden">
-                                                  <span className="text-sm font-bold text-slate-800 whitespace-nowrap shrink-0">{app.name || "-"}</span>
+                                                  <span
+                                                    onClick={() => {
+                                                      const user = userMap[app.userId] || { id: app.userId, name: app.name, phone: app.phone, gender: app.gender };
+                                                      setSelectedUser(user);
+                                                      setIsProfileModalOpen(true);
+                                                    }}
+                                                    className="text-sm font-bold text-slate-800 whitespace-nowrap shrink-0 cursor-pointer hover:text-[#FF7E7E] transition-colors"
+                                                  >
+                                                    {app.name || "-"}
+                                                  </span>
                                                   <span className={`text-[0.65rem] font-bold px-2 py-0.5 rounded-full whitespace-nowrap shrink-0 ${badge.cls}`}>
                                                     {badge.label}
                                                   </span>
@@ -1860,7 +1884,14 @@ ${chatLink}
                                             {/* Middle: Info */}
                                             <div className="flex-1 min-w-0">
                                               <div className="hidden sm:flex items-center gap-2 mb-0.5">
-                                                <span className="text-sm font-bold text-slate-800">
+                                                <span
+                                                  onClick={() => {
+                                                    const user = userMap[app.userId] || { id: app.userId, name: app.name, phone: app.phone, gender: app.gender };
+                                                    setSelectedUser(user);
+                                                    setIsProfileModalOpen(true);
+                                                  }}
+                                                  className="text-sm font-bold text-slate-800 cursor-pointer hover:text-[#FF7E7E] transition-colors"
+                                                >
                                                   {app.name || "-"}
                                                 </span>
                                                 {(app.userId?.startsWith("user_m_") || app.userId?.startsWith("user_f_") || app.id?.startsWith("dummy_")) && (
@@ -1921,13 +1952,15 @@ ${chatLink}
                                                 </div>
                                                 {/* Row 2: 휴대폰번호, 동반참여 */}
                                                 <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[0.72rem] text-slate-400 font-medium">
-                                                  <span className="flex items-center gap-1 text-blue-600/70 bg-blue-50/50 px-1.5 py-0.5 rounded shrink-0 whitespace-nowrap">
-                                                    <Phone size={10} className="text-blue-400/70" />
-                                                    {app.phone || "-"}
-                                                  </span>
+                                                  {!isDummyApp(app) && (
+                                                    <span className="flex items-center gap-1 text-blue-600/70 bg-blue-50/50 px-1.5 py-0.5 rounded shrink-0 whitespace-nowrap">
+                                                      <Phone size={10} className="text-blue-400/70" />
+                                                      {app.phone || "-"}
+                                                    </span>
+                                                  )}
                                                   {app.gender === 'female' && app.femaleOption === 'group' && (
                                                     <>
-                                                      <span className="text-slate-300">·</span>
+                                                      {!isDummyApp(app) && <span className="text-slate-300">·</span>}
                                                       <span className="text-pink-500 font-bold whitespace-nowrap">
                                                         동반할인 {app.groupPartnerName ? `(${app.groupPartnerName})` : ''}
                                                       </span>
@@ -1997,7 +2030,14 @@ ${chatLink}
                                               </div>
                                               <div className="flex-1 min-w-0">
                                                 <div className="flex items-center justify-between sm:justify-start gap-2 mb-0.5">
-                                                  <span className="text-sm font-bold text-slate-800">
+                                                  <span
+                                                    onClick={() => {
+                                                      const user = userMap[app.userId] || { id: app.userId, name: app.name, phone: app.phone, gender: app.gender };
+                                                      setSelectedUser(user);
+                                                      setIsProfileModalOpen(true);
+                                                    }}
+                                                    className="text-sm font-bold text-slate-800 cursor-pointer hover:text-[#FF7E7E] transition-colors"
+                                                  >
                                                     {app.name || "-"}
                                                   </span>
                                                   <div className="sm:hidden">
@@ -2009,11 +2049,13 @@ ${chatLink}
                                               </div>
                                             </div>
                                             <div className="flex flex-col gap-1 ml-9 sm:ml-0">
-                                              <span className="flex items-center gap-0.5">
-                                                <Phone size={10} />
-                                                {app.phone || "-"}
-                                              </span>
-                                              <span>·</span>
+                                              {!isDummyApp(app) && (
+                                                <span className="flex items-center gap-0.5">
+                                                  <Phone size={10} />
+                                                  {app.phone || "-"}
+                                                </span>
+                                              )}
+                                              {!isDummyApp(app) && <span>·</span>}
                                               <span>{getBirthYear(app)}</span>
                                               <span>·</span>
                                               <span className="flex items-center gap-1">
@@ -2167,181 +2209,181 @@ ${chatLink}
                                   return (
                                     <div
                                       key={app.id}
-                                      className="flex flex-col sm:flex-row sm:items-center gap-3 px-3 sm:px-5 py-3 sm:py-4 hover:bg-slate-50/80 transition-colors"
+                                      className="flex flex-col gap-2.5 px-4 sm:px-6 py-4 hover:bg-slate-50/80 transition-colors"
                                     >
-                                      {/* Left: Slot & Status (Mobile) */}
-                                      <div className="flex items-center justify-between sm:justify-start gap-3">
-                                        <div className="flex items-center gap-2">
+                                      {/* Top Row: Slot, Name, Status Badge, and Action Buttons */}
+                                      <div className="flex items-center justify-between gap-3">
+                                        {/* Top Left: Slot, Name, Badges */}
+                                        <div className="flex items-center gap-2 min-w-0">
                                           <span className="text-xs font-black w-8 shrink-0 text-amber-500">
                                             {idx + 1}
                                           </span>
-                                          <div className="flex items-center gap-1.5 sm:hidden flex-nowrap overflow-hidden">
-                                            <span className="text-sm font-bold text-slate-800 whitespace-nowrap shrink-0">{app.name || "-"}</span>
-                                            {app.status === "applied" && <span className="text-[0.6rem] font-black px-1.5 py-0.5 rounded-md shrink-0 whitespace-nowrap" style={{ color: '#D97706', background: '#FFFBEB' }}>검토 중</span>}
-                                            {app.status === "held" && <span className="text-[0.6rem] font-black px-1.5 py-0.5 rounded-md shrink-0 whitespace-nowrap" style={{ color: '#EA580C', background: '#FFF7ED' }}>보류</span>}
-                                            {app.status === "selected" && <span className="text-[0.6rem] font-black px-1.5 py-0.5 rounded-md shrink-0 whitespace-nowrap" style={{ color: '#7C3AED', background: '#F5F3FF' }}>입금 대기</span>}
-                                            {app.status === "waitlisted" && <span className="text-[0.6rem] font-black px-1.5 py-0.5 rounded-md shrink-0 whitespace-nowrap bg-orange-100 text-orange-600">정원초과대기</span>}
+                                          <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
+                                            <span
+                                              onClick={() => {
+                                                const user = userMap[app.userId] || { id: app.userId, name: app.name, phone: app.phone, gender: app.gender };
+                                                setSelectedUser(user);
+                                                setIsProfileModalOpen(true);
+                                              }}
+                                              className="text-sm font-bold text-slate-800 cursor-pointer hover:text-[#FF7E7E] transition-colors truncate"
+                                            >
+                                              {app.name || "-"}
+                                            </span>
+                                            {(app.userId?.startsWith("user_m_") || app.userId?.startsWith("user_f_") || app.id?.startsWith("dummy_")) && (
+                                              <span className="text-[0.6rem] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 border border-slate-200 shrink-0">더미</span>
+                                            )}
+                                            {app.status === "applied" && <span className="text-[0.65rem] font-black px-1.5 py-0.5 rounded-md shrink-0" style={{ color: '#D97706', background: '#FFFBEB' }}>검토 중</span>}
+                                            {app.status === "held" && <span className="text-[0.65rem] font-black px-1.5 py-0.5 rounded-md shrink-0" style={{ color: '#EA580C', background: '#FFF7ED' }}>보류</span>}
+                                            {app.status === "selected" && <span className="text-[0.65rem] font-black px-1.5 py-0.5 rounded-md shrink-0" style={{ color: '#7C3AED', background: '#F5F3FF' }}>입금 대기</span>}
+                                            {app.status === "waitlisted" && <span className="text-[0.65rem] font-black px-1.5 py-0.5 rounded-md shrink-0 bg-orange-100 text-orange-600">정원초과대기</span>}
                                           </div>
                                         </div>
-                                        <div className="flex items-center gap-0.5 sm:hidden">
-                                          <button onClick={() => handleOpenMemo(app)} className={`p-1.5 rounded-lg border transition-all ${app.adminMemo ? "bg-amber-50 text-amber-600 border-amber-200 shadow-sm" : "bg-slate-50 text-slate-400 border-slate-200"}`} title="메모">
+
+                                        {/* Top Right: Actions (Memo, SMS, Selection Buttons, Trash) */}
+                                        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+                                          {/* Memo Button (Visible on both PC & Mobile) */}
+                                          <button
+                                            onClick={() => handleOpenMemo(app)}
+                                            className={`p-1.5 rounded-lg border transition-all ${app.adminMemo ? "bg-amber-50 text-amber-600 border-amber-200 shadow-sm" : "bg-slate-50 text-slate-400 border-slate-200 hover:bg-slate-100"}`}
+                                            title="메모"
+                                          >
                                             <StickyNote size={13} fill={app.adminMemo ? "currentColor" : "none"} />
                                           </button>
-                                          {renderSmsButton(app)}
-                                          <button onClick={() => handleWaitlistDelete(app)} className="p-1.5 rounded-lg bg-slate-50 text-slate-400 border border-slate-200">
+
+                                          {/* SMS Button (Visible on both PC & Mobile) */}
+                                          {renderSmsButton(app, true)}
+
+                                          {/* Selection Actions (Desktop Only, hidden on Mobile to keep it clean) */}
+                                          <div className="hidden sm:flex items-center gap-1 ml-1 pl-2.5 border-l border-slate-200">
+                                            {app.status === "selected" ? (
+                                              <>
+                                                <button
+                                                  onClick={() => handleWaitlistConfirm(app)}
+                                                  className="px-2.5 py-1 rounded-lg text-[0.7rem] font-black bg-[#FFD700]/10 text-[#B8860B] border border-[#FFD700]/30 hover:bg-[#FFD700] hover:text-white transition-all shadow-sm"
+                                                >
+                                                  입금확정
+                                                </button>
+                                                <button
+                                                  onClick={() => {
+                                                    if (window.confirm('선발을 취소하고 다시 검토 중 상태로 되돌리시겠습니까?')) {
+                                                      callStatusApi(app.id, "applied").then(() => toast.success("검토 중으로 변경되었습니다.")).catch((e: any) => toast.error(e.message));
+                                                    }
+                                                  }}
+                                                  className="px-2.5 py-1 rounded-lg text-[0.7rem] font-black bg-rose-50 text-rose-500 border border-rose-100 hover:bg-rose-500 hover:text-white transition-all shadow-sm"
+                                                >
+                                                  선발 취소
+                                                </button>
+                                              </>
+                                            ) : (
+                                              <>
+                                                {app.status === "held" && (
+                                                  <button
+                                                    onClick={() => callStatusApi(app.id, "applied").then(() => toast.success("검토 중으로 변경되었습니다.")).catch((e: any) => toast.error(e.message))}
+                                                    className="px-2 py-1 rounded-lg text-[0.7rem] font-black bg-amber-100 text-amber-700 border border-amber-200 hover:bg-amber-200 transition-all flex items-center gap-0.5"
+                                                  >
+                                                    보류 중 <X size={10} />
+                                                  </button>
+                                                )}
+                                                <button
+                                                  onClick={() => handleWaitlistSelect(app)}
+                                                  disabled={isGenderFull[app.gender as "male" | "female"]}
+                                                  className="px-2.5 py-1 rounded-lg text-[0.7rem] font-black bg-[#FF7E7E]/10 text-[#FF7E7E] border border-[#FF7E7E]/20 hover:bg-[#FF7E7E] hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
+                                                >
+                                                  선발
+                                                </button>
+                                                <button
+                                                  onClick={() => handleWaitlistHold(app)}
+                                                  className="px-2.5 py-1 rounded-lg text-[0.7rem] font-black bg-slate-50 text-slate-500 border border-slate-200 hover:bg-slate-200 transition-all shadow-sm"
+                                                >
+                                                  보류
+                                                </button>
+                                                <button
+                                                  onClick={() => handleWaitlistConfirm(app)}
+                                                  disabled={isGenderFull[app.gender as "male" | "female"]}
+                                                  className="px-2.5 py-1 rounded-lg text-[0.7rem] font-black bg-[#FFD700]/10 text-[#B8860B] border border-[#FFD700]/30 hover:bg-[#FFD700] hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
+                                                >
+                                                  선발확정
+                                                </button>
+                                              </>
+                                            )}
+                                          </div>
+
+                                          {/* Delete Button (Visible on both PC & Mobile) */}
+                                          <button
+                                            onClick={() => handleWaitlistDelete(app)}
+                                            className="p-1.5 rounded-lg bg-slate-50 text-slate-400 border border-slate-200 hover:bg-rose-50 hover:text-rose-500 hover:border-rose-200 transition-all"
+                                            title="삭제"
+                                          >
                                             <Trash2 size={13} />
                                           </button>
                                         </div>
                                       </div>
 
-                                      {/* Middle: Info */}
-                                      <div className="flex-1 min-w-0">
-                                        <div className="hidden sm:flex items-center gap-2 mb-0.5">
-                                          <span className="text-sm font-bold text-slate-800">{app.name || "-"}</span>
-                                          {(app.userId?.startsWith("user_m_") || app.userId?.startsWith("user_f_") || app.id?.startsWith("dummy_")) && (
-                                            <span className="text-[0.6rem] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 border border-slate-200">더미</span>
-                                          )}
-                                          {app.status === "applied" && <span className="text-[0.65rem] font-black px-1.5 py-0.5 rounded-md" style={{ color: '#D97706', background: '#FFFBEB' }}>검토 중</span>}
-                                          {app.status === "held" && <span className="text-[0.65rem] font-black px-1.5 py-0.5 rounded-md" style={{ color: '#EA580C', background: '#FFF7ED' }}>보류</span>}
-                                          {app.status === "selected" && <span className="text-[0.65rem] font-black px-1.5 py-0.5 rounded-md" style={{ color: '#7C3AED', background: '#F5F3FF' }}>입금 대기</span>}
-                                          {app.status === "waitlisted" && <span className="text-[0.65rem] font-black px-1.5 py-0.5 rounded-md bg-orange-100 text-orange-600">정원초과대기</span>}
-                                        </div>
-                                        <div className="flex flex-col gap-1.5 ml-11 sm:ml-0">
-                                          {/* Row 1: 나이, 직업, 거주지 */}
-                                          <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[0.72rem] text-slate-600 font-bold">
-                                            <span className="whitespace-nowrap">{birthYear}</span>
-                                            <span className="text-slate-300">·</span>
-                                            <span className="flex items-center gap-1 min-w-0">
-                                              {isDummyApp(app) ? (
-                                                editingAppJobId === app.id ? (
-                                                  <input
-                                                    autoFocus
-                                                    value={tempAppJobValue}
-                                                    onChange={(e) => setTempAppJobValue(e.target.value)}
-                                                    onKeyDown={(e) => {
-                                                      if (e.key === 'Enter') handleEditAppJob(app, tempAppJobValue);
-                                                      if (e.key === 'Escape') setEditingAppJobId(null);
-                                                    }}
-                                                    onBlur={() => setEditingAppJobId(null)}
-                                                    className="text-[0.72rem] font-bold bg-white border border-blue-400 rounded px-1 outline-none w-[100px]"
-                                                  />
-                                                ) : (
-                                                  <span 
-                                                    onClick={() => {
-                                                      setEditingAppJobId(app.id);
-                                                      setTempAppJobValue(app.job || '');
-                                                    }}
-                                                    className="truncate max-w-[160px] sm:max-w-[140px] cursor-pointer hover:text-blue-500 hover:underline"
-                                                    title={app.job || "-"}
-                                                  >
-                                                    {app.job || "-"}
-                                                  </span>
-                                                )
+                                      {/* Bottom Details Row (Aligned nicely under the name with ml-10) */}
+                                      <div className="ml-10 flex flex-col gap-1.5">
+                                        {/* Row 1: 나이, 직업, 거주지 */}
+                                        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[0.72rem] text-slate-600 font-bold">
+                                          <span className="whitespace-nowrap">{birthYear}</span>
+                                          <span className="text-slate-300">·</span>
+                                          <span className="flex items-center gap-1 min-w-0">
+                                            {isDummyApp(app) ? (
+                                              editingAppJobId === app.id ? (
+                                                <input
+                                                  autoFocus
+                                                  value={tempAppJobValue}
+                                                  onChange={(e) => setTempAppJobValue(e.target.value)}
+                                                  onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') handleEditAppJob(app, tempAppJobValue);
+                                                    if (e.key === 'Escape') setEditingAppJobId(null);
+                                                  }}
+                                                  onBlur={() => setEditingAppJobId(null)}
+                                                  className="text-[0.72rem] font-bold bg-white border border-blue-400 rounded px-1 outline-none w-[100px]"
+                                                />
                                               ) : (
-                                                <span className="truncate max-w-[160px] sm:max-w-[140px]" title={getEffectiveJob(app)}>{getEffectiveJob(app)}</span>
-                                              )}
-                                            </span>
-                                            <span className="text-slate-300">·</span>
-                                            <span className="whitespace-nowrap">{app.residence || "-"}</span>
-                                          </div>
-                                          {/* Row 2: 휴대폰번호, 동반참여 */}
-                                          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[0.72rem] text-slate-400 font-medium">
+                                                <span 
+                                                  onClick={() => {
+                                                    setEditingAppJobId(app.id);
+                                                    setTempAppJobValue(app.job || '');
+                                                  }}
+                                                  className="truncate max-w-[160px] sm:max-w-[140px] cursor-pointer hover:text-blue-500 hover:underline"
+                                                  title={app.job || "-"}
+                                                >
+                                                  {app.job || "-"}
+                                                </span>
+                                              )
+                                            ) : (
+                                              <span className="truncate max-w-[160px] sm:max-w-[140px]" title={getEffectiveJob(app)}>{getEffectiveJob(app)}</span>
+                                            )}
+                                          </span>
+                                          <span className="text-slate-300">·</span>
+                                          <span className="whitespace-nowrap">{app.residence || "-"}</span>
+                                        </div>
+                                        {/* Row 2: 휴대폰번호, 동반참여 */}
+                                        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[0.72rem] text-slate-400 font-medium">
+                                          {!isDummyApp(app) && (
                                             <span className="flex items-center gap-1 text-blue-600/70 bg-blue-50/50 px-1.5 py-0.5 rounded shrink-0 whitespace-nowrap">
                                               <Phone size={10} className="text-blue-400/70" />
                                               {app.phone || "-"}
                                             </span>
-                                            {app.gender === 'female' && app.femaleOption === 'group' && (
-                                              <>
-                                                <span className="text-slate-300">·</span>
-                                                <span className="text-pink-500 font-bold whitespace-nowrap">
-                                                  동반할인 {app.groupPartnerName ? `(${app.groupPartnerName})` : ''}
-                                                </span>
-                                              </>
-                                            )}
-                                          </div>
+                                          )}
+                                          {app.gender === 'female' && app.femaleOption === 'group' && (
+                                            <>
+                                              {!isDummyApp(app) && <span className="text-slate-300">·</span>}
+                                              <span className="text-pink-500 font-bold whitespace-nowrap">
+                                                동반할인 {app.groupPartnerName ? `(${app.groupPartnerName})` : ''}
+                                              </span>
+                                            </>
+                                          )}
                                         </div>
+                                        {/* Row 3: Admin Memo */}
                                         {app.adminMemo && (
-                                          <div className="mt-1 ml-11 sm:ml-0 flex items-start gap-1 bg-amber-50/50 px-2 py-1 rounded-lg border border-amber-100/50 max-w-fit">
+                                          <div className="mt-1 flex items-start gap-1 bg-amber-50/50 px-2 py-1 rounded-lg border border-amber-100/50 max-w-fit">
                                             <StickyNote size={10} className="text-amber-500 mt-0.5 shrink-0" />
                                             <p className="text-[0.65rem] text-amber-700 font-bold truncate max-w-[200px]">
                                               {app.adminMemo}
                                             </p>
                                           </div>
                                         )}
-                                      </div>
-
-                                      {/* Desktop Right: Actions */}
-                                      <div className="hidden sm:flex items-center gap-2">
-                                        <button
-                                          onClick={() => handleOpenMemo(app)}
-                                          className={`shrink-0 p-2 rounded-xl border transition-all ${app.adminMemo ? "bg-amber-50 border-amber-300 text-amber-600 shadow-sm" : "bg-white border-slate-200 text-slate-400 hover:bg-slate-50 hover:border-slate-300"}`}
-                                          title="메모"
-                                        >
-                                          <StickyNote size={13} fill={app.adminMemo ? "currentColor" : "none"} />
-                                        </button>
-                                        {renderSmsButton(app, true)}
-
-                                        {/* Waitlist Specific Buttons */}
-                                        <div className="flex items-center gap-1.5 ml-1 pl-3 border-l border-slate-100">
-                                          {app.status === "selected" ? (
-                                            <>
-                                              <button
-                                                onClick={() => handleWaitlistConfirm(app)}
-                                                className="px-3 py-1.5 rounded-xl text-[0.7rem] font-black bg-[#FFD700]/10 text-[#B8860B] border border-[#FFD700]/30 hover:bg-[#FFD700] hover:text-white transition-all shadow-sm"
-                                              >
-                                                입금확정
-                                              </button>
-                                              <button
-                                                onClick={() => {
-                                                  if (window.confirm('선발을 취소하고 다시 검토 중 상태로 되돌리시겠습니까?')) {
-                                                    callStatusApi(app.id, "applied").then(() => toast.success("검토 중으로 변경되었습니다.")).catch((e: any) => toast.error(e.message));
-                                                  }
-                                                }}
-                                                className="px-3 py-1.5 rounded-xl text-[0.7rem] font-black bg-rose-50 text-rose-500 border border-rose-100 hover:bg-rose-500 hover:text-white transition-all shadow-sm"
-                                              >
-                                                선발 취소
-                                              </button>
-                                            </>
-                                          ) : (
-                                            <>
-                                              {app.status === "held" && (
-                                                <button
-                                                  onClick={() => callStatusApi(app.id, "applied").then(() => toast.success("검토 중으로 변경되었습니다.")).catch((e: any) => toast.error(e.message))}
-                                                  className="px-2 py-1.5 rounded-xl text-[0.7rem] font-black bg-amber-100 text-amber-700 border border-amber-200 hover:bg-amber-200 transition-all flex items-center gap-1"
-                                                >
-                                                  보류 중 <X size={12} />
-                                                </button>
-                                              )}
-                                              <button
-                                                onClick={() => handleWaitlistSelect(app)}
-                                                disabled={isGenderFull[app.gender as "male" | "female"]}
-                                                className="px-3 py-1.5 rounded-xl text-[0.7rem] font-black bg-[#FF7E7E]/10 text-[#FF7E7E] border border-[#FF7E7E]/20 hover:bg-[#FF7E7E] hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
-                                              >
-                                                선발
-                                              </button>
-                                              <button
-                                                onClick={() => handleWaitlistHold(app)}
-                                                className="px-3 py-1.5 rounded-xl text-[0.7rem] font-black bg-slate-50 text-slate-500 border border-slate-200 hover:bg-slate-200 transition-all shadow-sm"
-                                              >
-                                                보류
-                                              </button>
-                                              <button
-                                                onClick={() => handleWaitlistConfirm(app)}
-                                                disabled={isGenderFull[app.gender as "male" | "female"]}
-                                                className="px-3 py-1.5 rounded-xl text-[0.7rem] font-black bg-[#FFD700]/10 text-[#B8860B] border border-[#FFD700]/30 hover:bg-[#FFD700] hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
-                                              >
-                                                선발확정
-                                              </button>
-                                            </>
-                                          )}
-                                          <button
-                                            onClick={() => handleWaitlistDelete(app)}
-                                            className="shrink-0 p-2 rounded-xl bg-white border border-slate-200 text-slate-400 hover:bg-rose-50 hover:text-rose-500 hover:border-rose-200 transition-all ml-1 shadow-sm"
-                                            title="삭제"
-                                          >
-                                            <Trash2 size={13} />
-                                          </button>
-                                        </div>
                                       </div>
                                     </div>
                                   );

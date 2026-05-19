@@ -102,6 +102,11 @@ export interface Application {
   appliedAt: Date;
   updatedAt: Date;
 
+  // 쿠폰 할인 관련 필드 (v10.2.9)
+  couponId?: string | null;
+  couponTitle?: string | null;
+  couponDiscount?: number;
+
   // 추가 프로필 정보 (v5.1.0 데이터 연동 강화)
   price?: number;
   maleOption?: string;

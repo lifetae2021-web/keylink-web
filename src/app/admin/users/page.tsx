@@ -5,7 +5,7 @@ import {
   Search, CheckCircle, XCircle,
   Download, ShieldCheck, ChevronLeft, ChevronRight, Loader2,
   Filter, ArrowUpDown, ArrowUp, ArrowDown, Ticket,
-  UserPlus, Award, AlertCircle, Edit3, Trash2, X
+  UserPlus, Award, AlertCircle, Edit3, Trash2, X, MessageSquare
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { auth, db } from '@/lib/firebase';
@@ -99,6 +99,7 @@ export default function UsersPage() {
 
   // SMS 발송 모달 (v8.12.9)
   const [smsTargetUser, setSmsTargetUser] = useState<any | null>(null);
+  const [generalSmsTargetUser, setGeneralSmsTargetUser] = useState<any | null>(null);
 
   // 쿠폰 발송 모달
   const [couponTarget, setCouponTarget] = useState<any | null>(null);
@@ -467,6 +468,36 @@ export default function UsersPage() {
       });
 
       toast.success(`${smsTargetUser.name}님께 프로필 작성 요청 문자를 발송했습니다.`);
+    } catch (e) {
+      console.error(e);
+      throw e;
+    }
+  };
+
+  const handleSendGeneralSms = async (message: string) => {
+    if (!generalSmsTargetUser) return;
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      const res = await fetch('/api/admin/sms/send', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          targets: [{
+            phone: generalSmsTargetUser.phone,
+            name: generalSmsTargetUser.name,
+            gender: generalSmsTargetUser.gender,
+            userId: generalSmsTargetUser.id
+          }],
+          message
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '발송 실패');
+
+      toast.success(`${generalSmsTargetUser.name}님께 문자를 발송했습니다.`);
     } catch (e) {
       console.error(e);
       throw e;
@@ -874,6 +905,14 @@ export default function UsersPage() {
                               </button>
                             )}
                             <button
+                              onClick={() => setGeneralSmsTargetUser(u)}
+                              className="flex items-center justify-center rounded-lg hover:bg-amber-50 transition-all text-slate-400 hover:text-amber-600"
+                              style={{ width: 32, height: 32 }}
+                              title="문자 발송"
+                            >
+                              <MessageSquare size={14} />
+                            </button>
+                            <button
                               onClick={() => setCouponTarget(u)}
                               className="flex items-center justify-center rounded-lg hover:bg-sky-50 transition-all text-slate-400 hover:text-sky-500"
                               style={{ width: 32, height: 32 }}
@@ -1082,6 +1121,14 @@ export default function UsersPage() {
 
                       <div className="flex items-center gap-1.5">
                         <button
+                          onClick={() => setGeneralSmsTargetUser(u)}
+                          className="flex items-center justify-center rounded-xl bg-amber-50 text-amber-600 border border-amber-100"
+                          style={{ width: 40, height: 40 }}
+                          title="문자 발송"
+                        >
+                          <MessageSquare size={18} />
+                        </button>
+                        <button
                           onClick={() => setCouponTarget(u)}
                           className="flex items-center justify-center rounded-xl bg-sky-50 text-sky-600 border border-sky-100"
                           style={{ width: 40, height: 40 }}
@@ -1180,6 +1227,20 @@ export default function UsersPage() {
           confirmLabel="요청 문자 발송"
           autoSelectTemplateName="프로필 작성"
           defaultMessage={`[키링크] 안녕하세요, {{이름}}님! 키링크를 방문해주셔서 감사합니다.\n\n원활한 매칭을 위해 프로필 작성이 조금 더 필요합니다.\n지금 바로 접속하셔서 매력적인 프로필을 완성하고 진짜 인연을 만나보세요!\n\n- 링크: https://www.keylink.kr/mypage?mode=edit`}
+        />
+      )}
+
+      {/* 일반 SMS 발송 모달 */}
+      {generalSmsTargetUser && (
+        <SMSPreviewModal
+          isOpen={!!generalSmsTargetUser}
+          onClose={() => setGeneralSmsTargetUser(null)}
+          onConfirm={handleSendGeneralSms}
+          applicant={generalSmsTargetUser}
+          session={null}
+          recipientLabel={`${generalSmsTargetUser.name}님`}
+          confirmLabel="문자 발송"
+          defaultMessage={`[키링크] 안녕하세요, {{이름}}님!`}
         />
       )}
 
