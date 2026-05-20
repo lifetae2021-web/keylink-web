@@ -1,6 +1,6 @@
 'use client';
 
-import { X, User, ShieldCheck, Phone, Camera, MapPin, Briefcase, Users2, Wine, Cigarette, Info, Coffee, Heart, HeartOff, Calendar, Ruler, Weight, ExternalLink, History, AlertCircle, CheckCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, User, ShieldCheck, Phone, Camera, MapPin, Briefcase, Users2, Wine, Cigarette, Info, Coffee, Heart, HeartOff, Calendar, Ruler, Weight, ExternalLink, History, AlertCircle, CheckCircle, ChevronLeft, ChevronRight, ClipboardList } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 import { db } from '@/lib/firebase';
@@ -12,6 +12,7 @@ interface UserProfileModalProps {
   user: any;
   isOpen: boolean;
   onClose: () => void;
+  onUserUpdate?: (updatedUser: any) => void;
 }
 
 // ── 상세 정보 행 (마이페이지 스타일)
@@ -48,12 +49,22 @@ const TextBox = ({ label, value, icon: Icon, color }: { label: string; value?: s
   );
 };
 
-export default function UserProfileModal({ user: initialUser, isOpen, onClose }: UserProfileModalProps) {
+export default function UserProfileModal({ user: initialUser, isOpen, onClose, onUserUpdate }: UserProfileModalProps) {
   const [user, setUser] = useState(initialUser);
   const [isUpdating, setIsUpdating] = useState(false);
   const [photoIndex, setPhotoIndex] = useState(0);
   const [privateAppPhotos, setPrivateAppPhotos] = useState<string[]>([]);
   const [showProofPopup, setShowProofPopup] = useState(false);
+  // v11.1.0: 참가 이력 출석 관리
+  const [userApps, setUserApps] = useState<any[]>([]);
+  const [appsLoading, setAppsLoading] = useState(false);
+
+  // v11.2.0: user 로컬 상태 변화를 감지하여 부모 userMap도 실시간 갱신
+  useEffect(() => {
+    if (user && onUserUpdate) {
+      onUserUpdate(user);
+    }
+  }, [user, onUserUpdate]);
 
   // Sync state with props when modal opens or user changes
   useEffect(() => {
@@ -81,7 +92,29 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose }:
       }
     };
 
+    // v11.1.0: 참가 이력 불러오기
+    const fetchUserApps = async () => {
+      setAppsLoading(true);
+      try {
+        const { collection: col, query: q, where: wh, getDocs: gd, orderBy } = await import('firebase/firestore');
+        const snap = await gd(q(col(db, 'applications'), wh('userId', '==', userId)));
+        const apps = snap.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .sort((a: any, b: any) => {
+            const ta = a.appliedAt?.toDate?.() || new Date(0);
+            const tb = b.appliedAt?.toDate?.() || new Date(0);
+            return tb.getTime() - ta.getTime();
+          });
+        setUserApps(apps);
+      } catch (e) {
+        console.error('Error fetching user applications:', e);
+      } finally {
+        setAppsLoading(false);
+      }
+    };
+
     fetchLatest();
+    fetchUserApps();
     setPhotoIndex(0);
     setPrivateAppPhotos([]);
   }, [initialUser, isOpen]);
@@ -388,7 +421,7 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose }:
 
 
                 {/* 6. 활동 지표 */}
-                <div className="flex gap-4 pt-4">
+                <div className="flex gap-3 pt-4">
                   <div className="flex-1 p-4 rounded-3xl bg-blue-50 border border-blue-100 text-center">
                     <p className="text-[9px] font-black text-blue-400 uppercase tracking-widest mb-1">참여</p>
                     <p className="text-xl font-black text-blue-700">{user.participationCount || 0}</p>
@@ -397,10 +430,185 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose }:
                     <p className="text-[9px] font-black text-rose-400 uppercase tracking-widest mb-1">성공</p>
                     <p className="text-xl font-black text-rose-700">{user.matchCount || 0}</p>
                   </div>
-                  <div className="flex-1 p-4 rounded-3xl bg-slate-50 border border-slate-100 text-center">
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">노쇼</p>
-                    <p className="text-xl font-black text-slate-700">{user.noShowCount || 0}</p>
+                  {/* 노쇼 카드 - hover 시 +/- 수동 조정 */}
+                  <div className="flex-1 p-3 rounded-3xl bg-rose-100 border border-rose-200 text-center relative group cursor-default">
+                    <p className="text-[9px] font-black text-rose-500 uppercase tracking-widest mb-1">🚨 노쇼</p>
+                    <p className="text-xl font-black text-rose-700">{user.noShowCount || 0}</p>
+                    <div className="absolute inset-x-0 bottom-1 flex justify-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={async () => {
+                          const uid = user.uid || user.id;
+                          if (!uid) return;
+                          const { increment } = await import('firebase/firestore');
+                          await updateDoc(doc(db, 'users', uid), { noShowCount: increment(-1) });
+                          setUser((prev: any) => ({ ...prev, noShowCount: Math.max(0, (prev.noShowCount || 0) - 1) }));
+                          toast.success('노쇼 횟수 -1');
+                        }}
+                        className="w-5 h-5 rounded-full bg-white border border-rose-300 text-rose-600 text-xs font-black flex items-center justify-center shadow-sm hover:bg-rose-50"
+                      >−</button>
+                      <button
+                        onClick={async () => {
+                          const uid = user.uid || user.id;
+                          if (!uid) return;
+                          const { increment } = await import('firebase/firestore');
+                          await updateDoc(doc(db, 'users', uid), { noShowCount: increment(1) });
+                          setUser((prev: any) => ({ ...prev, noShowCount: (prev.noShowCount || 0) + 1 }));
+                          toast.success('노쇼 횟수 +1');
+                        }}
+                        className="w-5 h-5 rounded-full bg-white border border-rose-300 text-rose-600 text-xs font-black flex items-center justify-center shadow-sm hover:bg-rose-50"
+                      >+</button>
+                    </div>
                   </div>
+                  {/* 지각 카드 - hover 시 +/- 수동 조정 */}
+                  <div className="flex-1 p-3 rounded-3xl bg-amber-50 border border-amber-200 text-center relative group cursor-default">
+                    <p className="text-[9px] font-black text-amber-600 uppercase tracking-widest mb-1">⏳ 지각</p>
+                    <p className="text-xl font-black text-amber-700">{user.tardyCount || 0}</p>
+                    <div className="absolute inset-x-0 bottom-1 flex justify-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={async () => {
+                          const uid = user.uid || user.id;
+                          if (!uid) return;
+                          const { increment } = await import('firebase/firestore');
+                          await updateDoc(doc(db, 'users', uid), { tardyCount: increment(-1) });
+                          setUser((prev: any) => ({ ...prev, tardyCount: Math.max(0, (prev.tardyCount || 0) - 1) }));
+                          toast.success('지각 횟수 -1');
+                        }}
+                        className="w-5 h-5 rounded-full bg-white border border-amber-300 text-amber-700 text-xs font-black flex items-center justify-center shadow-sm hover:bg-amber-50"
+                      >−</button>
+                      <button
+                        onClick={async () => {
+                          const uid = user.uid || user.id;
+                          if (!uid) return;
+                          const { increment } = await import('firebase/firestore');
+                          await updateDoc(doc(db, 'users', uid), { tardyCount: increment(1) });
+                          setUser((prev: any) => ({ ...prev, tardyCount: (prev.tardyCount || 0) + 1 }));
+                          toast.success('지각 횟수 +1');
+                        }}
+                        className="w-5 h-5 rounded-full bg-white border border-amber-300 text-amber-700 text-xs font-black flex items-center justify-center shadow-sm hover:bg-amber-50"
+                      >+</button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 7. 참가 이력 및 출석 관리 (v11.1.0) */}
+                <div className="pt-6 pb-2">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-1 h-3 bg-violet-400 rounded-full" />
+                    <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Attendance History</span>
+                  </div>
+
+                  {appsLoading ? (
+                    <div className="flex items-center justify-center py-6">
+                      <div className="w-5 h-5 border-2 border-violet-300 border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  ) : userApps.length === 0 ? (
+                    <p className="text-xs text-slate-300 italic text-center py-4">참가 이력이 없습니다.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {userApps.map((app: any) => {
+                        const status = app.attendanceStatus as 'present' | 'late' | 'no-show' | null;
+                        const appliedDate = app.appliedAt?.toDate?.() || (app.appliedAt ? new Date(app.appliedAt) : null);
+
+                        const handleToggleStatus = async (newStatus: 'present' | 'late' | 'no-show' | null) => {
+                          const uid = user.uid || user.id;
+                          if (!uid) return;
+                          try {
+                            const { doc: docRef, updateDoc: upd, increment } = await import('firebase/firestore');
+                            const prev = app.attendanceStatus;
+
+                            // applications 업데이트
+                            const nextStatus = prev === newStatus ? null : newStatus;
+                            await upd(docRef(db, 'applications', app.id), {
+                              attendanceStatus: nextStatus,
+                              attended: nextStatus === 'present' || nextStatus === 'late',
+                              updatedAt: new Date(),
+                            });
+
+                            // users 카운트 조정
+                            const userRef = docRef(db, 'users', uid);
+                            if (newStatus === 'no-show' && prev !== 'no-show') {
+                              await upd(userRef, { noShowCount: increment(1) });
+                              setUser((u: any) => ({ ...u, noShowCount: (u.noShowCount || 0) + 1 }));
+                            } else if (newStatus !== 'no-show' && prev === 'no-show') {
+                              await upd(userRef, { noShowCount: increment(-1) });
+                              setUser((u: any) => ({ ...u, noShowCount: Math.max(0, (u.noShowCount || 0) - 1) }));
+                            }
+                            if (newStatus === 'late' && prev !== 'late') {
+                              await upd(userRef, { tardyCount: increment(1) });
+                              setUser((u: any) => ({ ...u, tardyCount: (u.tardyCount || 0) + 1 }));
+                            } else if (newStatus !== 'late' && prev === 'late') {
+                              await upd(userRef, { tardyCount: increment(-1) });
+                              setUser((u: any) => ({ ...u, tardyCount: Math.max(0, (u.tardyCount || 0) - 1) }));
+                            }
+
+                            // 로컬 상태 업데이트
+                            setUserApps(prev => prev.map(a =>
+                              a.id === app.id ? { ...a, attendanceStatus: nextStatus, attended: nextStatus === 'present' || nextStatus === 'late' } : a
+                            ));
+                            toast.success(nextStatus ? `${nextStatus === 'present' ? '출석' : nextStatus === 'late' ? '지각' : '노쇼'} 처리됨` : '출석 상태 초기화');
+                          } catch (e) {
+                            toast.error('변경에 실패했습니다.');
+                          }
+                        };
+
+                        return (
+                          <div
+                            key={app.id}
+                            className={`flex items-center gap-3 p-3 rounded-2xl border transition-all ${
+                              status === 'present' ? 'bg-emerald-50 border-emerald-200' :
+                              status === 'late'    ? 'bg-amber-50 border-amber-200' :
+                              status === 'no-show' ? 'bg-rose-50 border-rose-200' :
+                              'bg-slate-50 border-slate-100'
+                            }`}
+                          >
+                            {/* 기수/날짜 */}
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[0.78rem] font-black text-slate-700 truncate">
+                                {app.sessionId || '기수 미상'}
+                              </p>
+                              {appliedDate && (
+                                <p className="text-[0.65rem] text-slate-400 font-semibold">
+                                  {appliedDate.toLocaleDateString('ko-KR', { year: '2-digit', month: 'short', day: 'numeric' })}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* 현재 상태 배지 */}
+                            <span className={`text-[0.65rem] font-black px-2 py-0.5 rounded-full shrink-0 ${
+                              status === 'present' ? 'bg-emerald-500 text-white' :
+                              status === 'late'    ? 'bg-amber-500 text-white' :
+                              status === 'no-show' ? 'bg-rose-500 text-white' :
+                              'bg-slate-200 text-slate-500'
+                            }`}>
+                              {status === 'present' ? '출석' : status === 'late' ? '지각' : status === 'no-show' ? '노쇼' : '미지정'}
+                            </span>
+
+                            {/* 출석/지각/노쇼 토글 버튼 */}
+                            <div className="flex items-center gap-1 shrink-0">
+                              <button
+                                onClick={() => handleToggleStatus('present')}
+                                className={`px-2 py-1 rounded-lg text-[0.6rem] font-black border transition-all ${
+                                  status === 'present' ? 'bg-emerald-500 text-white border-emerald-500' : 'bg-white text-slate-400 border-slate-200 hover:border-emerald-300 hover:text-emerald-600'
+                                }`}
+                              >출석</button>
+                              <button
+                                onClick={() => handleToggleStatus('late')}
+                                className={`px-2 py-1 rounded-lg text-[0.6rem] font-black border transition-all ${
+                                  status === 'late' ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-slate-400 border-slate-200 hover:border-amber-300 hover:text-amber-600'
+                                }`}
+                              >지각</button>
+                              <button
+                                onClick={() => handleToggleStatus('no-show')}
+                                className={`px-2 py-1 rounded-lg text-[0.6rem] font-black border transition-all ${
+                                  status === 'no-show' ? 'bg-rose-500 text-white border-rose-500' : 'bg-white text-slate-400 border-slate-200 hover:border-rose-300 hover:text-rose-600'
+                                }`}
+                              >노쇼</button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
 
               </div>

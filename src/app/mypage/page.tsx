@@ -1009,16 +1009,22 @@ interface StatusBlockProps {
 function ApplicationStatusSection({ applications, sessionsMap, userId }: { applications: Application[], sessionsMap: Record<string, Session>, userId: string }) {
   const [votedMap, setVotedMap] = useState<Record<string, boolean>>({});
 
+  // 테스트 기수 신청서 필터링 (isTest: true 인 세션은 제외)
+  const visibleApps = applications.filter(app => {
+    const s = sessionsMap[app.sessionId];
+    return !s || !s.isTest;
+  });
+
   useEffect(() => {
-    applications.forEach(async (app) => {
+    visibleApps.forEach(async (app) => {
       if (app.status === 'confirmed' && votedMap[app.sessionId] === undefined) {
         const vote = await getMyVote(app.sessionId, userId);
         setVotedMap(prev => ({ ...prev, [app.sessionId]: !!vote }));
       }
     });
-  }, [applications, userId]);
+  }, [visibleApps, userId]);
 
-  if (applications.length === 0) {
+  if (visibleApps.length === 0) {
     return (
       <div style={{ background: '#FFFFFF', borderRadius: '24px', boxShadow: '0 10px 40px rgba(255,111,97,0.08)', border: '1px solid #FFE8E5', marginBottom: '20px', overflow: 'hidden' }}>
         <div style={{ padding: '20px 24px', borderBottom: '1px solid #FFF0EE', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -1040,7 +1046,7 @@ function ApplicationStatusSection({ applications, sessionsMap, userId }: { appli
   }
 
   // 1. 선발 확정(confirmed) 항목들을 날짜순으로 정렬
-  const confirmedApps = applications
+  const confirmedApps = visibleApps
     .filter(a => a.status === 'confirmed')
     .sort((a, b) => {
       const edA = sessionsMap[a.sessionId]?.eventDate;
@@ -1068,7 +1074,7 @@ function ApplicationStatusSection({ applications, sessionsMap, userId }: { appli
   }
 
   // 3. 확정 항목이 없다면 가장 최근 상태(applied, selected 등) 하나를 출력
-  const latestApp = applications[0]; // subscribeMyApplications에서 updatedAt 기준 내림차순 정렬됨
+  const latestApp = visibleApps[0]; // subscribeMyApplications에서 updatedAt 기준 내림차순 정렬됨
   return (
     <ApplicationStatusBlock
       application={latestApp}

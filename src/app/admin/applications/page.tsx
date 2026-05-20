@@ -190,12 +190,14 @@ export default function ApplicationsPage() {
         });
 
         const data = await res.json();
+        if (data.isMock) {
+          toast('로컬 환경에서는 실제 처리가 제한됩니다.', { icon: '🚧', duration: 4000 });
+          return;
+        }
         if (!res.ok) throw new Error(data.error || '처리 중 오류가 발생했습니다.');
 
         if (data.warning) {
           toast(data.warning, { icon: '⚠️', duration: 4000 });
-        } else if (data.isMock) {
-          toast('로컬 환경이라 실제 문자는 발송되지 않았습니다.', { icon: '⚠️', duration: 4000 });
         } else {
           toast.success('선발 및 안내 문자 발송 완료');
         }
@@ -223,7 +225,12 @@ export default function ApplicationsPage() {
 
     } catch (e: any) {
       console.error(e);
-      toast.error(e.message || '상태 업데이트에 실패했습니다.');
+      const msg = e.message || '';
+      if (msg.includes('[로컬 환경]')) {
+        toast('로컬 환경에서는 실제 처리가 제한됩니다.', { icon: '🚧', duration: 4000 });
+      } else {
+        toast.error(msg || '상태 업데이트에 실패했습니다.');
+      }
     }
   };
 

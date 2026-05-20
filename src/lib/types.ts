@@ -143,6 +143,9 @@ export interface Application {
 
   // v9.2.0: 행사 당일 출석 여부
   attended?: boolean;
+
+  // v10.4.0: 출석 상태 세분화 (출석, 지각, 노쇼)
+  attendanceStatus?: 'present' | 'late' | 'no-show' | null;
 }
 
 // ─────────────────────────────────────────────

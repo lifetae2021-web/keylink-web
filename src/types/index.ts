@@ -18,6 +18,8 @@ export interface UserProfile {
   photoUrl?: string;
   isAdmin: boolean;
   isVerified?: boolean; // 재직/신원 인증 완료 뱃지용
+  noShowCount?: number;  // v11.0.0: 누적 노쇼 횟수
+  tardyCount?: number;   // v11.0.0: 누적 지각 횟수
   createdAt: Date;
 }
 

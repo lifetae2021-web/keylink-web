@@ -54,6 +54,11 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
           const sessionSnap = await getDoc(doc(db, 'sessions', sessionId));
           if (sessionSnap.exists()) {
             const sd = sessionSnap.data();
+            if (sd.isTest) {
+              setSession(null);
+              setIsLoading(false);
+              return;
+            }
             setSession({
               id: sessionId,
               ...sd,

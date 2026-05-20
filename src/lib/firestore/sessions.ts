@@ -67,7 +67,9 @@ export async function getOpenSessions(): Promise<Session[]> {
     where('status', '==', 'open')
   );
   const snap = await getDocs(q);
-  return snap.docs.map((d) => fromDoc(d)).filter(Boolean) as Session[];
+  return snap.docs
+    .map((d) => fromDoc(d))
+    .filter((s): s is Session => !!s && !s.isTest);
 }
 
 /** 모든 기수 목록 (관리자용) */
@@ -101,7 +103,9 @@ export function subscribeAllSessions(
   return onSnapshot(
     q,
     (snap) => {
-      const sessions = snap.docs.map((d) => fromDoc(d)).filter(Boolean) as Session[];
+      const sessions = snap.docs
+        .map((d) => fromDoc(d))
+        .filter((s): s is Session => !!s && !s.isTest);
       callback(sessions);
     },
     (error) => {

@@ -49,6 +49,8 @@ export async function getUserParticipations(userId: string) {
     if (!sessionSnap.exists()) return null;
 
     const d = sessionSnap.data()!;
+    if (d.isTest) return null; // 테스트 기수는 일반 유저 목록에서 제외
+
     const sessionData = {
       id: sessionSnap.id,
       ...d,
