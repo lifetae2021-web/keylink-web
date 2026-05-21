@@ -68,7 +68,9 @@ export default function ResultListPage() {
             matchedRate: matchedRate > 0 ? matchedRate : null,
           } as any;
         }));
-        setSessions(fetched);
+        // Filter out test sessions (isTest: true) from public matching reports
+        const publicSessions = fetched.filter((s: any) => s && !s.isTest);
+        setSessions(publicSessions);
       } catch (error) {
         console.error("Error fetching completed sessions:", error);
       } finally {
