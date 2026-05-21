@@ -150,8 +150,14 @@ export default function VotePage() {
       const snap = await getDocs(q);
 
       // 2. 이성 후보자들의 상세 유저 정보(사진 등)를 병렬로 한 번에 조회 (블로킹/순차 쿼리 제거하여 속도 극대화)
-      const candidateList: Candidate[] = await Promise.all(snap.docs.map(async (d) => {
+      const candidateListRaw = await Promise.all(snap.docs.map(async (d) => {
         const appData = d.data();
+        
+        // v11.1.0: 노쇼(No-Show)로 등록된 참가자는 후보 리스트에서 원천적으로 필터링하여 노출 제외
+        if (appData.attendanceStatus === 'no-show') {
+          return null;
+        }
+
         const userSnap = await getDoc(doc(db, 'users', appData.userId));
         const userData = userSnap.exists() ? userSnap.data() : null;
 
@@ -174,6 +180,9 @@ export default function VotePage() {
           slotNumber: appData.slotNumber || 999, // v10.1.0: DB 호수 사용
         };
       }));
+
+      // null 필터링 및 타입 확립
+      const candidateList = candidateListRaw.filter(Boolean) as Candidate[];
 
       // v10.1.0: slotNumber 기준 오름차순 정렬하여 어드민 호수와 완벽히 동기화
       candidateList.sort((a, b) => a.slotNumber - b.slotNumber);
