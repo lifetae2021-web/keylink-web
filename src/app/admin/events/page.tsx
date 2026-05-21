@@ -1988,7 +1988,7 @@ ${chatLink}
                                         return (
                                           <div
                                             key={app.id}
-                                            className={`flex flex-col sm:flex-row sm:items-center gap-3 px-5 py-4 transition-all duration-200 border-b border-slate-100/60 ${isOverQuota ? "bg-red-50/50 animate-pulse" : app.attendanceStatus === 'present' ? "bg-emerald-50/15 hover:bg-emerald-50/30 border-l-4 border-l-emerald-500 shadow-sm shadow-emerald-100/50" : app.attendanceStatus === 'late' ? "bg-amber-50/15 hover:bg-amber-50/30 border-l-4 border-l-amber-500 shadow-sm shadow-amber-100/50" : app.attendanceStatus === 'no-show' ? "bg-rose-50/15 hover:bg-rose-50/30 border-l-4 border-l-rose-500 shadow-sm shadow-rose-100/50" : (userMap[app.userId]?.noShowCount > 0 ? "bg-rose-50/30 hover:bg-rose-50/50 border-l-4 border-l-rose-300" : "bg-white hover:bg-slate-50/80 border-l-4 border-l-transparent")}`}
+                                            className={`flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 px-5 py-3 sm:py-4 transition-all duration-200 border-b border-slate-100/60 ${isOverQuota ? "bg-red-50/50 animate-pulse" : app.attendanceStatus === 'present' ? "bg-emerald-50/15 hover:bg-emerald-50/30 border-l-4 border-l-emerald-500 shadow-sm shadow-emerald-100/50" : app.attendanceStatus === 'late' ? "bg-amber-50/15 hover:bg-amber-50/30 border-l-4 border-l-amber-500 shadow-sm shadow-amber-100/50" : app.attendanceStatus === 'no-show' ? "bg-rose-50/15 hover:bg-rose-50/30 border-l-4 border-l-rose-500 shadow-sm shadow-rose-100/50" : (userMap[app.userId]?.noShowCount > 0 ? "bg-rose-50/30 hover:bg-rose-50/50 border-l-4 border-l-rose-300" : "bg-white hover:bg-slate-50/80 border-l-4 border-l-transparent")}`}
                                           >
                                             {/* Left: Slot & Status */}
                                             <div className="flex items-center justify-between sm:justify-start gap-3">
@@ -2078,7 +2078,7 @@ ${chatLink}
 
                                             {/* Middle: Info */}
                                             <div className="flex-1 min-w-0">
-                                              <div className="hidden sm:flex items-center gap-2 mb-0.5">
+                                              <div className="hidden sm:flex items-center gap-2 mb-0">
                                                 <span
                                                   onClick={() => {
                                                     const user = userMap[app.userId] || { id: app.userId, name: app.name, phone: app.phone, gender: app.gender };
@@ -2118,7 +2118,7 @@ ${chatLink}
                                                   );
                                                 })()}
                                               </div>
-                                              <div className="flex flex-col gap-1.5 ml-11 sm:ml-0">
+                                              <div className="flex flex-col gap-0.5 ml-11 sm:ml-0 mt-0">
                                                 {/* Row 1: 나이, 직업, 거주지 */}
                                                 <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[0.72rem] text-slate-600 font-bold">
                                                   <span className="whitespace-nowrap">{birthYear}</span>
