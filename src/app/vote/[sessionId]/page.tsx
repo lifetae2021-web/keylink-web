@@ -119,27 +119,6 @@ export default function VotePage() {
         setMyAlias(`${prefix} ${app.slotNumber}호`);
       }
 
-      // v10.4.0: 기존에 제출한 투표가 있으면 폼 정보 복원 (자율 수정 지원)
-      if (existingVote) {
-        setHasVoted(true);
-        setRealName(existingVote.realName || app.name || '');
-        setMyAlias(existingVote.myAlias || '');
-        setFinalCheck(existingVote.finalCheck || false);
-        setDisclosureMode(existingVote.disclosureMode || 'public');
-        setFeedback(existingVote.feedback || '');
-
-        const choicesMap: Record<number, string> = {};
-        const reasonsMap: Record<string, string> = {};
-        existingVote.choices.forEach(c => {
-          choicesMap[c.priority] = c.targetUserId;
-          if (c.reason) {
-            reasonsMap[c.targetUserId] = c.reason;
-          }
-        });
-        setChoices(choicesMap);
-        setReasons(reasonsMap);
-      }
-
       const oppositeGender = app.gender === 'male' ? 'female' : 'male';
       const q = query(
         collection(db, 'applications'),
@@ -187,6 +166,41 @@ export default function VotePage() {
       // v10.1.0: slotNumber 기준 오름차순 정렬하여 어드민 호수와 완벽히 동기화
       candidateList.sort((a, b) => a.slotNumber - b.slotNumber);
       setCandidates(candidateList);
+
+      // v10.4.0: 기존에 제출한 투표가 있으면 폼 정보 복원 (자율 수정 지원)
+      if (existingVote) {
+        setHasVoted(true);
+        setRealName(existingVote.realName || app.name || '');
+        setMyAlias(existingVote.myAlias || '');
+        setFinalCheck(existingVote.finalCheck || false);
+        setDisclosureMode(existingVote.disclosureMode || 'public');
+        setFeedback(existingVote.feedback || '');
+
+        const choicesMap: Record<number, string> = {};
+        const reasonsMap: Record<string, string> = {};
+        
+        // v11.2.0: 현재 유효한(노쇼가 아닌) 후보군 목록에 존재하는 선택지만 복원
+        const validCandidateIds = new Set(candidateList.map(c => c.userId));
+
+        existingVote.choices.forEach(c => {
+          if (validCandidateIds.has(c.targetUserId)) {
+            choicesMap[c.priority] = c.targetUserId;
+            if (c.reason) {
+              reasonsMap[c.targetUserId] = c.reason;
+            }
+          }
+        });
+
+        // 지워진 투표(노쇼 필터링)로 인해 발생한 우선순위 구멍을 순차적으로 1지망 ➔ 2지망 순으로 재배치
+        const orderedChoices: Record<number, string> = {};
+        Object.values(choicesMap).forEach((uid, index) => {
+          orderedChoices[index + 1] = uid;
+        });
+
+        setChoices(orderedChoices);
+        setReasons(reasonsMap);
+      }
+
       setLoading(false);
     });
 
