@@ -89,6 +89,7 @@ export default function VotePage() {
 
       const userSnap = await getDoc(doc(db, 'users', user.uid));
       const role = userSnap.exists() ? userSnap.data()?.role : '';
+      const isAdminUser = role === 'admin' || role === 'super_admin';
       if (role === 'admin' || role === 'super_admin') {
         setIsAdmin(true);
       }
@@ -99,7 +100,8 @@ export default function VotePage() {
         router.push('/mypage');
         return;
       }
-      if (!app.attended && !isAdmin) {
+      // 미출석 시 투표 불가 (관리자는 우회)
+      if (!app.attended && !isAdminUser) {
         toast.error('행사 현장 출석 체크가 완료된 참가자만 투표에 참여할 수 있습니다. 운영진에게 확인해 주세요! ☺️');
         router.push('/mypage');
         return;
