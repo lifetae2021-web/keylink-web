@@ -34,7 +34,13 @@ export default function MatchingResultsListPage() {
       setUser(currentUser);
       if (currentUser) {
         try {
-          const participations = await getUserParticipations(currentUser.uid);
+          // v10.2.0: 기수별 참여 내역 및 1:1 매칭 신청 내역을 병렬 조회하여 응답 속도 최적화
+          const privateQ = query(collection(db, 'private_applications'), where('userId', '==', currentUser.uid));
+          const [participations, privateSnap] = await Promise.all([
+            getUserParticipations(currentUser.uid),
+            getDocs(privateQ)
+          ]);
+
           const roundsData: MatchingRound[] = participations.map(p => ({
             id: p.application.id,
             sessionId: p.session.id,
@@ -45,9 +51,6 @@ export default function MatchingResultsListPage() {
           }));
           setRounds(roundsData);
 
-          // v8.12.7: 1:1 매칭 내역 조회
-          const privateQ = query(collection(db, 'private_applications'), where('userId', '==', currentUser.uid));
-          const privateSnap = await getDocs(privateQ);
           const pApps = privateSnap.docs.map(d => ({ id: d.id, ...d.data() }));
           // 최근 신청순 정렬
           pApps.sort((a: any, b: any) => (b.appliedAt?.toMillis?.() || 0) - (a.appliedAt?.toMillis?.() || 0));

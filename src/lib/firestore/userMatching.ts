@@ -45,7 +45,12 @@ export async function getUserParticipations(userId: string) {
   const participations = await Promise.all(snap.docs.map(async (appDoc) => {
     const appData = { id: appDoc.id, ...appDoc.data() } as Application;
 
-    const sessionSnap = await getDoc(doc(db, 'sessions', appData.sessionId));
+    // v10.2.0: 세션 정보와 매칭 요약 데이터를 병렬 조회하여 기수 목록 로딩 대폭 단축
+    const [sessionSnap, summary] = await Promise.all([
+      getDoc(doc(db, 'sessions', appData.sessionId)),
+      getSummary(appData.sessionId)
+    ]);
+
     if (!sessionSnap.exists()) return null;
 
     const d = sessionSnap.data()!;
@@ -58,7 +63,6 @@ export async function getUserParticipations(userId: string) {
       createdAt: d.createdAt?.toDate?.() || new Date(),
     } as Session;
 
-    const summary = await getSummary(appData.sessionId);
     const inResults = summary && (
       summary.unmatchedUserIds.includes(userId) ||
       summary.matchedPairs.some(p => p.userAId === userId || p.userBId === userId)
@@ -104,10 +108,15 @@ export async function getUserMatchResult(userId: string, sessionId: string): Pro
       where('sessionId', '==', sessionId),
       where('userId', '==', partnerId)
     );
-    const appSnap = await getDocs(appQuery);
+
+    // v10.2.0: 이성 신청서 조회와 기수 세션 상세 조회를 동시에 병렬 처리
+    const [appSnap, sessionSnap] = await Promise.all([
+      getDocs(appQuery),
+      getDoc(doc(db, 'sessions', sessionId))
+    ]);
+
     if (!appSnap.empty) {
       const appData = appSnap.docs[0].data();
-      const sessionSnap = await getDoc(doc(db, 'sessions', sessionId));
       const batchTitle = sessionSnap.exists() ? `${sessionSnap.data().episodeNumber || ''}기` : '';
       
       let calculatedAge = '미입력';

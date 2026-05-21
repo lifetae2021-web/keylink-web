@@ -91,9 +91,18 @@ export default function EventDetailPage() {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setCurrentUser(user);
-        // Firestore에서 유저 데이터 가져오기
+        // Firestore에서 유저 데이터 및 미사용 쿠폰 목록을 병렬로 한 번에 조회 (속도 개선)
         const userRef = doc(db, 'users', user.uid);
-        const userSnap = await getDoc(userRef);
+        const couponsQ = query(
+          collection(db, 'users', user.uid, 'coupons'),
+          where('isUsed', '==', false)
+        );
+
+        const [userSnap, couponsSnap] = await Promise.all([
+          getDoc(userRef),
+          getDocs(couponsQ)
+        ]);
+
         if (userSnap.exists()) {
           const data = userSnap.data();
           // 관리자 여부 확인
@@ -174,11 +183,6 @@ export default function EventDetailPage() {
           setUserGender(d.gender || '');
 
           // v8.15.9: 사용 가능한 쿠폰 가져오기
-          const couponsQ = query(
-            collection(db, 'users', user.uid, 'coupons'),
-            where('isUsed', '==', false)
-          );
-          const couponsSnap = await getDocs(couponsQ);
           const couponsData = couponsSnap.docs.map(doc => {
             const data = doc.data();
             let expireAt = data.expireAt;

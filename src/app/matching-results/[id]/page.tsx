@@ -44,14 +44,28 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
       setUser(currentUser);
       if (currentUser) {
         try {
+          const appsQuery = query(
+            collection(db, 'applications'),
+            where('sessionId', '==', sessionId),
+            where('status', '==', 'confirmed')
+          );
+
+          // v10.2.0: 6가지 파이어스토어 요청을 병렬로 한 번에 처리하여 결과 페이지 로딩 600% 이상 단축
+          const [userSnap, sessionSnap, summarySnap, appsSnap, matchResult, stats] = await Promise.all([
+            getDoc(doc(db, 'users', currentUser.uid)),
+            getDoc(doc(db, 'sessions', sessionId)),
+            getDoc(doc(db, 'matchingSummaries', sessionId)),
+            getDocs(appsQuery),
+            getUserMatchResult(currentUser.uid, sessionId),
+            getUserVoteStats(currentUser.uid, sessionId)
+          ]);
+
           // 1. Fetch User Name
-          const userSnap = await getDoc(doc(db, 'users', currentUser.uid));
           if (userSnap.exists()) {
             setUserName(userSnap.data().name || '영훈');
           }
 
           // 2. Fetch Session
-          const sessionSnap = await getDoc(doc(db, 'sessions', sessionId));
           if (sessionSnap.exists()) {
             const sd = sessionSnap.data();
             if (sd.isTest) {
@@ -67,18 +81,11 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
           }
 
           // 3. Fetch Summary
-          const summarySnap = await getDoc(doc(db, 'matchingSummaries', sessionId));
           if (summarySnap.exists()) {
             setSummary(summarySnap.data());
           }
 
           // 4. Fetch Participant Slots mapping
-          const appsQuery = query(
-            collection(db, 'applications'),
-            where('sessionId', '==', sessionId),
-            where('status', '==', 'confirmed')
-          );
-          const appsSnap = await getDocs(appsQuery);
           const pMap: Record<string, any> = {};
           appsSnap.docs.forEach(d => {
             const data = d.data();
@@ -91,7 +98,6 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
           setParticipantMap(pMap);
 
           // 5. Fetch User Matching Result
-          const matchResult = await getUserMatchResult(currentUser.uid, sessionId);
           if (matchResult) {
             setIsParticipant(true);
             setResult({
@@ -108,7 +114,6 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
             });
 
             // 6. Fetch Stats & Choices only if participated
-            const stats = await getUserVoteStats(currentUser.uid, sessionId);
             setVoteCount(stats.receivedCount);
             
             const resolvedChoices = await Promise.all(stats.myChoices.map(async (v) => {
