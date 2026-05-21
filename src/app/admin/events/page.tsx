@@ -1753,43 +1753,44 @@ ${chatLink}
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {/* v8.15.0: 개요 탭을 없애고 운영 필수 버튼을 헤더로 이동 */}
-                    <div className="hidden lg:flex items-center gap-1.5 mr-2 pr-2 border-r border-slate-200">
-                      <button
-                        onClick={() => toggleVotingForm(active.status === "voting" ? "closed" : "voting")}
-                        className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all ${active.status === "voting" ? "bg-indigo-600 text-white shadow-md shadow-indigo-100" : "bg-white border border-indigo-200 text-indigo-600 hover:bg-indigo-50"}`}
-                        title="투표 열기/닫기"
-                      >
-                        <Heart size={13} fill={active.status === "voting" ? "currentColor" : "none"} />
-                        {active.status === "voting" ? "투표 중" : "투표 열기"}
-                      </button>
-                      <button
-                        onClick={() => handleOpenVotingStatus(active)}
-                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-emerald-200 text-xs font-bold text-emerald-600 hover:bg-emerald-50 transition-all"
-                        title="실시간 투표 현황"
-                      >
-                        <BarChart3 size={13} /> 현황
-                      </button>
-                      <button
-                        onClick={() => setMatchingDrawerOpen(true)}
-                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-pink-200 text-xs font-bold text-pink-600 hover:bg-pink-50 transition-all"
-                        title="매칭 결과 확인"
-                      >
-                        <Trophy size={13} /> 결과
-                      </button>
-                      <button
-                        onClick={() => handleOpenReviews(active)}
-                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-orange-200 text-xs font-bold text-orange-600 hover:bg-orange-50 transition-all"
-                        title="후기 모음"
-                      >
-                        <MessageSquare size={13} /> 후기
-                      </button>
-                    </div>
+                  {/* v10.3.0: 모바일/태블릿 가로 스크롤 대응 및 통합 액션 헤더 패치 */}
+                  <div className="flex items-center gap-1.5 overflow-x-auto max-w-full no-scrollbar pb-1.5 sm:pb-0 scroll-smooth shrink-0 w-full sm:w-auto sm:overflow-x-visible">
+                    <button
+                      onClick={() => toggleVotingForm(active.status === "voting" ? "closed" : "voting")}
+                      className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${active.status === "voting" ? "bg-indigo-600 text-white shadow-md shadow-indigo-100" : "bg-white border border-indigo-200 text-indigo-600 hover:bg-indigo-50"}`}
+                      title="투표 열기/닫기"
+                    >
+                      <Heart size={13} fill={active.status === "voting" ? "currentColor" : "none"} />
+                      {active.status === "voting" ? "투표 중" : "투표 열기"}
+                    </button>
+                    <button
+                      onClick={() => handleOpenVotingStatus(active)}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-emerald-200 text-xs font-bold text-emerald-600 hover:bg-emerald-50 transition-all shrink-0"
+                      title="실시간 투표 현황"
+                    >
+                      <BarChart3 size={13} /> 현황
+                    </button>
+                    <button
+                      onClick={() => setMatchingDrawerOpen(true)}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-pink-200 text-xs font-bold text-pink-600 hover:bg-pink-50 transition-all shrink-0"
+                      title="매칭 결과 확인"
+                    >
+                      <Trophy size={13} /> 결과
+                    </button>
+                    <button
+                      onClick={() => handleOpenReviews(active)}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-orange-200 text-xs font-bold text-orange-600 hover:bg-orange-50 transition-all shrink-0"
+                      title="후기 모음"
+                    >
+                      <MessageSquare size={13} /> 후기
+                    </button>
+
+                    {/* 데스크톱/패드 전용 세로 구분선 */}
+                    <div className="hidden sm:block h-6 w-px bg-slate-200 mx-1 shrink-0" />
 
                     <button
                       onClick={() => openEditModal(active)}
-                      className="flex items-center gap-1.5 rounded-xl transition-all px-4 py-2 bg-slate-50 border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-100 hover:border-slate-300"
+                      className="flex items-center gap-1.5 rounded-xl transition-all px-4 py-2 bg-slate-50 border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-100 hover:border-slate-300 shrink-0"
                     >
                       <Edit2 size={13} /> 수정
                     </button>
@@ -1800,7 +1801,7 @@ ${chatLink}
                           `${active.region === "busan" ? "부산" : "창원"} ${active.episodeNumber}기`,
                         )
                       }
-                      className="flex items-center gap-1.5 rounded-xl transition-all px-4 py-2 bg-rose-50 border border-rose-200 text-xs font-bold text-rose-600 hover:bg-rose-100"
+                      className="flex items-center gap-1.5 rounded-xl transition-all px-4 py-2 bg-rose-50 border border-rose-200 text-xs font-bold text-rose-600 hover:bg-rose-100 shrink-0"
                     >
                       <Trash2 size={13} /> 삭제
                     </button>
