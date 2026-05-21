@@ -106,7 +106,7 @@ const handleDeleteAccount = async () => {
             <span style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>상호명: 키링크(Keylink)</span>
             <span style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>대표자: 태영훈</span>
             <span style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>사업자등록번호: 483-07-03249</span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>연락처: 010-4896-2040</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>연락처: 010-9130-1577</span>
             <span style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>주소: 부산광역시 부산진구 중앙대로 763-1, 4층(부전동)</span>
             <span style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>개인정보보호책임자: 태영훈 (keylink2025@gmail.com)</span>
           </div>
