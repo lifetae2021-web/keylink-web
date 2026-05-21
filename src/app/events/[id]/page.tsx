@@ -25,6 +25,7 @@ export default function EventDetailPage() {
   const router = useRouter();
   const [event, setEvent] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     async function fetchSession() {
@@ -95,6 +96,9 @@ export default function EventDetailPage() {
         const userSnap = await getDoc(userRef);
         if (userSnap.exists()) {
           const data = userSnap.data();
+          // 관리자 여부 확인
+          const role = data?.role;
+          setIsAdmin(role === 'admin' || role === 'super_admin');
           const d = data;
           const initialProfile = {
             name: d.name || '',
@@ -238,7 +242,7 @@ export default function EventDetailPage() {
     );
   }
 
-  if (!event || event.isTest) {
+  if (!event || (event.isTest && !isAdmin)) {
     return (
       <div style={{ paddingTop: '120px', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ textAlign: 'center' }}>
