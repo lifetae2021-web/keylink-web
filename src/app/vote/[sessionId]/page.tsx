@@ -99,7 +99,7 @@ export default function VotePage() {
         router.push('/mypage');
         return;
       }
-      if (!app.attended) {
+      if (!app.attended && !isAdmin) {
         toast.error('행사 현장 출석 체크가 완료된 참가자만 투표에 참여할 수 있습니다. 운영진에게 확인해 주세요! ☺️');
         router.push('/mypage');
         return;
