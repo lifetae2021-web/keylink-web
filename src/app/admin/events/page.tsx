@@ -3588,8 +3588,8 @@ ${chatLink}
                       <option value="서면역 인근 프라이빗한 파티룸">
                         서면역 인근 프라이빗한 파티룸
                       </option>
-                      <option value="상남동 프라이빗한 파티룸 (창원)">
-                        상남동 프라이빗한 파티룸 (창원)
+                      <option value="상남동 인근">
+                        상남동 인근
                       </option>
                       <option value="추가 장소 필요시 입력">
                         추가 장소 필요시 입력...
