@@ -2039,9 +2039,10 @@ ${chatLink}
                                                   </span>
                                                 </div>
                                               </div>
-                                              {/* 모바일 액션: 출석칩 + 메모 + 문자 + 선발취소 */}
-                                              <div className="flex items-center gap-1 sm:hidden">
-                                                <div className="flex items-center gap-0.5 bg-slate-50 px-1 py-0.5 rounded-xl border border-slate-200/60 shrink-0">
+                                              {/* 모바일 액션: 2단 배치 (출석칩 상단 / 메모+문자+선발취소 하단) */}
+                                              <div className="flex flex-col items-end gap-1.5 sm:hidden shrink-0">
+                                                {/* 1단: 출석 / 지각 / 노쇼 */}
+                                                <div className="flex items-center gap-0.5 bg-slate-50 px-1 py-0.5 rounded-xl border border-slate-200/60">
                                                   <button
                                                     onClick={() => handleSetAttendanceStatus(app, app.attendanceStatus === 'present' ? 'none' : 'present')}
                                                     className={`px-2 py-0.5 rounded-lg text-[0.6rem] font-bold transition-all ${app.attendanceStatus === 'present' ? "bg-emerald-500 text-white shadow-sm" : "text-slate-400 hover:text-slate-600 hover:bg-white"}`}
@@ -2055,20 +2056,23 @@ ${chatLink}
                                                     className={`px-2 py-0.5 rounded-lg text-[0.6rem] font-bold transition-all ${app.attendanceStatus === 'no-show' ? "bg-rose-500 text-white shadow-sm" : "text-slate-400 hover:text-slate-600 hover:bg-white"}`}
                                                   >노쇼</button>
                                                 </div>
-                                                <button
-                                                  onClick={() => handleOpenMemo(app)}
-                                                  className={`p-1.5 rounded-lg border transition-all ${app.adminMemo ? "bg-amber-50 text-amber-600 border-amber-200 shadow-sm" : "bg-slate-50 text-slate-400 border-slate-200"}`}
-                                                  title="메모"
-                                                >
-                                                  <StickyNote size={13} fill={app.adminMemo ? "currentColor" : "none"} />
-                                                </button>
-                                                {renderSmsButton(app)}
-                                                <button
-                                                  onClick={() => handleCancelSelection(app)}
-                                                  className="p-1.5 rounded-lg bg-slate-50 text-slate-400 border border-slate-200"
-                                                >
-                                                  <Trash2 size={13} />
-                                                </button>
+                                                {/* 2단: 메모 + 문자 + 선발취소 */}
+                                                <div className="flex items-center gap-1.5">
+                                                  <button
+                                                    onClick={() => handleOpenMemo(app)}
+                                                    className={`p-1.5 rounded-lg border transition-all ${app.adminMemo ? "bg-amber-50 text-amber-600 border-amber-200 shadow-sm" : "bg-slate-50 text-slate-400 border-slate-200"}`}
+                                                    title="메모"
+                                                  >
+                                                    <StickyNote size={13} fill={app.adminMemo ? "currentColor" : "none"} />
+                                                  </button>
+                                                  {renderSmsButton(app)}
+                                                  <button
+                                                    onClick={() => handleCancelSelection(app)}
+                                                    className="p-1.5 rounded-lg bg-slate-50 text-slate-400 border border-slate-200 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-200 transition-colors"
+                                                  >
+                                                    <Trash2 size={13} />
+                                                  </button>
+                                                </div>
                                               </div>
                                             </div>
 
