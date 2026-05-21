@@ -54,14 +54,16 @@ export async function POST(req: NextRequest) {
 
     await adminDb.runTransaction(async (transaction) => {
       const appRef = adminDb.doc(`applications/${applicationId}`);
-      // 이미 위에서 존재 확인을 완료했으므로 트랜잭션 내 중복 체크 생략
       const sessionRef = adminDb.doc(`sessions/${sessionId}`);
       const counterField = gender === 'male' ? 'currentMale' : 'currentFemale';
 
+      // ✅ Firestore 트랜잭션 규칙: 모든 read를 write보다 먼저 실행
+      const sessionSnap = await transaction.get(sessionRef);
+
+      // --- writes ---
       transaction.delete(appRef);
 
       if (prevStatus === 'confirmed' && !waitlistPromotee) {
-        const sessionSnap = await transaction.get(sessionRef);
         if (sessionSnap.exists) {
           transaction.update(sessionRef, {
             [counterField]: FieldValue.increment(-1),
@@ -85,6 +87,15 @@ export async function POST(req: NextRequest) {
 
   } catch (error: any) {
     console.error('Delete Application API Error:', error);
-    return NextResponse.json({ error: error.message || '서버 오류가 발생했습니다.' }, { status: 500 });
+    // Firestore 트랜잭션 순서 오류 등 영문 에러를 한글로 변환
+    let koreanMessage = error.message || '서버 오류가 발생했습니다.';
+    if (koreanMessage.includes('reads to be executed before all writes')) {
+      koreanMessage = '데이터베이스 처리 중 오류가 발생했습니다. 다시 시도해주세요.';
+    } else if (koreanMessage.includes('NOT_FOUND') || koreanMessage.includes('No document')) {
+      koreanMessage = '삭제할 신청서를 찾을 수 없습니다.';
+    } else if (koreanMessage.includes('PERMISSION_DENIED')) {
+      koreanMessage = '권한이 없습니다. 관리자 계정으로 다시 로그인해주세요.';
+    }
+    return NextResponse.json({ error: koreanMessage }, { status: 500 });
   }
 }
