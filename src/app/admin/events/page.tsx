@@ -3885,12 +3885,19 @@ ${chatLink}
                       <p className="text-sm font-bold text-amber-700">이미 투표가 등록되어 있습니다.</p>
                     </div>
                     <div className="space-y-1.5">
-                      {(existingProxyVote.choices || []).map((c: any) => (
-                        <div key={c.priority} className="flex items-center gap-2 text-sm">
-                          <span className="text-xs font-black px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-600">{c.priority}순위</span>
-                          <span className="font-bold text-slate-700">{c.targetUserName || c.targetUserId}</span>
-                        </div>
-                      ))}
+                      {(existingProxyVote.choices || []).map((c: any) => {
+                        const targetUser = participants.find(p => p.userId === c.targetUserId);
+                        const displayLabel = targetUser
+                          ? `${targetUser.gender === 'male' ? '키링남' : '키링녀'} ${targetUser.slotNumber}호 (${targetUser.name})`
+                          : (c.targetUserName || c.targetUserId);
+
+                        return (
+                          <div key={c.priority} className="flex items-center gap-2 text-sm">
+                            <span className="text-xs font-black px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-600">{c.priority}순위</span>
+                            <span className="font-bold text-slate-700">{displayLabel}</span>
+                          </div>
+                        );
+                      })}
                     </div>
                     {existingProxyVote.isProxyVote && (
                       <p className="text-[11px] font-bold text-amber-500">✏️ 관리자 대리 입력</p>
