@@ -103,9 +103,10 @@ export function subscribeAllSessions(
   return onSnapshot(
     q,
     (snap) => {
+      // isTest 필터를 여기서 하지 않음 - 호출자(EventsSection)에서 isAdmin 여부에 따라 처리
       const sessions = snap.docs
         .map((d) => fromDoc(d))
-        .filter((s): s is Session => !!s && !s.isTest);
+        .filter((s): s is Session => !!s);
       callback(sessions);
     },
     (error) => {

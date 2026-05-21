@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useSearchParams } from 'next/navigation';
@@ -47,7 +47,8 @@ export function EventsSection({ standalone = false }: { standalone?: boolean }) 
   const searchParams = useSearchParams();
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedRegion, setSelectedRegion] = useState<'busan' | 'changwon'>('busan');
-  const [liveEvents, setLiveEvents] = useState<KeylinkEvent[]>([]);
+  const [allSessions, setAllSessions] = useState<Session[]>([]);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [userApps, setUserApps] = useState<Record<string, Application>>({});
   const [user, setUser] = useState<any>(null);
@@ -55,21 +56,7 @@ export function EventsSection({ standalone = false }: { standalone?: boolean }) 
   // Firestore 실시간 구독
   useEffect(() => {
     const unsubscribe = subscribeAllSessions((sessions) => {
-      // v1.9.8: 완료(completed) 상태를 제외한 모든 기수를 불러와 마감 기수 누락 방지
-      const displayable = sessions.filter((s) => {
-        if (s.isTest) return false; // v10.0.0: 테스트 기수는 일반 유저 대상 목록에서 제외
-        const twoHoursAfter = new Date(s.eventDate.getTime() + 2 * 60 * 60 * 1000);
-        const isFinished = new Date() >= twoHoursAfter;
-        if (isFinished) return false;
-        // 종료 전이면: completed는 isSoldOut인 경우만, 나머지 status는 모두 표시
-        if (s.status === 'completed') {
-          return (s.maxMale > 0 && (s.currentMale || 0) >= s.maxMale) && (s.maxFemale > 0 && (s.currentFemale || 0) >= s.maxFemale);
-        }
-        return true;
-      });
-      
-      const mappedEvents = displayable.map(sessionToEvent);
-      setLiveEvents(mappedEvents);
+      setAllSessions(sessions);
       setIsLoading(false);
     });
 
@@ -77,6 +64,16 @@ export function EventsSection({ standalone = false }: { standalone?: boolean }) 
       setUser(currentUser);
       if (currentUser) {
         try {
+          // 관리자(admin/super_admin) 여부 확인
+          const { getDoc, doc } = await import('firebase/firestore');
+          const userSnap = await getDoc(doc(db, 'users', currentUser.uid));
+          if (userSnap.exists()) {
+            const role = userSnap.data()?.role;
+            setIsAdmin(role === 'admin' || role === 'super_admin');
+          } else {
+            setIsAdmin(false);
+          }
+
           const q = query(
             collection(db, 'applications'),
             where('userId', '==', currentUser.uid)
@@ -99,6 +96,7 @@ export function EventsSection({ standalone = false }: { standalone?: boolean }) 
         }
       } else {
         setUserApps({});
+        setIsAdmin(false);
       }
     });
 
@@ -107,6 +105,26 @@ export function EventsSection({ standalone = false }: { standalone?: boolean }) 
       unsubAuth();
     };
   }, []);
+
+  // 카드 리스트용 실시간 이벤트 변환 및 필터링 (useMemo로 동적 갱신)
+  const liveEvents = useMemo(() => {
+    // v1.9.8: 완료(completed) 상태를 제외한 모든 기수를 불러와 마감 기수 누락 방지
+    const displayable = allSessions.filter((s) => {
+      // 관리자가 아닐 때만 테스트 기수를 필터링 (관리자일 때는 테스트 기수도 보이도록 우회)
+      if (s.isTest && !isAdmin) return false;
+      
+      const twoHoursAfter = new Date(s.eventDate.getTime() + 2 * 60 * 60 * 1000);
+      const isFinished = new Date() >= twoHoursAfter;
+      if (isFinished) return false;
+      // 종료 전이면: completed는 isSoldOut인 경우만, 나머지 status는 모두 표시
+      if (s.status === 'completed') {
+        return (s.maxMale > 0 && (s.currentMale || 0) >= s.maxMale) && (s.maxFemale > 0 && (s.currentFemale || 0) >= s.maxFemale);
+      }
+      return true;
+    });
+
+    return displayable.map(sessionToEvent);
+  }, [allSessions, isAdmin]);
 
   // 카드 리스트용 필터링 및 정렬 (v1.9.8: 마감 기수 노출 24시간 유지)
   // v1.9.8: 날짜 기반 필터 제거 → status 기반으로만 처리

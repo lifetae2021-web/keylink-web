@@ -78,39 +78,63 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
   const maleApplicants = applicants.filter(p => p.gender === 'male' && p.status === 'confirmed');
   const femaleApplicants = applicants.filter(p => p.gender === 'female' && p.status === 'confirmed');
 
-  // v8.4.8: 라인업 데이터 바인딩 (이름/연락처 완전 배제)
+  // v8.4.8: 라인업 데이터 바인딩 (이름/연락처 완전 배제, 실시간 호수 슬롯 동기화)
   const confirmedRows = useMemo(() => {
     const currentList = activeTab === 'male' ? maleApplicants : femaleApplicants;
+    const maxSlots = activeTab === 'male' ? (session?.maxMale || 8) : (session?.maxFemale || 8);
 
-    const baseData = currentList.map(p => {
-      const u = userMap[p.userId] || {};
+    // 1. 최대 슬롯 크기만큼 빈 슬롯 배열 초기화
+    const slots = Array.from({ length: maxSlots }, (_, i) => ({
+      slotNumber: i + 1,
+      isFilled: false,
+      birthYear: '',
+      job: '',
+      height: '',
+      smoking: '',
+      drinking: '',
+      religion: '',
+      isBlind: false
+    }));
 
-      // 더미 계정은 users 컬렉션에 없으므로 application 문서의 필드를 fallback으로 사용
-      const rawBirth = u.birthDate || p.birthDate || '';
-      const year = rawBirth.includes('-')
-        ? rawBirth.split('-')[0].slice(2, 4)
-        : (rawBirth.length >= 2 ? rawBirth.slice(0, 2) : '??');
+    // 2. 확정 참가자들을 각각의 slotNumber 자리에 매핑
+    currentList.forEach(p => {
+      const slotIdx = (p.slotNumber || 1) - 1;
+      if (slotIdx >= 0 && slotIdx < maxSlots) {
+        const u = userMap[p.userId] || {};
+        const rawBirth = u.birthDate || p.birthDate || '';
+        const year = rawBirth.includes('-')
+          ? rawBirth.split('-')[0].slice(2, 4)
+          : (rawBirth.length >= 2 ? rawBirth.slice(0, 2) : '??');
 
-      return {
-        birthYear: `${year}년생`,
-        job: u.admin_job || u.job || p.job || '검토 중',
-        height: u.height ? `${u.height}cm` : p.height ? `${p.height}cm` : '비공개',
-        smoking: u.smoking || p.smoking || '비흡연',
-        drinking: u.drinking || p.drinking || '안 마심',
-        religion: u.religion || p.religion || '무교',
-      };
-    }).sort((a, b) => b.birthYear.localeCompare(a.birthYear));
+        slots[slotIdx] = {
+          slotNumber: p.slotNumber || (slotIdx + 1),
+          isFilled: true,
+          birthYear: `${year}년생`,
+          job: u.admin_job || u.job || p.job || '검토 중',
+          height: u.height ? `${u.height}cm` : p.height ? `${p.height}cm` : '비공개',
+          smoking: u.smoking || p.smoking || '비흡연',
+          drinking: u.drinking || p.drinking || '안 마심',
+          religion: u.religion || p.religion || '무교',
+          isBlind: false
+        };
+      }
+    });
 
-    if (baseData.length === 0) return [];
+    // 3. 개인정보 보호를 위한 데이터 셔플
+    const filledSlots = slots.filter(s => s.isFilled);
+    
+    if (filledSlots.length === 0) return slots;
 
-    // v8.12.0: 1명 이하일 때는 셔플 무효화 및 데이터 블라인드 처리
-    if (baseData.length <= 1) {
-      return [{
-        birthYear: baseData[0].birthYear,
-        job: '정보 보호를 위해 2인부터 공개',
-        height: '-',
-        isBlind: true
-      }];
+    if (filledSlots.length <= 1) {
+      // 1명 이하일 때는 셔플 무효화 및 데이터 블라인드 처리
+      slots.forEach(s => {
+        if (s.isFilled) {
+          s.job = '정보 보호를 위해 2인부터 공개';
+          s.height = '-';
+          s.isBlind = true;
+        }
+      });
+      return slots;
     }
 
     const shuffle = <T,>(arr: T[], seed: number): T[] => {
@@ -124,22 +148,26 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
       return result;
     };
 
-    const jobs = shuffle(baseData.map(r => r.job), shuffleSeed);
-    const heights = shuffle(baseData.map(r => r.height), shuffleSeed + 999);
-    const smokings = shuffle(baseData.map(r => r.smoking), shuffleSeed + 111);
-    const drinkings = shuffle(baseData.map(r => r.drinking), shuffleSeed + 222);
-    const religions = shuffle(baseData.map(r => r.religion), shuffleSeed + 333);
+    const jobs = shuffle(filledSlots.map(r => r.job), shuffleSeed);
+    const heights = shuffle(filledSlots.map(r => r.height), shuffleSeed + 999);
+    const smokings = shuffle(filledSlots.map(r => r.smoking), shuffleSeed + 111);
+    const drinkings = shuffle(filledSlots.map(r => r.drinking), shuffleSeed + 222);
+    const religions = shuffle(filledSlots.map(r => r.religion), shuffleSeed + 333);
 
-    return baseData.map((r, i) => ({
-      birthYear: r.birthYear,
-      job: jobs[i],
-      height: heights[i],
-      smoking: smokings[i],
-      drinking: drinkings[i],
-      religion: religions[i],
-      isBlind: false
-    }));
-  }, [activeTab, maleApplicants, femaleApplicants, userMap, shuffleSeed]);
+    let filledIdx = 0;
+    slots.forEach(s => {
+      if (s.isFilled) {
+        s.job = jobs[filledIdx];
+        s.height = heights[filledIdx];
+        s.smoking = smokings[filledIdx];
+        s.drinking = drinkings[filledIdx];
+        s.religion = religions[filledIdx];
+        filledIdx++;
+      }
+    });
+
+    return slots;
+  }, [activeTab, maleApplicants, femaleApplicants, userMap, shuffleSeed, session]);
 
   const progressMale = session ? (session.currentMale / session.maxMale) : 0;
   const progressFemale = session ? (session.currentFemale / session.maxFemale) : 0;
@@ -329,9 +357,8 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
                 transition={{ duration: 0.3 }}
                 style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}
               >
-                {Array.from({ length: Math.max(activeTab === 'male' ? (session.maxMale || 8) : (session.maxFemale || 8), confirmedRows.length) }).map((_, idx) => {
-                  const row = confirmedRows[idx];
-                  const isFilled = !!row;
+                {confirmedRows.map((row, idx) => {
+                  const isFilled = row ? row.isFilled : false;
 
                   return (
                     <div
