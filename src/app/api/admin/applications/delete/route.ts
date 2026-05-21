@@ -61,10 +61,13 @@ export async function POST(req: NextRequest) {
       transaction.delete(appRef);
 
       if (prevStatus === 'confirmed' && !waitlistPromotee) {
-        transaction.update(sessionRef, {
-          [counterField]: FieldValue.increment(-1),
-          updatedAt: FieldValue.serverTimestamp(),
-        });
+        const sessionSnap = await transaction.get(sessionRef);
+        if (sessionSnap.exists) {
+          transaction.update(sessionRef, {
+            [counterField]: FieldValue.increment(-1),
+            updatedAt: FieldValue.serverTimestamp(),
+          });
+        }
       }
 
       if (waitlistPromotee && freedSlot != null) {

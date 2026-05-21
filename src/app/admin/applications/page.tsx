@@ -275,6 +275,7 @@ export default function ApplicationsPage() {
         ? `${session.region === 'busan' ? '부산' : '창원'} ${session.episodeNumber}기`
         : '';
 
+      const openChatLink = session.openChatLink || '';
       defaultMsg = targetTemplate.content
         .replace(/{{이름}}/g, user.name || app.name || '참가자')
         .replace(/{{날짜}}/g, fDate)
@@ -282,7 +283,13 @@ export default function ApplicationsPage() {
         .replace(/{{시간}}/g, fTime)
         .replace(/{{금액}}/g, priceWithDiscount)
         .replace(/{{기수}}/g, sessionName)
-        .replace(/{{장소}}/g, session.venue || session.location || '');
+        .replace(/{{장소}}/g, session.venue || session.location || '')
+        .replace(/{{오픈채팅링크}}/g, openChatLink);
+
+      // v9.1.0: 하드코딩된 구버전 124기 링크가 들어있을 경우에도 신규 링크로 스마트 대체
+      if (openChatLink) {
+        defaultMsg = defaultMsg.replace(/https:\/\/open\.kakao\.com\/o\/gi30oUui/g, openChatLink);
+      }
     } else if (type === 'confirm') {
       const location = session.venue || session.location || '부산진구 중앙대로 763-1 데일리팡 4층 [모노리 파티룸]';
       defaultMsg = `[키링크] 안녕하세요, ${user.name || '참가자'}님! 키링크입니다.

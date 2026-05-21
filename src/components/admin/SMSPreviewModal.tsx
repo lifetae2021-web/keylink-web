@@ -60,6 +60,7 @@ function applyVariables(content: string, applicant: any, session: any): string {
     : (isGroupDiscount ? ' (동반할인 적용)' : '');
   const formattedPrice = `${finalPrice.toLocaleString('ko-KR')}원${discountSuffix}`;
 
+  const openChatLink = session?.openChatLink || '';
   let result = content
     .replace(/{{이름}}/g, applicant?.name || applicant?.userName || '참가자')
     .replace(/{{날짜}}/g, `${getPart('month')}/${getPart('day')}`)
@@ -67,7 +68,13 @@ function applyVariables(content: string, applicant: any, session: any): string {
     .replace(/{{시간}}/g, `${getPart('hour')}:${getPart('minute')}`)
     .replace(/{{기수}}/g, sessionName)
     .replace(/{{장소}}/g, session?.venue || session?.location || '')
-    .replace(/{{남은일수}}/g, remainingDays);
+    .replace(/{{남은일수}}/g, remainingDays)
+    .replace(/{{오픈채팅링크}}/g, openChatLink);
+
+  // v9.1.0: 하드코딩된 구버전 124기 링크가 들어있을 경우에도 신규 링크로 스마트 대체
+  if (openChatLink) {
+    result = result.replace(/https:\/\/open\.kakao\.com\/o\/gi30oUui/g, openChatLink);
+  }
 
   if (result.includes('{{쿠폰적용여부}}')) {
     // 구버전 호환: {{쿠폰적용여부}} 사용 시 절러주기

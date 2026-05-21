@@ -172,9 +172,9 @@ export default function EventsPage() {
     if (!year || !month || !day) return;
     const newDate = new Date(Number(year), Number(month) - 1, Number(day));
 
-    // 현재 선택된 지역의 기수들만 모아서 날짜 오름차순 정렬
+    // 현재 선택된 지역의 기수들만 모아서 날짜 오름차순 정렬 (테스트 기수는 자동 계산에서 제외)
     const regionSessions = sessions
-      .filter(s => s.region === formData.region)
+      .filter(s => s.region === formData.region && !s.isTest)
       .sort((a, b) => a.eventDate.getTime() - b.eventDate.getTime());
 
     let calculatedEpisode = 1;
@@ -394,23 +394,36 @@ export default function EventsPage() {
 
         // v7.9.6: 유저 컬렉션에서 상세 정보(생년월일 등) 조인
         const uids = Array.from(new Set(list.map((a) => a.userId)));
-        const newUserMap = { ...userMap };
-        let updated = false;
-
-        for (const uid of uids) {
-          if (!newUserMap[uid]) {
+        
+        // v9.1.2: 병렬 Promise.all로 전환하여 깜빡임 극소화 및 데이터 실시간 변경 반영
+        Promise.all(
+          uids.map(async (uid) => {
             try {
               const uSnap = await getDoc(doc(db, "users", uid));
               if (uSnap.exists()) {
-                newUserMap[uid] = { id: uSnap.id, ...uSnap.data() };
-                updated = true;
+                return { uid, data: { id: uSnap.id, ...uSnap.data() } };
               }
             } catch (e) {
-              console.error("Error fetching user data:", e);
+              console.error("Error fetching user data:", uid, e);
             }
+            return null;
+          })
+        ).then((results) => {
+          const newUserMap = { ...userMap };
+          let updated = false;
+          results.forEach((res) => {
+            if (res) {
+              const existing = newUserMap[res.uid];
+              if (!existing || JSON.stringify(existing) !== JSON.stringify(res.data)) {
+                newUserMap[res.uid] = res.data;
+                updated = true;
+              }
+            }
+          });
+          if (updated) {
+            setUserMap(newUserMap);
           }
-        }
-        if (updated) setUserMap(newUserMap);
+        });
       },
       (err) => {
         console.error(err);
@@ -1361,7 +1374,7 @@ ${chatLink}
 
       const payload = {
         region: formData.region,
-        episodeNumber: Number(formData.episodeNumber),
+        episodeNumber: isNaN(Number(formData.episodeNumber)) ? formData.episodeNumber : Number(formData.episodeNumber),
         title: `${formData.region === "busan" ? "부산" : "창원"} 로테이션 소개팅 ${formData.episodeNumber}기${formData.isTest ? " (테스트)" : ""}`,
         eventDate: combinedDate,
         venue: formData.venue,
@@ -3474,12 +3487,12 @@ ${chatLink}
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">
-                      기수 번호 (숫자)
+                      기수 번호 (숫자 혹은 테스트)
                     </label>
                     <input
-                      type="number"
+                      type="text"
                       required
-                      placeholder="예: 121"
+                      placeholder="예: 121 또는 테스트"
                       value={formData.episodeNumber}
                       onChange={(e) =>
                         setFormData({
@@ -3707,9 +3720,16 @@ ${chatLink}
                 <input
                   type="checkbox"
                   checked={!!formData.isTest}
-                  onChange={(e) =>
-                    setFormData({ ...formData, isTest: e.target.checked })
-                  }
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setFormData(prev => ({
+                      ...prev,
+                      isTest: checked,
+                      episodeNumber: checked
+                        ? "테스트"
+                        : (prev.episodeNumber === "테스트" ? "" : prev.episodeNumber)
+                    }));
+                  }}
                   className="w-5 h-5 rounded border-amber-300 text-amber-600 focus:ring-amber-500 cursor-pointer"
                 />
               </div>
