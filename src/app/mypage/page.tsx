@@ -1231,9 +1231,20 @@ function ApplicationStatusBlock({ application, session, userId, hasVoted }: Stat
 
           {/* 투표 버튼 영역 */}
           {hasVoted ? (
-            <div style={{ padding: '16px 24px', background: '#F0FDF4', borderRadius: '14px', color: '#15803D', fontWeight: '700', fontSize: '0.9rem' }}>
-              ✅ 투표를 이미 완료하셨습니다.
-            </div>
+            session?.status === 'voting' ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'center', width: '100%' }}>
+                <div style={{ padding: '12px 24px', background: '#F0FDF4', border: '1px solid #C6F6D5', borderRadius: '14px', color: '#15803D', fontWeight: '700', fontSize: '0.85rem', width: '100%' }}>
+                  ✅ 투표를 완료하셨습니다.
+                </div>
+                <Link href={`/vote/${application.sessionId}`} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '14px 36px', borderRadius: '100px', background: 'linear-gradient(135deg, #FF6F61, #FF9A9E)', color: '#fff', fontWeight: '800', fontSize: '0.9rem', textDecoration: 'none', boxShadow: '0 6px 15px rgba(255,111,97,0.2)', width: '100%', transition: 'all 0.2s' }}>
+                  📝 제출한 투표 수정하러 가기
+                </Link>
+              </div>
+            ) : (
+              <div style={{ padding: '16px 24px', background: '#F0FDF4', borderRadius: '14px', color: '#15803D', fontWeight: '700', fontSize: '0.9rem' }}>
+                ✅ 투표를 이미 완료하셨습니다.
+              </div>
+            )
           ) : canVote ? (
             <Link href={`/vote/${application.sessionId}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '16px 36px', borderRadius: '100px', background: 'linear-gradient(135deg, #FF6F61, #FF9A9E)', color: '#fff', fontWeight: '800', fontSize: '0.95rem', textDecoration: 'none', boxShadow: '0 8px 20px rgba(255,111,97,0.3)' }}>
               <VoteIcon size={20} /> 상대방 투표하러 가기

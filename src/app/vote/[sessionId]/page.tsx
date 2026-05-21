@@ -119,7 +119,26 @@ export default function VotePage() {
         setMyAlias(`${prefix} ${app.slotNumber}호`);
       }
 
-      if (existingVote) { setHasVoted(true); }
+      // v10.4.0: 기존에 제출한 투표가 있으면 폼 정보 복원 (자율 수정 지원)
+      if (existingVote) {
+        setHasVoted(true);
+        setRealName(existingVote.realName || app.name || '');
+        setMyAlias(existingVote.myAlias || '');
+        setFinalCheck(existingVote.finalCheck || false);
+        setDisclosureMode(existingVote.disclosureMode || 'public');
+        setFeedback(existingVote.feedback || '');
+
+        const choicesMap: Record<number, string> = {};
+        const reasonsMap: Record<string, string> = {};
+        existingVote.choices.forEach(c => {
+          choicesMap[c.priority] = c.targetUserId;
+          if (c.reason) {
+            reasonsMap[c.targetUserId] = c.reason;
+          }
+        });
+        setChoices(choicesMap);
+        setReasons(reasonsMap);
+      }
 
       const oppositeGender = app.gender === 'male' ? 'female' : 'male';
       const q = query(
@@ -241,15 +260,16 @@ export default function VotePage() {
         targetUserId: uid,
         reason: reasons[uid] || '',
       }));
+      // v10.4.0: hasVoted 인자를 넘겨 이미 투표했어도 덮어쓰기 허용
       await submitVote(sessionId, userId, voteChoices, {
         realName,
         myAlias,
         finalCheck: true, // 체크 항목 생략됨 (자동 동의)
         disclosureMode,
         feedback
-      });
+      }, hasVoted);
       setHasVoted(true);
-      toast.success('🎉 투표가 완료되었습니다!');
+      toast.success(hasVoted ? '🎉 투표가 수정 완료되었습니다!' : '🎉 투표가 완료되었습니다!');
     } catch (e: any) {
       toast.error(e.message || '오류 발생');
     } finally {
@@ -285,7 +305,8 @@ export default function VotePage() {
     );
   }
 
-  if (hasVoted) {
+  // v10.4.0: 투표 마감 상태이거나 행사 당일이 아닌 시점에 투표가 완료되었을 때만 차단
+  if (hasVoted && session?.status !== 'voting') {
     return (
       <div className="min-h-screen bg-[#FFF5F3] flex flex-col items-center justify-center p-6 text-center">
         <div className="w-20 h-20 rounded-3xl bg-green-50 flex items-center justify-center mb-6">
@@ -404,6 +425,19 @@ export default function VotePage() {
 
       {/* Form */}
       <div className="max-w-[600px] mx-auto px-4 -mt-4 space-y-4 relative z-10">
+
+        {/* v10.4.0: 이미 제출한 투표가 있을 때 노출되는 자율 수정 안내 배너 */}
+        {hasVoted && (
+          <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-2xl flex items-start gap-3 text-left">
+            <CheckCircle2 size={20} className="text-indigo-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-black text-indigo-900">제출하신 투표를 수정하실 수 있습니다</p>
+              <p className="text-xs text-indigo-600 font-bold mt-0.5 leading-relaxed">
+                운영진이 투표를 마감하기 전까지는 언제든지 투표 상대를 자유롭게 변경하여 재제출할 수 있습니다. ☺️
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* 섹션 1: 실명 및 호수 확인 */}
         <SectionCard number={1} icon={<User size={16} />} title="실명 및 본인 호수" required>
@@ -573,7 +607,7 @@ export default function VotePage() {
             className="w-full h-14 rounded-2xl font-black text-lg text-white transition-all active:scale-[0.98] disabled:opacity-50"
             style={{ background: 'linear-gradient(135deg, #FF6F61, #FF9A8B)' }}
           >
-            {submitting ? '제출 중...' : '투표 제출하기'}
+            {submitting ? '제출 중...' : hasVoted ? '투표 수정 완료하기' : '투표 제출하기'}
           </button>
           <p className="mt-3 text-center text-xs text-slate-400 font-medium">
             제출된 데이터는 매칭 시스템 연산에만 활용되며 안전하게 보호됩니다.

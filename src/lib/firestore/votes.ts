@@ -79,17 +79,21 @@ export async function submitVote(
     finalCheck?: boolean;
     disclosureMode?: 'public' | 'anonymous'; // v8.1.7
     feedback?: string;
-  }
+  },
+  isUpdate = false // v10.4.0: 자율 수정 여부 추가
 ): Promise<void> {
-  const q = query(
-    collection(db, COLLECTION),
-    where('sessionId', '==', sessionId),
-    where('userId', '==', userId)
-  );
-  const existing = await getDocs(q);
+  // v10.4.0: 업데이트(자율 수정) 모드가 아닐 때만 기존 투표 존재 여부 검증
+  if (!isUpdate) {
+    const q = query(
+      collection(db, COLLECTION),
+      where('sessionId', '==', sessionId),
+      where('userId', '==', userId)
+    );
+    const existing = await getDocs(q);
 
-  if (!existing.empty) {
-    throw new Error('이미 투표를 제출하셨습니다. 투표는 1회만 가능합니다.');
+    if (!existing.empty) {
+      throw new Error('이미 투표를 제출하셨습니다. 투표는 1회만 가능합니다.');
+    }
   }
 
   // choices가 비어있어도 "다음 새로운 인연을 기대할게요" 옵션 등으로 제출 가능하게 완화 (관리자 설정에 따름)
