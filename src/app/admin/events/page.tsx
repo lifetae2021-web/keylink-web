@@ -2039,9 +2039,8 @@ ${chatLink}
                                                   </span>
                                                 </div>
                                               </div>
-                                              {/* 모바일 액션: 2단 배치 (출석칩 상단 / 메모+문자+선발취소 하단) */}
-                                              <div className="flex flex-col items-end gap-1.5 sm:hidden shrink-0">
-                                                {/* 1단: 출석 / 지각 / 노쇼 */}
+                                              {/* 모바일 액션: 이름 옆 우측 영역에는 출석/지각/노쇼 칩 버튼만 배치 */}
+                                              <div className="flex items-center sm:hidden shrink-0">
                                                 <div className="flex items-center gap-0.5 bg-slate-50 px-1 py-0.5 rounded-xl border border-slate-200/60">
                                                   <button
                                                     onClick={() => handleSetAttendanceStatus(app, app.attendanceStatus === 'present' ? 'none' : 'present')}
@@ -2055,23 +2054,6 @@ ${chatLink}
                                                     onClick={() => handleSetAttendanceStatus(app, app.attendanceStatus === 'no-show' ? 'none' : 'no-show')}
                                                     className={`px-2 py-0.5 rounded-lg text-[0.6rem] font-bold transition-all ${app.attendanceStatus === 'no-show' ? "bg-rose-500 text-white shadow-sm" : "text-slate-400 hover:text-slate-600 hover:bg-white"}`}
                                                   >노쇼</button>
-                                                </div>
-                                                {/* 2단: 메모 + 문자 + 선발취소 */}
-                                                <div className="flex items-center gap-1.5">
-                                                  <button
-                                                    onClick={() => handleOpenMemo(app)}
-                                                    className={`p-1.5 rounded-lg border transition-all ${app.adminMemo ? "bg-amber-50 text-amber-600 border-amber-200 shadow-sm" : "bg-slate-50 text-slate-400 border-slate-200"}`}
-                                                    title="메모"
-                                                  >
-                                                    <StickyNote size={13} fill={app.adminMemo ? "currentColor" : "none"} />
-                                                  </button>
-                                                  {renderSmsButton(app)}
-                                                  <button
-                                                    onClick={() => handleCancelSelection(app)}
-                                                    className="p-1.5 rounded-lg bg-slate-50 text-slate-400 border border-slate-200 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-200 transition-colors"
-                                                  >
-                                                    <Trash2 size={13} />
-                                                  </button>
                                                 </div>
                                               </div>
                                             </div>
@@ -2119,46 +2101,67 @@ ${chatLink}
                                                 })()}
                                               </div>
                                               <div className="flex flex-col gap-0.5 ml-11 sm:ml-0 mt-0">
-                                                {/* Row 1: 나이, 직업, 거주지 */}
-                                                <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[0.72rem] text-slate-600 font-bold">
-                                                  <span className="whitespace-nowrap">{birthYear}</span>
-                                                  <span className="text-slate-300">·</span>
-                                                  <span className="flex items-center gap-1 min-w-0">
-                                                    {isDummyApp(app) ? (
-                                                      editingAppJobId === app.id ? (
-                                                        <input
-                                                          autoFocus
-                                                          value={tempAppJobValue}
-                                                          onChange={(e) => setTempAppJobValue(e.target.value)}
-                                                          onKeyDown={(e) => {
-                                                            if (e.key === 'Enter') handleEditAppJob(app, tempAppJobValue);
-                                                            if (e.key === 'Escape') setEditingAppJobId(null);
-                                                          }}
-                                                          onBlur={() => setEditingAppJobId(null)}
-                                                          className="text-[0.72rem] font-bold bg-white border border-blue-400 rounded px-1 outline-none w-[100px]"
-                                                        />
+                                                {/* Row 1: 나이, 직업, 거주지 + 모바일 보조 버튼 (메모, 문자, 선발취소) */}
+                                                <div className="flex items-center justify-between gap-2 text-[0.72rem] text-slate-600 font-bold w-full">
+                                                  {/* 좌측: 나이, 직업, 거주지 */}
+                                                  <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                                                    <span className="whitespace-nowrap">{birthYear}</span>
+                                                    <span className="text-slate-300">·</span>
+                                                    <span className="flex items-center gap-1 min-w-0">
+                                                      {isDummyApp(app) ? (
+                                                        editingAppJobId === app.id ? (
+                                                          <input
+                                                            autoFocus
+                                                            value={tempAppJobValue}
+                                                            onChange={(e) => setTempAppJobValue(e.target.value)}
+                                                            onKeyDown={(e) => {
+                                                              if (e.key === 'Enter') handleEditAppJob(app, tempAppJobValue);
+                                                              if (e.key === 'Escape') setEditingAppJobId(null);
+                                                            }}
+                                                            onBlur={() => setEditingAppJobId(null)}
+                                                            className="text-[0.72rem] font-bold bg-white border border-blue-400 rounded px-1 outline-none w-[100px]"
+                                                          />
+                                                        ) : (
+                                                          <span 
+                                                            onClick={() => {
+                                                              setEditingAppJobId(app.id);
+                                                              setTempAppJobValue(displayJob);
+                                                            }}
+                                                            className="truncate max-w-[160px] sm:max-w-[140px] cursor-pointer hover:text-blue-500 hover:underline"
+                                                            title={displayJob}
+                                                          >
+                                                            {displayJob}
+                                                          </span>
+                                                        )
                                                       ) : (
-                                                        <span 
-                                                          onClick={() => {
-                                                            setEditingAppJobId(app.id);
-                                                            setTempAppJobValue(displayJob);
-                                                          }}
-                                                          className="truncate max-w-[160px] sm:max-w-[140px] cursor-pointer hover:text-blue-500 hover:underline"
-                                                          title={displayJob}
-                                                        >
+                                                        <span className="truncate max-w-[160px] sm:max-w-[140px]" title={displayJob}>
                                                           {displayJob}
                                                         </span>
-                                                      )
-                                                    ) : (
-                                                      <span className="truncate max-w-[160px] sm:max-w-[140px]" title={displayJob}>
-                                                        {displayJob}
-                                                      </span>
-                                                    )}
-                                                  </span>
-                                                  <span className="text-slate-300">·</span>
-                                                  <span className="whitespace-nowrap">
-                                                    {app.residence || "-"}
-                                                  </span>
+                                                      )}
+                                                    </span>
+                                                    <span className="text-slate-300">·</span>
+                                                    <span className="whitespace-nowrap">
+                                                      {app.residence || "-"}
+                                                    </span>
+                                                  </div>
+
+                                                  {/* 우측 (모바일 전용): 메모 + 문자 + 선발취소 */}
+                                                  <div className="flex items-center gap-1.5 sm:hidden shrink-0">
+                                                    <button
+                                                      onClick={() => handleOpenMemo(app)}
+                                                      className={`p-1.5 rounded-lg border transition-all ${app.adminMemo ? "bg-amber-50 text-amber-600 border-amber-200 shadow-sm" : "bg-slate-50 text-slate-400 border-slate-200"}`}
+                                                      title="메모"
+                                                    >
+                                                      <StickyNote size={13} fill={app.adminMemo ? "currentColor" : "none"} />
+                                                    </button>
+                                                    {renderSmsButton(app)}
+                                                    <button
+                                                      onClick={() => handleCancelSelection(app)}
+                                                      className="p-1.5 rounded-lg bg-slate-50 text-slate-400 border border-slate-200 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-200 transition-colors"
+                                                    >
+                                                      <Trash2 size={13} />
+                                                    </button>
+                                                  </div>
                                                 </div>
                                                 {/* Row 2: 휴대폰번호, 동반참여 */}
                                                 <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[0.72rem] text-slate-400 font-medium">
