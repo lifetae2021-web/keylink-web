@@ -13,7 +13,7 @@ interface SendSMSParams {
 // Solapi용 환경변수로 명칭 변경
 const API_KEY = process.env.SOLAPI_API_KEY;
 const API_SECRET = process.env.SOLAPI_API_SECRET;
-const SENDER_NUMBER = process.env.SOLAPI_SENDER_NUMBER;
+const SENDER_NUMBER = process.env.SOLAPI_SENDER_NUMBER || '01091301577';
 
 /**
  * Solapi HMAC Signature 생성 (Nurigo v4 규격)
