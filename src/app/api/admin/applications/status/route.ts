@@ -38,70 +38,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '관리자 권한이 없습니다.' }, { status: 403 });
     }
 
-    // 2. 트랜잭션 전 사전 조회 (트랜잭션 내 일반 쿼리 불가)
-    const appPreSnap = await adminDb.doc(`applications/${applicationId}`).get();
-    if (!appPreSnap.exists) throw new Error('신청서를 찾을 수 없습니다.');
-    const appPreData = appPreSnap.data()!;
-    const sessionId = appPreData.sessionId;
-    const gender = appPreData.gender;
-
-    // confirmed 전환 시 슬롯 번호를 미리 계산
-    let assignedSlot: number | null = null;
-    let isWaitlisted = false;
-
-    // 취소 시 대기자 자동 승격을 위한 사전 조회
-    let freedSlot: number | null = null;
-    let waitlistPromotee: { id: string } | null = null;
-
-    if (status === 'confirmed') {
-      const sessionPreSnap = await adminDb.doc(`sessions/${sessionId}`).get();
-      const sessionPreData = sessionPreSnap.data()!;
-      const maxCount = gender === 'male' ? (sessionPreData.maxMale || 8) : (sessionPreData.maxFemale || 8);
-
-      // 세션 카운터 대신 실제 confirmed 건수로 판단 (카운터 오차 방지)
-      const confirmedSnap = await adminDb.collection('applications')
-        .where('sessionId', '==', sessionId)
-        .where('gender', '==', gender)
-        .where('status', '==', 'confirmed')
-        .get();
-
-      const usedSlots = new Set(confirmedSnap.docs.map(d => d.data().slotNumber).filter((n): n is number => n != null));
-
-      // 1~maxCount 범위에서 빈 슬롯 탐색
-      let slot = 1;
-      while (slot <= maxCount && usedSlots.has(slot)) slot++;
-
-      if (slot > maxCount) {
-        isWaitlisted = true;
-      } else {
-        assignedSlot = slot;
-      }
-    }
-
-    // 취소 시: 해제되는 슬롯 번호 파악 + 대기자 1번 조회
-    if ((status === 'cancelled' || status === 'applied') && (appPreData.status === 'confirmed' || appPreData.status === 'waitlisted')) {
-      freedSlot = appPreData.slotNumber ?? null;
-
-      if (freedSlot != null) {
-        const waitlistSnap = await adminDb.collection('applications')
-          .where('sessionId', '==', sessionId)
-          .where('gender', '==', gender)
-          .where('status', '==', 'waitlisted')
-          .get();
-
-        if (!waitlistSnap.empty) {
-          // 인덱스 없이 코드에서 정렬
-          const sorted = waitlistSnap.docs.sort((a, b) => {
-            const at = a.data().appliedAt?.toMillis?.() ?? 0;
-            const bt = b.data().appliedAt?.toMillis?.() ?? 0;
-            return at - bt;
-          });
-          waitlistPromotee = { id: sorted[0].id };
-        }
-      }
-    }
-
-    // 3. 트랜잭션 실행
+    // 2. 트랜잭션 실행 (모든 읽기 및 계산 작업을 트랜잭션 내부에서 수행하여 Race Condition 방지)
     await adminDb.runTransaction(async (transaction) => {
       const appRef = adminDb.doc(`applications/${applicationId}`);
       const appSnap = await transaction.get(appRef);
@@ -109,10 +46,65 @@ export async function POST(req: NextRequest) {
 
       const appData = appSnap.data()!;
       const prevStatus = appData.status;
+      const sessionId = appData.sessionId;
+      const gender = appData.gender;
 
       const sessionRef = adminDb.doc(`sessions/${sessionId}`);
       const sessionSnap = await transaction.get(sessionRef);
       if (!sessionSnap.exists) throw new Error('세션 정보를 찾을 수 없습니다.');
+
+      const sessionData = sessionSnap.data()!;
+
+      let assignedSlot: number | null = null;
+      let isWaitlisted = false;
+      let freedSlot: number | null = null;
+      let waitlistPromotee: { id: string } | null = null;
+
+      // confirmed 전환 시 실시간 슬롯 번호 계산 (트랜잭션 락 보호)
+      if (status === 'confirmed' && prevStatus !== 'confirmed') {
+        const maxCount = gender === 'male' ? (sessionData.maxMale || 8) : (sessionData.maxFemale || 8);
+
+        // 트랜잭션 내부에서 실시간 confirmed 리스트 조회
+        const confirmedQuery = adminDb.collection('applications')
+          .where('sessionId', '==', sessionId)
+          .where('gender', '==', gender)
+          .where('status', '==', 'confirmed');
+        const confirmedSnap = await transaction.get(confirmedQuery);
+
+        const usedSlots = new Set(confirmedSnap.docs.map(d => d.data().slotNumber).filter((n): n is number => n != null));
+
+        // 1~maxCount 범위에서 빈 슬롯 탐색
+        let slot = 1;
+        while (slot <= maxCount && usedSlots.has(slot)) slot++;
+
+        if (slot > maxCount) {
+          isWaitlisted = true;
+        } else {
+          assignedSlot = slot;
+        }
+      }
+
+      // 취소 시: 해제되는 슬롯 번호 파악 + 대기자 1번 조회 (트랜잭션 락 보호)
+      if ((status === 'cancelled' || status === 'applied') && (prevStatus === 'confirmed' || prevStatus === 'waitlisted')) {
+        freedSlot = appData.slotNumber ?? null;
+
+        if (freedSlot != null) {
+          const waitlistQuery = adminDb.collection('applications')
+            .where('sessionId', '==', sessionId)
+            .where('gender', '==', gender)
+            .where('status', '==', 'waitlisted');
+          const waitlistSnap = await transaction.get(waitlistQuery);
+
+          if (!waitlistSnap.empty) {
+            const sorted = waitlistSnap.docs.sort((a, b) => {
+              const at = a.data().appliedAt?.toMillis?.() ?? 0;
+              const bt = b.data().appliedAt?.toMillis?.() ?? 0;
+              return at - bt;
+            });
+            waitlistPromotee = { id: sorted[0].id };
+          }
+        }
+      }
 
       const isIncreasing = (status === 'confirmed' && !isWaitlisted && prevStatus !== 'confirmed');
       const isDecreasing = ((status === 'cancelled' || status === 'applied') && (prevStatus === 'selected' || prevStatus === 'confirmed' || prevStatus === 'waitlisted'));

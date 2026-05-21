@@ -22,6 +22,7 @@ interface Candidate {
   gender: 'male' | 'female';
   photos?: string[];
   birthYear: string; // v10.0.1: 출생연도 (ex. 94년생)
+  slotNumber: number; // v10.1.0: 어드민 호수와 1:1 동기화
 }
 
 function SectionCard({ number, icon, title, required, children }: {
@@ -146,8 +147,11 @@ export default function VotePage() {
           gender: appData.gender,
           photos: userData?.photos || [],
           birthYear,
+          slotNumber: appData.slotNumber || 999, // v10.1.0: DB 호수 사용
         });
       }
+      // v10.1.0: slotNumber 기준 오름차순 정렬하여 어드민 호수와 완벽히 동기화
+      candidateList.sort((a, b) => a.slotNumber - b.slotNumber);
       setCandidates(candidateList);
       setLoading(false);
     });
@@ -453,17 +457,17 @@ export default function VotePage() {
                       : 'border-slate-100 bg-slate-50 hover:border-slate-200'
                   }`}
                 >
-                  {/* 순위 또는 번호 */}
+                  {/* 순위 또는 번호 (v10.1.0: DB slotNumber 사용) */}
                   <div className={`w-9 h-9 rounded-full flex items-center justify-center font-black text-sm shrink-0 ${
                     priority ? 'bg-[#FF6F61] text-white' : 'bg-white border-2 border-slate-200 text-slate-400'
                   }`}>
-                    {priority ? <Heart size={16} fill="white" /> : idx + 1}
+                    {priority ? <Heart size={16} fill="white" /> : candidate.slotNumber}
                   </div>
 
                   {/* 정보 */}
                   <div className="flex-1 text-left">
                     <p className={`font-black text-sm ${priority ? 'text-[#FF6F61]' : 'text-slate-700'}`}>
-                      {label} {idx + 1}호
+                      {label} {candidate.slotNumber}호
                     </p>
                     <p className="text-xs font-bold text-slate-400 mt-0.5">
                       {candidate.birthYear} · {candidate.job}

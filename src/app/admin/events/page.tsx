@@ -3840,27 +3840,10 @@ ${chatLink}
           .filter(p => p.gender !== proxyVoteTarget.gender)
           .sort((a, b) => (a.slotNumber || 99) - (b.slotNumber || 99));
 
-        const makeOption = (uid: string, priority: 1 | 2 | 3) => (
-          <select
-            key={priority}
-            value={proxyVoteChoices[`priority${priority}` as keyof typeof proxyVoteChoices]}
-            onChange={e => setProxyVoteChoices(prev => ({ ...prev, [`priority${priority}`]: e.target.value }))}
-            disabled={!!existingProxyVote}
-            className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-700 bg-white focus:ring-2 focus:ring-indigo-400/30 focus:border-indigo-400 outline-none transition-all disabled:bg-slate-50 disabled:text-slate-400"
-          >
-            <option value="">{priority}순위 선택 안 함</option>
-            {oppParticipants.map(p => (
-              <option key={p.userId} value={p.userId}>
-                {p.slotNumber}호 {p.name}
-              </option>
-            ))}
-          </select>
-        );
-
         return (
           <div
             onClick={() => setProxyVoteModalOpen(false)}
-            className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
+            className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200"
           >
             <div
               onClick={e => e.stopPropagation()}
@@ -3923,11 +3906,76 @@ ${chatLink}
                 ) : (
                   <>
                     <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-3">
-                      <p className="text-xs font-bold text-indigo-600">📋 네이버폼 투표 결과를 보며 1~3순위를 선택해 주세요.</p>
+                      <p className="text-xs font-bold text-indigo-600">📋 네이버폼 결과를 바탕으로 호감 상대를 터치해 주세요. (최대 3명)</p>
                     </div>
-                    <div className="space-y-3">
-                      {([1, 2, 3] as const).map(p => makeOption('', p))}
+
+                    {/* 카드 형태의 이성 리스트 */}
+                    <div className="max-h-[45vh] overflow-y-auto pr-1 space-y-2.5">
+                      {oppParticipants.map((p, idx) => {
+                        const selectedKey = (['priority1', 'priority2', 'priority3'] as const).find(
+                          key => proxyVoteChoices[key] === p.userId
+                        );
+                        const isSelected = !!selectedKey;
+                        const label = p.gender === 'male' ? '키링남' : '키링녀';
+
+                        const rawBirth = p.birthDate || '';
+                        const year = rawBirth.includes('-')
+                          ? rawBirth.split('-')[0].slice(2, 4)
+                          : (rawBirth.length >= 2 ? rawBirth.slice(0, 2) : '??');
+                        const birthYear = year && year !== '??' ? `${year}년생` : (p.age ? `${p.age}세` : '연령 미입력');
+
+                        return (
+                          <div
+                            key={p.userId}
+                            onClick={() => {
+                              if (isSelected && selectedKey) {
+                                setProxyVoteChoices(prev => ({
+                                  ...prev,
+                                  [selectedKey]: ''
+                                }));
+                              } else {
+                                const emptyKey = (['priority1', 'priority2', 'priority3'] as const).find(
+                                  key => !proxyVoteChoices[key]
+                                );
+                                if (emptyKey) {
+                                  setProxyVoteChoices(prev => ({
+                                    ...prev,
+                                    [emptyKey]: p.userId
+                                  }));
+                                } else {
+                                  toast.error('최대 3명까지 선택할 수 있습니다.');
+                                }
+                              }
+                            }}
+                            className={`flex items-center gap-3 p-4 rounded-2xl border-2 cursor-pointer transition-all ${
+                              isSelected
+                                ? 'border-indigo-500 bg-indigo-50/50 shadow-sm'
+                                : 'border-slate-100 bg-slate-50 hover:border-slate-200'
+                            }`}
+                          >
+                            {/* 하트 아이콘 또는 숫자 */}
+                            <div className={`w-9 h-9 rounded-full flex items-center justify-center font-black text-sm shrink-0 ${
+                              isSelected ? 'bg-indigo-500 text-white animate-in zoom-in-50 duration-200' : 'bg-white border-2 border-slate-200 text-slate-400'
+                            }`}>
+                              {isSelected ? <Heart size={16} fill="white" /> : p.slotNumber || (idx + 1)}
+                            </div>
+
+                            {/* 정보 */}
+                            <div className="flex-1 text-left">
+                              <p className={`font-black text-sm ${isSelected ? 'text-indigo-600' : 'text-slate-700'}`}>
+                                {p.slotNumber ? `${p.slotNumber}호` : `${label} ${idx + 1}호`} {p.name}
+                              </p>
+                              <p className="text-xs font-bold text-slate-400 mt-0.5">
+                                {birthYear} · {p.displayJob || p.job || '직업 미입력'}
+                              </p>
+                            </div>
+
+                            {isSelected && <CheckCircle2 size={20} className="text-indigo-500 shrink-0" />}
+                          </div>
+                        );
+                      })}
                     </div>
+
                     <div className="flex gap-3 pt-2">
                       <button
                         onClick={() => setProxyVoteModalOpen(false)}
@@ -3937,7 +3985,7 @@ ${chatLink}
                       </button>
                       <button
                         onClick={handleSubmitProxyVote}
-                        disabled={proxyVoteLoading || !proxyVoteChoices.priority1}
+                        disabled={proxyVoteLoading}
                         className="flex-[2] h-12 rounded-xl font-black text-white bg-indigo-500 hover:bg-indigo-600 shadow-lg shadow-indigo-100 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                       >
                         {proxyVoteLoading ? <Loader2 size={18} className="animate-spin" /> : '투표 저장하기'}

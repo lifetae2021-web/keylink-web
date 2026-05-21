@@ -679,7 +679,14 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                       const endedB = b.status === 'completed' || now >= new Date(dateB.getTime() + 2 * 60 * 60 * 1000);
 
                       if (endedA !== endedB) return endedA ? 1 : -1;
-                      return (b.episodeNumber || 0) - (a.episodeNumber || 0);
+
+                      // 모집중/진행중인 기수: 날짜가 가장 가까운(임박한) 행사 우선 (오름차순)
+                      if (!endedA) {
+                        return dateA.getTime() - dateB.getTime();
+                      }
+
+                      // 종료된 기수: 가장 최근에 종료된 행사 우선 (내림차순)
+                      return dateB.getTime() - dateA.getTime();
                     })
                     .map(ev => {
                       const now = new Date();
