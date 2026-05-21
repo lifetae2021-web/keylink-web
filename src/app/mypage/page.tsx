@@ -82,6 +82,7 @@ function MyPageContent() {
   const [privateApp, setPrivateApp] = useState<any>(null); // v8.15.8: 1:1 매칭 신청 정보
   
   const [sessionsMap, setSessionsMap] = useState<Record<string, Session>>({});
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // Edit Form State
   const [editForm, setEditForm] = useState<any>({
@@ -112,6 +113,9 @@ function MyPageContent() {
         if (snap.exists()) {
           const d = snap.data();
           setUserData(d);
+          // 관리자 여부 확인
+          const role = d?.role;
+          setIsAdmin(role === 'admin' || role === 'super_admin');
           
           const initialForm = {
             name: d.name || '',
@@ -958,6 +962,7 @@ function MyPageContent() {
           applications={applications}
           sessionsMap={sessionsMap}
           userId={user?.uid || ''}
+          isAdmin={isAdmin}
         />
 
         {/* ─── LOGOUT ─── */}
@@ -1006,12 +1011,13 @@ interface StatusBlockProps {
   hasVoted: boolean;
 }
 
-function ApplicationStatusSection({ applications, sessionsMap, userId }: { applications: Application[], sessionsMap: Record<string, Session>, userId: string }) {
+function ApplicationStatusSection({ applications, sessionsMap, userId, isAdmin = false }: { applications: Application[], sessionsMap: Record<string, Session>, userId: string, isAdmin?: boolean }) {
   const [votedMap, setVotedMap] = useState<Record<string, boolean>>({});
 
-  // 테스트 기수 신청서 필터링 (isTest: true 인 세션은 제외)
+  // 테스트 기수 신청서 필터링 (isTest: true 인 세션은 관리자가 아닌 경우에만 제외)
   const visibleApps = applications.filter(app => {
     const s = sessionsMap[app.sessionId];
+    if (isAdmin) return true; // 관리자는 테스트 기수 신청서도 표시
     return !s || !s.isTest;
   });
 
