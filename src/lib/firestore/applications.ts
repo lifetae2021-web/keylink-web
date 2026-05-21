@@ -50,6 +50,7 @@ function fromDoc(snap: DocumentSnapshot): Application | null {
     avoidAcquaintance: d.avoidAcquaintance,
     etc: d.etc,
     slotNumber: d.slotNumber ?? undefined,
+    attended: d.attended ?? false,
     // 더미 계정 지원: users 컬렉션 없이 application에 직접 저장된 필드
     birthDate: d.birthDate,
     height: d.height,
