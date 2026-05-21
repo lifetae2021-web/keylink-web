@@ -88,14 +88,19 @@ export default function VotePage() {
       if (!user) { router.push('/login'); return; }
       setUserId(user.uid);
 
-      const userSnap = await getDoc(doc(db, 'users', user.uid));
+      // 1. 유저 정보, 세션 신청서 정보, 기존 투표 여부를 동시에 병렬 조회 (속도 개선)
+      const [userSnap, app, existingVote] = await Promise.all([
+        getDoc(doc(db, 'users', user.uid)),
+        getApplicationBySession(user.uid, sessionId),
+        getMyVote(sessionId, user.uid)
+      ]);
+
       const role = userSnap.exists() ? userSnap.data()?.role : '';
       const isAdminUser = role === 'admin' || role === 'super_admin';
       if (role === 'admin' || role === 'super_admin') {
         setIsAdmin(true);
       }
 
-      const app = await getApplicationBySession(user.uid, sessionId);
       if (!app || app.status !== 'confirmed') {
         toast.error('참가 확정된 사용자만 투표할 수 있습니다.');
         router.push('/mypage');
@@ -114,7 +119,6 @@ export default function VotePage() {
         setMyAlias(`${prefix} ${app.slotNumber}호`);
       }
 
-      const existingVote = await getMyVote(sessionId, user.uid);
       if (existingVote) { setHasVoted(true); }
 
       const oppositeGender = app.gender === 'male' ? 'female' : 'male';
@@ -125,11 +129,12 @@ export default function VotePage() {
         where('gender', '==', oppositeGender)
       );
       const snap = await getDocs(q);
-      const candidateList: Candidate[] = [];
-      for (const d of snap.docs) {
+
+      // 2. 이성 후보자들의 상세 유저 정보(사진 등)를 병렬로 한 번에 조회 (블로킹/순차 쿼리 제거하여 속도 극대화)
+      const candidateList: Candidate[] = await Promise.all(snap.docs.map(async (d) => {
         const appData = d.data();
         const userSnap = await getDoc(doc(db, 'users', appData.userId));
-        const userData = userSnap.data();
+        const userData = userSnap.exists() ? userSnap.data() : null;
 
         // v10.0.1: 생년월일로부터 '년생' 추출 로직
         const rawBirth = appData.birthDate || userData?.birthDate || '';
@@ -138,7 +143,7 @@ export default function VotePage() {
           : (rawBirth.length >= 2 ? rawBirth.slice(0, 2) : '??');
         const birthYear = year ? `${year}년생` : '??년생';
 
-        candidateList.push({
+        return {
           userId: appData.userId,
           name: appData.name,
           age: appData.age,
@@ -148,8 +153,9 @@ export default function VotePage() {
           photos: userData?.photos || [],
           birthYear,
           slotNumber: appData.slotNumber || 999, // v10.1.0: DB 호수 사용
-        });
-      }
+        };
+      }));
+
       // v10.1.0: slotNumber 기준 오름차순 정렬하여 어드민 호수와 완벽히 동기화
       candidateList.sort((a, b) => a.slotNumber - b.slotNumber);
       setCandidates(candidateList);
