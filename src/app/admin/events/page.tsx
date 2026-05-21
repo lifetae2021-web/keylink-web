@@ -542,6 +542,24 @@ export default function EventsPage() {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || '문자 발송 실패');
+    
+    // v9.1.7: 문자가 성공적으로 발송되었을 때 applications 컬렉션의 secondSmsSentAt 필드 업데이트
+    try {
+      const { doc, updateDoc, serverTimestamp } = await import('firebase/firestore');
+      await Promise.all(
+        smsTargets
+          .filter((t) => t.appId)
+          .map((t) =>
+            updateDoc(doc(db, 'applications', t.appId!), {
+              secondSmsSentAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
+            })
+          )
+      );
+    } catch (e) {
+      console.error('Error updating secondSmsSentAt:', e);
+    }
+
     const msg = data.failCount > 0
       ? `${data.successCount}명 발송 완료 (${data.failCount}명 실패)`
       : `${data.successCount}명에게 문자 발송 완료`;
