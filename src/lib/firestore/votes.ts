@@ -109,8 +109,9 @@ export async function submitVote(
     finalCheck: extra?.finalCheck || false,
     disclosureMode: extra?.disclosureMode || 'public', // v8.1.7
     feedback: extra?.feedback || '',
-    submittedAt: Timestamp.now(),
-  });
+    // 수정 시에는 최초 제출 시각을 유지 (30분 타이머 기준 보존)
+    ...(isUpdate ? {} : { submittedAt: Timestamp.now() }),
+  }, { merge: true });
 }
 
 /**
