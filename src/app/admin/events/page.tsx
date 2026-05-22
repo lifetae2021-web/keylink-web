@@ -253,21 +253,21 @@ export default function EventsPage() {
     return () => unsub();
   }, []);
 
-  // 평균 매칭률 계산 (matchingSummaries 기반, 테스트 기수 제외)
+  // 평균 매칭률 계산 (matchingSummaries 기반, 테스트 및 삭제된 기수 제외)
   useEffect(() => {
     const fetchMatchingRate = async () => {
       const { getDocs } = await import('firebase/firestore');
-      // v10.0.0: sessions와 matchingSummaries를 동시에 조회하여 isTest === true인 테스트기수 원천 배제
+      // v10.1.0: sessions와 matchingSummaries를 조회하여 존재하지 않는(삭제된) 기수 및 테스트기수 원천 배제
       const [snap, sessionsSnap] = await Promise.all([
         getDocs(collection(db, 'matchingSummaries')),
         getDocs(collection(db, 'sessions'))
       ]);
 
-      const testSessionIds = new Set<string>();
+      const activeNonTestSessionIds = new Set<string>();
       sessionsSnap.docs.forEach(sDoc => {
         const sData = sDoc.data();
-        if (sData.isTest) {
-          testSessionIds.add(sDoc.id);
+        if (!sData.isTest) {
+          activeNonTestSessionIds.add(sDoc.id);
         }
       });
 
@@ -275,8 +275,8 @@ export default function EventsPage() {
       let totalRate = 0;
       let count = 0;
       snap.docs.forEach(d => {
-        // 테스트 기수는 평균 매칭률 산출에서 완전 제외
-        if (testSessionIds.has(d.id)) return;
+        // 존재하지 않는 기수(삭제됨) 또는 테스트 기수는 평균 매칭률 산출에서 완전 제외
+        if (!activeNonTestSessionIds.has(d.id)) return;
 
         const data = d.data();
         const pairs: any[] = data.matchedPairs || [];
