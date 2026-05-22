@@ -58,6 +58,7 @@ export interface Session {
     customMaleOffset?: number;
     startMs?: number | null;
     status?: 'stopped' | 'running' | 'paused';
+    customDurations?: Record<string, number>;
   };
 
   // v6.6.0 추가 필드 (새 기수 등록 폼 연동)

@@ -35,6 +35,10 @@ export default function AdminTimerPage() {
   const [isLive, setIsLive] = useState(false);
   const [viewMode, setViewMode] = useState<'schedule' | 'map'>('schedule');
 
+  // 신규 타이머 제어 상태값
+  const [customStartTime, setCustomStartTime] = useState<string>('');
+  const [customDurations, setCustomDurations] = useState<Record<string, number>>({});
+
   // Audio refs
   const audioCtxRef = useRef<AudioContext | null>(null);
   const played1MinBeepRef = useRef<Record<string, boolean>>({});
@@ -55,6 +59,13 @@ export default function AdminTimerPage() {
         } as any;
       });
       setSessions(list);
+      
+      // 마운트 시의 현재 HH:MM으로 시작 시각 초기값 설정
+      const now = new Date();
+      const hh = String(now.getHours()).padStart(2, '0');
+      const mm = String(now.getMinutes()).padStart(2, '0');
+      setCustomStartTime(`${hh}:${mm}`);
+
       // Auto select the first open session
       const openSession = list.find((s: any) => s.status === 'open');
       if (openSession) handleSelectSession(openSession.id, list);
@@ -70,9 +81,22 @@ export default function AdminTimerPage() {
       setTalkTime(session.timerConfig.talkTime || 15);
       setCakeRound(session.timerConfig.cakeRound || 4);
       setTotalTables(session.timerConfig.totalTables || 8);
+      
+      // customDurations 로드
+      if (session.timerConfig.customDurations) {
+        setCustomDurations(session.timerConfig.customDurations);
+      } else {
+        setCustomDurations({});
+      }
+
       if (session.timerConfig.startMs) {
         setEventStartMs(session.timerConfig.startMs);
         setIsLive(true);
+        // 이미 진행 중인 타이머의 경우, 실제 시작 시각을 HH:MM으로 변환하여 표시
+        const startDate = new Date(session.timerConfig.startMs);
+        const hh = String(startDate.getHours()).padStart(2, '0');
+        const mm = String(startDate.getMinutes()).padStart(2, '0');
+        setCustomStartTime(`${hh}:${mm}`);
       } else {
         setEventStartMs(null);
         setIsLive(false);
@@ -80,6 +104,7 @@ export default function AdminTimerPage() {
     } else {
       setEventStartMs(null);
       setIsLive(false);
+      setCustomDurations({});
     }
   };
 
@@ -108,23 +133,33 @@ export default function AdminTimerPage() {
 
     for (let i = 1; i <= tr; i++) {
       if (i === cr && i > 1) {
-        let bEnd = currentMs + 5 * 60000;
-        list.push({ id: `break_${i}`, type: 'break', label: '자리교체 & 휴식 (정비)', startMs: currentMs, endMs: bEnd, durationMs: 5 * 60000 });
+        const breakId = `break_${i}`;
+        // customDurations에 지정된 분이 있으면 사용하고, 없으면 기본값인 5분 사용
+        const breakDurationMin = customDurations[breakId] !== undefined ? customDurations[breakId] : 5;
+        let bEnd = currentMs + breakDurationMin * 60000;
+        list.push({ id: breakId, type: 'break', label: '자리교체 & 휴식 (정비)', startMs: currentMs, endMs: bEnd, durationMs: breakDurationMin * 60000 });
         currentMs = bEnd;
       }
-      let tEnd = currentMs + tt * 60000;
-      list.push({ id: `round_${i}`, type: 'talk', roundNum: i, label: `${i}회차 ${i === cr ? '🍰(대화 + 케익 대접)' : ''}`, startMs: currentMs, endMs: tEnd, durationMs: tt * 60000 });
+      const roundId = `round_${i}`;
+      // customDurations에 지정된 분이 있으면 사용하고, 없으면 기본값인 talkTime 사용
+      const roundDurationMin = customDurations[roundId] !== undefined ? customDurations[roundId] : tt;
+      let tEnd = currentMs + roundDurationMin * 60000;
+      list.push({ id: roundId, type: 'talk', roundNum: i, label: `${i}회차 ${i === cr ? '🍰(대화 + 케익 대접)' : ''}`, startMs: currentMs, endMs: tEnd, durationMs: roundDurationMin * 60000 });
       currentMs = tEnd;
     }
     return list;
-  }, [totalRounds, talkTime, cakeRound]);
+  }, [totalRounds, talkTime, cakeRound, customDurations]);
 
   const totalDurationMs = blocks.length > 0 ? blocks[blocks.length - 1].endMs : 0;
   
   const currentBlockIndex = blocks.findIndex(b => currentElapsedMs >= b.startMs && currentElapsedMs < b.endMs);
   const currentBlock = currentBlockIndex >= 0 ? blocks[currentBlockIndex] : null;
   const isFinished = totalDurationMs > 0 && currentElapsedMs >= totalDurationMs;
-  const remainingInBlockMs = currentBlock ? currentBlock.endMs - currentElapsedMs : 0;
+  
+  // 시작 시각 이전(미래에 시작)일 경우, 시작할 때까지의 남은 시간으로 처리
+  const remainingInBlockMs = currentElapsedMs < 0 
+    ? -currentElapsedMs 
+    : (currentBlock ? currentBlock.endMs - currentElapsedMs : 0);
 
   // Audio integration
   const initAudio = () => {
@@ -154,7 +189,7 @@ export default function AdminTimerPage() {
   };
 
   useEffect(() => {
-    if (!currentBlock || !isLive) return;
+    if (!currentBlock || !isLive || currentElapsedMs < 0) return;
     
     const remainingSec = Math.floor(remainingInBlockMs / 1000);
     // 1 Min warning
@@ -171,16 +206,24 @@ export default function AdminTimerPage() {
        setTimeout(() => playTone(1046.50, 'sine', 2.0, 0.6), 400); 
        playedEndBeepRef.current[currentBlock.id] = true;
     }
-  }, [remainingInBlockMs, currentBlock, isLive]);
+  }, [remainingInBlockMs, currentBlock, isLive, currentElapsedMs]);
 
   const handleStart = async () => {
     initAudio();
     // silent beep to unlock
     playTone(100, 'sine', 0.1, 0.01);
 
-    const now = Date.now();
-    setEventStartMs(now);
-    setCurrentElapsedMs(0);
+    // 커스텀 시작 시각 파싱
+    let targetStartMs = Date.now();
+    if (customStartTime) {
+      const [hh, mm] = customStartTime.split(':').map(Number);
+      const today = new Date();
+      today.setHours(hh, mm, 0, 0);
+      targetStartMs = today.getTime();
+    }
+
+    setEventStartMs(targetStartMs);
+    setCurrentElapsedMs(Date.now() - targetStartMs);
     setIsLive(true);
     played1MinBeepRef.current = {};
     playedEndBeepRef.current = {};
@@ -190,7 +233,8 @@ export default function AdminTimerPage() {
         'timerConfig': {
           totalRounds, talkTime, cakeRound, totalTables,
           customMaleOffset: maleOffset,
-          startMs: now, status: 'running'
+          startMs: targetStartMs, status: 'running',
+          customDurations
         }
       });
       toast.success('타이머 켜짐 & 클라우드 동기화 완료!');
@@ -212,10 +256,34 @@ export default function AdminTimerPage() {
     }
   };
 
+  // 개별 회차 소요 시간 조정 핸들러 (+1분 / -1분)
+  const handleAdjustBlockDuration = async (blockId: string, deltaMinutes: number) => {
+    let currentDurationMin = 0;
+    if (blockId.startsWith('break_')) {
+      currentDurationMin = customDurations[blockId] !== undefined ? customDurations[blockId] : 5;
+    } else {
+      currentDurationMin = customDurations[blockId] !== undefined ? customDurations[blockId] : (Number(talkTime) || 15);
+    }
+
+    const newDurationMin = Math.max(1, currentDurationMin + deltaMinutes);
+    const updatedDurations = { ...customDurations, [blockId]: newDurationMin };
+    setCustomDurations(updatedDurations);
+
+    if (selectedSessionId) {
+      await updateDoc(doc(db, 'sessions', selectedSessionId), {
+        'timerConfig.customDurations': updatedDurations
+      });
+      toast.success(`해당 회차 소요 시간이 ${newDurationMin}분으로 조정되었습니다!`);
+    } else {
+      toast.success(`로컬: 해당 회차 소요 시간이 ${newDurationMin}분으로 조정되었습니다.`);
+    }
+  };
+
   const adjustTime = async (minutesSign: number) => {
     if (!eventStartMs) return;
     const newStart = eventStartMs - (minutesSign * 60000);
     setEventStartMs(newStart);
+    setCurrentElapsedMs(Date.now() - newStart);
     if (selectedSessionId && isLive) {
       await updateDoc(doc(db, 'sessions', selectedSessionId), {
         'timerConfig.startMs': newStart
@@ -328,6 +396,19 @@ export default function AdminTimerPage() {
               </div>
             </div>
 
+            {/* 시작 시각 설정 추가 */}
+            <div>
+              <label className="block text-xs font-bold text-slate-500 mb-1.5 border-l-2 border-emerald-500 pl-2">시작 시각 설정</label>
+              <input
+                type="time"
+                value={customStartTime}
+                onChange={e => setCustomStartTime(e.target.value)}
+                className="w-full h-10 px-3 rounded-lg border border-slate-300 font-bold bg-slate-50 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none"
+                disabled={isLive}
+              />
+              <p className="text-[10px] text-slate-400 mt-1 font-semibold">* 타이머 가동 시 기준 시작 시각으로 계산됩니다.</p>
+            </div>
+
             <hr className="border-slate-100 my-2" />
 
             {/* 수동 커스텀 배치 */}
@@ -362,6 +443,18 @@ export default function AdminTimerPage() {
               <div>
                 <p className="text-[#FF6F61] font-black text-xl mb-1">🎉 모든 일정이 종료되었습니다!</p>
                 <p className="text-slate-500 font-bold text-sm">참여자들에게 매칭 투표를 안내해 주세요.</p>
+              </div>
+            ) : currentElapsedMs < 0 ? (
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="px-3 py-1 rounded-full text-xs font-black tracking-wider bg-emerald-100 text-emerald-700 animate-pulse">
+                    시작 대기 중 (STANDBY)
+                  </span>
+                  <span className="text-slate-500 font-bold text-sm">
+                    {customStartTime} 정각 시작 예정
+                  </span>
+                </div>
+                <h2 className="text-3xl font-black text-slate-800 tracking-tight">행사 시작 카운트다운</h2>
               </div>
             ) : currentBlock ? (
               <div>
@@ -458,7 +551,27 @@ export default function AdminTimerPage() {
                             <div className="font-black text-lg">{b.label}</div>
                             {isCur && <div className="text-[10px] font-bold text-[#FF6F61] uppercase tracking-widest mt-1">Currently Processing</div>}
                           </td>
-                          <td className="p-4 font-bold text-slate-400">{Math.floor(b.durationMs/60000)}분 소요</td>
+                          <td className="p-4 font-bold">
+                            <div className="flex items-center justify-center gap-2.5">
+                              <button 
+                                onClick={() => handleAdjustBlockDuration(b.id, -1)}
+                                className={`w-6 h-6 rounded-md flex items-center justify-center border font-black text-sm transition-all active:scale-90 ${isCur ? 'border-slate-700 hover:bg-slate-800 text-slate-300' : 'border-slate-200 hover:bg-slate-100 text-slate-600'}`}
+                                title="-1분 줄이기"
+                              >
+                                -
+                              </button>
+                              <span className={isCur ? 'text-white font-extrabold' : 'text-slate-500 font-bold'}>
+                                {Math.floor(b.durationMs/60000)}분 소요
+                              </span>
+                              <button 
+                                onClick={() => handleAdjustBlockDuration(b.id, 1)}
+                                className={`w-6 h-6 rounded-md flex items-center justify-center border font-black text-sm transition-all active:scale-90 ${isCur ? 'border-slate-700 hover:bg-slate-800 text-slate-300' : 'border-slate-200 hover:bg-slate-100 text-slate-600'}`}
+                                title="+1분 늘리기"
+                              >
+                                +
+                              </button>
+                            </div>
+                          </td>
                           <td className="p-4 pr-8 font-black text-lg tracking-tighter">{getAbsoluteTime(b.startMs)} ~ {getAbsoluteTime(b.endMs)}</td>
                         </tr>
                       );

@@ -56,15 +56,20 @@ export default function LiveTimerPage() {
     const tr = timerConfig.totalRounds || 8;
     const tt = timerConfig.talkTime || 15;
     const cr = timerConfig.cakeRound || 4;
+    const customDurations = timerConfig.customDurations || {};
 
     for (let i = 1; i <= tr; i++) {
        if (i === cr && i > 1) {
-         let bEnd = currentMs + 5 * 60000;
-         list.push({ id: `break_${i}`, type: 'break', label: '자리교체 & 휴식 (정비)', startMs: currentMs, endMs: bEnd, durationMs: 5 * 60000 });
+         const breakId = `break_${i}`;
+         const breakDurationMin = customDurations[breakId] !== undefined ? customDurations[breakId] : 5;
+         let bEnd = currentMs + breakDurationMin * 60000;
+         list.push({ id: breakId, type: 'break', label: '자리교체 & 휴식 (정비)', startMs: currentMs, endMs: bEnd, durationMs: breakDurationMin * 60000 });
          currentMs = bEnd;
        }
-       let endMs = currentMs + tt * 60000;
-       list.push({ id: `round_${i}`, type: 'talk', roundNum: i, label: `${i}회차 ${i === cr ? '🍰(대화 + 케익 대접)' : ''}`, startMs: currentMs, endMs: endMs, durationMs: tt * 60000 });
+       const roundId = `round_${i}`;
+       const roundDurationMin = customDurations[roundId] !== undefined ? customDurations[roundId] : tt;
+       let endMs = currentMs + roundDurationMin * 60000;
+       list.push({ id: roundId, type: 'talk', roundNum: i, label: `${i}회차 ${i === cr ? '🍰(대화 + 케익 대접)' : ''}`, startMs: currentMs, endMs: endMs, durationMs: roundDurationMin * 60000 });
        currentMs = endMs;
     }
     return list;
@@ -86,7 +91,11 @@ export default function LiveTimerPage() {
   const currentBlock = currentBlockIndex >= 0 ? blocks[currentBlockIndex] : null;
   const isFinished = totalDurationMs > 0 && currentElapsedMs >= totalDurationMs;
   const isRunning = timerConfig.status === 'running';
-  const remainingInBlockMs = currentBlock ? currentBlock.endMs - currentElapsedMs : 0;
+
+  // 시작 시각 이전(미래에 시작)일 경우, 시작할 때까지의 남은 시간으로 처리
+  const remainingInBlockMs = currentElapsedMs < 0 
+    ? -currentElapsedMs 
+    : (currentBlock ? currentBlock.endMs - currentElapsedMs : 0);
 
   const totalTables = timerConfig.totalTables || 16;
   const maleOffset = timerConfig.customMaleOffset || 0;
@@ -124,9 +133,11 @@ export default function LiveTimerPage() {
   // Helper properties
   const currentStatusLabel = isFinished 
     ? '행사 종료됨' 
-    : isRunning 
-      ? (currentBlock?.label + ' 진행 중')
-      : '일시 정지됨';
+    : currentElapsedMs < 0
+      ? '시작 대기 중'
+      : isRunning 
+        ? (currentBlock?.label + ' 진행 중')
+        : '일시 정지됨';
 
   // Compute my current table
   let myTable = null;
