@@ -480,7 +480,19 @@ export default function AdminTimerPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-slate-500 mb-1.5 border-l-2 border-[#FF6F61] pl-2">총 회차</label>
-                <input type="number" value={totalRounds} onChange={e => setTotalRounds(e.target.value === '' ? '' : Number(e.target.value))} className="w-full h-10 px-3 rounded-lg border border-slate-300 font-bold bg-slate-50 text-sm" disabled={isLive} />
+                <input
+                  type="number"
+                  value={totalRounds}
+                  onChange={e => {
+                    const val = e.target.value === '' ? '' : Number(e.target.value);
+                    setTotalRounds(val);
+                    if (typeof val === 'number') {
+                      setTotalTables(val);
+                    }
+                  }}
+                  className="w-full h-10 px-3 rounded-lg border border-slate-300 font-bold bg-slate-50 text-sm"
+                  disabled={isLive}
+                />
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-500 mb-1.5 border-l-2 border-[#FF6F61] pl-2">총 테이블 수</label>
