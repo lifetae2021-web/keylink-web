@@ -409,20 +409,20 @@ export default function EventsPage() {
             return null;
           })
         ).then((results) => {
-          const newUserMap = { ...userMap };
-          let updated = false;
-          results.forEach((res) => {
-            if (res) {
-              const existing = newUserMap[res.uid];
-              if (!existing || JSON.stringify(existing) !== JSON.stringify(res.data)) {
-                newUserMap[res.uid] = res.data;
-                updated = true;
+          setUserMap(prevUserMap => {
+            const newUserMap = { ...prevUserMap };
+            let updated = false;
+            results.forEach((res) => {
+              if (res) {
+                const existing = newUserMap[res.uid];
+                if (!existing || JSON.stringify(existing) !== JSON.stringify(res.data)) {
+                  newUserMap[res.uid] = res.data;
+                  updated = true;
+                }
               }
-            }
+            });
+            return updated ? newUserMap : prevUserMap;
           });
-          if (updated) {
-            setUserMap(newUserMap);
-          }
         });
       },
       (err) => {
