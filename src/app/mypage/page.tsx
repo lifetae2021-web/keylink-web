@@ -1447,7 +1447,7 @@ function ApplicationStatusBlock({ application, session, userId, hasVoted, submit
                   )}
                 </div>
                 <Link 
-                  href={`/vote/${application.sessionId}`} 
+                  href={`/vote/${application.sessionId}?edit=true`} 
                   style={{ 
                     display: 'inline-flex', 
                     alignItems: 'center', 

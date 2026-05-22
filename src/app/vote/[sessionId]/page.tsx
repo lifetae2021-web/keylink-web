@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
@@ -56,7 +56,10 @@ function SectionCard({ number, icon, title, required, children }: {
 export default function VotePage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const sessionId = params.sessionId as string;
+  // edit=true 쿼리가 있으면 수정 모드: 30분 타이머 내에서 수정하러 온 케이스
+  const isEditMode = searchParams.get('edit') === 'true';
 
   const [userId, setUserId] = useState<string | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -316,7 +319,8 @@ export default function VotePage() {
     session.eventDate.toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' })
   ) : false;
 
-  if (session?.status !== 'voting' && !isEventDay) {
+  // 수정 모드(edit=true)가 아닐 때만 투표 잠금 화면 표시
+  if (session?.status !== 'voting' && !isEventDay && !isEditMode) {
     return (
       <div className="min-h-screen bg-[#FFF5F3] flex flex-col items-center justify-center p-6 text-center">
         <div className="w-20 h-20 rounded-3xl bg-slate-100 flex items-center justify-center mb-6">
@@ -333,8 +337,8 @@ export default function VotePage() {
     );
   }
 
-  // v10.4.0: 투표 마감 상태이거나 행사 당일이 아닌 시점에 투표가 완료되었을 때만 차단
-  if (hasVoted && session?.status !== 'voting') {
+  // v10.4.0: 수정 모드(edit=true)가 아닐 때만 투표 완료 화면으로 차단
+  if (hasVoted && session?.status !== 'voting' && !isEditMode) {
     return (
       <div className="min-h-screen bg-[#FFF5F3] flex flex-col items-center justify-center p-6 text-center">
         <div className="w-20 h-20 rounded-3xl bg-green-50 flex items-center justify-center mb-6">
