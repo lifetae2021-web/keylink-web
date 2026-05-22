@@ -6,8 +6,10 @@ import {
   ArrowUpRight, ArrowDownRight, DollarSign,
   Download, Filter, Loader2, X, ChevronRight
 } from 'lucide-react';
-import { db } from '@/lib/firebase';
-import { collection, query, onSnapshot, orderBy } from 'firebase/firestore';
+import { auth, db } from '@/lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import { collection, query, onSnapshot, orderBy, doc, getDoc } from 'firebase/firestore';
+import { useRouter } from 'next/navigation';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer
@@ -180,6 +182,30 @@ export default function RevenueStatsPage() {
   const [sessions, setSessions] = useState<any[]>([]);
   const [applications, setApplications] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSuperAdmin, setIsSuperAdmin] = useState<boolean | null>(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    const unsubAuth = onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        router.replace('/admin/login');
+        return;
+      }
+      try {
+        const snap = await getDoc(doc(db, 'users', user.uid));
+        if (snap.exists() && snap.data().role === 'super_admin') {
+          setIsSuperAdmin(true);
+        } else {
+          setIsSuperAdmin(false);
+          router.replace('/admin');
+        }
+      } catch (e) {
+        setIsSuperAdmin(false);
+        router.replace('/admin');
+      }
+    });
+    return () => unsubAuth();
+  }, [router]);
 
   // 상세 모달 상태
   const [modalConfig, setModalConfig] = useState<{
@@ -280,11 +306,11 @@ export default function RevenueStatsPage() {
     return { totalRevenue, thisMonthRevenue, growth, eventRevenues, chartData };
   }, [sessions, applications, isLoading]);
 
-  if (isLoading) {
+  if (isSuperAdmin === null || isLoading) {
     return (
       <div className="h-full flex flex-col items-center justify-center p-20 gap-4">
         <Loader2 className="animate-spin text-[#FF7E7E]" size={32} />
-        <p className="text-slate-400 font-medium text-sm">매출 데이터를 집계하고 있습니다...</p>
+        <p className="text-slate-400 font-medium text-sm">권한을 확인하고 매출 데이터를 집계하고 있습니다...</p>
       </div>
     );
   }

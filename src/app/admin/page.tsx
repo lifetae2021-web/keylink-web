@@ -13,9 +13,10 @@ import {
 import { format, subDays, startOfDay, startOfToday } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import Link from 'next/link';
-import { db } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 import {
-  collection, getDocs, query, where, orderBy, limit
+  collection, getDocs, query, where, orderBy, limit, doc, getDoc
 } from 'firebase/firestore';
 
 const Skeleton = ({ className }: { className?: string }) => (
@@ -74,6 +75,25 @@ export default function AdminDashboard() {
   const [upcomingEvents, setUpcomingEvents] = useState<any[]>([]);
   const [recentUsers, setRecentUsers] = useState<any[]>([]);
   const [recentApps, setRecentApps] = useState<any[]>([]);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        try {
+          const snap = await getDoc(doc(db, 'users', user.uid));
+          if (snap.exists() && snap.data().role === 'super_admin') {
+            setIsSuperAdmin(true);
+          } else {
+            setIsSuperAdmin(false);
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    });
+    return () => unsub();
+  }, []);
 
   useEffect(() => {
     async function fetchData() {
@@ -265,7 +285,9 @@ export default function AdminDashboard() {
     { label: '가입자',    icon: Users,      color: '#FF6F61', monthlyNew: stats.monthlyNewUsers,   monthlyNewLabel: '이번 달', subValue: stats.totalUsers.toLocaleString(),           subLabel: '누적', trend: calcTrend(stats.monthlyNewUsers, stats.prevMonthlyNewUsers) },
     { label: '신청',      icon: UserPlus,   color: '#60a5fa', monthlyNew: stats.monthlyApps,       monthlyNewLabel: '이번 달', subValue: stats.totalApps.toLocaleString(),            subLabel: '누적', trend: calcTrend(stats.monthlyApps, stats.prevMonthlyApps) },
     { label: '매칭 커플', icon: Heart,      color: '#f472b6', monthlyNew: stats.monthlyMatchCount, monthlyNewLabel: '이번 달', subValue: stats.matchCount.toLocaleString(),           subLabel: '누적', trend: calcTrend(stats.monthlyMatchCount, stats.prevMonthlyMatchCount) },
-    { label: '매출',      icon: TrendingUp, color: '#4ade80', monthlyNew: stats.monthlyRevenue,    monthlyNewLabel: '이번 달', subValue: formatRevenue(stats.prevMonthlyRevenue),     subLabel: '전월', trend: calcTrend(stats.monthlyRevenue, stats.prevMonthlyRevenue) },
+    ...(isSuperAdmin ? [
+      { label: '매출',      icon: TrendingUp, color: '#4ade80', monthlyNew: stats.monthlyRevenue,    monthlyNewLabel: '이번 달', subValue: formatRevenue(stats.prevMonthlyRevenue),     subLabel: '전월', trend: calcTrend(stats.monthlyRevenue, stats.prevMonthlyRevenue) }
+    ] : []),
     { label: '방문자(UV)', icon: Users,      color: '#8b5cf6', monthlyNew: stats.todayUV,          monthlyNewLabel: '오늘',    subValue: stats.yesterdayUV.toLocaleString(),          subLabel: '어제', trend: calcTrend(stats.todayUV, stats.yesterdayUV) },
     { label: '페이지뷰(PV)', icon: Eye,        color: '#f59e0b', monthlyNew: stats.todayPV,          monthlyNewLabel: '오늘',    subValue: stats.yesterdayPV.toLocaleString(),          subLabel: '어제', trend: calcTrend(stats.todayPV, stats.yesterdayPV) },
   ];
@@ -279,7 +301,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+      <div className={`grid grid-cols-2 lg:grid-cols-3 ${isSuperAdmin ? 'xl:grid-cols-6' : 'xl:grid-cols-5'} gap-4`}>
         {statsCards.map((s, i) => {
           const isAnalytics = s.label === '방문자(UV)' || s.label === '페이지뷰(PV)';
           const CardWrapper = (isAnalytics ? Link : 'div') as any;
