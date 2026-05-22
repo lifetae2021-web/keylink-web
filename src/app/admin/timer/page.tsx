@@ -66,9 +66,59 @@ export default function AdminTimerPage() {
       const mm = String(now.getMinutes()).padStart(2, '0');
       setCustomStartTime(`${hh}:${mm}`);
 
-      // Auto select the first open session
-      const openSession = list.find((s: any) => s.status === 'open');
-      if (openSession) handleSelectSession(openSession.id, list);
+      // localStorage 상태 복원
+      const savedStartTime = localStorage.getItem('startTime');
+      const savedTargetTime = localStorage.getItem('targetTime');
+      const savedSessionId = localStorage.getItem('selectedSessionId');
+      const savedConfigStr = localStorage.getItem('timerConfig');
+
+      if (savedStartTime) {
+        const startTime = Number(savedStartTime);
+        const targetTime = Number(savedTargetTime || 0);
+        const elapsed = Date.now() - startTime;
+
+        // 아직 종료 시점에 도달하지 않았다면 복원 진행
+        if (elapsed < targetTime) {
+          setEventStartMs(startTime);
+          setCurrentElapsedMs(elapsed);
+          setIsLive(true);
+
+          if (savedConfigStr) {
+            try {
+              const config = JSON.parse(savedConfigStr);
+              if (config.totalRounds) setTotalRounds(config.totalRounds);
+              if (config.talkTime) setTalkTime(config.talkTime);
+              if (config.cakeRound) setCakeRound(config.cakeRound);
+              if (config.totalTables) setTotalTables(config.totalTables);
+              if (config.customDurations) setCustomDurations(config.customDurations);
+            } catch (e) {}
+          }
+          
+          if (savedSessionId && list.some(s => s.id === savedSessionId)) {
+            setSelectedSessionId(savedSessionId);
+            // 실제 시작 시각을 HH:MM으로 변환하여 표시
+            const startDate = new Date(startTime);
+            const shh = String(startDate.getHours()).padStart(2, '0');
+            const smm = String(startDate.getMinutes()).padStart(2, '0');
+            setCustomStartTime(`${shh}:${smm}`);
+          }
+          return;
+        } else {
+          // 이미 지나간 시간이면 localStorage 초기화
+          localStorage.removeItem('startTime');
+          localStorage.removeItem('targetTime');
+          localStorage.removeItem('selectedSessionId');
+          localStorage.removeItem('timerConfig');
+        }
+      }
+
+      // 저장된 세션이 있으면 해당 세션을 자동 선택, 없으면 모집 중인 세션 선택
+      if (savedSessionId && list.some(s => s.id === savedSessionId)) {
+        handleSelectSession(savedSessionId, list);
+      } else {
+        const openSession = list.find((s: any) => s.status === 'open');
+        if (openSession) handleSelectSession(openSession.id, list);
+      }
     }
     loadSessions();
   }, []);
@@ -228,6 +278,18 @@ export default function AdminTimerPage() {
     played1MinBeepRef.current = {};
     playedEndBeepRef.current = {};
 
+    // localStorage에 타이머 시작 상태 영구 보존
+    localStorage.setItem('startTime', targetStartMs.toString());
+    localStorage.setItem('targetTime', totalDurationMs.toString());
+    localStorage.setItem('selectedSessionId', selectedSessionId);
+    localStorage.setItem('timerConfig', JSON.stringify({
+      totalRounds,
+      talkTime,
+      cakeRound,
+      totalTables,
+      customDurations
+    }));
+
     if (selectedSessionId) {
       await updateDoc(doc(db, 'sessions', selectedSessionId), {
         'timerConfig': {
@@ -237,9 +299,9 @@ export default function AdminTimerPage() {
           customDurations
         }
       });
-      toast.success('타이머 켜짐 & 클라우드 동기화 완료!');
+      toast.success('소개팅 진행 엔진이 시작되고 클라우드에 실시간 동기화되었습니다!');
     } else {
-      toast.success('로컬 테스트 타이머가 시작되었습니다.');
+      toast.success('로컬 테스트용 소개팅 진행 엔진이 가동되었습니다.');
     }
   };
 
@@ -247,12 +309,21 @@ export default function AdminTimerPage() {
     setEventStartMs(null);
     setCurrentElapsedMs(0);
     setIsLive(false);
+
+    // localStorage 저장 데이터 제거
+    localStorage.removeItem('startTime');
+    localStorage.removeItem('targetTime');
+    localStorage.removeItem('selectedSessionId');
+    localStorage.removeItem('timerConfig');
+
     if (selectedSessionId) {
       await updateDoc(doc(db, 'sessions', selectedSessionId), {
         'timerConfig.status': 'stopped',
         'timerConfig.startMs': null
       });
-      toast.success('동기화 타이머가 정지되었습니다.');
+      toast.success('동기화 타이머가 정지 및 초기화되었습니다.');
+    } else {
+      toast.success('로컬 타이머가 초기화되었습니다.');
     }
   };
 
@@ -268,6 +339,34 @@ export default function AdminTimerPage() {
     const newDurationMin = Math.max(1, currentDurationMin + deltaMinutes);
     const updatedDurations = { ...customDurations, [blockId]: newDurationMin };
     setCustomDurations(updatedDurations);
+
+    // 변경된 customDurations를 반영하여 targetTime 재계산 및 localStorage 저장
+    const updatedTimerConfig = {
+      totalRounds,
+      talkTime,
+      cakeRound,
+      totalTables,
+      customDurations: updatedDurations
+    };
+    
+    // 임시로 blocks 배열을 구성하여 새 총 소요시간 구하기
+    let currentMs = 0;
+    const tr = Number(totalRounds) || 0;
+    const tt = Number(talkTime) || 0;
+    const cr = Number(cakeRound) || 0;
+    for (let i = 1; i <= tr; i++) {
+      if (i === cr && i > 1) {
+        const breakId = `break_${i}`;
+        const breakDurationMin = updatedDurations[breakId] !== undefined ? updatedDurations[breakId] : 5;
+        currentMs += breakDurationMin * 60000;
+      }
+      const roundId = `round_${i}`;
+      const roundDurationMin = updatedDurations[roundId] !== undefined ? updatedDurations[roundId] : tt;
+      currentMs += roundDurationMin * 60000;
+    }
+    
+    localStorage.setItem('targetTime', currentMs.toString());
+    localStorage.setItem('timerConfig', JSON.stringify(updatedTimerConfig));
 
     if (selectedSessionId) {
       await updateDoc(doc(db, 'sessions', selectedSessionId), {
@@ -314,6 +413,11 @@ export default function AdminTimerPage() {
 
   const progressPct = currentBlock ? Math.min(100, Math.max(0, (currentElapsedMs - currentBlock.startMs) / currentBlock.durationMs * 100)) : 0;
   
+  // 전체 소개팅 진행률 (%)
+  const overallProgressPct = totalDurationMs > 0 
+    ? Math.min(100, Math.max(0, Math.floor((currentElapsedMs / totalDurationMs) * 100))) 
+    : 0;
+  
   const bgStyle = useMemo(() => {
     if (!currentBlock) return { background: '#F8FAFC' };
     if (currentBlock.type === 'break') return { background: '#F0F7FF' }; // 파스텔 블루
@@ -330,7 +434,7 @@ export default function AdminTimerPage() {
         {/* 기수 선택 & 제어부 */}
         <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
           <div className="mb-6">
-            <label className="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">적용할 행사 (기수)</label>
+            <label className="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">진행 대상 행사 (기수)</label>
             <select
               value={selectedSessionId}
               onChange={e => handleSelectSession(e.target.value)}
@@ -349,11 +453,11 @@ export default function AdminTimerPage() {
           <div className="flex gap-2">
             {!isLive ? (
               <button onClick={handleStart} className="flex-1 bg-gradient-to-r from-[#FF6F61] to-[#FF9A9E] text-white font-bold h-14 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-[#FF6F61]/20 hover:scale-[1.02] transition-transform">
-                <Play fill="currentColor" size={20} /> 실시간 엔진 가동
+                <Play fill="currentColor" size={20} /> 소개팅 매칭 엔진 가동
               </button>
             ) : (
               <button onClick={handleStop} className="flex-1 bg-slate-800 text-white font-bold h-14 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-slate-800/20 hover:scale-[1.02] transition-transform">
-                <Square fill="currentColor" size={20} /> 타이머 정지 (리셋)
+                <Square fill="currentColor" size={20} /> 진행 정지 및 초기화
               </button>
             )}
             
@@ -369,7 +473,7 @@ export default function AdminTimerPage() {
         <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex-1">
           <div className="flex items-center gap-2 mb-6">
             <Settings size={20} className="text-slate-400" />
-            <h2 className="text-lg font-black text-slate-800">엔진 파라미터</h2>
+            <h2 className="text-lg font-black text-slate-800">소개팅 설정 파라미터</h2>
           </div>
 
           <div className="space-y-5">
@@ -435,83 +539,115 @@ export default function AdminTimerPage() {
       <div className="w-full lg:w-2/3 flex flex-col gap-6">
         
         {/* 라이브 타이머 헤더 (더 콤팩트하게) */}
-        <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm relative overflow-hidden flex flex-col items-center justify-center text-center">
+        <div className={`bg-white rounded-3xl p-6 border transition-all duration-500 shadow-sm relative overflow-hidden flex flex-col items-center justify-center text-center ${
+          isLive && !isFinished && remainingInBlockMs < 60000 && currentElapsedMs >= 0
+            ? 'border-rose-400 shadow-xl shadow-rose-100/50 ring-2 ring-rose-200 animate-pulse'
+            : 'border-slate-200'
+        }`}>
           <div className="absolute top-0 right-0 w-64 h-64 bg-rose-50 rounded-full blur-3xl -mr-20 -mt-20 opacity-50 z-0 pointer-events-none" />
           
           <div className="relative z-10 w-full mb-4">
             {isFinished ? (
               <div>
-                <p className="text-[#FF6F61] font-black text-xl mb-1">🎉 모든 일정이 종료되었습니다!</p>
-                <p className="text-slate-500 font-bold text-sm">참여자들에게 매칭 투표를 안내해 주세요.</p>
+                <p className="text-[#FF6F61] font-black text-2xl mb-1">🎉 모든 소개팅 일정이 종료되었습니다!</p>
+                <p className="text-slate-500 font-bold text-sm">참여자들에게 최종 매칭 투표를 안내해 주세요.</p>
               </div>
             ) : currentElapsedMs < 0 ? (
               <div>
-                <div className="flex items-center gap-2 mb-2">
+                <div className="flex items-center gap-2 mb-2 justify-center">
                   <span className="px-3 py-1 rounded-full text-xs font-black tracking-wider bg-emerald-100 text-emerald-700 animate-pulse">
-                    시작 대기 중 (STANDBY)
+                    소개팅 시작 대기 중 (STANDBY)
                   </span>
                   <span className="text-slate-500 font-bold text-sm">
                     {customStartTime} 정각 시작 예정
                   </span>
                 </div>
-                <h2 className="text-3xl font-black text-slate-800 tracking-tight">행사 시작 카운트다운</h2>
+                <h2 className="text-3xl font-black text-slate-800 tracking-tight">첫 번째 만남 시작 카운트다운</h2>
               </div>
             ) : currentBlock ? (
               <div>
-                <div className="flex items-center gap-2 mb-2">
+                <div className="flex items-center gap-2 mb-2 justify-center">
                   <span className={`px-3 py-1 rounded-full text-xs font-black tracking-wider ${currentBlock.type === 'break' ? 'bg-purple-100 text-purple-700' : 'bg-rose-100 text-rose-600'} animate-pulse`}>
-                    {currentBlock.type === 'break' ? 'BREAK TIME' : 'LIVE ROUND'}
+                    {currentBlock.type === 'break' ? '교체 및 휴식 시간' : `${currentBlock.roundNum}회차 대화 진행 중`}
                   </span>
-                  <span className="text-slate-500 font-bold text-sm">
-                    전체 {formatMinSec(totalDurationMs - currentElapsedMs)} 남음
+                  <span className="text-slate-500 font-bold text-sm bg-slate-50 px-2 py-0.5 rounded border">
+                    전체 남은 시간: {formatMinSec(totalDurationMs - currentElapsedMs)}
                   </span>
                 </div>
-                <h2 className="text-3xl font-black text-slate-800 tracking-tight">{currentBlock.label} 진행 중</h2>
+                <h2 className="text-3xl font-black text-slate-800 tracking-tight">{currentBlock.label}</h2>
               </div>
             ) : (
               <div>
                  <span className="px-3 py-1 rounded-full text-xs font-black tracking-wider bg-slate-100 text-slate-500">STANDBY</span>
-                 <h2 className="text-3xl font-black text-slate-800 tracking-tight mt-2">엔진 대기 중...</h2>
+                 <h2 className="text-3xl font-black text-slate-800 tracking-tight mt-2">소개팅 진행 대기 중...</h2>
               </div>
             )}
           </div>
 
-          <div className="relative z-10 flex flex-col items-center gap-3 w-full">
-             {/* 상태바 추가 */}
+          <div className="relative z-10 flex flex-col items-center gap-4 w-full">
+             
+             {/* 1. 단일 라운드 진행바 */}
              {isLive && !isFinished && currentBlock && (
-               <div className="w-full max-w-2xl h-2 bg-slate-100 rounded-full overflow-hidden mb-4 border border-slate-200">
-                  <div 
-                    className={`h-full transition-all duration-1000 ${currentBlock.type === 'break' ? 'bg-blue-400' : 'bg-[#FF6F61]'}`} 
-                    style={{ width: `${progressPct}%` }}
-                  />
+               <div className="w-full max-w-xl">
+                 <div className="flex justify-between items-center mb-1 text-[11px] font-bold text-slate-400">
+                   <span>현재 라운드 진행도</span>
+                   <span>{Math.floor(progressPct)}%</span>
+                 </div>
+                 <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
+                    <div 
+                      className={`h-full transition-all duration-1000 ${currentBlock.type === 'break' ? 'bg-purple-500' : 'bg-[#FF6F61]'}`} 
+                      style={{ width: `${progressPct}%` }}
+                    />
+                 </div>
                </div>
              )}
 
-             <div className="bg-slate-900 text-white rounded-2xl px-6 py-4 font-mono text-5xl md:text-7xl font-black shadow-inner shadow-black/20 flex items-center justify-center min-w-[240px]">
+             {/* 2. 전체 행사 진행률 바 (소개팅 진행 상황 직관적으로 표시) */}
+             {isLive && !isFinished && (
+               <div className="w-full max-w-xl mb-2">
+                 <div className="flex justify-between items-center mb-1 text-[11px] font-bold text-slate-500">
+                   <span className="flex items-center gap-1">📍 전체 매칭 진행률 ({overallProgressPct}%)</span>
+                   <span>{formatMinSec(currentElapsedMs)} 경과 / {formatMinSec(totalDurationMs)} 총 시간</span>
+                 </div>
+                 <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
+                    <div 
+                      className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-1000" 
+                      style={{ width: `${overallProgressPct}%` }}
+                    />
+                 </div>
+               </div>
+             )}
+
+             {/* 3. 메인 타이머 렌더러 (1분 임박 시 다이내믹 피드백) */}
+             <div className={`rounded-2xl px-8 py-5 font-mono text-5xl md:text-7xl font-black flex items-center justify-center min-w-[260px] border shadow-inner transition-colors duration-300 ${
+               isLive && !isFinished && remainingInBlockMs < 60000 && currentElapsedMs >= 0
+                 ? 'bg-rose-50 border-rose-200 text-rose-600 shadow-rose-100/50 animate-pulse'
+                 : 'bg-slate-950 border-slate-900 text-white shadow-black/20'
+             }`}>
                {formatMinSec(remainingInBlockMs)}
              </div>
-             
-             {/* 다음 이동 시간 안내 */}
-             {isLive && !isFinished && currentBlock && (
-               <div className="mt-4 text-slate-500 font-bold text-lg">
-                 다음 자리 이동 시각: <span className="text-slate-800 font-black">{getAbsoluteTime(currentBlock.endMs)}</span>
-               </div>
-             )}
-             
-             {/* 타이머 미세 조정 (관리자 권한) */}
-             {isLive && !isFinished && (
-               <div className="flex items-center gap-2 bg-slate-100 rounded-lg p-1 border border-slate-200">
-                 <button onClick={() => adjustTime(-1)} className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-200 rounded-md transition-colors" title="-1분 (시간 줄이기)">
-                   <Rewind size={16} />
-                 </button>
-                 <span className="text-[10px] font-bold text-slate-400">강제 조정</span>
-                 <button onClick={() => adjustTime(1)} className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-200 rounded-md transition-colors" title="+1분 (시간 연장하기)">
-                   <FastForward size={16} />
-                 </button>
-               </div>
-             )}
-          </div>
-        </div>
+
+             {/* 4. 다음 이동 시간 안내 */}
+              {isLive && !isFinished && currentBlock && (
+                <div className="text-slate-500 font-bold text-base mt-2">
+                  다음 파트너 자리 이동 시각: <span className="text-[#FF6F61] font-black underline decoration-rose-300 decoration-2 underline-offset-4">{getAbsoluteTime(currentBlock.endMs)}</span>
+                </div>
+              )}
+              
+              {/* 5. 타이머 미세 조정 (관리자 권한) */}
+              {isLive && !isFinished && (
+                <div className="flex items-center gap-2 bg-slate-100 rounded-lg p-1 border border-slate-200 mt-2">
+                  <button onClick={() => adjustTime(-1)} className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-200 rounded-md transition-colors" title="-1분 (시간 줄이기)">
+                    <Rewind size={16} />
+                  </button>
+                  <span className="text-[10px] font-bold text-slate-400">전체 시간 강제 조정</span>
+                  <button onClick={() => adjustTime(1)} className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-200 rounded-md transition-colors" title="+1분 (시간 연장하기)">
+                    <FastForward size={16} />
+                  </button>
+                </div>
+              )}
+           </div>
+         </div>
 
         {/* 뷰 토글 버튼 (더 크게, 인스턴트 스왑용) */}
         <div className="flex justify-center -my-3 relative z-20">
