@@ -1163,10 +1163,11 @@ interface StatusBlockProps {
   session: Session | null;
   userId: string;
   hasVoted: boolean;
+  submittedAt?: Date | null; // 투표 제출 시각 추가
 }
 
 function ApplicationStatusSection({ applications, sessionsMap, userId, isAdmin = false }: { applications: Application[], sessionsMap: Record<string, Session>, userId: string, isAdmin?: boolean }) {
-  const [votedMap, setVotedMap] = useState<Record<string, boolean>>({});
+  const [votedMap, setVotedMap] = useState<Record<string, { voted: boolean; submittedAt?: Date | null }>>({});
 
   // 테스트 기수 신청서 필터링 (isTest: true 인 세션은 관리자가 아닌 경우에만 제외)
   const visibleApps = applications.filter(app => {
@@ -1179,7 +1180,13 @@ function ApplicationStatusSection({ applications, sessionsMap, userId, isAdmin =
     visibleApps.forEach(async (app) => {
       if (app.status === 'confirmed' && votedMap[app.sessionId] === undefined) {
         const vote = await getMyVote(app.sessionId, userId);
-        setVotedMap(prev => ({ ...prev, [app.sessionId]: !!vote }));
+        setVotedMap(prev => ({ 
+          ...prev, 
+          [app.sessionId]: { 
+            voted: !!vote, 
+            submittedAt: vote ? vote.submittedAt : null 
+          } 
+        }));
       }
     });
   }, [visibleApps, userId]);
@@ -1226,7 +1233,8 @@ function ApplicationStatusSection({ applications, sessionsMap, userId, isAdmin =
             application={app}
             session={sessionsMap[app.sessionId]}
             userId={userId}
-            hasVoted={votedMap[app.sessionId] || false}
+            hasVoted={votedMap[app.sessionId]?.voted || false}
+            submittedAt={votedMap[app.sessionId]?.submittedAt || null}
           />
         ))}
       </div>
@@ -1240,12 +1248,39 @@ function ApplicationStatusSection({ applications, sessionsMap, userId, isAdmin =
       application={latestApp}
       session={sessionsMap[latestApp.sessionId]}
       userId={userId}
-      hasVoted={votedMap[latestApp.sessionId] || false}
+      hasVoted={votedMap[latestApp.sessionId]?.voted || false}
+      submittedAt={votedMap[latestApp.sessionId]?.submittedAt || null}
     />
   );
 }
 
-function ApplicationStatusBlock({ application, session, userId, hasVoted }: StatusBlockProps) {
+function ApplicationStatusBlock({ application, session, userId, hasVoted, submittedAt }: StatusBlockProps) {
+  const [timeLeftMs, setTimeLeftMs] = useState<number>(0);
+
+  useEffect(() => {
+    if (!hasVoted || !submittedAt) return;
+
+    // 투표 제출 후 30분 만료 시각 계산 (30분 * 60초 * 1000밀리초)
+    const limitTime = new Date(submittedAt).getTime() + 30 * 60 * 1000;
+    
+    const updateTimer = () => {
+      const diff = limitTime - Date.now();
+      setTimeLeftMs(diff > 0 ? diff : 0);
+    };
+
+    updateTimer(); // 즉시 틱
+    const interval = setInterval(updateTimer, 1000);
+
+    return () => clearInterval(interval);
+  }, [hasVoted, submittedAt]);
+
+  const formatTimeLeft = (ms: number) => {
+    const totalSecs = Math.floor(ms / 1000);
+    const mins = Math.floor(totalSecs / 60);
+    const secs = totalSecs % 60;
+    return `${mins}분 ${secs}초`;
+  };
+
   const card = (content: React.ReactNode) => (
     <div style={{
       background: '#FFFFFF', borderRadius: '24px',
@@ -1385,18 +1420,78 @@ function ApplicationStatusBlock({ application, session, userId, hasVoted }: Stat
 
           {/* 투표 버튼 영역 */}
           {hasVoted ? (
-            session?.status === 'voting' ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'center', width: '100%' }}>
-                <div style={{ padding: '12px 24px', background: '#F0FDF4', border: '1px solid #C6F6D5', borderRadius: '14px', color: '#15803D', fontWeight: '700', fontSize: '0.85rem', width: '100%' }}>
-                  ✅ 투표를 완료하셨습니다.
+            timeLeftMs > 0 || session?.status === 'voting' ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center', width: '100%' }}>
+                <div style={{ 
+                  padding: '16px 20px', 
+                  background: '#ECFDF5', 
+                  border: '1.5px solid #A7F3D0', 
+                  borderRadius: '18px', 
+                  color: '#065F46', 
+                  fontWeight: '800', 
+                  fontSize: '0.85rem', 
+                  width: '100%',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '6px',
+                  alignItems: 'center',
+                  boxShadow: '0 4px 12px rgba(16,185,129,0.05)'
+                }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.9rem', color: '#047857' }}>
+                    <CheckCircle2 size={16} color="#10B981" /> 투표를 완료하셨습니다!
+                  </span>
+                  {timeLeftMs > 0 && (
+                    <span style={{ color: '#E11D48', fontWeight: '900', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '4px', background: '#FFF1F2', padding: '3px 10px', borderRadius: '100px', border: '1px solid #FFE4E6' }}>
+                      ⏱️ {formatTimeLeft(timeLeftMs)} 내 수정 가능
+                    </span>
+                  )}
                 </div>
-                <Link href={`/vote/${application.sessionId}`} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '14px 36px', borderRadius: '100px', background: 'linear-gradient(135deg, #FF6F61, #FF9A9E)', color: '#fff', fontWeight: '800', fontSize: '0.9rem', textDecoration: 'none', boxShadow: '0 6px 15px rgba(255,111,97,0.2)', width: '100%', transition: 'all 0.2s' }}>
+                <Link 
+                  href={`/vote/${application.sessionId}`} 
+                  style={{ 
+                    display: 'inline-flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    gap: '8px', 
+                    padding: '14px 36px', 
+                    borderRadius: '100px', 
+                    background: 'linear-gradient(135deg, #FF6F61, #FF9A9E)', 
+                    color: '#fff', 
+                    fontWeight: '900', 
+                    fontSize: '0.9rem', 
+                    textDecoration: 'none', 
+                    boxShadow: '0 6px 20px rgba(255,111,97,0.22)', 
+                    width: '100%', 
+                    transition: 'all 0.2s',
+                    textAlign: 'center'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-1.5px)'}
+                  onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+                >
                   📝 제출한 투표 수정하러 가기
                 </Link>
               </div>
             ) : (
-              <div style={{ padding: '16px 24px', background: '#F0FDF4', borderRadius: '14px', color: '#15803D', fontWeight: '700', fontSize: '0.9rem' }}>
-                ✅ 투표를 이미 완료하셨습니다.
+              <div style={{ 
+                padding: '18px 20px', 
+                background: '#F8FAFC', 
+                borderRadius: '18px', 
+                border: '1.5px solid #E2E8F0',
+                color: '#475569', 
+                fontWeight: '800', 
+                fontSize: '0.88rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '6px',
+                alignItems: 'center',
+                width: '100%'
+              }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  ✅ 투표를 최종 완료하셨습니다.
+                </span>
+                <span style={{ fontSize: '0.74rem', color: '#94A3B8', fontWeight: '600' }}>
+                  제출 후 30분 초과로 투표가 마감되었습니다.
+                </span>
               </div>
             )
           ) : canVote ? (
