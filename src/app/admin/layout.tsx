@@ -59,6 +59,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [pendingCount, setPendingCount] = useState(0);
   const notiRef = useRef<HTMLDivElement>(null);
 
+  // 소개팅 진행 실시간 플로팅 미니 타이머용 상태
+  const [runningSession, setRunningSession] = useState<any>(null);
+  const [miniRemainingMs, setMiniRemainingMs] = useState<number>(0);
+  const [miniCurrentBlock, setMiniCurrentBlock] = useState<any>(null);
+  const [miniProgressPct, setMiniProgressPct] = useState<number>(0);
+  const [miniOverallProgressPct, setMiniOverallProgressPct] = useState<number>(0);
+
   const NAV = [
     { label: '대시보드',      icon: LayoutDashboard, path: '/admin' },
     { label: '회원 관리',      icon: Users,           path: '/admin/users' },
@@ -70,6 +77,123 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { label: '콘텐츠 편집',   icon: FileText,        path: '/admin/cms' },
     { label: '시스템 설정',   icon: Settings,        path: '/admin/settings',       superOnly: true },
   ];
+
+  // [소개팅 진행] 글로벌 실시간 동기화 구독
+  useEffect(() => {
+    if (pathname === '/admin/login' || pathname === '/admin/timer') {
+      setRunningSession(null);
+      return;
+    }
+    if (authState !== 'admin' && authState !== 'super_admin') return;
+
+    // timerConfig.status가 'running'인 첫 번째 세션 실시간 스캔
+    const q = query(
+      collection(db, 'sessions'),
+      where('timerConfig.status', '==', 'running'),
+      limit(1)
+    );
+
+    const unsub = onSnapshot(q, (snapshot) => {
+      if (!snapshot.empty) {
+        const docSnap = snapshot.docs[0];
+        setRunningSession({ id: docSnap.id, ...docSnap.data() });
+      } else {
+        setRunningSession(null);
+      }
+    }, (err) => {
+      console.error('Error fetching global running timer session:', err);
+    });
+
+    return () => unsub();
+  }, [pathname, authState]);
+
+  // [소개팅 진행] 초정밀 1초 단위 타이머 역산 연산기
+  useEffect(() => {
+    if (!runningSession || !runningSession.timerConfig) {
+      setMiniRemainingMs(0);
+      setMiniCurrentBlock(null);
+      return;
+    }
+
+    const timerConfig = runningSession.timerConfig;
+    
+    const tick = () => {
+      const startTime = timerConfig.startTime;
+      if (!startTime) return;
+
+      const now = Date.now();
+      const elapsedMs = now - startTime;
+
+      const cakeRoundNum = timerConfig.cakeRound || 4;
+      const talkTimeVal = timerConfig.talkTime || 15;
+      const totalRoundsVal = timerConfig.totalRounds || 7;
+      const customDurations = timerConfig.customDurations || {};
+
+      // 1. 대화 일정표 블록 어레이 계산
+      const list: { type: 'talk' | 'break'; label: string; durationMs: number; roundNum?: number }[] = [];
+
+      for (let r = 1; r <= totalRoundsVal; r++) {
+        // 대화 시간 (커스텀 시간 최우선)
+        const roundTalkMin = customDurations[r] !== undefined ? customDurations[r] : talkTimeVal;
+        const roundTalkMs = roundTalkMin * 60000;
+
+        list.push({
+          type: 'talk',
+          label: `${r}회차 대화 진행 중`,
+          durationMs: roundTalkMs,
+          roundNum: r
+        });
+
+        // 쉬는 시간 블록 (마지막 회차 제외)
+        if (r < totalRoundsVal) {
+          if (r + 1 === cakeRoundNum) {
+            list.push({ type: 'break', label: '교체 및 케이크 5분 휴식', durationMs: 5 * 60000 });
+          } else {
+            list.push({ type: 'break', label: '자리 교체 및 이동 시간', durationMs: 1.5 * 60000 }); // 1분 30초
+          }
+        }
+      }
+
+      // 전체 행사 총 밀리초
+      const totalDurationMs = list.reduce((sum, item) => sum + item.durationMs, 0);
+
+      if (elapsedMs >= totalDurationMs) {
+        // 소개팅 종료 도달
+        setMiniRemainingMs(0);
+        setMiniCurrentBlock({ label: '모든 소개팅 일정 종료됨', type: 'break', durationMs: 0 });
+        return;
+      }
+
+      // 현재 어느 블록에 속하는지 파악
+      let accumMs = 0;
+      let currentBlockObj = null;
+      let remainingInBlockMs = 0;
+
+      for (const block of list) {
+        const blockStart = accumMs;
+        const blockEnd = accumMs + block.durationMs;
+
+        if (elapsedMs >= blockStart && elapsedMs < blockEnd) {
+          currentBlockObj = block;
+          remainingInBlockMs = blockEnd - elapsedMs;
+          break;
+        }
+        accumMs += block.durationMs;
+      }
+
+      if (currentBlockObj) {
+        setMiniRemainingMs(remainingInBlockMs);
+        setMiniCurrentBlock(currentBlockObj);
+        setMiniProgressPct(((currentBlockObj.durationMs - remainingInBlockMs) / currentBlockObj.durationMs) * 100);
+        setMiniOverallProgressPct((elapsedMs / totalDurationMs) * 100);
+      }
+    };
+
+    tick();
+    const interval = setInterval(tick, 1000);
+
+    return () => clearInterval(interval);
+  }, [runningSession]);
 
   // 1. 신청 관리 뱃지 리얼타임 연동 (applied OR selected)
   useEffect(() => {
@@ -570,6 +694,84 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <main className="flex-1 overflow-auto p-4 sm:p-6 md:p-8 lg:p-10">
           {children}
         </main>
+
+        {/* 소개팅 진행 실시간 플로팅 미니 타이머 (경로가 timer가 아니고, 액티브 세션이 돌고 있을 때만 노출) */}
+        {runningSession && miniCurrentBlock && pathname !== '/admin/timer' && (
+          <div 
+            onClick={() => router.push('/admin/timer')}
+            className={`fixed bottom-24 right-6 z-[9999] group flex flex-col items-stretch bg-slate-950/95 text-white rounded-2xl border backdrop-blur-lg shadow-2xl transition-all duration-300 hover:scale-[1.02] cursor-pointer max-w-[280px] select-none ${
+              miniRemainingMs < 60000 && miniCurrentBlock.durationMs > 0
+                ? 'border-rose-500 shadow-rose-500/20 text-rose-200 animate-pulse'
+                : 'border-slate-800 shadow-black/40'
+            }`}
+          >
+            {/* 기본 콤팩트 바 */}
+            <div className="flex items-center gap-3 px-4 py-3 min-w-[230px]">
+              <div className={`p-1.5 rounded-lg ${
+                miniRemainingMs < 60000 && miniCurrentBlock.durationMs > 0
+                  ? 'bg-rose-500/20 text-rose-400'
+                  : 'bg-emerald-500/20 text-emerald-400'
+              }`}>
+                <Timer size={18} className={miniRemainingMs < 60000 && miniCurrentBlock.durationMs > 0 ? 'animate-bounce' : ''} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-black text-slate-400 tracking-wider truncate uppercase">
+                  {miniCurrentBlock.type === 'break' ? '교체 및 휴식 시간' : `${miniCurrentBlock.roundNum}회차 대화 진행 중`}
+                </p>
+                <p className="text-xs font-black text-white truncate mt-0.5">
+                  {miniCurrentBlock.label}
+                </p>
+              </div>
+              <div className="font-mono text-base font-black tracking-tight text-white pl-2 border-l border-slate-800/80">
+                {(() => {
+                  const m = Math.floor(miniRemainingMs / 60000);
+                  const s = Math.floor((miniRemainingMs % 60000) / 1000);
+                  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+                })()}
+              </div>
+            </div>
+
+            {/* 마우스 호버 시 확장되는 세부 매치 트래커 보드 */}
+            <div className="max-h-0 overflow-hidden group-hover:max-h-[180px] transition-all duration-300 ease-in-out border-t border-transparent group-hover:border-slate-850 px-4 group-hover:pb-4 group-hover:pt-3">
+              <div className="space-y-3">
+                {/* 1. 현재 라운드 진행바 */}
+                <div>
+                  <div className="flex justify-between items-center text-[9px] font-bold text-slate-400 mb-1">
+                    <span>현재 라운드</span>
+                    <span>{Math.floor(miniProgressPct)}%</span>
+                  </div>
+                  <div className="w-full h-1.5 bg-slate-900 rounded-full overflow-hidden border border-slate-800/50">
+                    <div 
+                      className={`h-full transition-all duration-1000 ${miniCurrentBlock.type === 'break' ? 'bg-purple-500' : 'bg-[#FF6F61]'}`} 
+                      style={{ width: `${miniProgressPct}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* 2. 전체 매칭 진행바 */}
+                <div>
+                  <div className="flex justify-between items-center text-[9px] font-bold text-slate-400 mb-1">
+                    <span>📍 전체 매칭 진행률</span>
+                    <span>{Math.floor(miniOverallProgressPct)}%</span>
+                  </div>
+                  <div className="w-full h-1.5 bg-slate-900 rounded-full overflow-hidden border border-slate-800/50">
+                    <div 
+                      className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-1000" 
+                      style={{ width: `${miniOverallProgressPct}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* 바로가기 액션 안내 */}
+                <div className="pt-2 text-center border-t border-slate-900/50">
+                  <span className="text-[10px] font-black text-rose-400 group-hover:underline">
+                    클릭하여 소개팅 진행 배치표로 이동 ➔
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Admin version badge (Pill style) */}
         <div style={{
