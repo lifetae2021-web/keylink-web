@@ -176,12 +176,26 @@ export default function AdminDashboard() {
           const s = doc.data();
           const eventDate = toDate(s.eventDate);
           if (!eventDate) return;
-          const fee = Number(s.price || 0);
-          const cnt = allApps.filter(
+
+          // 해당 기수의 확정된 신청자 목록 필터링
+          const confirmedApps = allApps.filter(
             (a: any) => a.sessionId === doc.id && (a.status === 'confirmed' || a.paymentConfirmed === true)
-          ).length;
-          if (eventDate >= monthStart) monthlyRevenue += fee * cnt;
-          else if (eventDate >= prevMonthStart) prevMonthlyRevenue += fee * cnt;
+          );
+
+          // v10.2.0: 성별 단가 차등, 개별 옵션 및 customized amountPaid 연동하여 정밀 합산
+          const sessionRevenue = confirmedApps.reduce((sum, app: any) => {
+            if (app.amountPaid) return sum + Number(app.amountPaid);
+            const malePrice = app.maleOption === 'safe' ? 60000 : (s.malePrice || 49000);
+            const femalePrice = app.femaleOption === 'group' ? 24000 : (s.femalePrice || 29000);
+            const price = app.gender === 'male' ? malePrice : femalePrice;
+            return sum + price;
+          }, 0);
+
+          if (eventDate >= monthStart) {
+            monthlyRevenue += sessionRevenue;
+          } else if (eventDate >= prevMonthStart) {
+            prevMonthlyRevenue += sessionRevenue;
+          }
         });
 
         const upcoming = sessionsSnap.docs
