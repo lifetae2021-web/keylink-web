@@ -131,6 +131,7 @@ export default function EventsPage() {
   const [proxyVoteTarget, setProxyVoteTarget] = useState<Application | null>(null);
   const [proxyVoteLoading, setProxyVoteLoading] = useState(false);
   const [proxyVoteChoices, setProxyVoteChoices] = useState({ priority1: '', priority2: '', priority3: '' });
+  const [proxyNextEvent, setProxyNextEvent] = useState(false); // 다음 새로운 인연 옵션
   const [existingProxyVote, setExistingProxyVote] = useState<any | null>(null);
   const [proxyVoteCheckLoading, setProxyVoteCheckLoading] = useState(false);
 
@@ -1039,6 +1040,12 @@ ${user.name || app.name || "참가자"}님은 ${fDate} ${fDay} ${fTime} 소개�
       if (proxyVoteChoices.priority2) choices.push({ priority: 2, targetUserId: proxyVoteChoices.priority2, targetUserName: findName(proxyVoteChoices.priority2) });
       if (proxyVoteChoices.priority3) choices.push({ priority: 3, targetUserId: proxyVoteChoices.priority3, targetUserName: findName(proxyVoteChoices.priority3) });
 
+      if (choices.length === 0 && !proxyNextEvent) {
+        toast.error('호감 상대를 선택하거나 "다음 새로운 인연" 옵션을 선택해 주세요.');
+        setProxyVoteLoading(false);
+        return;
+      }
+
       const voteId = `${selectedId}_${proxyVoteTarget.userId}`;
       await setDoc(doc(db, 'votes', voteId), {
         userId: proxyVoteTarget.userId,
@@ -1054,6 +1061,8 @@ ${user.name || app.name || "참가자"}님은 ${fDate} ${fDay} ${fTime} 소개�
       });
       toast.success(`[${proxyVoteTarget.name}] 대리 투표가 저장되었습니다.`);
       setProxyVoteModalOpen(false);
+      setProxyNextEvent(false);
+      setProxyVoteChoices({ priority1: '', priority2: '', priority3: '' });
     } catch (e: any) {
       console.error(e);
       toast.error('저장 중 오류가 발생했습니다.');
@@ -3979,9 +3988,37 @@ ${chatLink}
                       })}
                     </div>
 
+                    {/* 다음 새로운 인연 옵션 */}
+                    <div
+                      onClick={() => {
+                        setProxyNextEvent(prev => !prev);
+                        if (!proxyNextEvent) {
+                          // 선택 시 기존 후보 선택 초기화
+                          setProxyVoteChoices({ priority1: '', priority2: '', priority3: '' });
+                        }
+                      }}
+                      className={`flex items-center gap-3 p-4 rounded-2xl border-2 cursor-pointer transition-all ${
+                        proxyNextEvent
+                          ? 'border-indigo-500 bg-indigo-50/50 shadow-sm'
+                          : 'border-slate-100 bg-slate-50 hover:border-slate-200'
+                      }`}
+                    >
+                      <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${
+                        proxyNextEvent ? 'bg-indigo-500' : 'bg-white border-2 border-slate-200'
+                      }`}>
+                        <Heart size={14} fill={proxyNextEvent ? 'white' : 'none'} className={proxyNextEvent ? 'text-white' : 'text-slate-300'} />
+                      </div>
+                      <p className={`flex-1 text-left font-black text-sm ${
+                        proxyNextEvent ? 'text-indigo-600' : 'text-slate-500'
+                      }`}>
+                        다음 새로운 인연을 기대할게요 ❤️
+                      </p>
+                      {proxyNextEvent && <CheckCircle2 size={20} className="text-indigo-500 shrink-0" />}
+                    </div>
+
                     <div className="flex gap-3 pt-2">
                       <button
-                        onClick={() => setProxyVoteModalOpen(false)}
+                        onClick={() => { setProxyVoteModalOpen(false); setProxyNextEvent(false); setProxyVoteChoices({ priority1: '', priority2: '', priority3: '' }); }}
                         className="flex-1 h-12 rounded-xl font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 transition-all"
                       >
                         취소
