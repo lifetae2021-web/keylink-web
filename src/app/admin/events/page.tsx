@@ -111,6 +111,9 @@ export default function EventsPage() {
   const [memoModalOpen, setMemoModalOpen] = useState(false);
   const [memoTargetApp, setMemoTargetApp] = useState<Application | null>(null);
   const [memoContent, setMemoContent] = useState("");
+
+  // 호수 이동 드롭다운 상태
+  const [slotMoveOpenId, setSlotMoveOpenId] = useState<string | null>(null);
   const [isMemoSaving, setIsMemoSaving] = useState(false);
 
   // Review Modal State
@@ -338,6 +341,14 @@ export default function EventsPage() {
   useEffect(() => {
     selectedIdRef.current = selectedId;
   }, [selectedId]);
+
+  // 호수 이동 드롭다운 외부 클릭 시 닫기
+  useEffect(() => {
+    if (!slotMoveOpenId) return;
+    const handler = () => setSlotMoveOpenId(null);
+    document.addEventListener('click', handler, { capture: true });
+    return () => document.removeEventListener('click', handler, { capture: true });
+  }, [slotMoveOpenId]);
 
   useEffect(() => {
     if (!selectedId) return;
@@ -877,6 +888,23 @@ ${user.name || app.name || "참가자"}님은 ${fDate} ${fDay} ${fTime} 소개�
     } catch (e) {
       console.error('Error toggling refund deposit:', e);
       toast.error('처리 중 오류가 발생했습니다.');
+    }
+  };
+
+  // v12.1.0: 호수 이동 핸들러
+  const handleMoveSlot = async (app: Application, newSlot: number) => {
+    setSlotMoveOpenId(null);
+    if (app.slotNumber === newSlot) return;
+    try {
+      const { doc: docRef, updateDoc } = await import('firebase/firestore');
+      await updateDoc(docRef(db, 'applications', app.id), {
+        slotNumber: newSlot,
+        updatedAt: new Date(),
+      });
+      toast.success(`${app.name}님을 ${newSlot}호로 이동했습니다.`);
+    } catch (e) {
+      console.error('Error moving slot:', e);
+      toast.error('호수 이동 중 오류가 발생했습니다.');
     }
   };
 
@@ -2062,15 +2090,40 @@ ${chatLink}
                                             {/* Row 1: 슬롯+이름+뱃지 (왼쪽) | 출석/지각/노쇼/💸환불 칩 (오른쪽 끝) */}
                                             <div className="flex items-center justify-between gap-2">
                                               <div className="flex items-center gap-2 min-w-0">
-                                                <div className="flex flex-col items-center w-8 shrink-0">
-                                                  <span className={`text-xs font-black ${isMaleSection ? "text-blue-500" : "text-pink-500"}`}>
+                                                <div className="relative flex flex-col items-center w-8 shrink-0">
+                                                  <button
+                                                    onClick={() => setSlotMoveOpenId(slotMoveOpenId === app.id ? null : app.id)}
+                                                    title="호수 변경"
+                                                    className={`text-xs font-black leading-none px-1 py-0.5 rounded hover:bg-slate-100 transition-colors ${isMaleSection ? "text-blue-500" : "text-pink-500"}`}
+                                                  >
                                                     {slotNum}호
-                                                  </span>
+                                                  </button>
                                                   {getDrinkCode(app.drink) && (
                                                     <span className="text-[0.6rem] font-black text-blue-600 leading-none mt-0.5">
                                                       {getDrinkCode(app.drink)}
                                                     </span>
                                                   )}
+                                                  {/* 빈 슬롯 선택 드롭다운 */}
+                                                  {slotMoveOpenId === app.id && (() => {
+                                                    const maxSlots = isMaleSection ? (active?.maxMale ?? 0) : (active?.maxFemale ?? 0);
+                                                    const usedSlots = new Set(genderList.map((a: Application) => a.slotNumber).filter(Boolean));
+                                                    const emptySlots = Array.from({ length: maxSlots }, (_, i) => i + 1).filter(s => !usedSlots.has(s));
+                                                    if (emptySlots.length === 0) return <div className="absolute top-7 left-0 z-50 bg-white border border-slate-200 rounded-xl shadow-xl px-3 py-2 text-[0.65rem] text-slate-400 whitespace-nowrap">빈 자리 없음</div>;
+                                                    return (
+                                                      <div className="absolute top-7 left-0 z-50 bg-white border border-slate-200 rounded-xl shadow-xl py-1 min-w-[72px]">
+                                                        <p className="text-[0.6rem] text-slate-400 font-bold px-3 pt-1 pb-0.5">이동할 호수</p>
+                                                        {emptySlots.map(s => (
+                                                          <button
+                                                            key={s}
+                                                            onClick={() => handleMoveSlot(app, s)}
+                                                            className={`w-full text-left px-3 py-1 text-xs font-bold hover:bg-slate-50 transition-colors ${isMaleSection ? "text-blue-600" : "text-pink-600"}`}
+                                                          >
+                                                            {s}호
+                                                          </button>
+                                                        ))}
+                                                      </div>
+                                                    );
+                                                  })()}
                                                 </div>
                                                 <div className="flex items-center gap-1.5 flex-nowrap min-w-0 overflow-hidden">
                                                   <span
