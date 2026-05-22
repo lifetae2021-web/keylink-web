@@ -9,9 +9,7 @@ let serviceAccountKey = '';
 
 envContent.split('\n').forEach(line => {
   if (line.startsWith('FIREBASE_SERVICE_ACCOUNT_KEY=')) {
-    // Extract everything after the '='
     serviceAccountKey = line.substring('FIREBASE_SERVICE_ACCOUNT_KEY='.length).trim();
-    // Strip wrapping quotes (single or double)
     if ((serviceAccountKey.startsWith('"') && serviceAccountKey.endsWith('"')) ||
         (serviceAccountKey.startsWith("'") && serviceAccountKey.endsWith("'"))) {
       serviceAccountKey = serviceAccountKey.substring(1, serviceAccountKey.length - 1);
@@ -25,34 +23,28 @@ if (!serviceAccountKey) {
 }
 
 try {
-  // Parse and initialize firebase-admin
   const serviceAccount = JSON.parse(serviceAccountKey);
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount)
   });
-  console.log('Firebase Admin initialized successfully.');
 } catch (e) {
   console.error('Failed to parse service account key:', e.message);
   process.exit(1);
 }
 
-const db = admin.firestore();
-
-async function checkGitakUser() {
-  const userId = 'kakao_4905061872';
-
-  console.log(`Searching for user document with ID = ${userId}...`);
-  const doc = await db.collection('users').doc(userId).get();
-
-  if (!doc.exists) {
-    console.log('No user document found for 이기탁.');
-  } else {
-    console.log('User Document Data:');
-    console.log(JSON.stringify(doc.data(), null, 2));
-  }
+async function updatePassword() {
+  const uid = 'h11A3XYVkEPO4R25ufFK7jMtBsB2';
+  const tempPassword = 'key1234!';
+  console.log(`Updating password for UID: ${uid} to '${tempPassword}'...`);
+  
+  await admin.auth().updateUser(uid, {
+    password: tempPassword
+  });
+  
+  console.log('Password successfully updated!');
 }
 
-checkGitakUser().catch(err => {
+updatePassword().catch(err => {
   console.error(err);
   process.exit(1);
 });

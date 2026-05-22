@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { auth, db, storage } from '@/lib/firebase';
 import { compressImage } from '@/lib/utils';
-import { onAuthStateChanged, User } from 'firebase/auth';
+import { onAuthStateChanged, User, updatePassword } from 'firebase/auth';
 import { 
   doc, getDoc, updateDoc, serverTimestamp, deleteField, 
   collection, query, where, getDocs, arrayUnion
@@ -102,6 +102,50 @@ function MyPageContent() {
   
   const photoInputRef = useRef<HTMLInputElement>(null);
   const mainPhotoInputRef = useRef<HTMLInputElement>(null);
+
+  // 비밀번호 변경 기능 관련 상태값
+  const [passwordFormOpen, setPasswordFormOpen] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [newPasswordConfirm, setNewPasswordConfirm] = useState('');
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!auth.currentUser) {
+      toast.error('로그인 상태가 아닙니다.');
+      return;
+    }
+    if (!newPassword) {
+      toast.error('새 비밀번호를 입력해 주세요.');
+      return;
+    }
+    if (newPassword.length < 6) {
+      toast.error('비밀번호는 최소 6자리 이상이어야 합니다.');
+      return;
+    }
+    if (newPassword !== newPasswordConfirm) {
+      toast.error('비밀번호 확인이 일치하지 않습니다.');
+      return;
+    }
+
+    setIsChangingPassword(true);
+    try {
+      await updatePassword(auth.currentUser, newPassword);
+      toast.success('비밀번호가 성공적으로 변경되었습니다!');
+      setNewPassword('');
+      setNewPasswordConfirm('');
+      setPasswordFormOpen(false);
+    } catch (err: any) {
+      console.error('Password change failed:', err);
+      if (err.code === 'auth/requires-recent-login') {
+        toast.error('보안을 위해 로그아웃 후 다시 로그인하여 비밀번호를 변경해 주세요.');
+      } else {
+        toast.error(err.message || '비밀번호 변경에 실패했습니다. 다시 시도해 주세요.');
+      }
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
 
   // [Draft] Load from localStorage if exists
   useEffect(() => {
@@ -964,6 +1008,116 @@ function MyPageContent() {
           userId={user?.uid || ''}
           isAdmin={isAdmin}
         />
+
+        {/* ─── v12.2.0: 비밀번호 변경 기능 (이메일 로그인 회원 전용) ─── */}
+        {userData?.provider === 'email' && (
+          <div style={{
+            background: '#FFFFFF',
+            borderRadius: '24px',
+            boxShadow: '0 10px 40px rgba(255,111,97,0.06)',
+            border: '1px solid #FFE8E5',
+            marginBottom: '16px',
+            overflow: 'hidden',
+            transition: 'all 0.3s ease'
+          }}>
+            <button
+              onClick={() => setPasswordFormOpen(!passwordFormOpen)}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '20px 24px',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                textAlign: 'left'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: '#FFF5F4', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Lock size={18} color="#FF6F61" />
+                </div>
+                <div>
+                  <p style={{ fontSize: '0.95rem', fontWeight: '800', color: 'var(--color-text-primary)', marginBottom: '2px' }}>비밀번호 변경</p>
+                  <p style={{ fontSize: '0.75rem', color: '#9CA3AF', fontWeight: '500' }}>안전하게 내 비밀번호 수정하기</p>
+                </div>
+              </div>
+              {passwordFormOpen ? <ChevronUp size={18} color="#9CA3AF" /> : <ChevronDown size={18} color="#9CA3AF" />}
+            </button>
+
+            {passwordFormOpen && (
+              <form onSubmit={handlePasswordChange} style={{ padding: '0 24px 24px 24px', display: 'flex', flexDirection: 'column', gap: '14px', borderTop: '1px solid #FFF0EE', paddingTop: '20px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.78rem', color: '#FF6F61', fontWeight: '800', marginBottom: '6px' }}>새 비밀번호</label>
+                  <input
+                    type="password"
+                    placeholder="새 비밀번호 (6자리 이상)"
+                    value={newPassword}
+                    onChange={e => setNewPassword(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      borderRadius: '12px',
+                      border: '1.5px solid #FFE8E5',
+                      fontSize: '0.88rem',
+                      fontWeight: '600',
+                      outline: 'none',
+                      transition: 'border-color 0.2s',
+                    }}
+                    onFocus={e => e.target.style.borderColor = '#FF6F61'}
+                    onBlur={e => e.target.style.borderColor = '#FFE8E5'}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.78rem', color: '#FF6F61', fontWeight: '800', marginBottom: '6px' }}>새 비밀번호 확인</label>
+                  <input
+                    type="password"
+                    placeholder="새 비밀번호 다시 입력"
+                    value={newPasswordConfirm}
+                    onChange={e => setNewPasswordConfirm(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      borderRadius: '12px',
+                      border: '1.5px solid #FFE8E5',
+                      fontSize: '0.88rem',
+                      fontWeight: '600',
+                      outline: 'none',
+                      transition: 'border-color 0.2s',
+                    }}
+                    onFocus={e => e.target.style.borderColor = '#FF6F61'}
+                    onBlur={e => e.target.style.borderColor = '#FFE8E5'}
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isChangingPassword}
+                  style={{
+                    width: '100%',
+                    padding: '14px',
+                    borderRadius: '100px',
+                    border: 'none',
+                    background: 'linear-gradient(135deg, #FF8E8E, #FF6F61)',
+                    color: '#fff',
+                    fontWeight: '800',
+                    fontSize: '0.9rem',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 15px rgba(255, 111, 97, 0.2)',
+                    transition: 'transform 0.2s',
+                    marginTop: '8px'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.02)'}
+                  onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                >
+                  {isChangingPassword ? '변경하는 중...' : '비밀번호 변경 완료'}
+                </button>
+              </form>
+            )}
+          </div>
+        )}
 
         {/* ─── LOGOUT ─── */}
         <button onClick={async () => { await auth.signOut(); router.push('/'); }}
