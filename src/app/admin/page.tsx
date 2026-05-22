@@ -100,13 +100,21 @@ export default function AdminDashboard() {
       try {
         setIsLoading(true);
 
-        // 1. 전체 회원 + 성별 + 이번 달 신규
+        // 1. 전체 회원 + 성별 + 이번 달 신규 (더미회원 제외)
         const usersSnap = await getDocs(collection(db, 'users'));
+        const dummyUserIds = new Set<string>();
         let maleCount = 0, femaleCount = 0, monthlyNewUsers = 0, prevMonthlyNewUsers = 0;
         const thisMonthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
         const userPrevMonthStart = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1);
+        
         usersSnap.forEach(doc => {
           const data = doc.data();
+          const isDummy = data.isDummy === true || doc.id.startsWith('dummy') || doc.id.startsWith('user_m_') || doc.id.startsWith('user_f_');
+          if (isDummy) {
+            dummyUserIds.add(doc.id);
+            return;
+          }
+
           const g = data.gender;
           if (g === 'male') maleCount++;
           else if (g === 'female') femaleCount++;
@@ -174,12 +182,16 @@ export default function AdminDashboard() {
         let monthlyRevenue = 0, prevMonthlyRevenue = 0;
         sessionsSnap.docs.forEach(doc => {
           const s = doc.data();
+          if (s.isTest) return; // 테스트용 기수 매출 집계에서 원천 배제
+
           const eventDate = toDate(s.eventDate);
           if (!eventDate) return;
 
-          // 해당 기수의 확정된 신청자 목록 필터링
+          // 해당 기수의 확정된 신청자 목록 필터링 (더미 회원 제외)
           const confirmedApps = allApps.filter(
-            (a: any) => a.sessionId === doc.id && (a.status === 'confirmed' || a.paymentConfirmed === true)
+            (a: any) => a.sessionId === doc.id && 
+              (a.status === 'confirmed' || a.paymentConfirmed === true) &&
+              !(a.userId?.startsWith('dummy') || a.userId?.startsWith('user_m_') || a.userId?.startsWith('user_f_') || a.id?.startsWith('dummy') || a.isDummy === true || dummyUserIds.has(a.userId))
           );
 
           // v10.2.0: 성별 단가 차등, 개별 옵션 및 customized amountPaid 연동하여 정밀 합산

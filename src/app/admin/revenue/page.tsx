@@ -207,6 +207,8 @@ export default function RevenueStatsPage() {
     return () => unsubAuth();
   }, [router]);
 
+  const [dummyUserIds, setDummyUserIds] = useState<Set<string>>(new Set());
+
   // 상세 모달 상태
   const [modalConfig, setModalConfig] = useState<{
     open: boolean;
@@ -231,20 +233,49 @@ export default function RevenueStatsPage() {
         ...doc.data(),
         updatedAt: doc.data().updatedAt?.toDate() || new Date()
       })));
+    });
+
+    const unsubUsers = onSnapshot(collection(db, 'users'), (snap) => {
+      const dummies = new Set<string>();
+      snap.docs.forEach(doc => {
+        const u = doc.data();
+        const isDummy = u.isDummy === true || doc.id?.startsWith('dummy') || doc.id?.startsWith('user_m_') || doc.id?.startsWith('user_f_');
+        if (isDummy) {
+          dummies.add(doc.id);
+        }
+      });
+      setDummyUserIds(dummies);
       setIsLoading(false);
     });
 
-    return () => { unsubSessions(); unsubApps(); };
+    return () => { unsubSessions(); unsubApps(); unsubUsers(); };
   }, []);
 
   const stats = useMemo(() => {
     if (isLoading) return null;
 
-    const sessionMap: Record<string, any> = {};
-    sessions.forEach(s => { sessionMap[s.id] = s; });
+    // 1. 테스트 기수 제외
+    const activeNonTestSessions = sessions.filter(s => !s.isTest);
+    const activeSessionIds = new Set(activeNonTestSessions.map(s => s.id));
 
-    const eventRevenues = sessions.map(session => {
-      const confirmedApps = applications.filter(app =>
+    // 2. 더미 회원 및 기재되지 않은(삭제된) 기수 결제 내역 제외
+    const realApps = applications.filter(app => {
+      if (!activeSessionIds.has(app.sessionId)) return false;
+      const isDummy =
+        app.isDummy === true ||
+        app.id?.startsWith('dummy') ||
+        app.userId?.startsWith('dummy') ||
+        app.userId?.startsWith('user_m_') ||
+        app.userId?.startsWith('user_f_') ||
+        dummyUserIds.has(app.userId);
+      return !isDummy;
+    });
+
+    const sessionMap: Record<string, any> = {};
+    activeNonTestSessions.forEach(s => { sessionMap[s.id] = s; });
+
+    const eventRevenues = activeNonTestSessions.map(session => {
+      const confirmedApps = realApps.filter(app =>
         app.sessionId === session.id &&
         (app.status === 'confirmed' || app.paymentConfirmed === true)
       );
@@ -303,8 +334,8 @@ export default function RevenueStatsPage() {
       chartData.push({ name: format(monthDate, 'MMM', { locale: ko }), revenue: monthRev });
     }
 
-    return { totalRevenue, thisMonthRevenue, growth, eventRevenues, chartData };
-  }, [sessions, applications, isLoading]);
+    return { totalRevenue, thisMonthRevenue, growth, eventRevenues, chartData, realApps, activeNonTestSessions };
+  }, [sessions, applications, isLoading, dummyUserIds]);
 
   if (isSuperAdmin === null || isLoading) {
     return (
@@ -503,12 +534,12 @@ export default function RevenueStatsPage() {
       </div>
 
       {/* 상세 모달 */}
-      {modalConfig.open && (
+      {modalConfig.open && stats && (
         <DetailModal
           title={modalConfig.title}
           filterMonth={modalConfig.filterMonth}
-          applications={applications}
-          sessions={sessions}
+          applications={stats.realApps}
+          sessions={stats.activeNonTestSessions}
           onClose={() => setModalConfig(prev => ({ ...prev, open: false }))}
         />
       )}
