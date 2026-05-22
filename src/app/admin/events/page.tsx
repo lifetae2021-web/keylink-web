@@ -2057,11 +2057,11 @@ ${chatLink}
                                         return (
                                           <div
                                             key={app.id}
-                                            className={`flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 px-5 py-3 sm:py-4 transition-all duration-200 border-b border-slate-100/60 ${isOverQuota ? "bg-red-50/50 animate-pulse" : app.attendanceStatus === 'present' ? "bg-emerald-50/15 hover:bg-emerald-50/30 border-l-4 border-l-emerald-500 shadow-sm shadow-emerald-100/50" : app.attendanceStatus === 'late' ? "bg-amber-50/15 hover:bg-amber-50/30 border-l-4 border-l-amber-500 shadow-sm shadow-amber-100/50" : app.attendanceStatus === 'no-show' ? "bg-rose-50/15 hover:bg-rose-50/30 border-l-4 border-l-rose-500 shadow-sm shadow-rose-100/50" : (userMap[app.userId]?.noShowCount > 0 ? "bg-rose-50/30 hover:bg-rose-50/50 border-l-4 border-l-rose-300" : "bg-white hover:bg-slate-50/80 border-l-4 border-l-transparent")}`}
+                                            className={`flex flex-col gap-1 px-5 py-3 transition-all duration-200 border-b border-slate-100/60 ${isOverQuota ? "bg-red-50/50 animate-pulse" : app.attendanceStatus === 'present' ? "bg-emerald-50/15 hover:bg-emerald-50/30 border-l-4 border-l-emerald-500 shadow-sm shadow-emerald-100/50" : app.attendanceStatus === 'late' ? "bg-amber-50/15 hover:bg-amber-50/30 border-l-4 border-l-amber-500 shadow-sm shadow-amber-100/50" : app.attendanceStatus === 'no-show' ? "bg-rose-50/15 hover:bg-rose-50/30 border-l-4 border-l-rose-500 shadow-sm shadow-rose-100/50" : (userMap[app.userId]?.noShowCount > 0 ? "bg-rose-50/30 hover:bg-rose-50/50 border-l-4 border-l-rose-300" : "bg-white hover:bg-slate-50/80 border-l-4 border-l-transparent")}`}
                                           >
-                                            {/* Left: Slot & Status */}
-                                            <div className="flex items-center justify-between sm:justify-start gap-3">
-                                              <div className="flex items-center gap-2">
+                                            {/* Row 1: 슬롯+이름+뱃지 (왼쪽) | 출석/지각/노쇼/💸환불 칩 (오른쪽 끝) */}
+                                            <div className="flex items-center justify-between gap-2">
+                                              <div className="flex items-center gap-2 min-w-0">
                                                 <div className="flex flex-col items-center w-8 shrink-0">
                                                   <span className={`text-xs font-black ${isMaleSection ? "text-blue-500" : "text-pink-500"}`}>
                                                     {slotNum}호
@@ -2072,7 +2072,7 @@ ${chatLink}
                                                     </span>
                                                   )}
                                                 </div>
-                                                <div className="flex items-center gap-1.5 sm:hidden flex-nowrap overflow-hidden">
+                                                <div className="flex items-center gap-1.5 flex-nowrap min-w-0 overflow-hidden">
                                                   <span
                                                     onClick={() => {
                                                       const user = userMap[app.userId] || { id: app.userId, name: app.name, phone: app.phone, gender: app.gender };
@@ -2083,8 +2083,12 @@ ${chatLink}
                                                   >
                                                     {app.name || "-"}
                                                   </span>
+                                                  {(app.userId?.startsWith("user_m_") || app.userId?.startsWith("user_f_") || app.id?.startsWith("dummy_")) && (
+                                                    <span className="text-[0.6rem] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 border border-slate-200 shrink-0">더미</span>
+                                                  )}
                                                   <span className={`text-[0.65rem] font-bold px-2 py-0.5 rounded-full whitespace-nowrap shrink-0 ${badge.cls}`}>
                                                     {badge.label}
+                                                  </span>
                                                   {(() => {
                                                     const u = userMap[app.userId];
                                                     const ns = u?.noShowCount || 0;
@@ -2092,214 +2096,110 @@ ${chatLink}
                                                     if (ns === 0 && td === 0) return null;
                                                     return (
                                                       <>
-                                                        {ns > 0 && (
-                                                          <span className="text-[0.58rem] font-black px-1 py-0.5 rounded bg-rose-100 text-rose-600 border border-rose-200 shrink-0 whitespace-nowrap">
-                                                            🚨{ns}
-                                                          </span>
-                                                        )}
-                                                        {td > 0 && (
-                                                          <span className="text-[0.58rem] font-black px-1 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-200 shrink-0 whitespace-nowrap">
-                                                            ⏳{td}
-                                                          </span>
-                                                        )}
+                                                        {ns > 0 && <span className="text-[0.58rem] font-black px-1 py-0.5 rounded bg-rose-100 text-rose-600 border border-rose-200 shrink-0 whitespace-nowrap">🚨{ns}</span>}
+                                                        {td > 0 && <span className="text-[0.58rem] font-black px-1 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-200 shrink-0 whitespace-nowrap">⏳{td}</span>}
                                                       </>
                                                     );
                                                   })()}
-                                                  </span>
                                                 </div>
                                               </div>
-                                              {/* 모바일 액션: 이름 옆 우측 영역에는 출석/지각/노쇼/환불 칩 버튼 배치 */}
-                                              <div className="flex items-center sm:hidden shrink-0">
-                                                <div className="flex items-center gap-0.5 bg-slate-50 px-1 py-0.5 rounded-xl border border-slate-200/60">
-                                                  <button
-                                                    onClick={() => handleSetAttendanceStatus(app, app.attendanceStatus === 'present' ? 'none' : 'present')}
-                                                    className={`px-2 py-0.5 rounded-lg text-[0.6rem] font-bold transition-all ${app.attendanceStatus === 'present' ? "bg-emerald-500 text-white shadow-sm" : "text-slate-400 hover:text-slate-600 hover:bg-white"}`}
-                                                  >출석</button>
-                                                  <button
-                                                    onClick={() => handleSetAttendanceStatus(app, app.attendanceStatus === 'late' ? 'none' : 'late')}
-                                                    className={`px-2 py-0.5 rounded-lg text-[0.6rem] font-bold transition-all ${app.attendanceStatus === 'late' ? "bg-amber-500 text-white shadow-sm" : "text-slate-400 hover:text-slate-600 hover:bg-white"}`}
-                                                  >지각</button>
-                                                  <button
-                                                    onClick={() => handleSetAttendanceStatus(app, app.attendanceStatus === 'no-show' ? 'none' : 'no-show')}
-                                                    className={`px-2 py-0.5 rounded-lg text-[0.6rem] font-bold transition-all ${app.attendanceStatus === 'no-show' ? "bg-rose-500 text-white shadow-sm" : "text-slate-400 hover:text-slate-600 hover:bg-white"}`}
-                                                  >노쇼</button>
-                                                  <button
-                                                    onClick={() => handleToggleRefundDeposit(app)}
-                                                    className={`px-2 py-0.5 rounded-lg text-[0.6rem] font-bold transition-all ${app.isRefundDeposit ? "bg-sky-500 text-white shadow-sm" : "text-slate-400 hover:text-slate-600 hover:bg-white"}`}
-                                                  >💸</button>
-                                                </div>
+                                              {/* 출석/지각/노쇼/💸환불 칩 — 오른쪽 끝 (PC·모바일 공통) */}
+                                              <div className="flex items-center gap-0.5 bg-slate-50 px-1 py-0.5 rounded-xl border border-slate-200/60 shrink-0">
+                                                <button
+                                                  onClick={() => handleSetAttendanceStatus(app, app.attendanceStatus === 'present' ? 'none' : 'present')}
+                                                  className={`px-2 py-0.5 rounded-lg text-[0.6rem] font-bold transition-all ${app.attendanceStatus === 'present' ? "bg-emerald-500 text-white shadow-sm" : "text-slate-400 hover:text-slate-600 hover:bg-white"}`}
+                                                >출석</button>
+                                                <button
+                                                  onClick={() => handleSetAttendanceStatus(app, app.attendanceStatus === 'late' ? 'none' : 'late')}
+                                                  className={`px-2 py-0.5 rounded-lg text-[0.6rem] font-bold transition-all ${app.attendanceStatus === 'late' ? "bg-amber-500 text-white shadow-sm" : "text-slate-400 hover:text-slate-600 hover:bg-white"}`}
+                                                >지각</button>
+                                                <button
+                                                  onClick={() => handleSetAttendanceStatus(app, app.attendanceStatus === 'no-show' ? 'none' : 'no-show')}
+                                                  className={`px-2 py-0.5 rounded-lg text-[0.6rem] font-bold transition-all ${app.attendanceStatus === 'no-show' ? "bg-rose-500 text-white shadow-sm" : "text-slate-400 hover:text-slate-600 hover:bg-white"}`}
+                                                >노쇼</button>
+                                                <button
+                                                  onClick={() => handleToggleRefundDeposit(app)}
+                                                  title={app.isRefundDeposit ? '환불 대상 해제' : '보증금 환불 대상으로 설정'}
+                                                  className={`px-2 py-0.5 rounded-lg text-[0.6rem] font-bold transition-all ${app.isRefundDeposit ? "bg-sky-500 text-white shadow-sm" : "text-slate-400 hover:text-slate-600 hover:bg-white"}`}
+                                                >💸</button>
                                               </div>
                                             </div>
 
-                                            {/* Middle: Info */}
-                                            <div className="flex-1 min-w-0">
-                                              <div className="hidden sm:flex items-center gap-2 mb-0 flex-wrap">
-                                                <span
-                                                  onClick={() => {
-                                                    const user = userMap[app.userId] || { id: app.userId, name: app.name, phone: app.phone, gender: app.gender };
-                                                    setSelectedUser(user);
-                                                    setIsProfileModalOpen(true);
-                                                  }}
-                                                  className="text-sm font-bold text-slate-800 cursor-pointer hover:text-[#FF7E7E] transition-colors"
-                                                >
-                                                  {app.name || "-"}
-                                                </span>
-                                                {(app.userId?.startsWith("user_m_") || app.userId?.startsWith("user_f_") || app.id?.startsWith("dummy_")) && (
-                                                  <span className="text-[0.6rem] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 border border-slate-200">
-                                                    더미
+                                            {/* Row 2: 나이/직업/전화 (왼쪽) | 메모/문자/선발취소 (오른쪽 끝) */}
+                                            <div className="flex flex-col gap-0.5 ml-10">
+                                              <div className="flex items-center justify-between gap-2 text-[0.72rem] text-slate-600 font-bold w-full">
+                                                <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                                                  <span className="whitespace-nowrap">{birthYear}</span>
+                                                  <span className="text-slate-300">·</span>
+                                                  <span className="flex items-center gap-1 min-w-0">
+                                                    {isDummyApp(app) ? (
+                                                      editingAppJobId === app.id ? (
+                                                        <input
+                                                          autoFocus
+                                                          value={tempAppJobValue}
+                                                          onChange={(e) => setTempAppJobValue(e.target.value)}
+                                                          onKeyDown={(e) => {
+                                                            if (e.key === 'Enter') handleEditAppJob(app, tempAppJobValue);
+                                                            if (e.key === 'Escape') setEditingAppJobId(null);
+                                                          }}
+                                                          onBlur={() => setEditingAppJobId(null)}
+                                                          className="text-[0.72rem] font-bold bg-white border border-blue-400 rounded px-1 outline-none w-[100px]"
+                                                        />
+                                                      ) : (
+                                                        <span
+                                                          onClick={() => { setEditingAppJobId(app.id); setTempAppJobValue(displayJob); }}
+                                                          className="truncate max-w-[160px] cursor-pointer hover:text-blue-500 hover:underline"
+                                                          title={displayJob}
+                                                        >{displayJob}</span>
+                                                      )
+                                                    ) : (
+                                                      <span className="truncate max-w-[160px]" title={displayJob}>{displayJob}</span>
+                                                    )}
                                                   </span>
-                                                )}
-                                                <span className={`text-[0.65rem] font-bold px-2 py-0.5 rounded-full ${badge.cls}`}>
-                                                  {badge.label}
-                                                </span>
-                                                {(() => {
-                                                  const u = userMap[app.userId];
-                                                  const ns = u?.noShowCount || 0;
-                                                  const td = u?.tardyCount || 0;
-                                                  if (ns === 0 && td === 0) return null;
-                                                  return (
-                                                    <span className="flex items-center gap-1 ml-0.5">
-                                                      {ns > 0 && (
-                                                        <span className="flex items-center gap-0.5 text-[0.6rem] font-black px-1.5 py-0.5 rounded-md bg-rose-100 text-rose-600 border border-rose-200 shrink-0" title={`노쇼 ${ns}회`}>
-                                                          🚨{ns}
-                                                        </span>
-                                                      )}
-                                                      {td > 0 && (
-                                                        <span className="flex items-center gap-0.5 text-[0.6rem] font-black px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-700 border border-amber-200 shrink-0" title={`지각 ${td}회`}>
-                                                          ⏳{td}
-                                                        </span>
-                                                      )}
-                                                    </span>
-                                                  );
-                                                })()}
-                                                {/* PC: 출석/지각/노쇼/💸환불 칩 — 이름 바로 오른쪽 */}
-                                                <div className="flex items-center gap-0.5 bg-slate-50 p-0.5 rounded-xl border border-slate-200/60 ml-1">
+                                                  <span className="text-slate-300">·</span>
+                                                  <span className="whitespace-nowrap">{app.residence || "-"}</span>
+                                                </div>
+                                                {/* 메모/문자/선발취소 — 오른쪽 끝 (PC·모바일 공통) */}
+                                                <div className="flex items-center gap-1.5 shrink-0">
                                                   <button
-                                                    onClick={() => handleSetAttendanceStatus(app, app.attendanceStatus === 'present' ? 'none' : 'present')}
-                                                    className={`px-2.5 py-0.5 rounded-lg text-[0.62rem] font-bold transition-all ${app.attendanceStatus === 'present' ? "bg-emerald-500 text-white shadow-sm" : "text-slate-400 hover:text-slate-600 hover:bg-white"}`}
-                                                  >출석</button>
+                                                    onClick={() => handleOpenMemo(app)}
+                                                    className={`p-1.5 rounded-lg border transition-all ${app.adminMemo ? "bg-amber-50 text-amber-600 border-amber-200 shadow-sm" : "bg-slate-50 text-slate-400 border-slate-200"}`}
+                                                    title="메모"
+                                                  >
+                                                    <StickyNote size={13} fill={app.adminMemo ? "currentColor" : "none"} />
+                                                  </button>
+                                                  {renderSmsButton(app)}
                                                   <button
-                                                    onClick={() => handleSetAttendanceStatus(app, app.attendanceStatus === 'late' ? 'none' : 'late')}
-                                                    className={`px-2.5 py-0.5 rounded-lg text-[0.62rem] font-bold transition-all ${app.attendanceStatus === 'late' ? "bg-amber-500 text-white shadow-sm" : "text-slate-400 hover:text-slate-600 hover:bg-white"}`}
-                                                  >지각</button>
-                                                  <button
-                                                    onClick={() => handleSetAttendanceStatus(app, app.attendanceStatus === 'no-show' ? 'none' : 'no-show')}
-                                                    className={`px-2.5 py-0.5 rounded-lg text-[0.62rem] font-bold transition-all ${app.attendanceStatus === 'no-show' ? "bg-rose-500 text-white shadow-sm" : "text-slate-400 hover:text-slate-600 hover:bg-white"}`}
-                                                  >노쇼</button>
-                                                  <button
-                                                    onClick={() => handleToggleRefundDeposit(app)}
-                                                    title={app.isRefundDeposit ? '환불 대상 해제' : '보증금 환불 대상으로 설정'}
-                                                    className={`px-2.5 py-0.5 rounded-lg text-[0.62rem] font-bold transition-all ${app.isRefundDeposit ? "bg-sky-500 text-white shadow-sm" : "text-slate-400 hover:text-slate-600 hover:bg-white"}`}
-                                                  >💸환불</button>
+                                                    onClick={() => handleCancelSelection(app)}
+                                                    className="p-1.5 rounded-lg bg-slate-50 text-slate-400 border border-slate-200 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-200 transition-colors"
+                                                    title={isOverQuota ? "선발 취소 (초과)" : "선발 취소"}
+                                                  >
+                                                    <Trash2 size={13} />
+                                                  </button>
                                                 </div>
                                               </div>
-                                              <div className="flex flex-col gap-0.5 ml-11 sm:ml-0 mt-0">
-                                                {/* Row 1: 나이, 직업, 거주지 + 모바일 보조 버튼 (메모, 문자, 선발취소) */}
-                                                <div className="flex items-center justify-between gap-2 text-[0.72rem] text-slate-600 font-bold w-full">
-                                                  {/* 좌측: 나이, 직업, 거주지 */}
-                                                  <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
-                                                    <span className="whitespace-nowrap">{birthYear}</span>
-                                                    <span className="text-slate-300">·</span>
-                                                    <span className="flex items-center gap-1 min-w-0">
-                                                      {isDummyApp(app) ? (
-                                                        editingAppJobId === app.id ? (
-                                                          <input
-                                                            autoFocus
-                                                            value={tempAppJobValue}
-                                                            onChange={(e) => setTempAppJobValue(e.target.value)}
-                                                            onKeyDown={(e) => {
-                                                              if (e.key === 'Enter') handleEditAppJob(app, tempAppJobValue);
-                                                              if (e.key === 'Escape') setEditingAppJobId(null);
-                                                            }}
-                                                            onBlur={() => setEditingAppJobId(null)}
-                                                            className="text-[0.72rem] font-bold bg-white border border-blue-400 rounded px-1 outline-none w-[100px]"
-                                                          />
-                                                        ) : (
-                                                          <span 
-                                                            onClick={() => {
-                                                              setEditingAppJobId(app.id);
-                                                              setTempAppJobValue(displayJob);
-                                                            }}
-                                                            className="truncate max-w-[160px] sm:max-w-[140px] cursor-pointer hover:text-blue-500 hover:underline"
-                                                            title={displayJob}
-                                                          >
-                                                            {displayJob}
-                                                          </span>
-                                                        )
-                                                      ) : (
-                                                        <span className="truncate max-w-[160px] sm:max-w-[140px]" title={displayJob}>
-                                                          {displayJob}
-                                                        </span>
-                                                      )}
+                                              <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[0.72rem] text-slate-400 font-medium">
+                                                {!isDummyApp(app) && (
+                                                  <span className="flex items-center gap-1 text-blue-600/70 bg-blue-50/50 px-1.5 py-0.5 rounded shrink-0 whitespace-nowrap">
+                                                    <Phone size={10} className="text-blue-400/70" />
+                                                    {app.phone || "-"}
+                                                  </span>
+                                                )}
+                                                {app.gender === 'female' && app.femaleOption === 'group' && (
+                                                  <>
+                                                    {!isDummyApp(app) && <span className="text-slate-300">·</span>}
+                                                    <span className="text-pink-500 font-bold whitespace-nowrap">
+                                                      동반할인 {app.groupPartnerName ? `(${app.groupPartnerName})` : ''}
                                                     </span>
-                                                    <span className="text-slate-300">·</span>
-                                                    <span className="whitespace-nowrap">
-                                                      {app.residence || "-"}
-                                                    </span>
-                                                  </div>
-
-                                                  {/* 우측 (모바일 전용): 메모 + 문자 + 선발취소 */}
-                                                  <div className="flex items-center gap-1.5 sm:hidden shrink-0">
-                                                    <button
-                                                      onClick={() => handleOpenMemo(app)}
-                                                      className={`p-1.5 rounded-lg border transition-all ${app.adminMemo ? "bg-amber-50 text-amber-600 border-amber-200 shadow-sm" : "bg-slate-50 text-slate-400 border-slate-200"}`}
-                                                      title="메모"
-                                                    >
-                                                      <StickyNote size={13} fill={app.adminMemo ? "currentColor" : "none"} />
-                                                    </button>
-                                                    {renderSmsButton(app)}
-                                                    <button
-                                                      onClick={() => handleCancelSelection(app)}
-                                                      className="p-1.5 rounded-lg bg-slate-50 text-slate-400 border border-slate-200 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-200 transition-colors"
-                                                    >
-                                                      <Trash2 size={13} />
-                                                    </button>
-                                                  </div>
-                                                </div>
-                                                {/* Row 2: 휴대폰번호, 동반참여 */}
-                                                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[0.72rem] text-slate-400 font-medium">
-                                                  {!isDummyApp(app) && (
-                                                    <span className="flex items-center gap-1 text-blue-600/70 bg-blue-50/50 px-1.5 py-0.5 rounded shrink-0 whitespace-nowrap">
-                                                      <Phone size={10} className="text-blue-400/70" />
-                                                      {app.phone || "-"}
-                                                    </span>
-                                                  )}
-                                                  {app.gender === 'female' && app.femaleOption === 'group' && (
-                                                    <>
-                                                      {!isDummyApp(app) && <span className="text-slate-300">·</span>}
-                                                      <span className="text-pink-500 font-bold whitespace-nowrap">
-                                                        동반할인 {app.groupPartnerName ? `(${app.groupPartnerName})` : ''}
-                                                      </span>
-                                                    </>
-                                                  )}
-                                                </div>
+                                                  </>
+                                                )}
                                               </div>
                                               {app.adminMemo && (
                                                 <div className="mt-1 flex items-start gap-1 bg-amber-50/50 px-2 py-1 rounded-lg border border-amber-100/50 max-w-fit">
                                                   <StickyNote size={10} className="text-amber-500 mt-0.5 shrink-0" />
-                                                  <p className="text-[0.65rem] text-amber-700 font-bold truncate max-w-[200px]">
-                                                    {app.adminMemo}
-                                                  </p>
+                                                  <p className="text-[0.65rem] text-amber-700 font-bold truncate max-w-[200px]">{app.adminMemo}</p>
                                                 </div>
                                               )}
-                                            </div>
-
-                                            {/* Desktop Right: Actions (메모, 문자, 선발취소만 남김 — 출석/환불 칩은 이름 옆으로 이동) */}
-                                            <div className="hidden sm:flex items-center gap-2">
-                                              <button
-                                                onClick={() => handleOpenMemo(app)}
-                                                className={`shrink-0 p-2 rounded-xl border transition-all ${app.adminMemo ? "bg-amber-50 border-amber-300 text-amber-600 shadow-sm" : "bg-white border-slate-200 text-slate-400 hover:bg-slate-50 hover:border-slate-300"}`}
-                                                title="메모"
-                                              >
-                                                <StickyNote size={13} fill={app.adminMemo ? "currentColor" : "none"} />
-                                              </button>
-                                              {renderSmsButton(app, true)}
-                                              <button
-                                                onClick={() => handleCancelSelection(app)}
-                                                className="shrink-0 px-3 py-1.5 rounded-xl text-[0.7rem] font-black bg-white border border-slate-200 text-slate-500 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all shadow-sm"
-                                              >
-                                                {isOverQuota ? "🔴 선발 취소" : "선발 취소"}
-                                              </button>
                                             </div>
                                           </div>
                                         );
