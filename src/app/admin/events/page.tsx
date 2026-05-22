@@ -2108,7 +2108,7 @@ ${chatLink}
                                                   </span>
                                                 </div>
                                               </div>
-                                              {/* 모바일 액션: 이름 옆 우측 영역에는 출석/지각/노쇼 칩 버튼만 배치 */}
+                                              {/* 모바일 액션: 이름 옆 우측 영역에는 출석/지각/노쇼/환불 칩 버튼 배치 */}
                                               <div className="flex items-center sm:hidden shrink-0">
                                                 <div className="flex items-center gap-0.5 bg-slate-50 px-1 py-0.5 rounded-xl border border-slate-200/60">
                                                   <button
@@ -2123,13 +2123,17 @@ ${chatLink}
                                                     onClick={() => handleSetAttendanceStatus(app, app.attendanceStatus === 'no-show' ? 'none' : 'no-show')}
                                                     className={`px-2 py-0.5 rounded-lg text-[0.6rem] font-bold transition-all ${app.attendanceStatus === 'no-show' ? "bg-rose-500 text-white shadow-sm" : "text-slate-400 hover:text-slate-600 hover:bg-white"}`}
                                                   >노쇼</button>
+                                                  <button
+                                                    onClick={() => handleToggleRefundDeposit(app)}
+                                                    className={`px-2 py-0.5 rounded-lg text-[0.6rem] font-bold transition-all ${app.isRefundDeposit ? "bg-sky-500 text-white shadow-sm" : "text-slate-400 hover:text-slate-600 hover:bg-white"}`}
+                                                  >💸</button>
                                                 </div>
                                               </div>
                                             </div>
 
                                             {/* Middle: Info */}
                                             <div className="flex-1 min-w-0">
-                                              <div className="hidden sm:flex items-center gap-2 mb-0">
+                                              <div className="hidden sm:flex items-center gap-2 mb-0 flex-wrap">
                                                 <span
                                                   onClick={() => {
                                                     const user = userMap[app.userId] || { id: app.userId, name: app.name, phone: app.phone, gender: app.gender };
@@ -2168,6 +2172,26 @@ ${chatLink}
                                                     </span>
                                                   );
                                                 })()}
+                                                {/* PC: 출석/지각/노쇼/💸환불 칩 — 이름 바로 오른쪽 */}
+                                                <div className="flex items-center gap-0.5 bg-slate-50 p-0.5 rounded-xl border border-slate-200/60 ml-1">
+                                                  <button
+                                                    onClick={() => handleSetAttendanceStatus(app, app.attendanceStatus === 'present' ? 'none' : 'present')}
+                                                    className={`px-2.5 py-0.5 rounded-lg text-[0.62rem] font-bold transition-all ${app.attendanceStatus === 'present' ? "bg-emerald-500 text-white shadow-sm" : "text-slate-400 hover:text-slate-600 hover:bg-white"}`}
+                                                  >출석</button>
+                                                  <button
+                                                    onClick={() => handleSetAttendanceStatus(app, app.attendanceStatus === 'late' ? 'none' : 'late')}
+                                                    className={`px-2.5 py-0.5 rounded-lg text-[0.62rem] font-bold transition-all ${app.attendanceStatus === 'late' ? "bg-amber-500 text-white shadow-sm" : "text-slate-400 hover:text-slate-600 hover:bg-white"}`}
+                                                  >지각</button>
+                                                  <button
+                                                    onClick={() => handleSetAttendanceStatus(app, app.attendanceStatus === 'no-show' ? 'none' : 'no-show')}
+                                                    className={`px-2.5 py-0.5 rounded-lg text-[0.62rem] font-bold transition-all ${app.attendanceStatus === 'no-show' ? "bg-rose-500 text-white shadow-sm" : "text-slate-400 hover:text-slate-600 hover:bg-white"}`}
+                                                  >노쇼</button>
+                                                  <button
+                                                    onClick={() => handleToggleRefundDeposit(app)}
+                                                    title={app.isRefundDeposit ? '환불 대상 해제' : '보증금 환불 대상으로 설정'}
+                                                    className={`px-2.5 py-0.5 rounded-lg text-[0.62rem] font-bold transition-all ${app.isRefundDeposit ? "bg-sky-500 text-white shadow-sm" : "text-slate-400 hover:text-slate-600 hover:bg-white"}`}
+                                                  >💸환불</button>
+                                                </div>
                                               </div>
                                               <div className="flex flex-col gap-0.5 ml-11 sm:ml-0 mt-0">
                                                 {/* Row 1: 나이, 직업, 거주지 + 모바일 보조 버튼 (메모, 문자, 선발취소) */}
@@ -2260,34 +2284,8 @@ ${chatLink}
                                               )}
                                             </div>
 
-                                            {/* Desktop Right: Actions */}
+                                            {/* Desktop Right: Actions (메모, 문자, 선발취소만 남김 — 출석/환불 칩은 이름 옆으로 이동) */}
                                             <div className="hidden sm:flex items-center gap-2">
-                                              {/* PC 3단 출석 칩 그룹 */}
-                                              <div className="flex items-center gap-0.5 bg-slate-50 p-0.5 rounded-xl border border-slate-200/60 shrink-0">
-                                                <button
-                                                  onClick={() => handleSetAttendanceStatus(app, app.attendanceStatus === 'present' ? 'none' : 'present')}
-                                                  className={`px-2.5 py-1 rounded-lg text-[0.65rem] font-bold transition-all ${app.attendanceStatus === 'present' ? "bg-emerald-500 text-white shadow-sm" : "text-slate-400 hover:text-slate-600 hover:bg-white"}`}
-                                                >출석</button>
-                                                <button
-                                                  onClick={() => handleSetAttendanceStatus(app, app.attendanceStatus === 'late' ? 'none' : 'late')}
-                                                  className={`px-2.5 py-1 rounded-lg text-[0.65rem] font-bold transition-all ${app.attendanceStatus === 'late' ? "bg-amber-500 text-white shadow-sm" : "text-slate-400 hover:text-slate-600 hover:bg-white"}`}
-                                                >지각</button>
-                                                <button
-                                                  onClick={() => handleSetAttendanceStatus(app, app.attendanceStatus === 'no-show' ? 'none' : 'no-show')}
-                                                  className={`px-2.5 py-1 rounded-lg text-[0.65rem] font-bold transition-all ${app.attendanceStatus === 'no-show' ? "bg-rose-500 text-white shadow-sm" : "text-slate-400 hover:text-slate-600 hover:bg-white"}`}
-                                                >노쇼</button>
-                                              </div>
-                                              {/* v12.0.0: 보증금 환불 대상 토글 버튼 */}
-                                              <button
-                                                onClick={() => handleToggleRefundDeposit(app)}
-                                                title={app.isRefundDeposit ? '환불 대상 해제' : '보증금 환불 대상으로 설정'}
-                                                className={`shrink-0 px-2.5 py-1 rounded-xl border text-[0.65rem] font-bold transition-all ${app.isRefundDeposit
-                                                  ? 'bg-sky-50 border-sky-300 text-sky-600 shadow-sm'
-                                                  : 'bg-white border-slate-200 text-slate-400 hover:bg-sky-50 hover:border-sky-200 hover:text-sky-500'
-                                                }`}
-                                              >
-                                                💸 환불
-                                              </button>
                                               <button
                                                 onClick={() => handleOpenMemo(app)}
                                                 className={`shrink-0 p-2 rounded-xl border transition-all ${app.adminMemo ? "bg-amber-50 border-amber-300 text-amber-600 shadow-sm" : "bg-white border-slate-200 text-slate-400 hover:bg-slate-50 hover:border-slate-300"}`}
