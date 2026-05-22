@@ -391,6 +391,17 @@ export default function AdminTimerPage() {
     }
   };
 
+  const openPopoutTimer = () => {
+    const popWindow = window.open(
+      '/admin/timer/popout',
+      'KeylinkDatingMiniTimer',
+      'width=340,height=220,resizable=no,scrollbars=no,status=no,location=no,toolbar=no,menubar=no'
+    );
+    if (!popWindow) {
+      toast.error('팝업이 차단되었습니다. 주소창 우측에서 팝업 허용을 설정해 주세요!');
+    }
+  };
+
   const getMaleForTable = (table: number, round: number) => {
     const N = Number(totalTables) || 1; // Prevent div by zero
     const val = table - round + maleOffset;
@@ -467,6 +478,13 @@ export default function AdminTimerPage() {
               </Link>
             )}
           </div>
+
+          <button
+            onClick={openPopoutTimer}
+            className="w-full mt-3 bg-slate-950 hover:bg-slate-900 text-white font-bold h-11 rounded-xl flex items-center justify-center gap-2 transition-all shadow-md text-xs border border-slate-800"
+          >
+            🖥️ 바탕화면 고정 미니 타이머 창 띄우기
+          </button>
         </div>
 
         {/* 세부 설정 */}
