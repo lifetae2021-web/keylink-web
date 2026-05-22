@@ -63,13 +63,19 @@ function DetailModal({
       .map(app => {
         const session = sessionMap[app.sessionId] || {};
         
+        // v12.0.0: 정상 출석 + 환불 대상 = 실제 매출 0원 (보증금 환불)
+        // 지각 or 노쇼 + 환불 대상 = 보증금 몰수 → 정상 매출로 계산
+        const isRefunded = app.isRefundDeposit === true && app.attendanceStatus === 'present';
+
         // v8.12.1: 성별 및 옵션 기반 가격 로직 동기화
         const malePrice = app.maleOption === 'safe' ? 60000 : (session.malePrice || 49000);
         const femalePrice = app.femaleOption === 'group' ? 24000 : (session.femalePrice || 29000);
         
-        const amount = app.amountPaid
-          ? Number(app.amountPaid)
-          : (app.gender === 'male' ? malePrice : femalePrice);
+        const amount = isRefunded
+          ? 0
+          : (app.amountPaid !== undefined && app.amountPaid !== null && app.amountPaid !== '')
+            ? Number(app.amountPaid)
+            : (app.gender === 'male' ? malePrice : femalePrice);
           
         const sessionName = session.episodeNumber
           ? `${session.region === 'busan' ? '부산' : '창원'} ${session.episodeNumber}기`
@@ -81,7 +87,7 @@ function DetailModal({
           ? (app.maleOption === 'safe' ? '안심보험' : '기본')
           : (app.femaleOption === 'group' ? '지인동반' : '기본');
 
-        return { app, session, amount, sessionName, confirmedAt, optionLabel };
+        return { app, session, amount, sessionName, confirmedAt, optionLabel, isRefunded };
       })
       .sort((a, b) => b.confirmedAt.getTime() - a.confirmedAt.getTime());
   }, [applications, sessions, sessionMap, filterMonth]);
@@ -129,8 +135,8 @@ function DetailModal({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {rows.map(({ app, amount, sessionName, confirmedAt, optionLabel }, i) => (
-                  <tr key={i} className="hover:bg-slate-50/60 transition-colors">
+                {rows.map(({ app, amount, sessionName, confirmedAt, optionLabel, isRefunded }, i) => (
+                  <tr key={i} className={`hover:bg-slate-50/60 transition-colors ${isRefunded ? 'bg-sky-50/30' : ''}`}>
                     <td className="px-6 py-4 text-xs font-semibold text-slate-500">
                       {format(confirmedAt, 'yyyy.MM.dd HH:mm', { locale: ko })}
                     </td>
@@ -153,12 +159,22 @@ function DetailModal({
                       <span className="text-xs font-bold text-slate-500">{optionLabel}</span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-base font-black text-slate-800">₩{amount.toLocaleString()}</span>
+                      {isRefunded ? (
+                        <span className="text-base font-black text-sky-500">₩0 <span className="text-xs text-slate-400 line-through font-medium">(환불)</span></span>
+                      ) : (
+                        <span className="text-base font-black text-slate-800">₩{amount.toLocaleString()}</span>
+                      )}
                     </td>
                     <td className="px-6 py-4">
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-600">
-                        입금 완료
-                      </span>
+                      {isRefunded ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-sky-50 text-sky-600">
+                          💸 보증금 환불
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-600">
+                          입금 완료
+                        </span>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -281,7 +297,12 @@ export default function RevenueStatsPage() {
       );
 
       const revenue = confirmedApps.reduce((sum, app) => {
-        if (app.amountPaid) return sum + Number(app.amountPaid);
+        // v12.0.0: 정상 출석 + 환불 대상 = 실제 매출 0원 (보증금 환불)
+        // 지각 or 노쇼 + 환불 대상 = 보증금 몰수 → 정상 매출로 계산
+        const isRefunded = app.isRefundDeposit === true && app.attendanceStatus === 'present';
+        if (isRefunded) return sum;
+
+        if (app.amountPaid !== undefined && app.amountPaid !== null && app.amountPaid !== '') return sum + Number(app.amountPaid);
         
         // v8.12.1: 성별 및 옵션 기반 가격 로직 동기화
         const malePrice = app.maleOption === 'safe' ? 60000 : (session.malePrice || 49000);

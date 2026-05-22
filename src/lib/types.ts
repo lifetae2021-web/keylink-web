@@ -146,6 +146,12 @@ export interface Application {
 
   // v10.4.0: 출석 상태 세분화 (출석, 지각, 노쇼)
   attendanceStatus?: 'present' | 'late' | 'no-show' | null;
+
+  // v12.0.0: 보증금 환불 대상 여부 (정상 출석 시 매출 0원 처리, 지각/노쇼 시 보증금 몰수)
+  isRefundDeposit?: boolean;
+
+  // 수동 입금 금액 조정 (관리자가 개별 입금액을 직접 지정할 때 사용)
+  amountPaid?: number | string | null;
 }
 
 // ─────────────────────────────────────────────
