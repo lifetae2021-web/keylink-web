@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, collection, query, where, getDocs, orderBy } from 'firebase/firestore';
-import { Heart, ArrowLeft, Trophy, Sparkles, ShieldCheck, Star, Users, MapPin, Loader2, Info } from 'lucide-react';
+import { Heart, ArrowLeft, Trophy, Sparkles, ShieldCheck, Users, MapPin, Loader2, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import CherryBlossoms from '@/components/CherryBlossoms';
 
@@ -409,10 +409,7 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
               )}
 
               {/* 2. Popularity Index Section */}
-              <div className="bg-white rounded-[40px] p-8 border border-gray-100 shadow-lg mb-8 relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-6 text-gray-50">
-                  <Star size={80} fill="currentColor" />
-                </div>
+              <div className="bg-white rounded-[40px] p-8 border border-gray-100 shadow-lg mb-8">
                 
                 <h4 className="text-lg font-black text-gray-900 mb-6 flex items-center gap-2">
                   <Trophy size={20} className="text-amber-400" /> 이번 기수 내가 받은 호감
