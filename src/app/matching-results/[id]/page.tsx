@@ -194,7 +194,7 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
                 if (!appSnap.empty) {
                   const appData = appSnap.docs[0].data();
                   const userData = userSnap.exists() ? userSnap.data() : null;
-                  const genderKo = appData.gender === 'male' ? '키링남' : '키링여';
+                  const genderKo = appData.gender === 'male' ? '키링남' : '키링녀';
                   const slot = appData.slotNumber ? `${appData.slotNumber}호` : '호수 미정';
                   label = `${genderKo} ${slot}`;
                   jobDisplay = appData.displayJob || userData?.admin_job || userData?.job || appData.job || '미입력';
@@ -439,7 +439,7 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
                   {myChoices.map((choice) => (
                     <div key={choice.targetUserId || choice.priority} className="flex items-center justify-between p-5 bg-gray-50 rounded-2xl border border-gray-100 hover:bg-white hover:border-pink-200 transition-all group">
                       <div className="flex items-center gap-4">
-                        <span className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-white text-xs ${choice.priority === 1 ? 'bg-pink-500' : 'bg-gray-300'}`}>
+                        <span className="w-8 h-8 rounded-full flex items-center justify-center font-black text-pink-500 text-xs bg-pink-100">
                           {choice.priority}
                         </span>
                         <span className="font-black text-gray-900">{choice.partnerName}</span>
