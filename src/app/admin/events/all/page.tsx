@@ -61,6 +61,13 @@ export default function AllSessionsPage() {
               const currentMale = ev.currentMale || 0;
               const currentFemale = ev.currentFemale || 0;
 
+              const now = new Date();
+              const eventDay = new Date(ev.eventDate.getFullYear(), ev.eventDate.getMonth(), ev.eventDate.getDate());
+              const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+              const diffTime = eventDay.getTime() - today.getTime();
+              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+              const showDDay = badge.label !== '종료' && badge.label !== '진행 중' && now < ev.eventDate;
+
               return (
                 <button
                   key={ev.id}
@@ -72,6 +79,17 @@ export default function AllSessionsPage() {
                       <span className="font-bold text-slate-800">
                         {ev.region === 'busan' ? '부산' : '창원'} {ev.episodeNumber}기
                       </span>
+                      {showDDay && (
+                        <span className={`text-[10px] font-black px-1.5 py-0.5 rounded border ${
+                          diffDays === 0 
+                            ? "bg-rose-100 text-rose-700 border-rose-200 animate-pulse" 
+                            : diffDays <= 3 
+                              ? "bg-amber-50 text-amber-600 border-amber-200" 
+                              : "bg-slate-50 text-slate-500 border-slate-200"
+                        }`}>
+                          {diffDays === 0 ? "D-Day" : `D-${diffDays}`}
+                        </span>
+                      )}
                       <span className={`text-[0.65rem] font-bold px-2 py-0.5 rounded-full ${badge.cls}`}>
                         {badge.label}
                       </span>

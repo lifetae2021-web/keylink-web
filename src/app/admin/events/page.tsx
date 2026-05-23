@@ -1850,6 +1850,14 @@ ${chatLink}
               const isEnded = ev.isForceHidden || now >= twentyFourHoursAfter;
               const badgeLabel = isEnded ? '종료' : now >= ev.eventDate ? '진행 중' : isOver ? '마감' : '모집 중';
               const badgeCls = isEnded ? 'bg-slate-100 text-slate-500' : now >= ev.eventDate ? 'bg-blue-100 text-blue-700' : isOver ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-700';
+
+              // 디데이 계산
+              const eventDay = new Date(ev.eventDate.getFullYear(), ev.eventDate.getMonth(), ev.eventDate.getDate());
+              const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+              const diffTime = eventDay.getTime() - today.getTime();
+              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+              const showDDay = !isEnded && now < ev.eventDate;
+
               return (
                 <button
                   key={ev.id}
@@ -1868,6 +1876,17 @@ ${chatLink}
                     >
                       {ev.region === "busan" ? "부산" : "창원"}{" "}
                       {ev.episodeNumber}기
+                      {showDDay && (
+                        <span className={`text-[10px] font-black px-1.5 py-0.5 rounded border ${
+                          diffDays === 0 
+                            ? "bg-rose-100 text-rose-700 border-rose-200 animate-pulse" 
+                            : diffDays <= 3 
+                              ? "bg-amber-50 text-amber-600 border-amber-200" 
+                              : "bg-slate-50 text-slate-500 border-slate-200"
+                        }`}>
+                          {diffDays === 0 ? "D-Day" : `D-${diffDays}`}
+                        </span>
+                      )}
                       {ev.isTest && (
                         <span className="text-[10px] font-extrabold text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded-md border border-amber-200">
                           테스트
