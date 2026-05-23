@@ -16,7 +16,7 @@ export default function ResultListPage() {
   
   // Cumulative counter animation
   useEffect(() => {
-    const controls = animate(0, 676, { // This could eventually be dynamic
+    const controls = animate(0, 706, { // This could eventually be dynamic
       duration: 3,
       delay: 0.5,
       ease: "easeOut",
@@ -144,7 +144,7 @@ export default function ResultListPage() {
           }}>
             <div>
               <h2 style={{ fontSize: '1.75rem', fontWeight: '900', color: '#111', marginBottom: '12px', letterSpacing: '-0.02em', wordBreak: 'keep-all' }}>
-                기수별 매칭리포트 <span style={{ fontSize: '1.1rem', color: '#999', fontWeight: '600' }}>(준비중)</span>
+                기수별 매칭리포트
               </h2>
               <p style={{ color: '#888', fontWeight: '500' }}>과거 모든 행사의 매칭 데이터를 투명하게 공개합니다.</p>
             </div>
