@@ -1536,9 +1536,10 @@ function ApplicationStatusBlock({ application, session, userId, hasVoted, submit
               <h3 style={{ fontSize: '1.05rem', fontWeight: '900', color: '#1E293B', marginBottom: '8px' }}>
                 🎉 매칭 결과가 발표되었습니다!
               </h3>
-              <p style={{ fontSize: '0.82rem', color: '#475569', fontWeight: '600', lineHeight: 1.5, marginBottom: '20px', wordBreak: 'keep-all' }}>
+              <p style={{ fontSize: '0.82rem', color: '#475569', fontWeight: '600', lineHeight: 1.6, marginBottom: '20px', wordBreak: 'keep-all' }}>
                 오늘 소개팅에서 탄생한 기적 같은 인연과,<br />
-                나에게 도착한 총 호감 득표 수를 지금 바로 확인해 보세요!
+                나에게 도착한 총 호감 득표 수를<br />
+                지금 바로 확인해 보세요! ✨
               </p>
               <Link
                 href={`/matching-results/${session.id}`}
