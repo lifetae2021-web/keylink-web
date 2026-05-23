@@ -6,7 +6,7 @@ import { format } from 'date-fns';
 import { db } from '@/lib/firebase';
 import { doc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import toast from 'react-hot-toast';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 interface UserProfileModalProps {
   user: any;
@@ -60,11 +60,17 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
   const [appsLoading, setAppsLoading] = useState(false);
 
   // v11.2.0: user 로컬 상태 변화를 감지하여 부모 userMap도 실시간 갱신
+  // 콜백 함수를 Ref로 관리하여 dependency 목록에서 제외함으로써 무한 렌더링 루프를 원천 방지합니다.
+  const onUserUpdateRef = useRef(onUserUpdate);
   useEffect(() => {
-    if (user && onUserUpdate) {
-      onUserUpdate(user);
+    onUserUpdateRef.current = onUserUpdate;
+  }, [onUserUpdate]);
+
+  useEffect(() => {
+    if (user && onUserUpdateRef.current) {
+      onUserUpdateRef.current(user);
     }
-  }, [user, onUserUpdate]);
+  }, [user]);
 
   // Sync state with props when modal opens or user changes
   useEffect(() => {

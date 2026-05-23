@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   Calendar,
@@ -1612,6 +1612,16 @@ ${chatLink}
     setMemoModalOpen(true);
   };
 
+  const handleUserUpdate = useCallback((updatedUser: any) => {
+    const userId = updatedUser.id || updatedUser.uid;
+    if (userId) {
+      setUserMap(prev => ({
+        ...prev,
+        [userId]: updatedUser
+      }));
+    }
+  }, []);
+
   const handleSaveMemo = async () => {
     if (!memoTargetApp) return;
     setIsMemoSaving(true);
@@ -3058,15 +3068,7 @@ ${chatLink}
         user={selectedUser}
         isOpen={isProfileModalOpen}
         onClose={() => { setIsProfileModalOpen(false); setSelectedUser(null); }}
-        onUserUpdate={(updatedUser) => {
-          const userId = updatedUser.id || updatedUser.uid;
-          if (userId) {
-            setUserMap(prev => ({
-              ...prev,
-              [userId]: updatedUser
-            }));
-          }
-        }}
+        onUserUpdate={handleUserUpdate}
       />
 
       {/* Voting Status Modal */}
