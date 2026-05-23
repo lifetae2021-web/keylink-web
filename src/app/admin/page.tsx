@@ -177,6 +177,7 @@ export default function AdminDashboard() {
         const sessionsSnap = await getDocs(collection(db, 'sessions'));
         const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
         const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1);
         const todayStart = startOfToday();
 
         let monthlyRevenue = 0, prevMonthlyRevenue = 0;
@@ -207,9 +208,9 @@ export default function AdminDashboard() {
             return sum + price;
           }, 0);
 
-          if (eventDate >= monthStart) {
+          if (eventDate >= monthStart && eventDate < nextMonthStart) {
             monthlyRevenue += sessionRevenue;
-          } else if (eventDate >= prevMonthStart) {
+          } else if (eventDate >= prevMonthStart && eventDate < monthStart) {
             prevMonthlyRevenue += sessionRevenue;
           }
         });
