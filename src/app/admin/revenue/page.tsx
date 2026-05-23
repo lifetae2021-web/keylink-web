@@ -8,7 +8,8 @@ import {
 } from 'lucide-react';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import { collection, query, onSnapshot, orderBy, doc, getDoc } from 'firebase/firestore';
+import { collection, query, onSnapshot, orderBy, doc, getDoc, updateDoc } from 'firebase/firestore';
+import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
@@ -44,6 +45,38 @@ function DetailModal({
     return m;
   }, [sessions]);
 
+  const handleToggleFree = async (app: any, makeFree: boolean) => {
+    try {
+      const appRef = doc(db, 'applications', app.id);
+      await updateDoc(appRef, {
+        amountPaid: makeFree ? 0 : null,
+        updatedAt: new Date(),
+      });
+      toast.success(makeFree ? `${app.name}님이 🎁 무료 참여로 설정되었습니다.` : `${app.name}님이 ✅ 일반 결제로 복원되었습니다.`);
+    } catch (e) {
+      console.error('Error toggling free status:', e);
+      toast.error('오류가 발생했습니다.');
+    }
+  };
+
+  const handleToggleRefund = async (app: any, makeRefund: boolean) => {
+    try {
+      if (makeRefund) {
+        const confirmRefund = window.confirm(`${app.name}님을 수동 환불 처리하시겠습니까?\n이 작업은 매출에 즉시 반영되며, 환불 취소 버튼으로 언제든 복구할 수 있습니다.`);
+        if (!confirmRefund) return;
+      }
+      const appRef = doc(db, 'applications', app.id);
+      await updateDoc(appRef, {
+        isManualRefund: makeRefund ? true : null,
+        updatedAt: new Date(),
+      });
+      toast.success(makeRefund ? `${app.name}님이 💸 수동 환불 처리되었습니다.` : `${app.name}님이 ✅ 환불 취소(정상 복구) 처리되었습니다.`);
+    } catch (e) {
+      console.error('Error toggling refund status:', e);
+      toast.error('오류가 발생했습니다.');
+    }
+  };
+
   const rows = useMemo(() => {
     const confirmed = applications.filter(app =>
       app.status === 'confirmed' || app.paymentConfirmed === true
@@ -65,17 +98,21 @@ function DetailModal({
         
         // v12.0.0: 정상 출석 + 환불 대상 = 실제 매출 0원 (보증금 환불)
         // 지각 or 노쇼 + 환불 대상 = 보증금 몰수 → 정상 매출로 계산
-        const isRefunded = app.isRefundDeposit === true && app.attendanceStatus === 'present';
+        // 단, 관리자 직권 환불(isManualRefund)은 예외로 매출 0원 처리
+        const isRefunded = app.isManualRefund === true || app.status === 'refunded' || (app.isRefundDeposit === true && app.attendanceStatus === 'present');
+        const isRefundPending = app.status !== 'refunded' && app.isManualRefund !== true && app.isRefundDeposit === true && (app.attendanceStatus === undefined || app.attendanceStatus === null || app.attendanceStatus === 'none' || !app.attendanceStatus);
 
         // v8.12.1: 성별 및 옵션 기반 가격 로직 동기화
         const malePrice = app.maleOption === 'safe' ? 60000 : (session.malePrice || 49000);
         const femalePrice = app.femaleOption === 'group' ? 24000 : (session.femalePrice || 29000);
         
-        const amount = isRefunded
+        const amount = (isRefunded || isRefundPending)
           ? 0
           : (app.amountPaid !== undefined && app.amountPaid !== null && app.amountPaid !== '')
             ? Number(app.amountPaid)
-            : (app.gender === 'male' ? malePrice : femalePrice);
+            : (app.price !== undefined && app.price !== null && app.price !== '')
+              ? Number(app.price)
+              : (app.gender === 'male' ? malePrice : femalePrice);
           
         const sessionName = session.episodeNumber
           ? `${session.region === 'busan' ? '부산' : '창원'} ${session.episodeNumber}기`
@@ -87,9 +124,24 @@ function DetailModal({
           ? (app.maleOption === 'safe' ? '안심보험' : '기본')
           : (app.femaleOption === 'group' ? '지인동반' : '기본');
 
-        return { app, session, amount, sessionName, confirmedAt, optionLabel, isRefunded };
+        const isFree = !isRefunded && !isRefundPending && amount === 0;
+        const isNoShow = app.attendanceStatus === 'no-show';
+
+        return { app, session, amount, sessionName, confirmedAt, optionLabel, isRefunded, isRefundPending, isFree, isNoShow };
       })
-      .sort((a, b) => b.confirmedAt.getTime() - a.confirmedAt.getTime());
+      .sort((a, b) => {
+        const epA = a.session?.episodeNumber || 0;
+        const epB = b.session?.episodeNumber || 0;
+        if (epB !== epA) return epB - epA;
+
+        const regA = a.session?.region || '';
+        const regB = b.session?.region || '';
+        if (regA !== regB) return regA.localeCompare(regB, 'ko');
+
+        const nameA = a.app.name || '';
+        const nameB = b.app.name || '';
+        return nameA.localeCompare(nameB, 'ko');
+      });
   }, [applications, sessions, sessionMap, filterMonth]);
 
   const total = rows.reduce((s, r) => s + r.amount, 0);
@@ -127,7 +179,7 @@ function DetailModal({
             <table className="w-full text-left text-nowrap">
               <thead className="sticky top-0 bg-slate-50/90 backdrop-blur-sm">
                 <tr>
-                  {['확정일', '기수', '참여자', '성별', '옵션', '결제 금액', '상태'].map(h => (
+                  {['기수', '참여자', '성별', '옵션', '결제 금액', '상태'].map(h => (
                     <th key={h} className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100">
                       {h}
                     </th>
@@ -135,11 +187,10 @@ function DetailModal({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {rows.map(({ app, amount, sessionName, confirmedAt, optionLabel, isRefunded }, i) => (
-                  <tr key={i} className={`hover:bg-slate-50/60 transition-colors ${isRefunded ? 'bg-sky-50/30' : ''}`}>
-                    <td className="px-6 py-4 text-xs font-semibold text-slate-500">
-                      {format(confirmedAt, 'yyyy.MM.dd HH:mm', { locale: ko })}
-                    </td>
+                {rows.map(({ app, amount, sessionName, confirmedAt, optionLabel, isRefunded, isRefundPending, isFree, isNoShow }, i) => (
+                  <tr key={i} className={`hover:bg-slate-50/60 transition-colors ${
+                    isRefunded ? 'bg-sky-50/30' : isRefundPending ? 'bg-amber-50/20' : isFree ? 'bg-purple-50/20' : isNoShow ? 'bg-rose-50/10' : ''
+                  }`}>
                     <td className="px-6 py-4">
                       <span className="text-sm font-black text-slate-700">{sessionName}</span>
                     </td>
@@ -160,20 +211,90 @@ function DetailModal({
                     </td>
                     <td className="px-6 py-4">
                       {isRefunded ? (
-                        <span className="text-base font-black text-sky-500">₩0 <span className="text-xs text-slate-400 line-through font-medium">(환불)</span></span>
+                        <span className="text-base font-black text-sky-500">₩0 <span className="text-xs text-slate-400 font-medium">(보증금 반환)</span></span>
+                      ) : isRefundPending ? (
+                        <span className="text-base font-black text-amber-500">₩0 <span className="text-xs text-slate-400 font-medium">(환급 예정)</span></span>
+                      ) : isFree ? (
+                        <span className="text-base font-black text-purple-500">₩0 <span className="text-xs text-slate-400 font-medium">(무료)</span></span>
                       ) : (
-                        <span className="text-base font-black text-slate-800">₩{amount.toLocaleString()}</span>
+                        <span className="text-base font-black text-slate-800">
+                          ₩{amount.toLocaleString()}
+                        </span>
                       )}
                     </td>
                     <td className="px-6 py-4">
                       {isRefunded ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-sky-50 text-sky-600">
-                          💸 보증금 환불
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-sky-50 text-sky-600">
+                            💸 환불 완료
+                          </span>
+                          <button
+                            onClick={() => handleToggleRefund(app, false)}
+                            className="px-2 py-0.5 border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700 rounded-md text-[0.68rem] font-bold transition-all"
+                            title="환불 취소 후 일반 상태로 복구"
+                          >
+                            환불 취소
+                          </button>
+                          {isNoShow && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-extrabold bg-rose-50 text-rose-600 border border-rose-100 animate-pulse">
+                              🚨 노쇼
+                            </span>
+                          )}
+                        </div>
+                      ) : isRefundPending ? (
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-600">
+                            ⏳ 환급 예정
+                          </span>
+                          {isNoShow && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-extrabold bg-rose-50 text-rose-600 border border-rose-100 animate-pulse">
+                              🚨 노쇼
+                            </span>
+                          )}
+                        </div>
+                      ) : isFree ? (
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-purple-50 text-purple-600">
+                            🎁 무료 참여
+                          </span>
+                          <button
+                            onClick={() => handleToggleFree(app, false)}
+                            className="px-2 py-0.5 border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700 rounded-md text-[0.68rem] font-bold transition-all"
+                            title="일반 입금 완료 상태로 전환"
+                          >
+                            일반으로 전환
+                          </button>
+                          {isNoShow && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-extrabold bg-rose-50 text-rose-600 border border-rose-100 animate-pulse">
+                              🚨 노쇼
+                            </span>
+                          )}
+                        </div>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-600">
-                          입금 완료
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-600">
+                            입금 완료
+                          </span>
+                          <button
+                            onClick={() => handleToggleFree(app, true)}
+                            className="px-2 py-0.5 bg-purple-50 hover:bg-purple-100 text-purple-600 rounded-md text-[0.68rem] font-black transition-all border border-purple-200/50"
+                            title="무료 참여 상태로 전환"
+                          >
+                            🎁 무료 전환
+                          </button>
+                          <button
+                            onClick={() => handleToggleRefund(app, true)}
+                            className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-md text-[0.68rem] font-black transition-all border border-slate-200"
+                            title="수동 환불 처리"
+                          >
+                            💸 수동 환불
+                          </button>
+                          {isNoShow && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-extrabold bg-rose-50 text-rose-600 border border-rose-100 animate-pulse">
+                              🚨 노쇼
+                            </span>
+                          )}
+                        </div>
                       )}
                     </td>
                   </tr>
@@ -296,24 +417,42 @@ export default function RevenueStatsPage() {
         (app.status === 'confirmed' || app.paymentConfirmed === true)
       );
 
+      let paidCount = 0;
+      let freeCount = 0;
+      let refundCount = 0;
+
       const revenue = confirmedApps.reduce((sum, app) => {
         // v12.0.0: 정상 출석 + 환불 대상 = 실제 매출 0원 (보증금 환불)
         // 지각 or 노쇼 + 환불 대상 = 보증금 몰수 → 정상 매출로 계산
-        const isRefunded = app.isRefundDeposit === true && app.attendanceStatus === 'present';
-        if (isRefunded) return sum;
-
-        if (app.amountPaid !== undefined && app.amountPaid !== null && app.amountPaid !== '') return sum + Number(app.amountPaid);
+        const isRefunded = app.isManualRefund === true || app.status === 'refunded' || (app.isRefundDeposit === true && app.attendanceStatus === 'present');
+        const isRefundPending = app.status !== 'refunded' && app.isManualRefund !== true && app.isRefundDeposit === true && (app.attendanceStatus === undefined || app.attendanceStatus === null || app.attendanceStatus === 'none' || !app.attendanceStatus);
         
-        // v8.12.1: 성별 및 옵션 기반 가격 로직 동기화
+        if (isRefunded || isRefundPending) {
+          refundCount++;
+          return sum;
+        }
+
         const malePrice = app.maleOption === 'safe' ? 60000 : (session.malePrice || 49000);
         const femalePrice = app.femaleOption === 'group' ? 24000 : (session.femalePrice || 29000);
         
-        const price = app.gender === 'male' ? malePrice : femalePrice;
+        const price = (app.amountPaid !== undefined && app.amountPaid !== null && app.amountPaid !== '')
+          ? Number(app.amountPaid)
+          : (app.price !== undefined && app.price !== null && app.price !== '')
+            ? Number(app.price)
+            : (app.gender === 'male' ? malePrice : femalePrice);
+
+        if (price === 0) {
+          freeCount++;
+        } else {
+          paidCount++;
+        }
+
         return sum + price;
       }, 0);
 
-      const avgFee = confirmedApps.length > 0
-        ? Math.round(revenue / confirmedApps.length)
+      // avgFee 왜곡 방지: 유료 결제 인원(paidCount)만 분모로 사용
+      const avgFee = paidCount > 0
+        ? Math.round(revenue / paidCount)
         : (session.price || 29000);
 
       return {
@@ -321,6 +460,9 @@ export default function RevenueStatsPage() {
         name: `${session.region === 'busan' ? '부산' : '창원'} ${session.episodeNumber}기`,
         date: session.eventDate,
         count: confirmedApps.length,
+        paidCount,
+        freeCount,
+        refundCount,
         fee: avgFee,
         total: revenue
       };
@@ -511,7 +653,7 @@ export default function RevenueStatsPage() {
             <table className="w-full text-left">
               <thead>
                 <tr className="bg-slate-50/50">
-                  {['운영 기수', '행사 일정', '평균 참가비', '확정 인원', '합계 매출액', '지표'].map(h => (
+                  {['운영 기수', '행사 일정', '확정 인원', '합계 매출액', '지표'].map(h => (
                     <th key={h} className="px-8 py-5 text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 italic">{h}</th>
                   ))}
                 </tr>
@@ -525,15 +667,31 @@ export default function RevenueStatsPage() {
                     <td className="px-8 py-6">
                       <span className="text-xs font-bold text-slate-500">{format(ev.date, 'yyyy. MM. dd (eee)', { locale: ko })}</span>
                     </td>
-                    <td className="px-8 py-6 font-mono text-sm font-bold text-slate-600">
-                      ₩{ev.fee.toLocaleString()}
-                    </td>
                     <td className="px-8 py-6">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-[#FF7E7E]">
-                          <Users size={14} />
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-[#FF7E7E]">
+                            <Users size={14} />
+                          </div>
+                          <span className="text-sm font-bold text-slate-700">{ev.count}명</span>
                         </div>
-                        <span className="text-sm font-bold text-slate-700">{ev.count}명</span>
+                        {(ev.freeCount > 0 || ev.refundCount > 0) && (
+                          <div className="flex items-center gap-1 pl-10 text-[0.68rem] font-bold text-slate-400">
+                            <span>유료 {ev.paidCount}</span>
+                            {ev.freeCount > 0 && (
+                              <>
+                                <span>·</span>
+                                <span className="text-purple-500">무료 {ev.freeCount}</span>
+                              </>
+                            )}
+                            {ev.refundCount > 0 && (
+                              <>
+                                <span>·</span>
+                                <span className="text-sky-500">환급 {ev.refundCount}</span>
+                              </>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </td>
                     <td className="px-8 py-6">

@@ -35,40 +35,38 @@ try {
 const db = admin.firestore();
 
 async function findAndResetUser() {
-  const targetName = '이창일';
-  console.log(`Firestore에서 '${targetName}' 회원 검색 중...`);
+  const targetName = '서가희';
+  console.log(`Firestore에서 '${targetName}' 신청자 검색 중...`);
 
-  const snapshot = await db.collection('users')
+  const snapshot = await db.collection('applications')
     .where('name', '==', targetName)
     .get();
 
   if (snapshot.empty) {
-    console.log(`'${targetName}' 회원을 찾을 수 없습니다. (혹시 닉네임이나 다른 이름으로 가입했는지 확인 필요)`);
+    console.log(`'${targetName}' 신청자를 찾을 수 없습니다.`);
     return;
   }
 
-  console.log(`총 ${snapshot.size}명의 '${targetName}' 회원이 발견되었습니다:`);
+  console.log(`총 ${snapshot.size}건의 신청 내역이 발견되었습니다:`);
   
   for (const doc of snapshot.docs) {
     const data = doc.data();
     console.log('--------------------------------------------------');
     console.log(`이름: ${data.name}`);
-    console.log(`아이디(이메일): ${data.email || '이메일 없음'}`);
-    console.log(`전화번호: ${data.phone || '전화번호 없음'}`);
-    console.log(`가입기수(메모 등): ${data.memo || '메모 없음'}`);
-    console.log(`UID: ${doc.id}`);
-    
-    // 임시 비밀번호 설정
-    const tempPassword = 'key1234!';
-    console.log(`\nUID: ${doc.id} 회원 비밀번호를 '${tempPassword}'로 재설정하는 중...`);
+    console.log(`기수: ${data.sessionId}`);
+    console.log(`상태: ${data.status}`);
+    console.log(`노쇼: ${data.attendanceStatus === 'no-show' ? 'O' : 'X'}`);
     
     try {
-      await admin.auth().updateUser(doc.id, {
-        password: tempPassword
+      await db.collection('applications').doc(doc.id).update({
+        status: 'confirmed',
+        isManualRefund: true,
+        attendanceStatus: null, // 노쇼 해제
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
       });
-      console.log(`✅ 비밀번호 강제 업데이트 완료!`);
-    } catch (authError) {
-      console.error(`❌ Auth 업데이트 실패 (사용자가 Auth에 존재하지 않거나 연동 방식 다름):`, authError.message);
+      console.log(`✅ 상태 복구 처리 완료! (confirmed, isManualRefund: true)`);
+    } catch (error) {
+      console.error(`❌ 업데이트 실패:`, error.message);
     }
   }
   console.log('--------------------------------------------------');

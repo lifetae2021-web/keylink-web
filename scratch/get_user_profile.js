@@ -2,7 +2,6 @@ const fs = require('fs');
 const path = require('path');
 const admin = require('firebase-admin');
 
-// 1. Load .env.local manually
 const envPath = path.join(__dirname, '..', '.env.local');
 const envContent = fs.readFileSync(envPath, 'utf8');
 let serviceAccountKey = '';
@@ -32,19 +31,28 @@ try {
   process.exit(1);
 }
 
-async function updatePassword() {
-  const uid = 'h11A3XYVkEPO4R25ufFK7jMtBsB2';
-  const tempPassword = 'key1234!';
-  console.log(`Updating password for UID: ${uid} to '${tempPassword}'...`);
+const db = admin.firestore();
+
+async function inspectUser() {
+  const userId = 'kakao_4902384060'; // 허세준
+  const sessionId = 'fwoehJ0r8wFHPiMb8GOb';
   
-  await admin.auth().updateUser(uid, {
-    password: tempPassword
-  });
+  const userDoc = await db.collection('users').doc(userId).get();
+  console.log('User Document Data:', userDoc.data());
   
-  console.log('Password successfully updated!');
+  const appSnap = await db.collection('applications')
+    .where('sessionId', '==', sessionId)
+    .where('userId', '==', userId)
+    .get();
+    
+  if (!appSnap.empty) {
+    console.log('Application Document Data:', appSnap.docs[0].data());
+  } else {
+    console.log('Application Document not found!');
+  }
 }
 
-updatePassword().catch(err => {
+inspectUser().catch(err => {
   console.error(err);
   process.exit(1);
 });

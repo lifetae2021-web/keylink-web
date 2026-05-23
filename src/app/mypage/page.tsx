@@ -1214,7 +1214,26 @@ function ApplicationStatusSection({ applications, sessionsMap, userId, isAdmin =
 
   // 1. 선발 확정(confirmed) 항목들을 날짜순으로 정렬
   const confirmedApps = visibleApps
-    .filter(a => a.status === 'confirmed')
+    .filter(a => {
+      if (a.status !== 'confirmed') return false;
+      const session = sessionsMap[a.sessionId];
+      if (!session) return true;
+      
+      const ed = session.eventDate;
+      if (!ed) return true;
+      
+      const eventDate = ed instanceof Date ? ed : (ed as any)?.toDate?.() || new Date(0);
+      // 행사가 시작된 지 24시간이 지났는지 확인 (완전히 종료된 행사)
+      const isCompletelyOver = Date.now() > eventDate.getTime() + 24 * 60 * 60 * 1000;
+      
+      if (isCompletelyOver) {
+        // 완전히 종료된 행사인데 출석(present)이나 지각(late) 처리가 없다면 미참여로 간주
+        if (a.attendanceStatus !== 'present' && a.attendanceStatus !== 'late') {
+          return false;
+        }
+      }
+      return true;
+    })
     .sort((a, b) => {
       const edA = sessionsMap[a.sessionId]?.eventDate;
       const edB = sessionsMap[b.sessionId]?.eventDate;
@@ -1260,8 +1279,8 @@ function ApplicationStatusBlock({ application, session, userId, hasVoted, submit
   useEffect(() => {
     if (!hasVoted || !submittedAt) return;
 
-    // 투표 제출 후 30분 만료 시각 계산 (30분 * 60초 * 1000밀리초)
-    const limitTime = new Date(submittedAt).getTime() + 30 * 60 * 1000;
+    // 투표 제출 후 20분 만료 시각 계산 (20분 * 60초 * 1000밀리초)
+    const limitTime = new Date(submittedAt).getTime() + 20 * 60 * 1000;
     
     const updateTimer = () => {
       const diff = limitTime - Date.now();

@@ -28,9 +28,30 @@ export interface VoteConfig {
   // v8.1.7: 네이버 폼 스타일 질문 커스터마이징
   q1Label?: string;              // 실명 확인 문구
   q2Label?: string;              // 본인 호수 선택 문구
-  q3Label?: string;              // 이성 선택 메인 질문
-  q4Label?: string;              // 최종 확인 문구
-  q5Label?: string;              // 후기 입력 문구
+  q3Label?: string;              // 이성 선택 탭 이름
+  q4Label?: string;              // (Deprecated) 최종 확인 문구
+  q5Label?: string;              // 후기 탭 이름
+
+  // 커스텀 설명 필드 (v11.3.0)
+  publicModeDesc?: string;       // 공개 모드 설명
+  anonymousModeDesc?: string;    // 익명 모드 설명
+  feedbackPlaceholder?: string;  // 후기 입력창 안내(Placeholder)
+  feedbackHelpText?: string;     // 후기 입력창 하단 도움말
+
+  // 동적 커스텀 질문 (v11.4.0)
+  enableCustomQuestion?: boolean;       // 커스텀 질문 활성화 여부
+  customQuestionTitle?: string;         // 커스텀 질문 제목
+  customQuestionType?: 'text' | 'choice'; // 커스텀 질문 타입 (주관식/객관식)
+  customQuestionOptions?: string[];     // 객관식 선택지 (타입이 'choice'일 때)
+  customQuestionRequired?: boolean;     // 필수 응답 여부
+  customQuestionOrder?: number;         // 질문 노출 위치 (2, 3, 4)
+
+  // v11.5.0: 카카오톡 설정 확인 (선택)
+  enableKakaoAlert?: boolean;
+  kakaoAlertDesc?: string;
+
+  // v11.6.0: 결과 안내 문구
+  resultNoticeDesc?: string;
 }
 
 export interface Session {
@@ -189,6 +210,9 @@ export interface Vote {
   finalCheck?: boolean;      // 매칭 라인업 최종 확인 여부
   disclosureMode?: 'public' | 'anonymous'; // 공개 모드 (v8.1.7)
   feedback?: string;         // 후기 (선택 사항)
+  
+  // v11.4.0: 커스텀 질문 응답
+  customAnswer?: string;     
 
   submittedAt: Date;
 }

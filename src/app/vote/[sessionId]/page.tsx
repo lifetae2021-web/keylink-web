@@ -9,7 +9,7 @@ import { subscribeSession } from '@/lib/firestore/sessions';
 import { getMyVote, submitVote, getAllVotesBySession } from '@/lib/firestore/votes';
 import { getApplicationBySession } from '@/lib/firestore/applications';
 import { Session, Application, VoteChoice } from '@/lib/types';
-import { Heart, Lock, CheckCircle2, ChevronLeft, User, Eye, EyeOff, MessageSquare, BarChart2, X } from 'lucide-react';
+import { Heart, Lock, CheckCircle2, ChevronLeft, User, Eye, EyeOff, MessageSquare, BarChart2, X, HelpCircle } from 'lucide-react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 
@@ -26,7 +26,7 @@ interface Candidate {
 }
 
 function SectionCard({ number, icon, title, required, children }: {
-  number: number;
+  number?: number;
   icon: React.ReactNode;
   title: string;
   required?: boolean;
@@ -35,9 +35,11 @@ function SectionCard({ number, icon, title, required, children }: {
   return (
     <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
       <div className="px-6 pt-6 pb-4 flex items-center gap-3 border-b border-slate-50">
-        <div className="w-8 h-8 rounded-full bg-[#FF6F61] flex items-center justify-center text-white font-black text-sm shrink-0">
-          {number}
-        </div>
+        {number !== undefined && (
+          <div className="w-8 h-8 rounded-full bg-[#FF6F61] flex items-center justify-center text-white font-black text-sm shrink-0">
+            {number}
+          </div>
+        )}
         <div className="flex items-center gap-2">
           <span className="text-[#FF6F61]">{icon}</span>
           <h2 className="font-extrabold text-slate-800 text-base">
@@ -58,7 +60,7 @@ export default function VotePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const sessionId = params.sessionId as string;
-  // edit=true 쿼리가 있으면 수정 모드: 30분 타이머 내에서 수정하러 온 케이스
+  // edit=true 쿼리가 있으면 수정 모드: 20분 타이머 내에서 수정하러 온 케이스
   const isEditMode = searchParams.get('edit') === 'true';
 
   const [userId, setUserId] = useState<string | null>(null);
@@ -76,6 +78,9 @@ export default function VotePage() {
   const [finalCheck, setFinalCheck] = useState(false);
   const [disclosureMode, setDisclosureMode] = useState<'public' | 'anonymous'>('public');
   const [feedback, setFeedback] = useState('');
+  const [customAnswer, setCustomAnswer] = useState(''); // v11.4.0
+  const [kakaoChecked, setKakaoChecked] = useState(false); // v11.5.0
+
   const [nextEventOpt, setNextEventOpt] = useState(false);
 
   const [isAdmin, setIsAdmin] = useState(false);
@@ -178,6 +183,7 @@ export default function VotePage() {
         setFinalCheck(existingVote.finalCheck || false);
         setDisclosureMode(existingVote.disclosureMode || 'public');
         setFeedback(existingVote.feedback || '');
+        setCustomAnswer(existingVote.customAnswer || '');
 
         const choicesMap: Record<number, string> = {};
         const reasonsMap: Record<string, string> = {};
@@ -273,10 +279,23 @@ export default function VotePage() {
       toast.error('호감 가는 이성을 선택해주세요.');
       return;
     }
-    if (feedback.trim().length < 5) {
+    if (feedback.trim().length > 0 && feedback.trim().length < 5) {
       toast.error('소중한 의견을 5자 이상 들려주시면 키링크가 더 발전하는 데 큰 힘이 됩니다! 😊');
       return;
     }
+    
+    const hasCustom = session?.voteConfig?.enableCustomQuestion || false;
+    const customRequired = session?.voteConfig?.customQuestionRequired || false;
+    if (hasCustom && customRequired && (!customAnswer || !customAnswer.trim())) {
+      toast.error('추가 질문에 응답해주세요.');
+      return;
+    }
+    
+    if (!kakaoChecked) {
+      toast.error('원활한 매칭을 위해 카카오톡 설정 확인에 체크해주세요.');
+      return;
+    }
+
     if (!userId) return;
 
     setSubmitting(true);
@@ -292,7 +311,8 @@ export default function VotePage() {
         myAlias,
         finalCheck: true, // 체크 항목 생략됨 (자동 동의)
         disclosureMode,
-        feedback
+        feedback,
+        customAnswer
       }, hasVoted);
       setHasVoted(true);
       toast.success(hasVoted ? '🎉 투표가 수정 완료되었습니다!' : '🎉 투표가 완료되었습니다!');
@@ -362,7 +382,59 @@ export default function VotePage() {
   const q3Label = session?.voteConfig?.q3Label || '호감 가는 이성 선택';
   const q4Label = session?.voteConfig?.q4Label || '최종 라인업 및 메모를 확인하셨나요?';
   const q5Label = session?.voteConfig?.q5Label || '후기';
+  
+  // 커스텀 설명 텍스트 (v11.3.0)
+  const publicModeDesc = session?.voteConfig?.publicModeDesc || '상대방에게 내 호수를 공개합니다';
+  const anonymousModeDesc = session?.voteConfig?.anonymousModeDesc || '상대방에게 \'익명\'으로 보이며, 나를 선택한 상대방이 공개모드라도 나에게는 무조건 \'익명\'으로 표시됩니다.';
+  const feedbackPlaceholder = session?.voteConfig?.feedbackPlaceholder || '작성해주신 소중한 후기는 키링크가 한 걸음 더 발전하는 데 정말 큰 힘이 됩니다! ❤️ (최소 5자 이상)';
+  const feedbackHelpText = session?.voteConfig?.feedbackHelpText || '* 보내주신 소중한 후기는 키링크가 더 발전할 수 있는 밑거름이 됩니다. 5자 이상 작성해 주세요!';
   const regionLabel = session?.region === 'busan' ? '부산' : '창원';
+
+  // 커스텀 질문 (v11.4.0)
+  const hasCustom = session?.voteConfig?.enableCustomQuestion || false;
+  const customTitle = session?.voteConfig?.customQuestionTitle || '질문 제목을 입력하세요';
+  const customType = session?.voteConfig?.customQuestionType || 'text';
+  const customOptions = (session?.voteConfig?.customQuestionOptions || []).filter(Boolean);
+  const customRequired = session?.voteConfig?.customQuestionRequired || false;
+  const customOrder = session?.voteConfig?.customQuestionOrder || 2;
+
+  const publicModeNum = hasCustom && customOrder <= 2 ? 3 : 2;
+  const feedbackNum = hasCustom && customOrder <= 3 ? 4 : 3;
+
+  const renderCustomSection = (num: number) => (
+    <SectionCard key={`custom-${num}`} number={num} icon={<HelpCircle size={16} />} title={customTitle} required={customRequired}>
+      {customType === 'text' ? (
+        <textarea
+          value={customAnswer}
+          onChange={e => setCustomAnswer(e.target.value)}
+          placeholder="답변을 입력해주세요..."
+          className="w-full h-24 p-4 rounded-2xl border-2 border-slate-100 bg-slate-50 focus:border-[#FF6F61] focus:bg-white focus:ring-0 outline-none font-medium text-slate-700 transition-all resize-none text-sm"
+        />
+      ) : (
+        <div className="space-y-2">
+          {customOptions.map((opt, i) => (
+            <label
+              key={i}
+              className={`flex items-center gap-3 p-4 rounded-2xl border-2 cursor-pointer transition-all ${
+                customAnswer === opt
+                  ? 'border-[#FF6F61] bg-[#FFF5F4]'
+                  : 'border-slate-100 bg-slate-50 hover:border-slate-200'
+              }`}
+            >
+              <input
+                type="radio"
+                name="customAnswer"
+                checked={customAnswer === opt}
+                onChange={() => setCustomAnswer(opt)}
+                className="w-4 h-4 accent-[#FF6F61] shrink-0"
+              />
+              <span className="font-black text-sm text-slate-700 flex-1">{opt}</span>
+            </label>
+          ))}
+        </div>
+      )}
+    </SectionCard>
+  );
 
   return (
     <div className="min-h-screen bg-[#FFF5F3] pb-24">
@@ -471,8 +543,8 @@ export default function VotePage() {
           </div>
         )}
 
-        {/* 섹션 1: 실명 및 호수 확인 */}
-        <SectionCard number={1} icon={<User size={16} />} title="실명 및 본인 호수" required>
+        {/* 섹션 1: 실명 및 호수 확인 (번호 없음) */}
+        <SectionCard icon={<User size={16} />} title="실명 및 본인 호수" required>
           <div className="flex items-center gap-3">
             <div className="flex-1 h-14 flex items-center justify-center rounded-2xl border-2 border-slate-100 bg-slate-50 font-bold text-slate-600 text-lg cursor-not-allowed">
               {realName || '정보 없음'}
@@ -485,7 +557,7 @@ export default function VotePage() {
         </SectionCard>
 
         {/* 섹션 2: 이성 선택 */}
-        <SectionCard number={2} icon={<Heart size={16} />} title={q3Label} required>
+        <SectionCard number={1} icon={<Heart size={16} />} title={q3Label} required>
           <p className="text-sm text-slate-400 font-medium mb-4">{questionText}</p>
 
           {/* 선택 진행 상황 */}
@@ -571,21 +643,24 @@ export default function VotePage() {
           </div>
         </SectionCard>
 
+        {/* 커스텀 섹션 2번째 위치 */}
+        {hasCustom && customOrder === 2 && renderCustomSection(2)}
+
         {/* 섹션 3: 공개 모드 */}
-        <SectionCard number={3} icon={<Eye size={16} />} title="호감 공개 여부" required>
+        <SectionCard number={publicModeNum} icon={<Eye size={16} />} title="호감 공개 여부" required>
           <p className="text-sm text-slate-400 font-medium mb-4">결과 발표 시 적용될 나의 공개 모드입니다.</p>
           <div className="space-y-2">
             {[
               {
                 id: 'public',
                 label: '공개 모드',
-                desc: '상대방에게 내 호수를 공개합니다',
+                desc: publicModeDesc,
                 icon: <Eye size={18} />,
               },
               {
                 id: 'anonymous',
                 label: '익명 모드',
-                desc: "상대방에게 '익명'으로 보이며, 나를 선택한 상대방이 공개모드라도 나에게는 무조건 '익명'으로 표시됩니다.",
+                desc: anonymousModeDesc,
                 icon: <EyeOff size={18} />,
               },
             ].map(opt => (
@@ -618,18 +693,54 @@ export default function VotePage() {
           </div>
         </SectionCard>
 
+        {/* 커스텀 섹션 3번째 위치 */}
+        {hasCustom && customOrder === 3 && renderCustomSection(3)}
+
+        {/* 카카오톡 설정 안내 (기본 필수 반영) */}
+        <div className="bg-[#FFFDF0] rounded-2xl shadow-sm border-2 border-[#FEE500] overflow-hidden opacity-95 mb-4 p-4">
+          <p className="text-sm font-black text-[#391B1B] mb-2">원활한 매칭을 위한 카톡 설정안내</p>
+          <div className="flex items-start gap-2 mb-3">
+            <div className="mt-0.5"><MessageSquare size={16} className="text-[#391B1B]" fill="#391B1B" /></div>
+            <p className="text-xs font-bold text-[#391B1B] leading-relaxed break-keep whitespace-pre-wrap">
+              {session?.voteConfig?.kakaoAlertDesc || "카카오톡 우측 상단의 톱니바퀴(설정) 버튼을 누른 후, '친구관리'에서 '전화번호로 친구 추가 허용'을 활성화해주세요."}
+            </p>
+          </div>
+          <label className="flex items-center gap-2 p-3 rounded-xl border border-[#FEE500] bg-white cursor-pointer transition-all hover:bg-slate-50">
+            <input
+              type="checkbox"
+              checked={kakaoChecked}
+              onChange={e => setKakaoChecked(e.target.checked)}
+              className="w-5 h-5 accent-[#FEE500] shrink-0 border-[#FEE500] cursor-pointer"
+              style={{ accentColor: '#FEE500' }}
+            />
+            <span className="text-sm font-black text-[#391B1B]">카카오톡 설정을 확인했습니다</span>
+          </label>
+        </div>
+
         {/* 섹션 4: 후기 */}
-        <SectionCard number={4} icon={<MessageSquare size={16} />} title={q5Label} required>
+        <SectionCard number={feedbackNum} icon={<MessageSquare size={16} />} title={q5Label}>
           <textarea
             value={feedback}
             onChange={e => setFeedback(e.target.value)}
-            placeholder="작성해주신 소중한 후기는 키링크가 한 걸음 더 발전하는 데 정말 큰 힘이 됩니다! ❤️ (최소 5자 이상)"
+            placeholder={feedbackPlaceholder}
             className="w-full h-28 p-4 rounded-2xl border-2 border-slate-100 bg-slate-50 focus:border-[#FF6F61] focus:bg-white focus:ring-0 outline-none font-medium text-slate-700 transition-all resize-none text-sm"
           />
-          <p className="text-[11px] text-slate-400 font-semibold mt-2.5 ml-1 leading-relaxed">
-            * 보내주신 소중한 후기는 키링크가 더 발전할 수 있는 밑거름이 됩니다. 5자 이상 작성해 주세요!
-          </p>
+          {feedbackHelpText && feedbackHelpText.trim() !== '' && (
+            <p className="text-[11px] text-slate-400 font-semibold mt-2.5 ml-1 leading-relaxed">
+              {feedbackHelpText}
+            </p>
+          )}
         </SectionCard>
+
+        {/* 커스텀 섹션 4번째 위치 */}
+        {hasCustom && customOrder === 4 && renderCustomSection(4)}
+
+        {/* 제출 전 결과 안내 */}
+        <div className="bg-slate-50 rounded-xl p-3 text-center mb-4 border border-slate-100 mt-2">
+          <p className="text-[11px] text-slate-500 font-semibold leading-relaxed whitespace-pre-wrap">
+            {session?.voteConfig?.resultNoticeDesc || "결과는 1시간 뒤 마이페이지에서 확인가능합니다.\n기타 문의사항은 공식 인스타그램 DM으로 남겨주세요."}
+          </p>
+        </div>
 
         {/* 제출 */}
         <div className="pt-2 pb-4">

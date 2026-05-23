@@ -200,6 +200,7 @@ export default function AdminDashboard() {
             const isRefunded = app.isRefundDeposit === true && app.attendanceStatus === 'present';
             if (isRefunded) return sum;
             if (app.amountPaid !== undefined && app.amountPaid !== null && app.amountPaid !== '') return sum + Number(app.amountPaid);
+            if (app.price !== undefined && app.price !== null && app.price !== '') return sum + Number(app.price);
             const malePrice = app.maleOption === 'safe' ? 60000 : (s.malePrice || 49000);
             const femalePrice = app.femaleOption === 'group' ? 24000 : (s.femalePrice || 29000);
             const price = app.gender === 'male' ? malePrice : femalePrice;

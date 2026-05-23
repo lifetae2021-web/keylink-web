@@ -37,6 +37,7 @@ function fromDoc(snap: DocumentSnapshot): Vote | null {
     finalCheck: d.finalCheck,
     disclosureMode: d.disclosureMode || 'public', // v8.1.7
     feedback: d.feedback,
+    customAnswer: d.customAnswer || '', // v11.4.0
     submittedAt: (d.submittedAt as Timestamp).toDate(),
   };
 }
@@ -79,6 +80,7 @@ export async function submitVote(
     finalCheck?: boolean;
     disclosureMode?: 'public' | 'anonymous'; // v8.1.7
     feedback?: string;
+    customAnswer?: string; // v11.4.0
   },
   isUpdate = false // v10.4.0: 자율 수정 여부 추가
 ): Promise<void> {
@@ -109,6 +111,7 @@ export async function submitVote(
     finalCheck: extra?.finalCheck || false,
     disclosureMode: extra?.disclosureMode || 'public', // v8.1.7
     feedback: extra?.feedback || '',
+    customAnswer: extra?.customAnswer || '', // v11.4.0
     // 수정 시에는 최초 제출 시각을 유지 (30분 타이머 기준 보존)
     ...(isUpdate ? {} : { submittedAt: Timestamp.now() }),
   }, { merge: true });

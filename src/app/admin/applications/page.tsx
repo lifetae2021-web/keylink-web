@@ -74,6 +74,7 @@ export default function ApplicationsPage() {
   const [ageFilter, setAgeFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [dummyFilter, setDummyFilter] = useState<'exclude' | 'only'>('exclude');
+  const [selectedAppIds, setSelectedAppIds] = useState<string[]>([]);
 
   // 매칭 결과 (matchingSummaries 컬렉션)
   const [matchingSummary, setMatchingSummary] = useState<any>(null);
@@ -146,6 +147,11 @@ export default function ApplicationsPage() {
 
     return () => unsub();
   }, [selectedEventId]);
+
+  // 필터 변경 시 다중 선택 상태 자동 초기화 (안전 장치)
+  useEffect(() => {
+    setSelectedAppIds([]);
+  }, [selectedEventId, filterGender, searchQuery, dummyFilter, statusFilter, ageFilter, activeTab]);
 
   // 3. SMS 템플릿 로드
   useEffect(() => {
@@ -474,6 +480,56 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
     }
   };
 
+  // 다중 선택된 신청서 일괄 삭제 처리 핸들러
+  const handleBulkDelete = async () => {
+    if (selectedAppIds.length === 0) return;
+    
+    // 더미 계정이 포함되었는지 확인하여 맞춤 메시지 제공
+    const dummyCount = selectedAppIds.filter(id => {
+      const app = applications.find(a => a.id === id);
+      const user = userMap[app?.userId || ''] || {};
+      return id?.startsWith('dummy') || app?.userId?.startsWith('user_m_') || app?.userId?.startsWith('user_f_') || user.isDummy === true;
+    }).length;
+
+    const actualCount = selectedAppIds.length - dummyCount;
+    const confirmMessage = actualCount > 0
+      ? `선택한 ${selectedAppIds.length}개의 신청서(실제 회원 ${actualCount}명, 더미 ${dummyCount}개)를 정말 삭제하시겠습니까?\n(참가 취소 및 삭제 처리가 일괄 진행됩니다.)`
+      : `선택한 ${selectedAppIds.length}개의 더미 신청서를 정말 일괄 삭제하시겠습니까?`;
+
+    if (!window.confirm(confirmMessage)) return;
+
+    setIsDataLoading(true);
+    let successCount = 0;
+    let failCount = 0;
+
+    try {
+      // 데이터베이스 동시성 및 트랜잭션 락 충돌 방지를 위해 순차적(sequential) 처리
+      for (const appId of selectedAppIds) {
+        const app = applications.find(a => a.id === appId);
+        if (!app) continue;
+        try {
+          await cancelApplicant(app.id, app.sessionId, app.gender, app.status === 'confirmed');
+          successCount++;
+        } catch (err) {
+          console.error(`Failed to delete application ${appId}:`, err);
+          failCount++;
+        }
+      }
+
+      if (failCount === 0) {
+        toast.success(`선택한 ${successCount}개의 신청서가 성공적으로 일괄 삭제되었습니다.`);
+      } else {
+        toast.success(`${successCount}개 삭제 완료, ${failCount}개 실패`);
+      }
+      setSelectedAppIds([]);
+    } catch (e: any) {
+      console.error('Bulk delete error:', e);
+      toast.error('일괄 삭제 중 예기치 못한 오류가 발생했습니다.');
+    } finally {
+      setIsDataLoading(false);
+    }
+  };
+
   // v8.1.7: \uc2e4\uc2dc\uac04 \uc120\ubc1c \ud604\ud669 \uacc4\uc0b0 (confirmed only, excluding selected/waiting)
   const selectionStats = useMemo(() => {
     if (selectedEventId === 'all') return { male: 0, female: 0 };
@@ -716,6 +772,17 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                   <ChevronDown size={10} />
                 </div>
               </div>
+              {selectedAppIds.length > 0 && (
+                <button
+                  onClick={handleBulkDelete}
+                  className="flex items-center gap-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-600 transition-all shadow-sm animate-in fade-in zoom-in-95 duration-200"
+                  style={{ height: '36px', padding: '0 10px', fontSize: '0.65rem', fontWeight: 700 }}
+                >
+                  <Trash2 size={12} />
+                  <span>선택 삭제</span>
+                  <span className="bg-rose-200 text-rose-800 rounded-full px-1.5 py-0.2 text-[0.6rem] font-black">{selectedAppIds.length}</span>
+                </button>
+              )}
               <button
                 onClick={handleSeedDummyAccounts}
                 className="flex items-center gap-1.5 rounded-lg transition-all hover:bg-slate-50 border border-slate-200 text-slate-500 hover:text-emerald-600" 
@@ -833,6 +900,21 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
               <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' }}>
                 <thead className="hidden md:table-header-group sticky top-0 z-20" style={{ background: '#F8FAFC' }}>
                   <tr style={{ borderBottom: '1px solid #E2E8F0' }}>
+                    {/* 선택 체크박스 */}
+                    <th style={{ padding: '14px 10px', textAlign: 'center', width: '45px' }}>
+                      <input
+                        type="checkbox"
+                        className="rounded border-slate-300 text-[#FF7E7E] focus:ring-[#FF7E7E] cursor-pointer"
+                        checked={filtered.length > 0 && selectedAppIds.length === filtered.length}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedAppIds(filtered.map(app => app.id));
+                          } else {
+                            setSelectedAppIds([]);
+                          }
+                        }}
+                      />
+                    </th>
                     {/* 신청 기수 */}
                     <th style={{ padding: '14px 10px', textAlign: 'center', fontSize: '0.7rem', fontWeight: 700, color: '#94A3B8' }}>
                       신청 기수
@@ -852,12 +934,12 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                   {isDataLoading ? (
                     [1, 2, 3, 4, 5, 6, 7, 8].map(i => (
                       <tr key={i} style={{ borderBottom: '1px solid #F1F5F9', height: '88px' }}>
-                        <td colSpan={7} style={{ padding: '0 20px' }}><Skeleton className="h-10 w-full" /></td>
+                        <td colSpan={8} style={{ padding: '0 20px' }}><Skeleton className="h-10 w-full" /></td>
                       </tr>
                     ))
                   ) : filtered.length === 0 ? (
                     <tr>
-                      <td colSpan={7} style={{ padding: '100px 20px', textAlign: 'center', color: '#555' }}>
+                      <td colSpan={8} style={{ padding: '100px 20px', textAlign: 'center', color: '#555' }}>
                         <div className="flex flex-col items-center gap-4">
                           <FileText size={48} className="opacity-10 text-slate-400" />
                           <p style={{ fontSize: '0.9rem', color: '#64748B' }}>검색 결과와 일치하는 신청 내역이 없습니다.</p>
@@ -921,6 +1003,21 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                               background: isOverQuota ? '#FFE4E6' : ((canSelect && isFull) ? '#FFF1F2' : 'transparent')
                             }}
                           >
+                            {/* 선택 체크박스 */}
+                            <td style={{ padding: '0 10px', textAlign: 'center' }}>
+                              <input
+                                type="checkbox"
+                                className="rounded border-slate-300 text-[#FF7E7E] focus:ring-[#FF7E7E] cursor-pointer"
+                                checked={selectedAppIds.includes(app.id)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedAppIds(prev => [...prev, app.id]);
+                                  } else {
+                                    setSelectedAppIds(prev => prev.filter(id => id !== app.id));
+                                  }
+                                }}
+                              />
+                            </td>
                             <td style={{ padding: '0 16px', textAlign: 'center' }}>
                               <div className="flex flex-col items-center">
                                 <p className="text-[0.85rem] font-black text-slate-800 tracking-tighter whitespace-nowrap">{regionName} {event?.episodeNumber || '??'}기</p>
@@ -1167,10 +1264,26 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
 
                           {/* Mobile View: Card Row */}
                           <tr className="md:hidden">
-                            <td colSpan={7} className="p-0 border-b border-slate-100">
-                              <div className="p-4 bg-white hover:bg-slate-50 transition-colors">
-                                <div className="flex justify-between items-start mb-3">
-                                  <div className="flex items-center gap-3">
+                            <td colSpan={8} className="p-0 border-b border-slate-100">
+                              <div className="p-4 bg-white hover:bg-slate-50 transition-colors flex items-start gap-3">
+                                {/* 모바일 선택 체크박스 */}
+                                <div className="pt-4 shrink-0">
+                                  <input
+                                    type="checkbox"
+                                    className="rounded border-slate-300 text-[#FF7E7E] focus:ring-[#FF7E7E] cursor-pointer"
+                                    checked={selectedAppIds.includes(app.id)}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setSelectedAppIds(prev => [...prev, app.id]);
+                                      } else {
+                                        setSelectedAppIds(prev => prev.filter(id => id !== app.id));
+                                      }
+                                    }}
+                                  />
+                                </div>
+                                <div className="flex-1">
+                                  <div className="flex justify-between items-start mb-3">
+                                    <div className="flex items-center gap-3">
                                     <div 
                                       className="w-14 h-14 rounded-full border-2 border-[#D4AF37] overflow-hidden bg-slate-100 shrink-0"
                                       onClick={() => { setSelectedUser(user); setIsModalOpen(true); }}
@@ -1379,8 +1492,9 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                                 </div>
 
                               </div>
-                            </td>
-                          </tr>
+                            </div>
+                          </td>
+                        </tr>
                         </Fragment>
                       );
                     })
