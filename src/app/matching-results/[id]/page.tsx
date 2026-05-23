@@ -128,20 +128,27 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
                   const batchTitle = sessionSnap.exists() ? `${sessionSnap.data().episodeNumber || ''}기` : '';
                   
                   let calculatedAge = '미입력';
-                  if (appData.birthDate) {
-                    calculatedAge = `${new Date().getFullYear() - new Date(appData.birthDate).getFullYear() + 1}세`;
-                  } else if (appData.age) {
-                    calculatedAge = `${appData.age}세`;
+                  const birthDateVal = appData.birthDate || userData?.birthDate;
+                  if (birthDateVal) {
+                    const yearPart = birthDateVal.split('-')[0];
+                    calculatedAge = `${yearPart.length === 4 ? yearPart.slice(2, 4) : yearPart.slice(0, 2)}년생`;
+                  } else if (appData.age || userData?.age) {
+                    const n = Number(appData.age || userData?.age);
+                    const birthYear = 2026 - n;
+                    calculatedAge = `${String(birthYear).slice(-2)}년생`;
                   }
                   
                   const job = appData.displayJob || userData?.admin_job || userData?.job || appData.job || '미입력';
+                  
+                  const heightVal = appData.height || userData?.height;
+                  const height = heightVal ? `${heightVal}cm` : '미입력';
                   
                   return {
                     gender: appData.gender,
                     number: appData.slotNumber ? String(appData.slotNumber) : '?',
                     age: calculatedAge,
                     job,
-                    height: appData.height ? `${appData.height}cm` : '미입력',
+                    height,
                     residence: appData.residence || '미입력',
                     batch: batchTitle || '알 수 없음'
                   };
