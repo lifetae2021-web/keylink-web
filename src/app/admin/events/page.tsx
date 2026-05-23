@@ -30,6 +30,7 @@ import {
   UserX,
   StickyNote,
   Pencil,
+  StopCircle,
 } from "lucide-react";
 import { auth, db } from "@/lib/firebase";
 import {
@@ -55,8 +56,10 @@ import {
   SessionStatus,
   MatchingResult,
   Application,
+  Vote,
 } from "@/lib/types";
 import Link from "next/link";
+import { getVoteConfigTemplate } from "@/lib/firestore/cms";
 import { getAllVotesBySession } from "@/lib/firestore/votes";
 import SMSPreviewModal from "@/components/admin/SMSPreviewModal";
 import UserProfileModal from "@/app/admin/users/UserProfileModal";
@@ -322,7 +325,7 @@ export default function EventsPage() {
         const now = new Date();
         const activeSessions = fetched.filter(ev => {
           const twentyFourHoursAfter = new Date(ev.eventDate.getTime() + 24 * 60 * 60 * 1000);
-          return now < twentyFourHoursAfter;
+          return now < twentyFourHoursAfter && !ev.isForceHidden;
         });
 
         if (activeSessions.length > 0) {
@@ -346,6 +349,8 @@ export default function EventsPage() {
   useEffect(() => {
     selectedIdRef.current = selectedId;
   }, [selectedId]);
+
+
 
   // 호수 이동 드롭다운 외부 클릭 시 닫기
   useEffect(() => {
@@ -502,6 +507,7 @@ export default function EventsPage() {
     [sessions, selectedId],
   );
 
+
   const stats = useMemo(() => {
     const openCount = sessions.filter((s) => s.status === "open").length;
     // v8.2.3: 모든 기수의 실시간 집계 인원을 합산하여 표시 (Global Sync)
@@ -536,6 +542,61 @@ export default function EventsPage() {
     () => applicants.filter((a) => a.status === "confirmed"),
     [applicants],
   );
+
+  // 투표 현황 실시간 집계 구독 (onSnapshot 연동)
+  useEffect(() => {
+    if (!votingStatusModalOpen || !active) return;
+
+    setVotingStatusLoading(true);
+    const q = query(
+      collection(db, "votes"),
+      where("sessionId", "==", active.id)
+    );
+
+    const unsub = onSnapshot(q, (snap) => {
+      const votes = snap.docs.map((docSnap) => {
+        const d = docSnap.data();
+        return {
+          id: docSnap.id,
+          userId: d.userId,
+          sessionId: d.sessionId,
+          choices: d.choices || [],
+          realName: d.realName || '',
+          myAlias: d.myAlias || '',
+          finalCheck: d.finalCheck || false,
+          disclosureMode: d.disclosureMode || 'public',
+          feedback: d.feedback || '',
+          submittedAt: d.submittedAt ? (d.submittedAt as Timestamp).toDate() : new Date(),
+        } as Vote;
+      });
+
+      const sessionParticipants = participants;
+      const votedUserIds = new Set(votes.map(v => v.userId));
+
+      const submitted: Application[] = [];
+      const pending: Application[] = [];
+      sessionParticipants.forEach(app => {
+        if (votedUserIds.has(app.userId)) submitted.push(app);
+        else pending.push(app);
+      });
+
+      const total = sessionParticipants.length;
+      setVotingStatusData({
+        total,
+        submitted,
+        pending,
+        percent: total > 0 ? Math.round((submitted.length / total) * 100) : 0,
+        rawVotes: votes
+      });
+      setVotingStatusLoading(false);
+    }, (error) => {
+      console.error("Error listening to votes:", error);
+      toast.error("실시간 투표 현황 구독 중 오류가 발생했습니다.");
+      setVotingStatusLoading(false);
+    });
+
+    return () => unsub();
+  }, [votingStatusModalOpen, active, participants]);
   const waitlisted = useMemo(
     () => applicants.filter((a) => ["applied", "held", "waitlisted", "selected"].includes(a.status)),
     [applicants],
@@ -1370,35 +1431,8 @@ ${chatLink}
     setIsConfigModalOpen(true);
   };
 
-  const handleOpenVotingStatus = async (session: Session) => {
+  const handleOpenVotingStatus = (session: Session) => {
     setVotingStatusModalOpen(true);
-    setVotingStatusLoading(true);
-    try {
-      const sessionParticipants = participants;
-      const votes = await getAllVotesBySession(session.id);
-      const votedUserIds = new Set(votes.map(v => v.userId));
-
-      const submitted: Application[] = [];
-      const pending: Application[] = [];
-      sessionParticipants.forEach(app => {
-        if (votedUserIds.has(app.userId)) submitted.push(app);
-        else pending.push(app);
-      });
-
-      const total = sessionParticipants.length;
-      setVotingStatusData({
-        total,
-        submitted,
-        pending,
-        percent: total > 0 ? Math.round((submitted.length / total) * 100) : 0,
-        rawVotes: votes
-      });
-    } catch (e) {
-      console.error(e);
-      toast.error('투표 현황을 불러오는데 실패했습니다.');
-    } finally {
-      setVotingStatusLoading(false);
-    }
   };
 
   const handleOpenReviews = async (session: Session) => {
@@ -1499,6 +1533,29 @@ ${chatLink}
     }
   };
 
+  // 4.5. 기수 수동 종료 처리
+  const handleEndSession = async (session: Session) => {
+    if (
+      !window.confirm(
+        `정말로 [${session.region === "busan" ? "부산" : "창원"} ${session.episodeNumber}기] 행사를 종료하시겠습니까?\n종료 시 24시간이 경과하지 않았더라도 메인 기수 목록 카드에서 자동으로 숨겨집니다.`
+      )
+    )
+      return;
+
+    try {
+      const { updateDoc, doc } = await import("firebase/firestore");
+      selectedIdRef.current = null;
+      setSelectedId(null);
+      await updateDoc(doc(db, "sessions", session.id), {
+        isForceHidden: true
+      });
+      toast.success("행사가 강제 종료되어 카드 목록에서 숨겨졌습니다.");
+    } catch (err: any) {
+      console.error(err);
+      toast.error("행사 종료 처리 중 오류 발생: " + err.message);
+    }
+  };
+
   // 5. 서버에 저장/수정 실행
   const handleSubmitSession = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1581,6 +1638,9 @@ ${chatLink}
         }
 
         // 2. 신규 기수 추가
+        // 글로벌 템플릿 로드
+        const template = await getVoteConfigTemplate();
+        
         const newSessionRef = doc(collection(db, "sessions"));
         batch.set(newSessionRef, {
           ...payload,
@@ -1588,6 +1648,7 @@ ${chatLink}
           currentFemale: 0,
           votingUnlockedAt: null,
           createdAt: serverTimestamp(),
+          ...(template && { voteConfig: template }),
         });
 
         await batch.commit();
@@ -1671,8 +1732,9 @@ ${chatLink}
   if (active) {
     const now = new Date();
     const twentyFourHoursAfter = new Date(active.eventDate.getTime() + 24 * 60 * 60 * 1000);
-    activeBadgeLabel = now >= twentyFourHoursAfter ? '종료' : now >= active.eventDate ? '진행 중' : isDetailFull ? '마감' : '모집 중';
-    activeBadgeCls = now >= twentyFourHoursAfter ? 'bg-slate-100 text-slate-500' : now >= active.eventDate ? 'bg-blue-100 text-blue-700' : isDetailFull ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-700';
+    const isEnded = active.isForceHidden || now >= twentyFourHoursAfter;
+    activeBadgeLabel = isEnded ? '종료' : now >= active.eventDate ? '진행 중' : isDetailFull ? '마감' : '모집 중';
+    activeBadgeCls = isEnded ? 'bg-slate-100 text-slate-500' : now >= active.eventDate ? 'bg-blue-100 text-blue-700' : isDetailFull ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-700';
   }
 
   return (
@@ -1773,7 +1835,7 @@ ${chatLink}
             {sessions.filter((ev) => {
               const now = new Date();
               const twentyFourHoursAfter = new Date(ev.eventDate.getTime() + 24 * 60 * 60 * 1000);
-              return now < twentyFourHoursAfter;
+              return now < twentyFourHoursAfter && !ev.isForceHidden;
             }).sort((a, b) => a.eventDate.getTime() - b.eventDate.getTime()).map((ev) => {
               // v8.2.3: 전역 applicants 데이터 기반 실시간 집계 (선발 + 확정 합산)
               const live = globalCounts[ev.id] || { male: 0, female: 0 };
@@ -1785,8 +1847,9 @@ ${chatLink}
               const isOver = total >= maxT && maxT > 0; // v8.2.3 정원 초과 여부
               const now = new Date();
               const twentyFourHoursAfter = new Date(ev.eventDate.getTime() + 24 * 60 * 60 * 1000);
-              const badgeLabel = now >= twentyFourHoursAfter ? '종료' : now >= ev.eventDate ? '진행 중' : isOver ? '마감' : '모집 중';
-              const badgeCls = now >= twentyFourHoursAfter ? 'bg-slate-100 text-slate-500' : now >= ev.eventDate ? 'bg-blue-100 text-blue-700' : isOver ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-700';
+              const isEnded = ev.isForceHidden || now >= twentyFourHoursAfter;
+              const badgeLabel = isEnded ? '종료' : now >= ev.eventDate ? '진행 중' : isOver ? '마감' : '모집 중';
+              const badgeCls = isEnded ? 'bg-slate-100 text-slate-500' : now >= ev.eventDate ? 'bg-blue-100 text-blue-700' : isOver ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-700';
               return (
                 <button
                   key={ev.id}
@@ -1925,6 +1988,14 @@ ${chatLink}
                       title="후기 모음"
                     >
                       <MessageSquare size={13} /> 후기
+                    </button>
+
+                    <button
+                      onClick={() => handleEndSession(active)}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-purple-200 text-xs font-bold text-purple-600 hover:bg-purple-50 transition-all shrink-0"
+                      title="행사 강제 종료 및 숨김"
+                    >
+                      <StopCircle size={13} /> 종료
                     </button>
 
                     {/* 데스크톱/패드 전용 세로 구분선 */}
@@ -3080,13 +3151,14 @@ ${chatLink}
               <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                 <BarChart3 size={18} className="text-indigo-600" /> 투표 제출 현황 실시간 집계
               </h3>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => active && handleOpenVotingStatus(active)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold rounded-lg transition-colors"
-                >
-                  <RefreshCw size={14} className={votingStatusLoading ? "animate-spin" : ""} /> 새로고침
-                </button>
+              <div className="flex items-center gap-2.5">
+                <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-lg">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  </span>
+                  <span className="text-[11px] font-black text-emerald-600">실시간 동기화 중</span>
+                </div>
                 <button
                   onClick={() => setVotingStatusModalOpen(false)}
                   className="p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-50 transition-colors"
@@ -3291,9 +3363,16 @@ ${chatLink}
                                 if (!vote) return null;
                                 return (
                                   <div key={p.id} className="p-4 bg-white border border-slate-100 rounded-xl shadow-sm">
-                                    <div className="flex items-center gap-2 mb-3">
-                                      <span className="text-[0.65rem] font-black bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded-md">{p.slotNumber}호</span>
-                                      <span className="text-sm font-bold text-slate-800">{p.name}</span>
+                                    <div className="flex items-center justify-between mb-3">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-[0.65rem] font-black bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded-md">{p.slotNumber}호</span>
+                                        <span className="text-sm font-bold text-slate-800">{p.name}</span>
+                                      </div>
+                                      {vote.disclosureMode === 'anonymous' ? (
+                                        <span className="text-[0.65rem] font-bold bg-slate-100 text-slate-500 border border-slate-200 px-1.5 py-0.5 rounded-md">익명</span>
+                                      ) : (
+                                        <span className="text-[0.65rem] font-bold bg-orange-50 text-orange-600 border border-orange-100 px-1.5 py-0.5 rounded-md">호수 공개</span>
+                                      )}
                                     </div>
                                     <div className="flex flex-wrap gap-1.5">
                                       {[...vote.choices]
@@ -3330,9 +3409,16 @@ ${chatLink}
                                 if (!vote) return null;
                                 return (
                                   <div key={p.id} className="p-4 bg-white border border-slate-100 rounded-xl shadow-sm">
-                                    <div className="flex items-center gap-2 mb-3">
-                                      <span className="text-[0.65rem] font-black bg-pink-50 text-pink-600 px-1.5 py-0.5 rounded-md">{p.slotNumber}호</span>
-                                      <span className="text-sm font-bold text-slate-800">{p.name}</span>
+                                    <div className="flex items-center justify-between mb-3">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-[0.65rem] font-black bg-pink-50 text-pink-600 px-1.5 py-0.5 rounded-md">{p.slotNumber}호</span>
+                                        <span className="text-sm font-bold text-slate-800">{p.name}</span>
+                                      </div>
+                                      {vote.disclosureMode === 'anonymous' ? (
+                                        <span className="text-[0.65rem] font-bold bg-slate-100 text-slate-500 border border-slate-200 px-1.5 py-0.5 rounded-md">익명</span>
+                                      ) : (
+                                        <span className="text-[0.65rem] font-bold bg-orange-50 text-orange-600 border border-orange-100 px-1.5 py-0.5 rounded-md">호수 공개</span>
+                                      )}
                                     </div>
                                     <div className="flex flex-wrap gap-1.5">
                                       {[...vote.choices]

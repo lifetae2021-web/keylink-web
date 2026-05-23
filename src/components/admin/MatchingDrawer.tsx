@@ -27,6 +27,7 @@ export default function MatchingDrawer({ session, onClose }: Props) {
   const [votes, setVotes] = useState<Vote[]>([]);
   const [voteDetailOpen, setVoteDetailOpen] = useState(false);
   const [sessionStatus, setSessionStatus] = useState(session.status);
+  const [prevMatchesCount, setPrevMatchesCount] = useState<number>(0);
 
   const { maleVotes, femaleVotes } = useMemo(() => {
     const realVotes = votes.filter(v => v.userId && !v.userId.startsWith('system_'));
@@ -91,11 +92,63 @@ export default function MatchingDrawer({ session, onClose }: Props) {
         // 결과 없으면 자동 실행
         await runAlgorithmCore();
       }
+
+      // --- 누적 매칭 수 계산 ---
+      try {
+        const [allSessionsSnap, summariesSnap] = await Promise.all([
+          getDocs(collection(db, 'sessions')),
+          getDocs(collection(db, 'matchingSummaries'))
+        ]);
+
+        const allSessions = allSessionsSnap.docs.map(docSnap => {
+          const d = docSnap.data();
+          return {
+            id: docSnap.id,
+            eventDate: d.eventDate?.toDate() || new Date(0),
+            isTest: d.isTest ?? false
+          };
+        });
+
+        // 크로노그래피적 정렬
+        allSessions.sort((a, b) => a.eventDate.getTime() - b.eventDate.getTime());
+
+        const currentSessionObj = allSessions.find(s => s.id === sessionId);
+        const currentSessionDate = currentSessionObj ? currentSessionObj.eventDate.getTime() : 0;
+
+        const summariesMap: Record<string, any> = {};
+        summariesSnap.docs.forEach(docSnap => {
+          summariesMap[docSnap.id] = docSnap.data();
+        });
+
+        let count = 0;
+        for (const s of allSessions) {
+          if (s.isTest) continue; // 테스트 세션 제외
+          if (s.eventDate.getTime() < currentSessionDate || (s.eventDate.getTime() === currentSessionDate && s.id < sessionId)) {
+            const sumData = summariesMap[s.id];
+            if (sumData && sumData.matchedPairs) {
+              count += sumData.matchedPairs.length;
+            }
+          }
+        }
+        setPrevMatchesCount(count);
+      } catch (err) {
+        console.error('Error calculating prevMatchesCount:', err);
+      }
+      // ------------------------
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
 
   useEffect(() => { loadData(); }, [sessionId]);
+
+  const handleCopyPhone = (name: string, phone: string | undefined) => {
+    if (!phone) {
+      toast.error('전화번호 정보가 없습니다.');
+      return;
+    }
+    navigator.clipboard.writeText(phone);
+    toast.success(`${name}님의 전화번호가 복사되었습니다! (${phone})`);
+  };
 
   const runAlgorithmCore = async () => {
     const user = auth.currentUser;
@@ -371,11 +424,26 @@ export default function MatchingDrawer({ session, onClose }: Props) {
                               <span className={`text-xs font-bold px-2 py-0.5 rounded-full shrink-0 ${a?.gender === 'male' ? 'bg-blue-50 text-blue-600' : 'bg-pink-50 text-pink-600'}`}>
                                 {a?.gender === 'male' ? '남' : '여'} {a?.slotNumber}호
                               </span>
-                              <span className="font-bold text-sm text-slate-800">{a?.name || pair.userAId}</span>
+                              <button 
+                                onClick={() => handleCopyPhone(a?.name || '참여자', a?.phone)}
+                                className="font-bold text-sm text-slate-800 hover:text-[#FF6F61] hover:underline transition-colors text-left focus:outline-none select-all"
+                                title="클릭하여 전화번호 복사"
+                              >
+                                {a?.name || pair.userAId}
+                              </button>
                             </div>
-                            <Heart size={14} className="text-[#FF6F61] mx-4 shrink-0" fill="currentColor" />
+                            <div className="flex flex-col items-center mx-4 shrink-0">
+                              <Heart size={14} className="text-[#FF6F61]" fill="currentColor" />
+                              <span className="text-[9px] font-black text-[#FF6F61]/80 mt-0.5 select-none">{prevMatchesCount + i + 1 + 338}번째</span>
+                            </div>
                             <div className="flex-1 flex items-center justify-end gap-2">
-                              <span className="font-bold text-sm text-slate-800">{b?.name || pair.userBId}</span>
+                              <button 
+                                onClick={() => handleCopyPhone(b?.name || '참여자', b?.phone)}
+                                className="font-bold text-sm text-slate-800 hover:text-[#FF6F61] hover:underline transition-colors text-right focus:outline-none select-all"
+                                title="클릭하여 전화번호 복사"
+                              >
+                                {b?.name || pair.userBId}
+                              </button>
                               <span className={`text-xs font-bold px-2 py-0.5 rounded-full shrink-0 ${b?.gender === 'male' ? 'bg-blue-50 text-blue-600' : 'bg-pink-50 text-pink-600'}`}>
                                 {b?.gender === 'male' ? '남' : '여'} {b?.slotNumber}호
                               </span>

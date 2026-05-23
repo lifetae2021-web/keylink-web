@@ -18,6 +18,21 @@ export type SessionStatus =
   | 'matching'   // 투표 완료, 매칭 집계 중
   | 'completed'; // 매칭 결과 승인 완료
 
+export interface VoteConfig {
+  maxSelection: number;          // 최대 선택 인원 (기본 3)
+  slotCount?: number;            // 호수 선택 범위 (기본 8)
+  questionText: string;          // 유저에게 보여줄 질문
+  showReason: boolean;           // 선택 사유 입력 여부
+  resultVisibility: 'all' | 'mutual'; // 결과 공개 범위
+
+  // v8.1.7: 네이버 폼 스타일 질문 커스터마이징
+  q1Label?: string;              // 실명 확인 문구
+  q2Label?: string;              // 본인 호수 선택 문구
+  q3Label?: string;              // 이성 선택 메인 질문
+  q4Label?: string;              // 최종 확인 문구
+  q5Label?: string;              // 후기 입력 문구
+}
+
 export interface Session {
   id: string;
   episodeNumber: number;           // 120
@@ -32,22 +47,10 @@ export interface Session {
   status: SessionStatus;
   votingUnlockedAt: Date | null;   // 투표 잠금 해제 시각
   isTest?: boolean;                // v10.0.0: 테스트 기수 여부 (관리자만 조회 가능)
+  isForceHidden?: boolean;         // 행사 수동 종료 및 숨김 처리 여부
 
   // v8.1.1: 호감도 투표 상세 설정
-  voteConfig?: {
-    maxSelection: number;          // 최대 선택 인원 (기본 3)
-    slotCount?: number;            // 호수 선택 범위 (기본 8)
-    questionText: string;          // 유저에게 보여줄 질문
-    showReason: boolean;           // 선택 사유 입력 여부
-    resultVisibility: 'all' | 'mutual'; // 결과 공개 범위
-
-    // v8.1.7: 네이버 폼 스타일 질문 커스터마이징
-    q1Label?: string;              // 실명 확인 문구
-    q2Label?: string;              // 본인 호수 선택 문구
-    q3Label?: string;              // 이성 선택 메인 질문
-    q4Label?: string;              // 최종 확인 문구
-    q5Label?: string;              // 후기 입력 문구
-  };
+  voteConfig?: VoteConfig;
 
   // v8.2.4: 스마트 로테이션 타이머 설정
   timerConfig?: {
@@ -59,6 +62,15 @@ export interface Session {
     startMs?: number | null;
     status?: 'stopped' | 'running' | 'paused';
     customDurations?: Record<string, number>;
+    // 사운드 및 음성 안내 방송 설정 추가
+    soundSettings?: {
+      warningSoundId?: string;
+      warningVolume?: number;
+      endSoundId?: string;
+      endVolume?: number;
+      autoGuide1Min?: boolean;
+      autoGuideEnd?: boolean;
+    };
   };
 
   // v6.6.0 추가 필드 (새 기수 등록 폼 연동)

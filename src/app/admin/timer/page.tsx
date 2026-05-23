@@ -4,9 +4,10 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, query, orderBy, getDocs, updateDoc, doc, Timestamp, onSnapshot } from 'firebase/firestore';
 import { Session } from '@/lib/types';
-import { Clock, Users, Play, Square, RotateCcw, Volume2, Save, ExternalLink, RefreshCw, AlertCircle, FastForward, Rewind, Settings } from 'lucide-react';
+import { Clock, Users, Play, Square, RotateCcw, Volume2, Save, ExternalLink, RefreshCw, AlertCircle, FastForward, Rewind, Settings, Mic, PlayCircle, Upload, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
+import { saveCustomAudio, loadCustomAudio, deleteCustomAudio } from '@/lib/utils/audioStorage';
 
 type RelativeBlock = {
   id: string;
@@ -39,10 +40,21 @@ export default function AdminTimerPage() {
   const [customStartTime, setCustomStartTime] = useState<string>('');
   const [customDurations, setCustomDurations] = useState<Record<string, number>>({});
 
-  // Audio refs
-  const audioCtxRef = useRef<AudioContext | null>(null);
+  // HTML5 Audio Refs
+  const audioRefs = useRef<Record<string, HTMLAudioElement>>({});
   const played1MinBeepRef = useRef<Record<string, boolean>>({});
   const playedEndBeepRef = useRef<Record<string, boolean>>({});
+
+  // Sound Settings State
+  const [warningSoundId, setWarningSoundId] = useState('preset_chime');
+  const [warningVolume, setWarningVolume] = useState(0.5);
+  const [endSoundId, setEndSoundId] = useState('preset_crystal');
+  const [endVolume, setEndVolume] = useState(0.8);
+  const [autoGuide1Min, setAutoGuide1Min] = useState(true);
+  const [autoGuideEnd, setAutoGuideEnd] = useState(true);
+
+  // 로컬 업로드된 파일 이름 목록
+  const [customFiles, setCustomFiles] = useState<{id: string, name: string}[]>([]);
 
   useEffect(() => {
     async function loadSessions() {
@@ -211,31 +223,55 @@ export default function AdminTimerPage() {
     ? -currentElapsedMs 
     : (currentBlock ? currentBlock.endMs - currentElapsedMs : 0);
 
-  // Audio integration
-  const initAudio = () => {
-    if (!audioCtxRef.current) {
-      audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-    }
-    if (audioCtxRef.current.state === 'suspended') {
-      audioCtxRef.current.resume();
+  // HTML5 Audio Player Loader
+  const loadAudioBlob = async (id: string): Promise<string> => {
+    if (id.startsWith('preset_')) {
+      if (id === 'preset_chime') return '/audio/presets/chime.wav';
+      if (id === 'preset_crystal') return '/audio/presets/crystal.wav';
+      return '/audio/presets/chime.wav';
+    } else {
+      const blob = await loadCustomAudio(id);
+      if (blob) return URL.createObjectURL(blob);
+      return '/audio/presets/chime.wav'; // fallback
     }
   };
 
-  const playTone = (freq: number, type: OscillatorType, duration: number, vol: number = 0.5) => {
-    if (!audioCtxRef.current) return;
+  const playSound = async (id: string, volume: number) => {
     try {
-      const osc = audioCtxRef.current.createOscillator();
-      const gain = audioCtxRef.current.createGain();
-      osc.type = type;
-      osc.frequency.setValueAtTime(freq, audioCtxRef.current.currentTime);
-      gain.gain.setValueAtTime(vol, audioCtxRef.current.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, audioCtxRef.current.currentTime + duration);
-      
-      osc.connect(gain);
-      gain.connect(audioCtxRef.current.destination);
-      osc.start();
-      osc.stop(audioCtxRef.current.currentTime + duration);
-    } catch(e) {}
+      if (audioRefs.current[id]) {
+        audioRefs.current[id].pause();
+        audioRefs.current[id].currentTime = 0;
+      } else {
+        const url = await loadAudioBlob(id);
+        // 동영상 컨테이너(.mov, .mp4) 오디오 재생 지원을 위해 video 엘리먼트 활용 (화면엔 안보임)
+        const media = document.createElement('video');
+        media.src = url;
+        audioRefs.current[id] = media;
+      }
+      audioRefs.current[id].volume = volume;
+      await audioRefs.current[id].play();
+    } catch (e) {
+      console.warn('Audio playback failed', e);
+    }
+  };
+
+  const playGuide = async (type: '1min' | 'end' | 'opening') => {
+    const url = type === '1min' ? '/audio/presets/guide_1min.wav' 
+      : type === 'end' ? '/audio/presets/guide_end.wav' 
+      : '/audio/presets/chime.wav'; // opening fallback
+    try {
+      const audio = new Audio(url);
+      audio.volume = 1.0;
+      await audio.play();
+    } catch (e) {
+      console.warn('Guide playback failed', e);
+    }
+  };
+
+  const initAudio = () => {
+    // Mobile Safari unlock logic
+    const silent = new Audio();
+    silent.play().catch(()=>{});
   };
 
   useEffect(() => {
@@ -244,24 +280,24 @@ export default function AdminTimerPage() {
     const remainingSec = Math.floor(remainingInBlockMs / 1000);
     // 1 Min warning
     if (remainingSec === 60 && !played1MinBeepRef.current[currentBlock.id]) {
-       playTone(880, 'sine', 0.5, 0.5);
-       setTimeout(() => playTone(880, 'sine', 0.5, 0.5), 600);
+       playSound(warningSoundId, warningVolume);
+       if (autoGuide1Min) {
+         setTimeout(() => playGuide('1min'), 2000);
+       }
        played1MinBeepRef.current[currentBlock.id] = true;
     }
     // End warning
     if (remainingSec === 0 && !playedEndBeepRef.current[currentBlock.id]) {
-       playTone(523.25, 'sine', 1.5, 0.4); 
-       playTone(659.25, 'sine', 1.5, 0.4); 
-       playTone(783.99, 'sine', 1.5, 0.4); 
-       setTimeout(() => playTone(1046.50, 'sine', 2.0, 0.6), 400); 
+       playSound(endSoundId, endVolume);
+       if (autoGuideEnd) {
+         setTimeout(() => playGuide('end'), 2000);
+       }
        playedEndBeepRef.current[currentBlock.id] = true;
     }
   }, [remainingInBlockMs, currentBlock, isLive, currentElapsedMs]);
 
   const handleStart = async () => {
     initAudio();
-    // silent beep to unlock
-    playTone(100, 'sine', 0.1, 0.01);
 
     // 커스텀 시작 시각 파싱
     let targetStartMs = Date.now();
@@ -287,7 +323,8 @@ export default function AdminTimerPage() {
       talkTime,
       cakeRound,
       totalTables,
-      customDurations
+      customDurations,
+      soundSettings: { warningSoundId, warningVolume, endSoundId, endVolume, autoGuide1Min, autoGuideEnd }
     }));
 
     if (selectedSessionId) {
@@ -296,7 +333,8 @@ export default function AdminTimerPage() {
           totalRounds, talkTime, cakeRound, totalTables,
           customMaleOffset: maleOffset,
           startMs: targetStartMs, status: 'running',
-          customDurations
+          customDurations,
+          soundSettings: { warningSoundId, warningVolume, endSoundId, endVolume, autoGuide1Min, autoGuideEnd }
         }
       });
       toast.success('소개팅 진행 엔진이 시작되고 클라우드에 실시간 동기화되었습니다!');
@@ -346,7 +384,8 @@ export default function AdminTimerPage() {
       talkTime,
       cakeRound,
       totalTables,
-      customDurations: updatedDurations
+      customDurations: updatedDurations,
+      soundSettings: { warningSoundId, warningVolume, endSoundId, endVolume, autoGuide1Min, autoGuideEnd }
     };
     
     // 임시로 blocks 배열을 구성하여 새 총 소요시간 구하기
@@ -540,6 +579,73 @@ export default function AdminTimerPage() {
 
             <hr className="border-slate-100 my-2" />
 
+            {/* 🔈 타이머 알림 사운드 믹서 */}
+            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+              <label className="block text-xs font-bold text-slate-800 mb-3 flex items-center gap-1"><Volume2 size={14} className="text-blue-500" /> 사운드 믹서 (1분 전 & 라운드 종료)</label>
+              
+              <div className="space-y-4">
+                {/* 1분 전 알림 */}
+                <div className="flex flex-col gap-2 p-3 bg-white border border-slate-100 rounded-lg shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-slate-500">1분 전 예비 알림음</span>
+                    <button onClick={() => playSound(warningSoundId, warningVolume)} className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-bold hover:bg-slate-200 flex items-center gap-1"><PlayCircle size={10} /> 테스트</button>
+                  </div>
+                  <div className="flex gap-2 items-center">
+                    <select value={warningSoundId} onChange={e => setWarningSoundId(e.target.value)} className="flex-1 text-xs font-bold border border-slate-200 rounded p-1 outline-none">
+                      <option value="preset_chime">라디오 차임벨 (기본)</option>
+                      <option value="preset_crystal">크리스탈 벨</option>
+                      <option value="custom_warning">📁 내 오디오 업로드 (IndexedDB)</option>
+                    </select>
+                    {warningSoundId === 'custom_warning' && (
+                      <label className="cursor-pointer text-[10px] bg-blue-50 text-blue-600 px-2 py-1 rounded font-bold border border-blue-200 hover:bg-blue-100 flex items-center gap-1">
+                        <Upload size={10}/> 파일<input type="file" accept="audio/*, video/*" className="hidden" onChange={async (e) => {
+                          if (e.target.files?.[0]) {
+                            await saveCustomAudio('custom_warning', e.target.files[0]);
+                            if (audioRefs.current['custom_warning']) {
+                              delete audioRefs.current['custom_warning'];
+                            }
+                            toast.success('로컬 업로드 완료!');
+                          }
+                        }} />
+                      </label>
+                    )}
+                  </div>
+                  <input type="range" min="0" max="1" step="0.05" value={warningVolume} onChange={e => setWarningVolume(Number(e.target.value))} className="w-full accent-blue-500" />
+                </div>
+
+                {/* 종료 알림 */}
+                <div className="flex flex-col gap-2 p-3 bg-white border border-slate-100 rounded-lg shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-slate-500">라운드 종료 알림음</span>
+                    <button onClick={() => playSound(endSoundId, endVolume)} className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-bold hover:bg-slate-200 flex items-center gap-1"><PlayCircle size={10} /> 테스트</button>
+                  </div>
+                  <div className="flex gap-2 items-center">
+                    <select value={endSoundId} onChange={e => setEndSoundId(e.target.value)} className="flex-1 text-xs font-bold border border-slate-200 rounded p-1 outline-none">
+                      <option value="preset_chime">라디오 차임벨</option>
+                      <option value="preset_crystal">크리스탈 벨 (기본)</option>
+                      <option value="custom_end">📁 내 오디오 업로드 (IndexedDB)</option>
+                    </select>
+                    {endSoundId === 'custom_end' && (
+                      <label className="cursor-pointer text-[10px] bg-blue-50 text-blue-600 px-2 py-1 rounded font-bold border border-blue-200 hover:bg-blue-100 flex items-center gap-1">
+                        <Upload size={10}/> 파일<input type="file" accept="audio/*, video/*" className="hidden" onChange={async (e) => {
+                          if (e.target.files?.[0]) {
+                            await saveCustomAudio('custom_end', e.target.files[0]);
+                            if (audioRefs.current['custom_end']) {
+                              delete audioRefs.current['custom_end'];
+                            }
+                            toast.success('로컬 업로드 완료!');
+                          }
+                        }} />
+                      </label>
+                    )}
+                  </div>
+                  <input type="range" min="0" max="1" step="0.05" value={endVolume} onChange={e => setEndVolume(Number(e.target.value))} className="w-full accent-blue-500" />
+                </div>
+              </div>
+            </div>
+
+            <hr className="border-slate-100 my-2" />
+
             {/* 수동 커스텀 배치 */}
             <div className="bg-orange-50/50 p-4 rounded-xl border border-orange-100">
               <label className="block text-xs font-bold text-orange-600 mb-3 flex items-center gap-1"><AlertCircle size={14}/> 남성 초기 배치 강제 오버라이드 (선택)</label>
@@ -671,6 +777,29 @@ export default function AdminTimerPage() {
                   </button>
                 </div>
               )}
+           </div>
+         </div>
+         
+         {/* 성우 안내 방송 콘솔 (사운드 보드) */}
+         <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+           <h3 className="font-black text-slate-800 flex items-center gap-2 mb-4">
+             <Mic size={18} className="text-rose-500" /> 성우 안내방송 콘솔 (Sound Board)
+           </h3>
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+             <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50">
+               <input type="checkbox" checked={autoGuide1Min} onChange={e => setAutoGuide1Min(e.target.checked)} className="w-4 h-4 accent-rose-500" />
+               <span className="text-xs font-bold text-slate-700">종료 1분 전 마감 안내 음성 자동 재생</span>
+             </label>
+             <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50">
+               <input type="checkbox" checked={autoGuideEnd} onChange={e => setAutoGuideEnd(e.target.checked)} className="w-4 h-4 accent-rose-500" />
+               <span className="text-xs font-bold text-slate-700">라운드 종료 시 이동 안내 자동 재생</span>
+             </label>
+           </div>
+           
+           <div className="flex flex-wrap gap-2">
+             <button onClick={() => playGuide('opening')} className="px-4 py-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-bold rounded-lg text-sm border border-indigo-200 shadow-sm">오프닝 송출</button>
+             <button onClick={() => playGuide('1min')} className="px-4 py-2 bg-orange-50 text-orange-600 hover:bg-orange-100 font-bold rounded-lg text-sm border border-orange-200 shadow-sm">대화 정리 (1분)</button>
+             <button onClick={() => playGuide('end')} className="px-4 py-2 bg-rose-50 text-rose-600 hover:bg-rose-100 font-bold rounded-lg text-sm border border-rose-200 shadow-sm">자리 교체 독촉</button>
            </div>
          </div>
 

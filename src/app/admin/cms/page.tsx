@@ -1,19 +1,21 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Pencil, Trash2, Save, X, Star } from 'lucide-react';
+import { Plus, Pencil, Trash2, Save, X, Star, Heart, User, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
   getNotices, addNotice, updateNotice, deleteNotice, NoticeItem,
   getFaqs, addFaq, updateFaq, deleteFaq, FaqItem,
   getContent, saveContent, ContentKey,
   getReviews, addReview, updateReview, deleteReview, ReviewItem,
+  getVoteConfigTemplate, saveVoteConfigTemplate,
 } from '@/lib/firestore/cms';
 import { storage } from '@/lib/firebase';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { VoteConfig } from '@/lib/types';
 
 type Group = 'ops' | 'legal';
-type Tab = 'notices' | 'faqs' | 'rules' | 'reviews' | 'terms' | 'privacy';
+type Tab = 'notices' | 'faqs' | 'rules' | 'reviews' | 'votes' | 'terms' | 'privacy';
 
 const card = 'bg-white border border-slate-200 rounded-xl shadow-sm';
 
@@ -26,6 +28,7 @@ export default function CmsPage() {
     { key: 'faqs'    as Tab, label: '❓ FAQ' },
     { key: 'rules'   as Tab, label: '📋 이용 규정' },
     { key: 'reviews' as Tab, label: '💛 후기' },
+    { key: 'votes'   as Tab, label: '🗳️ 투표 설정' },
   ];
   const LEGAL_TABS = [
     { key: 'terms'   as Tab, label: '⚖ 이용약관' },
@@ -37,7 +40,7 @@ export default function CmsPage() {
     <div className="space-y-6 animate-in fade-in duration-400">
       <div>
         <h2 className="text-slate-900 text-xl font-bold">콘텐츠 편집</h2>
-        <p className="text-slate-500 text-[0.85rem] mt-1">공지사항, FAQ, 법적 문서를 관리합니다.</p>
+        <p className="text-slate-500 text-[0.85rem] mt-1">공지사항, FAQ, 투표 템플릿, 법적 문서를 관리합니다.</p>
       </div>
 
       {/* 그룹 탭 */}
@@ -79,6 +82,7 @@ export default function CmsPage() {
       {tab === 'notices' && <NoticesTab />}
       {tab === 'faqs' && <FaqsTab />}
       {tab === 'reviews' && <ReviewsTab />}
+      {tab === 'votes' && <VoteConfigTab />}
       {(tab === 'rules' || tab === 'terms' || tab === 'privacy') && <ContentTab contentKey={tab} />}
     </div>
   );
@@ -654,6 +658,301 @@ function ReviewsTab() {
     </div>
   );
 }
+
+// ── 모바일 프리뷰 컴포넌트 ──────────────────────────────────────────
+function VoteMobilePreview({ form }: { form: VoteConfig }) {
+  return (
+    <div className="w-[375px] shrink-0 border-[8px] border-slate-900 rounded-[3rem] shadow-2xl bg-slate-50 overflow-hidden relative" style={{ height: '700px' }}>
+      {/* 노치 디자인 */}
+      <div className="absolute top-0 inset-x-0 h-6 bg-slate-900 rounded-b-3xl w-40 mx-auto z-50 flex items-center justify-center gap-2">
+        <div className="w-12 h-1.5 bg-slate-800 rounded-full" />
+        <div className="w-2 h-2 rounded-full bg-slate-800" />
+      </div>
+
+      <div className="h-full overflow-y-auto no-scrollbar pb-10">
+        {/* Header */}
+        <div className="w-full bg-gradient-to-b from-[#FF6F61] to-[#FF8C7E] pt-12 pb-8 px-4 text-center relative overflow-hidden rounded-b-[2rem]">
+          <div className="absolute inset-0 opacity-10 pointer-events-none">
+            <Heart size={80} fill="white" className="absolute -top-4 -left-4 text-white" />
+            <Heart size={60} fill="white" className="absolute bottom-0 right-2 text-white" />
+          </div>
+          <div className="relative z-10">
+            <div className="inline-flex items-center justify-center w-10 h-10 bg-white/20 rounded-xl mb-3">
+              <Heart size={20} fill="white" className="text-white" />
+            </div>
+            <p className="text-white/70 font-bold text-xs mb-1">지역 키링크 OOO기</p>
+            <h1 className="text-xl font-black text-white">호감도 투표</h1>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="px-4 -mt-4 relative z-10 space-y-4">
+          
+          {/* Section 1 */}
+          <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-5 h-5 rounded-full bg-[#FF6F61] text-white flex items-center justify-center text-xs font-black">
+                <User size={10} />
+              </div>
+              <h3 className="font-bold text-slate-800 text-sm flex-1">실명 및 본인 호수</h3>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="flex-1 h-10 flex flex-col items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-400 text-xs font-bold">
+                {form.q1Label || '실명을 적어주세요'}
+              </div>
+              <div className="flex-1 h-10 flex flex-col items-center justify-center rounded-xl border-2 border-[#FF6F61] bg-[#FF6F61] text-white text-xs font-black shadow-sm">
+                {form.q2Label || '본인의 호를 체크해주세요'}
+              </div>
+            </div>
+          </div>
+
+          {/* Section 2 */}
+          <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-5 h-5 rounded-full bg-[#FF6F61] text-white flex items-center justify-center text-xs font-black">
+                <Heart size={10} fill="white" />
+              </div>
+              <h3 className="font-bold text-slate-800 text-sm flex-1">{form.q3Label || '호감가는 이성 선택'}</h3>
+            </div>
+            <p className="text-xs text-slate-400 font-medium mb-3">{form.questionText || '오늘 가장 호감 갔던 이성을 골라주세요.'}</p>
+            
+            {/* Progress Bar */}
+            <div className="flex items-center gap-1.5 mb-4">
+              {Array.from({ length: form.maxSelection || 3 }, (_, i) => (
+                <div key={i} className={`flex-1 h-1.5 rounded-full ${i === 0 ? 'bg-[#FF6F61]' : 'bg-slate-100'}`} />
+              ))}
+              <span className="text-[10px] font-black text-[#FF6F61] ml-1">1/{form.maxSelection || 3}</span>
+            </div>
+
+            {/* Mock Candidates */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-3 p-3 rounded-xl border-2 border-[#FF6F61] bg-[#FFF5F4]">
+                <div className="w-7 h-7 rounded-full bg-[#FF6F61] flex items-center justify-center shrink-0">
+                  <Heart size={12} fill="white" className="text-white" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-black text-xs text-[#FF6F61]">키링남/녀 1호</p>
+                  <p className="text-[10px] font-bold text-slate-400">95년생 · 대기업</p>
+                </div>
+                <CheckCircle2 size={16} className="text-[#FF6F61] shrink-0" />
+              </div>
+              
+              <div className="flex items-center gap-3 p-3 rounded-xl border border-slate-100 bg-slate-50">
+                <div className="w-7 h-7 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 text-xs font-black shrink-0">
+                  2
+                </div>
+                <div className="flex-1">
+                  <p className="font-black text-xs text-slate-700">키링남/녀 2호</p>
+                  <p className="text-[10px] font-bold text-slate-400">96년생 · 공무원</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 3 */}
+          <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 opacity-60 grayscale">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-5 h-5 rounded-full bg-slate-400 text-white flex items-center justify-center text-xs font-black">
+                <Eye size={10} />
+              </div>
+              <h3 className="font-bold text-slate-800 text-sm flex-1">호감 공개 여부</h3>
+            </div>
+            <div className="h-10 border border-slate-200 rounded-xl bg-slate-50 flex items-center px-3 gap-2">
+              <div className="w-3 h-3 rounded-full border-2 border-slate-300" />
+              <span className="text-xs font-bold text-slate-500">공개 모드 / 익명 모드</span>
+            </div>
+          </div>
+
+          {/* Section 4 */}
+          <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 opacity-60 grayscale">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-5 h-5 rounded-full bg-slate-400 text-white flex items-center justify-center text-xs font-black">4</div>
+              <h3 className="font-bold text-slate-800 text-sm flex-1">{form.q4Label || '최종 확인'}</h3>
+            </div>
+          </div>
+
+          {/* Section 5 */}
+          <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 opacity-60 grayscale">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-5 h-5 rounded-full bg-slate-400 text-white flex items-center justify-center text-xs font-black">5</div>
+              <h3 className="font-bold text-slate-800 text-sm flex-1">{form.q5Label || '후기'}</h3>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── 투표 템플릿 탭 ──────────────────────────────────────────
+function VoteConfigTab() {
+  const [form, setForm] = useState<VoteConfig>({
+    maxSelection: 3,
+    questionText: '오늘 가장 호감 갔던 이성을 3명까지 골라주세요.',
+    showReason: false,
+    resultVisibility: 'all',
+    q1Label: '실명을 적어주세요',
+    q2Label: '본인의 호를 체크해주세요',
+    q3Label: '호감가는 이성 선택',
+    q4Label: '매칭 오류 방지를 위해 최종 라인업 및 메모를 확인하셨나요?',
+    q5Label: '후기',
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setIsLoading(true);
+    getVoteConfigTemplate().then(template => {
+      if (template) setForm(template);
+      setIsLoading(false);
+    });
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await saveVoteConfigTemplate(form);
+      toast.success('투표 기본 템플릿이 저장되었습니다.');
+    } catch (e) {
+      toast.error('투표 템플릿 저장 중 오류가 발생했습니다.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (isLoading) {
+    return <div className="text-center py-10 text-slate-400 text-sm">불러오는 중...</div>;
+  }
+
+  return (
+    <div className="flex gap-6 items-start">
+      {/* 1. 좌측 입력 폼 */}
+      <div className={`${card} p-6 space-y-6 flex-1`}>
+        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+          <div>
+            <h3 className="font-bold text-slate-800">투표 기본 템플릿 설정</h3>
+            <p className="text-xs text-slate-500 mt-1">새로운 기수를 생성할 때 여기에 저장된 설정이 기본값으로 사용됩니다.</p>
+          </div>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="flex items-center gap-2 px-5 py-2 text-sm font-bold text-white rounded-lg transition-all shadow-sm"
+            style={{ background: '#FF6F61', opacity: saving ? 0.6 : 1 }}
+          >
+            <Save size={14} /> {saving ? '저장 중...' : '템플릿 저장'}
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 gap-6">
+          <div className="space-y-4">
+            <h4 className="font-bold text-slate-700 text-sm flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-[#FF6F61]" />기본 설정</h4>
+            
+            <div>
+              <label className="text-xs font-bold text-slate-500 mb-1 block">최대 선택 가능 인원</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  value={form.maxSelection}
+                  onChange={e => setForm(f => ({ ...f, maxSelection: Number(e.target.value) }))}
+                  className="w-20 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#FF6F61] text-center"
+                />
+                <span className="text-sm font-bold text-slate-600">명</span>
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-slate-500 mb-1 block">결과 공개 범위</label>
+              <select
+                value={form.resultVisibility}
+                onChange={e => setForm(f => ({ ...f, resultVisibility: e.target.value as 'all' | 'mutual' }))}
+                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#FF6F61]"
+              >
+                <option value="all">모두 공개 (누가 누구를 선택했는지 모두 표시)</option>
+                <option value="mutual">상호 매칭만 공개 (서로 선택한 경우만 표시)</option>
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2 pt-2">
+              <input
+                type="checkbox"
+                id="showReason"
+                checked={form.showReason}
+                onChange={e => setForm(f => ({ ...f, showReason: e.target.checked }))}
+                className="w-4 h-4 accent-[#FF6F61]"
+              />
+              <label htmlFor="showReason" className="text-sm font-bold text-slate-600">선택 사유 입력받기 (선택사항)</label>
+            </div>
+          </div>
+
+          <div className="col-span-2 md:col-span-1 space-y-4">
+            <h4 className="font-bold text-slate-700 text-sm flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />질문 & 라벨 커스텀</h4>
+            
+            <div>
+              <label className="text-xs font-bold text-slate-500 mb-1 block">이성 선택 메인 질문 (Q3)</label>
+              <input
+                value={form.questionText}
+                onChange={e => setForm(f => ({ ...f, questionText: e.target.value }))}
+                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"
+                placeholder="오늘 가장 호감 갔던 이성을 골라주세요."
+              />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-bold text-slate-500 mb-1 block">Q1 (실명) 라벨</label>
+                <input
+                  value={form.q1Label || ''}
+                  onChange={e => setForm(f => ({ ...f, q1Label: e.target.value }))}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-500 mb-1 block">Q2 (본인호수) 라벨</label>
+                <input
+                  value={form.q2Label || ''}
+                  onChange={e => setForm(f => ({ ...f, q2Label: e.target.value }))}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-500 mb-1 block">Q3 (이성선택) 탭 이름</label>
+                <input
+                  value={form.q3Label || ''}
+                  onChange={e => setForm(f => ({ ...f, q3Label: e.target.value }))}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-500 mb-1 block">Q5 (후기) 라벨</label>
+                <input
+                  value={form.q5Label || ''}
+                  onChange={e => setForm(f => ({ ...f, q5Label: e.target.value }))}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+            </div>
+            
+            <div>
+              <label className="text-xs font-bold text-slate-500 mb-1 block">Q4 (최종 동의) 문구</label>
+              <input
+                value={form.q4Label || ''}
+                onChange={e => setForm(f => ({ ...f, q4Label: e.target.value }))}
+                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 2. 우측 모바일 프리뷰 (Sticky) */}
+      <div className="sticky top-24 shrink-0 hidden lg:block">
+        <VoteMobilePreview form={form} />
+      </div>
+    </div>
+  );
+}
+
 
 // ── 단일 콘텐츠 탭 (이용규정 / 이용약관 / 개인정보처리방침) ──
 const CONTENT_LABELS: Record<ContentKey, string> = {

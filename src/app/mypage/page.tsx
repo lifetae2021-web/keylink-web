@@ -1511,10 +1511,55 @@ function ApplicationStatusBlock({ application, session, userId, hasVoted, submit
 
           {/* v8.1.7: 나에게 도착한 호감 (발표 시 노출) */}
           {session?.status === 'completed' && (
-            <ReceivedHeartsFeed 
-              session={session}
-              userId={userId} 
-            />
+            <div style={{
+              marginTop: '24px',
+              padding: '28px 24px',
+              background: 'linear-gradient(135deg, #FFF5F4, #FFF0EE)',
+              borderRadius: '20px',
+              border: '1.5px solid #FFD3CD',
+              textAlign: 'center',
+              boxShadow: '0 8px 24px rgba(255,111,97,0.06)'
+            }}>
+              <div style={{
+                width: '52px',
+                height: '52px',
+                borderRadius: '16px',
+                background: 'linear-gradient(135deg, #FF6F61, #FF9A9E)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 16px',
+                boxShadow: '0 8px 16px rgba(255,111,97,0.2)'
+              }}>
+                <Heart size={24} color="#FFF" fill="#FFF" />
+              </div>
+              <h3 style={{ fontSize: '1.05rem', fontWeight: '900', color: '#1E293B', marginBottom: '8px' }}>
+                🎉 매칭 결과가 발표되었습니다!
+              </h3>
+              <p style={{ fontSize: '0.82rem', color: '#475569', fontWeight: '600', lineHeight: 1.5, marginBottom: '20px', wordBreak: 'keep-all' }}>
+                오늘 소개팅에서 탄생한 기적 같은 인연과,<br />
+                나에게 도착한 총 호감 득표 수를 지금 바로 확인해 보세요!
+              </p>
+              <Link
+                href={`/matching-results/${session.id}`}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '14px 32px',
+                  borderRadius: '100px',
+                  background: 'linear-gradient(135deg, #FF6F61, #FF9A9E)',
+                  color: '#fff',
+                  fontWeight: '800',
+                  fontSize: '0.9rem',
+                  textDecoration: 'none',
+                  boxShadow: '0 6px 16px rgba(255,111,97,0.25)',
+                  transition: 'all 0.2s'
+                }}
+              >
+                내 매칭 결과 확인하기 →
+              </Link>
+            </div>
           )}
 
         </div>

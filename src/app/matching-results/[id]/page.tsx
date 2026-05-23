@@ -22,6 +22,15 @@ interface ResultData {
     residence: string;
     batch: string;
   };
+  partners?: {
+    gender: 'male' | 'female';
+    number: string;
+    age: string;
+    job: string;
+    height: string;
+    residence: string;
+    batch: string;
+  }[];
 }
 
 export default function MatchingResultDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -97,9 +106,54 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
           });
           setParticipantMap(pMap);
 
-          // 5. Fetch User Matching Result
           if (matchResult) {
             setIsParticipant(true);
+
+            // Resolve all partner profiles for multi-match support
+            const resolvedPartners = await Promise.all((matchResult.partnerIds || []).map(async (partnerId) => {
+              try {
+                const appQuery = query(
+                  collection(db, 'applications'),
+                  where('sessionId', '==', sessionId),
+                  where('userId', '==', partnerId)
+                );
+                const [appSnap, sessionSnap, userSnap] = await Promise.all([
+                  getDocs(appQuery),
+                  getDoc(doc(db, 'sessions', sessionId)),
+                  getDoc(doc(db, 'users', partnerId))
+                ]);
+                if (!appSnap.empty) {
+                  const appData = appSnap.docs[0].data();
+                  const userData = userSnap.exists() ? userSnap.data() : null;
+                  const batchTitle = sessionSnap.exists() ? `${sessionSnap.data().episodeNumber || ''}기` : '';
+                  
+                  let calculatedAge = '미입력';
+                  if (appData.birthDate) {
+                    calculatedAge = `${new Date().getFullYear() - new Date(appData.birthDate).getFullYear() + 1}세`;
+                  } else if (appData.age) {
+                    calculatedAge = `${appData.age}세`;
+                  }
+                  
+                  const job = appData.displayJob || userData?.admin_job || userData?.job || appData.job || '미입력';
+                  
+                  return {
+                    gender: appData.gender,
+                    number: appData.slotNumber ? String(appData.slotNumber) : '?',
+                    age: calculatedAge,
+                    job,
+                    height: appData.height ? `${appData.height}cm` : '미입력',
+                    residence: appData.residence || '미입력',
+                    batch: batchTitle || '알 수 없음'
+                  };
+                }
+              } catch (err) {
+                console.error("Error resolving partner profile:", partnerId, err);
+              }
+              return null;
+            }));
+
+            const validPartners = resolvedPartners.filter(Boolean) as any[];
+
             setResult({
               isMatched: matchResult.matched,
               partner: matchResult.matched && matchResult.partnerProfile ? {
@@ -110,7 +164,8 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
                 height: matchResult.partnerProfile.height || '미입력',
                 residence: matchResult.partnerProfile.residence || '미입력',
                 batch: matchResult.partnerProfile.batch || '알 수 없음'
-              } : undefined
+              } : undefined,
+              partners: validPartners
             });
 
             // 6. Fetch Stats & Choices only if participated
@@ -125,13 +180,17 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
                   where('sessionId', '==', sessionId),
                   where('userId', '==', v.targetUserId)
                 );
-                const appSnap = await getDocs(appQuery);
+                const [appSnap, userSnap] = await Promise.all([
+                  getDocs(appQuery),
+                  getDoc(doc(db, 'users', v.targetUserId))
+                ]);
                 if (!appSnap.empty) {
                   const appData = appSnap.docs[0].data();
+                  const userData = userSnap.exists() ? userSnap.data() : null;
                   const genderKo = appData.gender === 'male' ? '키링남' : '키링여';
                   const slot = appData.slotNumber ? `${appData.slotNumber}호` : '호수 미정';
                   label = `${genderKo} ${slot}`;
-                  jobDisplay = appData.displayJob || appData.job || '미입력';
+                  jobDisplay = appData.displayJob || userData?.admin_job || userData?.job || appData.job || '미입력';
                 } else {
                   if (v.targetUserName && (v.targetUserName.includes('호') || v.targetUserName.includes('키링'))) {
                     label = v.targetUserName;
@@ -267,14 +326,42 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
                   </h2>
                   <p className="text-gray-500 font-semibold mb-10">상대방도 {userName}님을 선택하셨습니다.</p>
 
-                  {/* Partner Card */}
-                  {result.partner && (
-                    <div className="bg-white rounded-[40px] p-8 border border-gray-100 shadow-2xl shadow-pink-100/50 mb-12 overflow-hidden relative">
+                  {/* Partner Cards (Supports Multiple Matches) */}
+                  {result.partners && result.partners.length > 0 ? (
+                    result.partners.map((partner, index) => (
+                      <div key={index} className="bg-white rounded-[40px] p-8 border border-gray-100 shadow-2xl shadow-pink-100/50 mb-6 overflow-hidden relative text-left">
+                        <div className="absolute top-0 right-0 p-4">
+                          <Sparkles className="text-pink-200" size={32} />
+                        </div>
+                        
+                        <div className="grid grid-cols-3 md:grid-cols-6 gap-2 mb-8 p-3 bg-gray-50 rounded-2xl text-[10px] md:text-xs font-black text-gray-400 uppercase tracking-wider text-center">
+                           <span>기수</span>
+                           <span>{partner.gender === 'male' ? '키링남' : '키링녀'}</span>
+                           <span>나이</span>
+                           <span>직업</span>
+                           <span>키</span>
+                           <span>거주지</span>
+                        </div>
+
+                        <div className="grid grid-cols-3 md:grid-cols-6 gap-2 items-center text-center">
+                          <div className="font-bold text-gray-500">{partner.batch}</div>
+                          <div className="font-black text-pink-500 text-base md:text-lg whitespace-nowrap">
+                            {partner.gender === 'male' ? '키링남' : '키링녀'} {partner.number}호
+                          </div>
+                          <div className="font-bold text-gray-800">{partner.age}</div>
+                          <div className="font-black text-blue-500">{partner.job}</div>
+                          <div className="font-bold text-gray-500">{partner.height}</div>
+                          <div className="font-bold text-gray-800">{partner.residence}</div>
+                        </div>
+                      </div>
+                    ))
+                  ) : result.partner ? (
+                    <div className="bg-white rounded-[40px] p-8 border border-gray-100 shadow-2xl shadow-pink-100/50 mb-6 overflow-hidden relative text-left">
                       <div className="absolute top-0 right-0 p-4">
                         <Sparkles className="text-pink-200" size={32} />
                       </div>
                       
-                      <div className="grid grid-cols-3 md:grid-cols-6 gap-2 mb-8 p-3 bg-gray-50 rounded-2xl text-[10px] md:text-xs font-black text-gray-400 uppercase tracking-wider">
+                      <div className="grid grid-cols-3 md:grid-cols-6 gap-2 mb-8 p-3 bg-gray-50 rounded-2xl text-[10px] md:text-xs font-black text-gray-400 uppercase tracking-wider text-center">
                          <span>기수</span>
                          <span>{result.partner.gender === 'male' ? '키링남' : '키링녀'}</span>
                          <span>나이</span>
@@ -293,12 +380,12 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
                         <div className="font-bold text-gray-500">{result.partner.height}</div>
                         <div className="font-bold text-gray-800">{result.partner.residence}</div>
                       </div>
-
-                      <div className="mt-10 p-5 bg-pink-50/50 rounded-3xl border border-pink-100 italic font-bold text-pink-500 text-sm">
-                        "상대방의 구체적인 연락처와 성함은 운영진을 통해 안전하게 전달될 예정입니다."
-                      </div>
                     </div>
-                  )}
+                  ) : null}
+
+                  <div className="mt-8 p-5 bg-pink-50/50 rounded-3xl border border-pink-100 italic font-bold text-pink-500 text-sm">
+                    "상대방의 구체적인 연락처와 성함은 운영진을 통해 안전하게 전달될 예정입니다."
+                  </div>
                 </div>
               ) : (
                 <div className="text-center mb-12">
@@ -328,8 +415,12 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
                   <div className="text-6xl font-black text-pink-500 tracking-tighter">
                     {voteCount}<span className="text-2xl ml-1 text-pink-300">표</span>
                   </div>
-                  <div className="flex-1 text-gray-500 font-bold leading-relaxed text-sm">
-                    "이번 기수에서 {userName}님은 총 {voteCount}표를 받으셨습니다. 숫자는 단지 통계일 뿐, {userName}님의 매력은 다음 기수에서 더 빛날 거예요! 조금만 더 용기를 내어보세요. ✨"
+                  <div className="flex-1 text-gray-500 font-bold leading-relaxed text-sm text-left">
+                    {result.isMatched ? (
+                      `"이번 기수에서 ${userName}님은 총 ${voteCount}표를 받으셨습니다! 많은 분들이 ${userName}님의 매력을 알아봐 주셨네요. 매칭된 소중한 인연과 즐거운 만남을 이어가시길 바랍니다! 🎉"`
+                    ) : (
+                      `"이번 기수에서 ${userName}님은 총 ${voteCount}표를 받으셨습니다. 숫자는 단지 통계일 뿐, ${userName}님의 매력은 다음 기수에서 더 빛날 거예요! 조금만 더 용기를 내어보세요. ✨"`
+                    )}
                   </div>
                 </div>
               </div>

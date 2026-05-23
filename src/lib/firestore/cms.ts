@@ -3,6 +3,7 @@ import {
   collection, doc, getDocs, addDoc, updateDoc, deleteDoc,
   orderBy, query, serverTimestamp, Timestamp, getDoc, setDoc,
 } from 'firebase/firestore';
+import { VoteConfig } from '@/lib/types';
 
 export interface NoticeItem {
   id: string;
@@ -97,4 +98,14 @@ export async function updateReview(id: string, data: Partial<Omit<ReviewItem, 'i
 
 export async function deleteReview(id: string) {
   await deleteDoc(doc(db, 'cms_reviews', id));
+}
+
+// ── 투표 템플릿 ──
+export async function getVoteConfigTemplate(): Promise<VoteConfig | null> {
+  const snap = await getDoc(doc(db, 'cms_content', 'voteTemplate'));
+  return snap.exists() ? (snap.data().config as VoteConfig) : null;
+}
+
+export async function saveVoteConfigTemplate(config: VoteConfig) {
+  await setDoc(doc(db, 'cms_content', 'voteTemplate'), { config, updatedAt: serverTimestamp() }, { merge: true });
 }
