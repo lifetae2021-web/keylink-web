@@ -232,11 +232,17 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
             alignItems: 'center'
           }}>
             <div style={{ position: 'relative', borderRadius: '32px', overflow: 'hidden', height: '400px', boxShadow: '0 20px 40px rgba(0,0,0,0.1)', background: '#f5f5f5' }}>
-              <Image
+              <img
                 src="/images/venue.png?v=1.0.35"
                 alt="Venue Interior"
-                fill
-                style={{ objectFit: 'cover' }}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover'
+                }}
               />
               <div style={{
                 position: 'absolute', bottom: 0, left: 0, right: 0, padding: '30px',
