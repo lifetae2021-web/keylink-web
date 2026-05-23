@@ -321,8 +321,8 @@ export default function EventsPage() {
         // 종료되지 않은 (진행 중인) 기수 중에서 가장 빨리 시작하는 기수 선택
         const now = new Date();
         const activeSessions = fetched.filter(ev => {
-          const twoHoursAfter = new Date(ev.eventDate.getTime() + 2 * 60 * 60 * 1000);
-          return now < twoHoursAfter;
+          const twentyFourHoursAfter = new Date(ev.eventDate.getTime() + 24 * 60 * 60 * 1000);
+          return now < twentyFourHoursAfter;
         });
 
         if (activeSessions.length > 0) {
@@ -1670,9 +1670,9 @@ ${chatLink}
   let activeBadgeCls = "";
   if (active) {
     const now = new Date();
-    const twoHoursAfter = new Date(active.eventDate.getTime() + 2 * 60 * 60 * 1000);
-    activeBadgeLabel = now >= twoHoursAfter ? '종료' : now >= active.eventDate ? '진행 중' : isDetailFull ? '마감' : '모집 중';
-    activeBadgeCls = now >= twoHoursAfter ? 'bg-slate-100 text-slate-500' : now >= active.eventDate ? 'bg-blue-100 text-blue-700' : isDetailFull ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-700';
+    const twentyFourHoursAfter = new Date(active.eventDate.getTime() + 24 * 60 * 60 * 1000);
+    activeBadgeLabel = now >= twentyFourHoursAfter ? '종료' : now >= active.eventDate ? '진행 중' : isDetailFull ? '마감' : '모집 중';
+    activeBadgeCls = now >= twentyFourHoursAfter ? 'bg-slate-100 text-slate-500' : now >= active.eventDate ? 'bg-blue-100 text-blue-700' : isDetailFull ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-700';
   }
 
   return (
@@ -1772,8 +1772,8 @@ ${chatLink}
           <div className="flex flex-row gap-2 overflow-x-auto pb-2 custom-scrollbar">
             {sessions.filter((ev) => {
               const now = new Date();
-              const twoHoursAfter = new Date(ev.eventDate.getTime() + 2 * 60 * 60 * 1000);
-              return now < twoHoursAfter;
+              const twentyFourHoursAfter = new Date(ev.eventDate.getTime() + 24 * 60 * 60 * 1000);
+              return now < twentyFourHoursAfter;
             }).sort((a, b) => a.eventDate.getTime() - b.eventDate.getTime()).map((ev) => {
               // v8.2.3: 전역 applicants 데이터 기반 실시간 집계 (선발 + 확정 합산)
               const live = globalCounts[ev.id] || { male: 0, female: 0 };
@@ -1784,9 +1784,9 @@ ${chatLink}
               const sel = selectedId === ev.id;
               const isOver = total >= maxT && maxT > 0; // v8.2.3 정원 초과 여부
               const now = new Date();
-              const twoHoursAfter = new Date(ev.eventDate.getTime() + 2 * 60 * 60 * 1000);
-              const badgeLabel = now >= twoHoursAfter ? '종료' : now >= ev.eventDate ? '진행 중' : isOver ? '마감' : '모집 중';
-              const badgeCls = now >= twoHoursAfter ? 'bg-slate-100 text-slate-500' : now >= ev.eventDate ? 'bg-blue-100 text-blue-700' : isOver ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-700';
+              const twentyFourHoursAfter = new Date(ev.eventDate.getTime() + 24 * 60 * 60 * 1000);
+              const badgeLabel = now >= twentyFourHoursAfter ? '종료' : now >= ev.eventDate ? '진행 중' : isOver ? '마감' : '모집 중';
+              const badgeCls = now >= twentyFourHoursAfter ? 'bg-slate-100 text-slate-500' : now >= ev.eventDate ? 'bg-blue-100 text-blue-700' : isOver ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-700';
               return (
                 <button
                   key={ev.id}
@@ -2032,6 +2032,7 @@ ${chatLink}
                           </div>
                           {(() => {
                             const drinkCounts = participants.reduce((acc, p) => {
+                              if (p.attendanceStatus === 'no-show') return acc;
                               const code = getDrinkCode(p.drink);
                               if (code) {
                                 code.split(', ').forEach(c => {
