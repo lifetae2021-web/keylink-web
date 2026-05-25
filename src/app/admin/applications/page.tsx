@@ -218,12 +218,41 @@ export default function ApplicationsPage() {
         await holdApplicant(appId);
         toast.success('보류 처리 완료');
       } else if (status === 'confirmed') {
-        if (prevStatus === 'cancelled') {
-          await restoreApplicant(appId, sessionId, gender);
+        if (customMessage !== undefined) {
+          // SMS 발송이 포함된 확정 처리 (SMSPreviewModal을 거친 경우)
+          const token = await auth.currentUser?.getIdToken();
+          const res = await fetch('/api/admin/applications/confirm', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              applicationId: appId,
+              customMessage: customMessage
+            })
+          });
+
+          const data = await res.json();
+          if (data.isMock) {
+            toast('로컬 환경에서는 실제 처리가 제한됩니다.', { icon: '🚧', duration: 4000 });
+            return;
+          }
+          if (!res.ok) throw new Error(data.error || '처리 중 오류가 발생했습니다.');
+
+          if (data.warning) {
+            toast(data.warning, { icon: '⚠️', duration: 4000 });
+          } else {
+            toast.success('참가 확정 및 안내 문자 발송 완료');
+          }
         } else {
-          await confirmPayment(appId, sessionId, gender);
+          if (prevStatus === 'cancelled') {
+            await restoreApplicant(appId, sessionId, gender);
+          } else {
+            await confirmPayment(appId, sessionId, gender);
+          }
+          toast.success('참가 확정 완료');
         }
-        toast.success('참가 확정 완료');
       } else if (status === 'cancelled') {
         await cancelApplicant(appId, sessionId, gender, prevStatus === 'confirmed');
         toast.success('삭제 완료');
