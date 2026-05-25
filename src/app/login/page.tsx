@@ -23,7 +23,7 @@ function LoginContent() {
   const [userId, setUserId] = useState('');
   const [password, setPassword] = useState('');
   const [rememberId, setRememberId] = useState(true); // v7.1.3: 기본값 true로 설정
-  const [autoLogin, setAutoLogin] = useState(false);
+  const [autoLogin, setAutoLogin] = useState(true); // Default to true
   const router = useRouter();
   const searchParams = useSearchParams();
 

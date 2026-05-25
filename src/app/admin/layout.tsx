@@ -205,7 +205,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     );
 
     const unsub = onSnapshot(q, (snap) => {
-      setPendingCount(snap.size);
+      const realDocs = snap.docs.filter(d => {
+        const data = d.data();
+        const isDummy = d.id.startsWith('dummy') || data.userId?.startsWith('user_m_') || data.userId?.startsWith('user_f_') || data.isDummy === true;
+        return !isDummy;
+      });
+      setPendingCount(realDocs.length);
     }, (err) => {
       console.error('Error fetching application badge count:', err);
     });

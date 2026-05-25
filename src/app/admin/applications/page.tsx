@@ -756,22 +756,16 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                 >
                   <option value="all">전체 기수 보기</option>
                   {[...events]
-                    .sort((a, b) => {
+                    .filter(ev => {
                       const now = new Date();
+                      const date = ev.eventDate?.toDate?.() || new Date();
+                      const isEnded = ev.status === 'completed' || now >= new Date(date.getTime() + 2 * 60 * 60 * 1000);
+                      return !isEnded;
+                    })
+                    .sort((a, b) => {
                       const dateA = a.eventDate?.toDate?.() || new Date();
-                      const endedA = a.status === 'completed' || now >= new Date(dateA.getTime() + 2 * 60 * 60 * 1000);
                       const dateB = b.eventDate?.toDate?.() || new Date();
-                      const endedB = b.status === 'completed' || now >= new Date(dateB.getTime() + 2 * 60 * 60 * 1000);
-
-                      if (endedA !== endedB) return endedA ? 1 : -1;
-
-                      // 모집중/진행중인 기수: 날짜가 가장 가까운(임박한) 행사 우선 (오름차순)
-                      if (!endedA) {
-                        return dateA.getTime() - dateB.getTime();
-                      }
-
-                      // 종료된 기수: 가장 최근에 종료된 행사 우선 (내림차순)
-                      return dateB.getTime() - dateA.getTime();
+                      return dateA.getTime() - dateB.getTime();
                     })
                     .map(ev => {
                       const now = new Date();

@@ -64,6 +64,7 @@ import { getAllVotesBySession } from "@/lib/firestore/votes";
 import SMSPreviewModal from "@/components/admin/SMSPreviewModal";
 import UserProfileModal from "@/app/admin/users/UserProfileModal";
 import MatchingDrawer from "@/components/admin/MatchingDrawer";
+import InstagramFeedModal from "./InstagramFeedModal";
 
 const card = "bg-white border border-slate-200 rounded-xl shadow-sm";
 
@@ -148,6 +149,9 @@ export default function EventsPage() {
   // v9.1.5: 더미 계정 직업명 수정 전용 상태
   const [editingAppJobId, setEditingAppJobId] = useState<string | null>(null);
   const [tempAppJobValue, setTempAppJobValue] = useState<string>('');
+
+  // Instagram Feed Modal State
+  const [instagramModalOpen, setInstagramModalOpen] = useState(false);
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -1833,6 +1837,7 @@ ${chatLink}
           </div>
           <div className="flex flex-row gap-2 overflow-x-auto pb-2 custom-scrollbar">
             {sessions.filter((ev) => {
+              if (selectedId === ev.id) return true;
               const now = new Date();
               const twentyFourHoursAfter = new Date(ev.eventDate.getTime() + 24 * 60 * 60 * 1000);
               return now < twentyFourHoursAfter && !ev.isForceHidden;
@@ -2097,6 +2102,12 @@ ${chatLink}
                           </span>
                         </h3>
                         <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setInstagramModalOpen(true)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#FF6F61]/10 text-[#FF6F61] rounded-lg text-[0.75rem] font-bold hover:bg-[#FF6F61]/20 transition-colors"
+                          >
+                            💭 이상형 피드 추출
+                          </button>
                           {applicantsLoading && (
                             <Loader2
                               className="animate-spin text-slate-400"
@@ -3122,6 +3133,13 @@ ${chatLink}
           </div>
         </div>
       )}
+
+      <InstagramFeedModal
+        isOpen={instagramModalOpen}
+        onClose={() => setInstagramModalOpen(false)}
+        sessionName={sessions.find(s => s.id === selectedId)?.name || ''}
+        participants={participants}
+      />
 
       {/* Bulk SMS Modal */}
       <SMSPreviewModal

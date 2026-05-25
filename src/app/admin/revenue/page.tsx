@@ -29,12 +29,14 @@ const panel = {
 function DetailModal({
   title,
   filterMonth,
+  filterSessionId,
   applications,
   sessions,
   onClose,
 }: {
   title: string;
   filterMonth: 'all' | 'current';
+  filterSessionId?: string;
   applications: any[];
   sessions: any[];
   onClose: () => void;
@@ -83,7 +85,7 @@ function DetailModal({
     );
 
     const now = new Date();
-    const filtered = filterMonth === 'current'
+    let filtered = filterMonth === 'current'
       ? confirmed.filter(app => {
           const session = sessionMap[app.sessionId];
           if (!session) return false;
@@ -91,6 +93,10 @@ function DetailModal({
           return isWithinInterval(date, { start: startOfMonth(now), end: endOfMonth(now) });
         })
       : confirmed;
+
+    if (filterSessionId) {
+      filtered = filtered.filter(app => app.sessionId === filterSessionId);
+    }
 
     return filtered
       .map(app => {
@@ -351,6 +357,7 @@ export default function RevenueStatsPage() {
     open: boolean;
     title: string;
     filterMonth: 'all' | 'current';
+    filterSessionId?: string;
   }>({ open: false, title: '', filterMonth: 'all' });
 
   useEffect(() => {
@@ -669,12 +676,15 @@ export default function RevenueStatsPage() {
                     </td>
                     <td className="px-8 py-6">
                       <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-[#FF7E7E]">
+                        <button 
+                          onClick={() => setModalConfig({ open: true, title: `${ev.name} 참가 상세 내역`, filterMonth: 'all', filterSessionId: ev.id })}
+                          className="flex items-center gap-2 hover:bg-slate-100 p-1 -ml-1 rounded-lg transition-colors cursor-pointer group/sessionbtn text-left"
+                        >
+                          <div className="w-8 h-8 rounded-lg bg-slate-50 group-hover/sessionbtn:bg-[#FF7E7E]/10 flex items-center justify-center text-[#FF7E7E] transition-colors">
                             <Users size={14} />
                           </div>
-                          <span className="text-sm font-bold text-slate-700">{ev.count}명</span>
-                        </div>
+                          <span className="text-sm font-bold text-slate-700 group-hover/sessionbtn:text-[#FF7E7E] transition-colors">{ev.count}명</span>
+                        </button>
                         {(ev.freeCount > 0 || ev.refundCount > 0) && (
                           <div className="flex items-center gap-1 pl-10 text-[0.68rem] font-bold text-slate-400">
                             <span>유료 {ev.paidCount}</span>
@@ -717,6 +727,7 @@ export default function RevenueStatsPage() {
         <DetailModal
           title={modalConfig.title}
           filterMonth={modalConfig.filterMonth}
+          filterSessionId={modalConfig.filterSessionId}
           applications={stats.realApps}
           sessions={stats.activeNonTestSessions}
           onClose={() => setModalConfig(prev => ({ ...prev, open: false }))}

@@ -3,25 +3,31 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { auth, db } from '@/lib/firebase';
-import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, setPersistence, browserLocalPersistence, browserSessionPersistence } from 'firebase/auth';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
-import { Lock, Mail, Loader2, ShieldCheck, AlertTriangle } from 'lucide-react';
+import { Lock, Mail, User, Loader2, ShieldCheck, AlertTriangle, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function AdminLoginPage() {
   const [loginId, setLoginId] = useState('');
   const [password, setPassword] = useState('');
   const [rememberId, setRememberId] = useState(false);
+  const [autoLogin, setAutoLogin] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  // Load saved ID on mount
+  // Load saved ID and auto-login pref on mount
   useState(() => {
     if (typeof window !== 'undefined') {
       const savedId = localStorage.getItem('keylink_admin_saved_id');
       if (savedId) {
         setLoginId(savedId);
         setRememberId(true);
+      }
+      const savedAutoLogin = localStorage.getItem('keylink_admin_auto_login');
+      if (savedAutoLogin === 'true') {
+        setAutoLogin(true);
       }
     }
   });
@@ -58,6 +64,14 @@ export default function AdminLoginPage() {
             return;
           }
         }
+      }
+
+      if (autoLogin) {
+        await setPersistence(auth, browserLocalPersistence);
+        localStorage.setItem('keylink_admin_auto_login', 'true');
+      } else {
+        await setPersistence(auth, browserSessionPersistence);
+        localStorage.setItem('keylink_admin_auto_login', 'false');
       }
 
       const { user } = await signInWithEmailAndPassword(auth, email, password);
@@ -142,15 +156,15 @@ export default function AdminLoginPage() {
             {/* Email / ID */}
             <div>
               <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: '#666', marginBottom: 7 }}>
-                아이디 또는 이메일
+                아이디
               </label>
               <div style={{ position: 'relative' }}>
-                <Mail size={15} style={{ position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)', color: '#444', pointerEvents: 'none' }} />
+                <User size={15} style={{ position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)', color: '#444', pointerEvents: 'none' }} />
                 <input
                   type="text"
                   value={loginId}
                   onChange={e => setLoginId(e.target.value)}
-                  placeholder="admin@keylink.kr"
+                  placeholder="admin"
                   required
                   style={{
                     width: '100%', padding: '10px 14px 10px 38px',
@@ -172,13 +186,13 @@ export default function AdminLoginPage() {
               <div style={{ position: 'relative' }}>
                 <Lock size={15} style={{ position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)', color: '#444', pointerEvents: 'none' }} />
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={e => setPassword(e.target.value)}
-                  placeholder="••••••••"
+                  placeholder=""
                   required
                   style={{
-                    width: '100%', padding: '10px 14px 10px 38px',
+                    width: '100%', padding: '10px 40px 10px 38px',
                     fontSize: '0.88rem', background: 'rgba(255,255,255,0.04)',
                     border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8,
                     color: '#eee', outline: 'none',
@@ -186,25 +200,50 @@ export default function AdminLoginPage() {
                   onFocus={e  => (e.currentTarget.style.borderColor = 'rgba(255,111,97,0.5)')}
                   onBlur={e   => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)')}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{ position: 'absolute', right: 13, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: '#888' }}
+                >
+                  {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
               </div>
             </div>
 
-            {/* Remember ID Checkbox */}
-            <div className="flex items-center gap-2 px-1">
-              <input
-                id="remember-id"
-                type="checkbox"
-                checked={rememberId}
-                onChange={(e) => setRememberId(e.target.checked)}
-                className="w-4 h-4 rounded border-gray-800 bg-gray-900 text-pink-500 focus:ring-pink-500/20 transition-all cursor-pointer"
-                style={{ accentColor: '#FF6F61' }}
-              />
-              <label 
-                htmlFor="remember-id" 
-                className="text-xs font-semibold text-gray-500 cursor-pointer select-none hover:text-gray-400 transition-colors"
-              >
-                아이디 저장
-              </label>
+            {/* Options */}
+            <div className="flex items-center justify-between px-1">
+              <div className="flex items-center gap-2">
+                <input
+                  id="remember-id"
+                  type="checkbox"
+                  checked={rememberId}
+                  onChange={(e) => setRememberId(e.target.checked)}
+                  className="w-4 h-4 rounded border-gray-800 bg-gray-900 text-pink-500 focus:ring-pink-500/20 transition-all cursor-pointer"
+                  style={{ accentColor: '#FF6F61' }}
+                />
+                <label 
+                  htmlFor="remember-id" 
+                  className="text-xs font-semibold text-gray-500 cursor-pointer select-none hover:text-gray-400 transition-colors"
+                >
+                  아이디 저장
+                </label>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  id="auto-login"
+                  type="checkbox"
+                  checked={autoLogin}
+                  onChange={(e) => setAutoLogin(e.target.checked)}
+                  className="w-4 h-4 rounded border-gray-800 bg-gray-900 text-pink-500 focus:ring-pink-500/20 transition-all cursor-pointer"
+                  style={{ accentColor: '#FF6F61' }}
+                />
+                <label 
+                  htmlFor="auto-login" 
+                  className="text-xs font-semibold text-gray-500 cursor-pointer select-none hover:text-gray-400 transition-colors"
+                >
+                  자동 로그인
+                </label>
+              </div>
             </div>
 
             {/* Submit */}

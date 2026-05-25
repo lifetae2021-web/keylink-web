@@ -645,11 +645,28 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
                     <X size={20} />
                   </button>
                   <div className="w-full h-full overflow-auto flex items-center justify-center max-h-[75vh] p-4">
-                    <img
-                      src={user.employmentProof || user.verificationUrl}
-                      alt="재직 인증 서류"
-                      className="max-w-full max-h-[70vh] object-contain rounded-2xl shadow-sm"
-                    />
+                    {(() => {
+                      const docUrl = user.employmentProof || user.verificationUrl;
+                      const isPdf = typeof docUrl === 'string' && (docUrl.startsWith('data:application/pdf') || docUrl.toLowerCase().includes('.pdf'));
+                      
+                      if (isPdf) {
+                        return (
+                          <iframe
+                            src={docUrl}
+                            className="w-full h-[70vh] rounded-2xl shadow-sm border-none"
+                            title="재직 인증 서류 (PDF)"
+                          />
+                        );
+                      }
+                      
+                      return (
+                        <img
+                          src={docUrl}
+                          alt="재직 인증 서류"
+                          className="max-w-full max-h-[70vh] object-contain rounded-2xl shadow-sm"
+                        />
+                      );
+                    })()}
                   </div>
                   <div className="w-full text-center py-4 bg-slate-50 border-t border-slate-100 rounded-b-2xl flex items-center justify-center gap-3">
                     <span className="text-xs font-black text-slate-500 uppercase tracking-widest">
