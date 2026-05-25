@@ -626,7 +626,24 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
       if (dummyFilter === 'exclude') matchesDummy = !isDummy;
       else if (dummyFilter === 'only') matchesDummy = isDummy;
 
-      return matchesSearch && matchesGender && matchesAge && matchesStatus && matchesDummy;
+      // v11.1.0: 전체 기수 보기 상태에서 종료된 행사 신청자 숨김
+      let matchesSessionEnded = true;
+      if (selectedEventId === 'all') {
+        const session = events.find(e => e.id === app.sessionId);
+        if (session) {
+          const now = new Date();
+          let eventDate = new Date();
+          if (session.eventDate) {
+            eventDate = typeof session.eventDate.toDate === 'function' ? session.eventDate.toDate() : new Date(session.eventDate);
+          }
+          const isEnded = session.status === 'completed' || session.isForceHidden || now >= new Date(eventDate.getTime() + 24 * 60 * 60 * 1000);
+          if (isEnded) matchesSessionEnded = false;
+        } else {
+          matchesSessionEnded = false; // 삭제되거나 존재하지 않는 기수도 숨김
+        }
+      }
+
+      return matchesSearch && matchesGender && matchesAge && matchesStatus && matchesDummy && matchesSessionEnded;
     });
 
     // v8.4.1: 정렬 로직
@@ -918,8 +935,8 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
           )}
 
           {/* Main Content Table (Light Premium Theme - Clean White) */}
-          <div className="hidden md:block mx-auto w-full" style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 16, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-            <div className="overflow-auto max-h-[75vh]">
+          <div className="hidden md:block mx-auto w-full h-fit" style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 16, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+            <div className="overflow-auto h-fit max-h-[75vh]">
               <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' }}>
                 <thead className="hidden md:table-header-group sticky top-0 z-20" style={{ background: '#F8FAFC' }}>
                   <tr style={{ borderBottom: '1px solid #E2E8F0' }}>

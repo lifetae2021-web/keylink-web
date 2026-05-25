@@ -196,27 +196,54 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, [runningSession]);
 
   // 1. 신청 관리 뱃지 리얼타임 연동 (applied OR selected)
+  const [activeSessionIds, setActiveSessionIds] = useState<Set<string>>(new Set());
+  const [pendingApps, setPendingApps] = useState<any[]>([]);
+
   useEffect(() => {
     if (authState !== 'admin' && authState !== 'super_admin') return;
 
+    // 1-a. 활성 기수 동기화
+    const unsubSessions = onSnapshot(collection(db, 'sessions'), (snap) => {
+      const activeIds = new Set<string>();
+      const now = new Date();
+      snap.forEach(d => {
+        const data = d.data();
+        let eventDate = new Date(0);
+        if (data.eventDate) {
+          eventDate = typeof data.eventDate.toDate === 'function' ? data.eventDate.toDate() : new Date(data.eventDate);
+        }
+        const isEnded = data.status === 'completed' || data.isForceHidden || now >= new Date(eventDate.getTime() + 24 * 60 * 60 * 1000);
+        if (!isEnded) activeIds.add(d.id);
+      });
+      setActiveSessionIds(activeIds);
+    });
+
+    // 1-b. 대기 신청서 동기화
     const q = query(
       collection(db, 'applications'),
       where('status', 'in', ['applied', 'selected'])
     );
 
-    const unsub = onSnapshot(q, (snap) => {
+    const unsubApps = onSnapshot(q, (snap) => {
       const realDocs = snap.docs.filter(d => {
         const data = d.data();
         const isDummy = d.id.startsWith('dummy') || data.userId?.startsWith('user_m_') || data.userId?.startsWith('user_f_') || data.isDummy === true;
         return !isDummy;
-      });
-      setPendingCount(realDocs.length);
-    }, (err) => {
-      console.error('Error fetching application badge count:', err);
+      }).map(d => d.data());
+      setPendingApps(realDocs);
     });
 
-    return () => unsub();
+    return () => {
+      unsubSessions();
+      unsubApps();
+    };
   }, [authState]);
+
+  useEffect(() => {
+    // 종료되지 않은 활성 기수에 속한 신청서만 카운트
+    const count = pendingApps.filter(app => activeSessionIds.has(app.sessionId)).length;
+    setPendingCount(count);
+  }, [pendingApps, activeSessionIds]);
 
   // 2. 통합 알림 시스템 (회원, 신청, 매칭 리얼타임 통합)
   useEffect(() => {

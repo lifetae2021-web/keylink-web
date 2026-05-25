@@ -2046,7 +2046,7 @@ ${chatLink}
                 </div>
 
                 {/* 탭 버튼 */}
-                <div className="flex border-b border-slate-100 px-4 overflow-x-auto gap-1">
+                <div className="flex border-b border-slate-100 px-4 overflow-x-auto sm:overflow-x-visible gap-1">
                   {(
                     [
                       {
