@@ -105,7 +105,7 @@ export default function ApplicationsPage() {
 
     setIsDataLoading(true);
     const q = selectedEventId === 'all'
-      ? query(collection(db, 'applications'), orderBy('appliedAt', 'desc'), limit(150))
+      ? query(collection(db, 'applications'), orderBy('appliedAt', 'desc'), limit(1000))
       : query(
         collection(db, 'applications'),
         where('sessionId', '==', selectedEventId),
@@ -559,13 +559,47 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
     }
   };
 
-  // v8.1.7: \uc2e4\uc2dc\uac04 \uc120\ubc1c \ud604\ud669 \uacc4\uc0b0 (confirmed only, excluding selected/waiting)
+  // v11.1.0: 공통 필터링 (탭, 더미, 종료기수) - 통계와 리스트에 모두 적용
+  const baseFiltered = useMemo(() => {
+    return applications.filter(app => {
+      // 1. 탭 필터링
+      if (activeTab === 'group' && app.sessionType === '1on1') return false;
+      if (activeTab === '1on1' && app.sessionType !== '1on1') return false;
+
+      // 2. 더미 계정 필터링
+      const user = userMap[app.userId] || {};
+      const isDummy = app.id?.startsWith('dummy') || app.userId?.startsWith('user_m_') || app.userId?.startsWith('user_f_') || user.isDummy === true;
+      if (dummyFilter === 'exclude' && isDummy) return false;
+      if (dummyFilter === 'only' && !isDummy) return false;
+
+      // 3. 전체 기수 보기 상태에서 종료된 행사 신청자 숨김
+      let matchesSessionEnded = true;
+      if (selectedEventId === 'all') {
+        const session = events.find(e => e.id === app.sessionId);
+        if (session) {
+          const now = new Date();
+          let eventDate = new Date();
+          if (session.eventDate) {
+            eventDate = typeof session.eventDate.toDate === 'function' ? session.eventDate.toDate() : new Date(session.eventDate);
+          }
+          const isEnded = session.status === 'completed' || session.isForceHidden || now >= new Date(eventDate.getTime() + 24 * 60 * 60 * 1000);
+          if (isEnded) matchesSessionEnded = false;
+        } else {
+          matchesSessionEnded = false; // 삭제되거나 존재하지 않는 기수도 숨김
+        }
+      }
+
+      return matchesSessionEnded;
+    });
+  }, [applications, activeTab, dummyFilter, selectedEventId, events, userMap]);
+
+  // v8.1.7: 실시간 선발 현황 계산 (confirmed only, excluding selected/waiting)
   const selectionStats = useMemo(() => {
     if (selectedEventId === 'all') return { male: 0, female: 0 };
-    const male = applications.filter(a => a.gender === 'male' && a.status === 'confirmed').length;
-    const female = applications.filter(a => a.gender === 'female' && a.status === 'confirmed').length;
+    const male = baseFiltered.filter(a => a.gender === 'male' && a.status === 'confirmed').length;
+    const female = baseFiltered.filter(a => a.gender === 'female' && a.status === 'confirmed').length;
     return { male, female };
-  }, [applications, selectedEventId]);
+  }, [baseFiltered, selectedEventId]);
 
   const isMaleFull = selectionStats.male >= (activeEvent?.maxMale || 8);
   const isFemaleFull = selectionStats.female >= (activeEvent?.maxFemale || 8);
@@ -577,7 +611,7 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
 
     // 적용 순(또는 변경 순) 정렬: 가장 먼저 확정된 사람이 정원 내, 늦게 확정된 사람이 초과
     const getSortedSelected = (gender: string) =>
-      applications
+      baseFiltered
         .filter(a => a.gender === gender && a.status === 'confirmed')
         // 신청일 기준 오름차순 (먼저 신청한 사람 1순위)
         .sort((a, b) => {
@@ -593,10 +627,10 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
     females.slice(activeEvent.maxFemale || 8).forEach(a => ids.add(a.id));
 
     return ids;
-  }, [applications, activeEvent, selectedEventId]);
+  }, [baseFiltered, activeEvent, selectedEventId]);
 
   const filtered = useMemo(() => {
-    let result = applications.filter(app => {
+    let result = baseFiltered.filter(app => {
       const user = userMap[app.userId] || {};
       const normalizedQuery = searchQuery.replace(/[^0-9]/g, '');
       const userPhoneDigits = (user.phone || '').replace(/[^0-9]/g, '');
@@ -620,30 +654,7 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
       // v8.4.1: 상태 필터링
       const matchesStatus = statusFilter === 'all' || app.status === statusFilter;
 
-      // 더미 계정 필터링
-      const isDummy = app.id?.startsWith('dummy') || app.userId?.startsWith('user_m_') || app.userId?.startsWith('user_f_') || user.isDummy === true;
-      let matchesDummy = true;
-      if (dummyFilter === 'exclude') matchesDummy = !isDummy;
-      else if (dummyFilter === 'only') matchesDummy = isDummy;
-
-      // v11.1.0: 전체 기수 보기 상태에서 종료된 행사 신청자 숨김
-      let matchesSessionEnded = true;
-      if (selectedEventId === 'all') {
-        const session = events.find(e => e.id === app.sessionId);
-        if (session) {
-          const now = new Date();
-          let eventDate = new Date();
-          if (session.eventDate) {
-            eventDate = typeof session.eventDate.toDate === 'function' ? session.eventDate.toDate() : new Date(session.eventDate);
-          }
-          const isEnded = session.status === 'completed' || session.isForceHidden || now >= new Date(eventDate.getTime() + 24 * 60 * 60 * 1000);
-          if (isEnded) matchesSessionEnded = false;
-        } else {
-          matchesSessionEnded = false; // 삭제되거나 존재하지 않는 기수도 숨김
-        }
-      }
-
-      return matchesSearch && matchesGender && matchesAge && matchesStatus && matchesDummy && matchesSessionEnded;
+      return matchesSearch && matchesGender && matchesAge && matchesStatus;
     });
 
     // v8.4.1: 정렬 로직
@@ -669,7 +680,7 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
     });
 
     return result;
-  }, [applications, userMap, searchQuery, filterGender, ageFilter, statusFilter, dummyFilter, sortConfig]);
+  }, [baseFiltered, userMap, searchQuery, filterGender, ageFilter, statusFilter, sortConfig]);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-400 pb-20">
@@ -842,9 +853,9 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
           {activeEvent && (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {[
-                { label: '전체 신청', value: applications.length, icon: Users, color: '#FF6F61' },
-                { label: '입금 대기', value: applications.filter((a: any) => a.status === 'selected').length, icon: CreditCard, color: '#a78bfa' },
-                { label: '참가 확정', value: applications.filter((a: any) => a.status === 'confirmed').length, icon: CheckCircle, color: '#4ade80' },
+                { label: '전체 신청', value: baseFiltered.length, icon: Users, color: '#FF6F61' },
+                { label: '입금 대기', value: baseFiltered.filter((a: any) => a.status === 'selected').length, icon: CreditCard, color: '#a78bfa' },
+                { label: '참가 확정', value: baseFiltered.filter((a: any) => a.status === 'confirmed').length, icon: CheckCircle, color: '#4ade80' },
                 {
                   label: '정원 현황',
                   value: (
