@@ -233,7 +233,7 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
           }}>
             <div style={{ position: 'relative', borderRadius: '32px', overflow: 'hidden', height: '400px', boxShadow: '0 20px 40px rgba(0,0,0,0.1)', background: '#f5f5f5' }}>
               <img
-                src="/images/venue.png?v=1.0.35"
+                src="/images/venue.png?v=1.0.36"
                 alt="Venue Interior"
                 style={{
                   position: 'absolute',
