@@ -40,10 +40,18 @@ export async function sendSMS({ to, text }: SendSMSParams) {
 
   const isDev = process.env.NODE_ENV === 'development';
 
-  if (isDev || !API_KEY || !API_SECRET || !SENDER_NUMBER) {
-    console.warn(`SMS 발송 ${isDev ? '차단(로컬 환경)' : '실패(설정 누락)'}: Mock 모드 작동 중`);
+  if (isDev) {
+    console.warn(`SMS 발송 차단(로컬 환경): Mock 모드 작동 중`);
     console.log(`[Mock SMS] TO: ${cleanTo}, TEXT: ${text}`);
     return { success: true, mock: true };
+  }
+
+  if (!API_KEY || !API_SECRET || !SENDER_NUMBER) {
+    const missing = [];
+    if (!API_KEY) missing.push('SOLAPI_API_KEY');
+    if (!API_SECRET) missing.push('SOLAPI_API_SECRET');
+    if (!SENDER_NUMBER) missing.push('SOLAPI_SENDER_NUMBER');
+    throw new Error(`Solapi API 설정이 누락되었습니다 (${missing.join(', ')}).`);
   }
 
   try {
