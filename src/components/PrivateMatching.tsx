@@ -6,6 +6,7 @@ import { doc, getDoc, setDoc, updateDoc, serverTimestamp, collection, addDoc, wh
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { CheckCircle, Upload, X, AlertCircle, ArrowRight, UserCheck, Search, Image as ImageIcon, ShieldCheck, Info } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { compressImage } from '@/lib/utils';
 
 export default function PrivateMatching() {
   const router = useRouter();
@@ -125,16 +126,21 @@ export default function PrivateMatching() {
     if (!files || files.length === 0) return;
 
     Array.from(files).forEach(file => {
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error('파일 크기는 5MB 이내여야 합니다.');
+      if (file.size > 20 * 1024 * 1024) {
+        toast.error('파일 크기는 20MB 이내여야 합니다.');
         return;
       }
       const reader = new FileReader();
-      reader.onload = (e) => {
+      reader.onload = async (e) => {
+        const raw = e.target?.result as string;
+        let processedUrl = raw;
+        if (file.type.startsWith('image/')) {
+          processedUrl = await compressImage(raw);
+        }
         if (isArray) {
-          setPhotos(prev => [...prev, e.target?.result as string].slice(0, 5)); // Max 5 photos
+          setPhotos(prev => [...prev, processedUrl].slice(0, 5)); // Max 5 photos
         } else {
-          setter(e.target?.result as string);
+          setter(processedUrl);
         }
       };
       reader.readAsDataURL(file);

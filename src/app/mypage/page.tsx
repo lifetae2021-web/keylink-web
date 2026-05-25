@@ -480,13 +480,18 @@ function MyPageContent() {
     const file = e.target.files?.[0];
     if (!file) return;
     
-    if (file.size > 5 * 1024 * 1024) return toast.error('파일 크기는 5MB 이하여야 합니다.');
+    if (file.size > 20 * 1024 * 1024) return toast.error('파일 크기는 20MB 이하여야 합니다.');
     
     setVerificationFile(file);
     setVerificationFileName(file.name);
     const reader = new FileReader();
-    reader.onload = (ev) => {
-      setVerificationPreview(ev.target?.result as string);
+    reader.onload = async (ev) => {
+      const raw = ev.target?.result as string;
+      if (file.type.startsWith('image/')) {
+        setVerificationPreview(await compressImage(raw));
+      } else {
+        setVerificationPreview(raw);
+      }
     };
     reader.readAsDataURL(file);
   };
