@@ -2232,11 +2232,30 @@ ${chatLink}
                                       );
                                       return { slotNum, app };
                                     },
-                                  );
+                                  ).sort((a, b) => {
+                                    const getPriority = (slot: {slotNum: number, app: any}) => {
+                                      if (!slot.app) return 3;
+                                      const user = userMap[slot.app.userId] || {};
+                                      const isDummy = slot.app.id?.startsWith('dummy') || slot.app.userId?.startsWith('user_m_') || slot.app.userId?.startsWith('user_f_') || user.isDummy === true;
+                                      return isDummy ? 2 : 1;
+                                    };
+                                    const prioA = getPriority(a);
+                                    const prioB = getPriority(b);
+                                    if (prioA !== prioB) return prioA - prioB;
+                                    return a.slotNum - b.slotNum;
+                                  });
                                   // slotNumber 없는 confirmed 참가자 (마이그레이션 전 데이터)
                                   const unassigned = genderList.filter(
                                     (a) => !a.slotNumber,
-                                  );
+                                  ).sort((a, b) => {
+                                    const userA = userMap[a.userId] || {};
+                                    const userB = userMap[b.userId] || {};
+                                    const isDummyA = a.id?.startsWith('dummy') || a.userId?.startsWith('user_m_') || a.userId?.startsWith('user_f_') || userA.isDummy === true;
+                                    const isDummyB = b.id?.startsWith('dummy') || b.userId?.startsWith('user_m_') || b.userId?.startsWith('user_f_') || userB.isDummy === true;
+                                    
+                                    if (isDummyA !== isDummyB) return isDummyA ? 1 : -1;
+                                    return a.appliedAt.getTime() - b.appliedAt.getTime();
+                                  });
                                   const statusMap: Record<
                                     string,
                                     { label: string; cls: string }
