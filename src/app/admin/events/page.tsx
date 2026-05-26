@@ -2652,10 +2652,17 @@ ${chatLink}
                         {(["male", "female"] as const).map((gender) => {
                           const genderWaitlist = waitlisted
                             .filter((a) => a.gender === gender)
-                            .sort(
-                              (a, b) =>
-                                a.appliedAt.getTime() - b.appliedAt.getTime(),
-                            );
+                            .sort((a, b) => {
+                              const userA = userMap[a.userId] || {};
+                              const userB = userMap[b.userId] || {};
+                              const isDummyA = a.id?.startsWith('dummy') || a.userId?.startsWith('user_m_') || a.userId?.startsWith('user_f_') || userA.isDummy === true;
+                              const isDummyB = b.id?.startsWith('dummy') || b.userId?.startsWith('user_m_') || b.userId?.startsWith('user_f_') || userB.isDummy === true;
+
+                              if (isDummyA !== isDummyB) {
+                                return isDummyA ? 1 : -1;
+                              }
+                              return a.appliedAt.getTime() - b.appliedAt.getTime();
+                            });
                           if (genderWaitlist.length === 0) return null;
                           const isMaleSection = gender === "male";
                           return (
