@@ -2118,47 +2118,54 @@ ${chatLink}
                       </div>
 
                       {/* 출석 및 음료 요약 */}
-                      {participants.length > 0 && (
-                        <div className="flex flex-col sm:flex-row gap-3 px-1 py-1">
-                          <div className="flex items-center gap-3 bg-green-50 px-3 py-1.5 rounded-lg border border-green-100">
-                            <span className="text-[0.7rem] font-bold text-green-700">출석 현황</span>
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs font-black text-blue-600 bg-white/50 px-1.5 py-0.5 rounded">
-                                남 {participants.filter(a => a.gender === 'male' && a.attended).length}/{participants.filter(a => a.gender === 'male').length}
-                              </span>
-                              <span className="text-xs font-black text-pink-600 bg-white/50 px-1.5 py-0.5 rounded">
-                                여 {participants.filter(a => a.gender === 'female' && a.attended).length}/{participants.filter(a => a.gender === 'female').length}
-                              </span>
-                            </div>
-                          </div>
-                          {(() => {
-                            const drinkCounts = participants.reduce((acc, p) => {
-                              if (p.attendanceStatus === 'no-show') return acc;
-                              const code = getDrinkCode(p.drink);
-                              if (code) {
-                                code.split(', ').forEach(c => {
-                                  acc[c] = (acc[c] || 0) + 1;
-                                });
-                              }
-                              return acc;
-                            }, {} as Record<string, number>);
-                            
-                            const codes = Object.keys(drinkCounts).sort();
-                            if (codes.length === 0) return null;
-                            
-                            return (
-                              <div className="flex items-center flex-wrap gap-2 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100">
-                                <span className="text-[0.7rem] font-bold text-blue-700 mr-1">음료 요약</span>
-                                {codes.map(c => (
-                                  <span key={c} className="text-xs font-black text-blue-600 bg-white px-2 py-0.5 rounded shadow-sm">
-                                    {c} {drinkCounts[c]}
-                                  </span>
-                                ))}
+                      {participants.length > 0 && (() => {
+                        const realParticipants = participants.filter(app => {
+                          const user = userMap[app.userId] || {};
+                          return !(app.id?.startsWith('dummy') || app.userId?.startsWith('user_m_') || app.userId?.startsWith('user_f_') || user.isDummy === true);
+                        });
+                        
+                        return (
+                          <div className="flex flex-col sm:flex-row gap-3 px-1 py-1">
+                            <div className="flex items-center gap-3 bg-green-50 px-3 py-1.5 rounded-lg border border-green-100">
+                              <span className="text-[0.7rem] font-bold text-green-700">출석 현황</span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-black text-blue-600 bg-white/50 px-1.5 py-0.5 rounded">
+                                  남 {realParticipants.filter(a => a.gender === 'male' && a.attended).length}/{realParticipants.filter(a => a.gender === 'male').length}
+                                </span>
+                                <span className="text-xs font-black text-pink-600 bg-white/50 px-1.5 py-0.5 rounded">
+                                  여 {realParticipants.filter(a => a.gender === 'female' && a.attended).length}/{realParticipants.filter(a => a.gender === 'female').length}
+                                </span>
                               </div>
-                            );
-                          })()}
-                        </div>
-                      )}
+                            </div>
+                            {(() => {
+                              const drinkCounts = realParticipants.reduce((acc, p) => {
+                                if (p.attendanceStatus === 'no-show') return acc;
+                                const code = getDrinkCode(p.drink);
+                                if (code) {
+                                  code.split(', ').forEach(c => {
+                                    acc[c] = (acc[c] || 0) + 1;
+                                  });
+                                }
+                                return acc;
+                              }, {} as Record<string, number>);
+                              
+                              const codes = Object.keys(drinkCounts).sort();
+                              if (codes.length === 0) return null;
+                              
+                              return (
+                                <div className="flex items-center flex-wrap gap-2 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100">
+                                  <span className="text-[0.7rem] font-bold text-blue-700 mr-1">음료 요약</span>
+                                  {codes.map(c => (
+                                    <span key={c} className="text-xs font-black text-blue-600 bg-white px-2 py-0.5 rounded shadow-sm">
+                                      {c} {drinkCounts[c]}
+                                    </span>
+                                  ))}
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        );
+                      })()}
 
                       {/* v8.15.3: 로딩 중일 때 명단이 사라지는 '번쩍' 현상 방지 및 레이아웃 유지 */}
                       {(!applicantsLoading && applicants.length === 0) ? (
