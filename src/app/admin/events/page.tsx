@@ -606,6 +606,21 @@ export default function EventsPage() {
     [applicants],
   );
 
+  // v11.1.2: UI 통계 표시용 (더미 계정 제외)
+  const realParticipants = useMemo(() => {
+    return participants.filter(app => {
+      const user = userMap[app.userId] || {};
+      return !(app.id?.startsWith('dummy') || app.userId?.startsWith('user_m_') || app.userId?.startsWith('user_f_') || user.isDummy === true);
+    });
+  }, [participants, userMap]);
+
+  const realWaitlisted = useMemo(() => {
+    return waitlisted.filter(app => {
+      const user = userMap[app.userId] || {};
+      return !(app.id?.startsWith('dummy') || app.userId?.startsWith('user_m_') || app.userId?.startsWith('user_f_') || user.isDummy === true);
+    });
+  }, [waitlisted, userMap]);
+
   const isGenderFull = useMemo(() => ({
     male: participants.filter((a) => a.gender === "male").length >= (active?.maxMale ?? 0),
     female: participants.filter((a) => a.gender === "female").length >= (active?.maxFemale ?? 0),
@@ -2051,12 +2066,12 @@ ${chatLink}
                     [
                       {
                         key: "participants",
-                        label: `참가자 ${participants.length}명`,
+                        label: `참가자 ${realParticipants.length}명`,
                         icon: UserCheck,
                       },
                       {
                         key: "waitlist",
-                        label: `대기자 ${waitlisted.length}명`,
+                        label: `대기자 ${realWaitlisted.length}명`,
                         icon: Clock,
                       },
                       { key: "stats", label: "매칭 통계", icon: Zap },
@@ -2088,14 +2103,14 @@ ${chatLink}
                           <ListChecks size={16} className="text-[#FF6F61]" />
                           참가 명단
                           <span className="text-[0.75rem] font-bold px-2.5 py-0.5 rounded-full bg-orange-50 text-[#FF6F61] ml-1">
-                            총 {participants.length}명 (
+                            총 {realParticipants.length}명 (
                             {
-                              participants.filter((a) => a.gender === "male")
+                              realParticipants.filter((a) => a.gender === "male")
                                 .length
                             }
                             남 /{" "}
                             {
-                              participants.filter((a) => a.gender === "female")
+                              realParticipants.filter((a) => a.gender === "female")
                                 .length
                             }
                             여)
@@ -2619,14 +2634,14 @@ ${chatLink}
                         <h3 className="flex items-center gap-2 text-[0.95rem] font-extrabold text-amber-700">
                           ⏳ 대기자 명단
                           <span className="text-[0.75rem] font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-700 ml-1">
-                            총 {waitlisted.length}명 (
+                            총 {realWaitlisted.length}명 (
                             {
-                              waitlisted.filter((a) => a.gender === "male")
+                              realWaitlisted.filter((a) => a.gender === "male")
                                 .length
                             }
                             남 /{" "}
                             {
-                              waitlisted.filter((a) => a.gender === "female")
+                              realWaitlisted.filter((a) => a.gender === "female")
                                 .length
                             }
                             여)
