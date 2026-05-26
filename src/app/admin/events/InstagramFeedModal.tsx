@@ -8,40 +8,70 @@ import html2canvas from 'html2canvas';
 export default function InstagramFeedModal({
   isOpen,
   onClose,
+  sessionId,
   sessionName,
   participants
 }: {
   isOpen: boolean;
   onClose: () => void;
+  sessionId: string;
   sessionName: string;
   participants: any[];
 }) {
   const [selectedMen, setSelectedMen] = useState<string[]>([]);
   const [selectedWomen, setSelectedWomen] = useState<string[]>([]);
   const [customTexts, setCustomTexts] = useState<Record<string, string>>({});
+  const [isLoaded, setIsLoaded] = useState(false);
   
+  // v11.1.2: 로컬스토리지 대신 Firestore에 영구 저장 (기기 간 연동)
   useEffect(() => {
-    if (!sessionName) return;
-    try {
-      const savedMen = localStorage.getItem(`feed_men_${sessionName}`);
-      if (savedMen) setSelectedMen(JSON.parse(savedMen));
-      
-      const savedWomen = localStorage.getItem(`feed_women_${sessionName}`);
-      if (savedWomen) setSelectedWomen(JSON.parse(savedWomen));
-      
-      const savedTexts = localStorage.getItem(`feed_texts_${sessionName}`);
-      if (savedTexts) setCustomTexts(JSON.parse(savedTexts));
-    } catch(e) {
-      console.error('Failed to load feed state from localStorage', e);
-    }
-  }, [sessionName]);
+    if (!sessionId) return;
+    let isMounted = true;
+    const loadFromFirestore = async () => {
+      try {
+        const { doc, getDoc } = await import('firebase/firestore');
+        const { db } = await import('@/lib/firebase');
+        const snap = await getDoc(doc(db, 'sessions', sessionId));
+        if (snap.exists()) {
+          const data = snap.data().feedConfig || {};
+          if (isMounted) {
+            if (data.selectedMen) setSelectedMen(data.selectedMen);
+            if (data.selectedWomen) setSelectedWomen(data.selectedWomen);
+            if (data.customTexts) setCustomTexts(data.customTexts);
+            setIsLoaded(true);
+          }
+        } else {
+          if (isMounted) setIsLoaded(true);
+        }
+      } catch (err) {
+        console.error('Failed to load feed config', err);
+        if (isMounted) setIsLoaded(true);
+      }
+    };
+    loadFromFirestore();
+    return () => { isMounted = false; };
+  }, [sessionId]);
 
   useEffect(() => {
-    if (!sessionName) return;
-    localStorage.setItem(`feed_men_${sessionName}`, JSON.stringify(selectedMen));
-    localStorage.setItem(`feed_women_${sessionName}`, JSON.stringify(selectedWomen));
-    localStorage.setItem(`feed_texts_${sessionName}`, JSON.stringify(customTexts));
-  }, [selectedMen, selectedWomen, customTexts, sessionName]);
+    if (!sessionId || !isLoaded) return;
+    const saveToFirestore = async () => {
+      try {
+        const { doc, updateDoc } = await import('firebase/firestore');
+        const { db } = await import('@/lib/firebase');
+        await updateDoc(doc(db, 'sessions', sessionId), {
+          feedConfig: {
+            selectedMen,
+            selectedWomen,
+            customTexts
+          }
+        });
+      } catch (err) {
+        console.error('Failed to save feed state', err);
+      }
+    };
+    const t = setTimeout(saveToFirestore, 1000);
+    return () => clearTimeout(t);
+  }, [selectedMen, selectedWomen, customTexts, sessionId, isLoaded]);
   
   const captureRef = useRef<HTMLDivElement>(null);
 

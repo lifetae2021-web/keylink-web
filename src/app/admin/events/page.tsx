@@ -3185,6 +3185,7 @@ ${chatLink}
       <InstagramFeedModal
         isOpen={instagramModalOpen}
         onClose={() => setInstagramModalOpen(false)}
+        sessionId={selectedId || ''}
         sessionName={sessions.find(s => s.id === selectedId)?.title || ''}
         participants={participants}
       />
