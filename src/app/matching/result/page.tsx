@@ -114,7 +114,7 @@ export default function ResultListPage() {
               <span className="kl-gradient-text" style={{ fontSize: '4.5rem' }}>{totalCouples.toLocaleString()}</span> 커플들
             </h1>
 
-            <p style={{ fontSize: '1.25rem', color: '#666', maxWidth: '700px', margin: '0 auto 60px', lineHeight: 1.7, fontWeight: '500' }}>
+            <p className="hero-subtitle" style={{ color: '#666', maxWidth: '700px', margin: '0 auto 60px', lineHeight: 1.7, fontWeight: '500' }}>
               압도적인 매칭률로 증명하는 대화의 힘.<br className="desktop-br"/>
               오늘도 수많은 인연들이 키링크에서 특별한 대화를 시작하고 있습니다.
             </p>
@@ -229,6 +229,10 @@ export default function ResultListPage() {
       </section>
 
       <style jsx global>{`
+        .hero-subtitle {
+          font-size: 1.25rem;
+          word-break: keep-all;
+        }
         .result-card:hover { 
           border-color: #FF6F61; 
           transform: translateY(-12px); 
@@ -240,6 +244,10 @@ export default function ResultListPage() {
           h1 { font-size: 2.2rem !important; }
           .kl-gradient-text { font-size: 3rem !important; }
           .desktop-br { display: none; }
+          .hero-subtitle {
+            font-size: 1.05rem !important;
+            line-height: 1.6 !important;
+          }
         }
       `}</style>
     </div>
