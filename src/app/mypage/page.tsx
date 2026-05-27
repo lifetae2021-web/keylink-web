@@ -1415,13 +1415,13 @@ function ApplicationStatusBlock({ application, session, userId, hasVoted, submit
 
   // ── 참가 확정 (confirmed) ──
   if (application.status === 'confirmed') {
-    // v8.1.7: KST 기준 행사 당일 00:00부터 투표 활성화
-    const isEventDay = session ? (() => {
+    // 행사 당일 해당 시간이 지나면 자동으로 투표 활성화
+    const isEventTimeStarted = session ? (() => {
       const d = session.eventDate instanceof Date ? session.eventDate : (session.eventDate as any).toDate();
-      return new Date().toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' }) === d.toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' });
+      return Date.now() >= d.getTime();
     })() : false;
 
-    const isVotingActive = isEventDay || session?.status === 'voting';
+    const isVotingActive = isEventTimeStarted || session?.status === 'voting';
     const canVote = isVotingActive && !hasVoted;
 
     return card(
@@ -1443,8 +1443,9 @@ function ApplicationStatusBlock({ application, session, userId, hasVoted, submit
           )}
 
           {/* 투표 버튼 영역 */}
-          {hasVoted ? (
-            timeLeftMs > 0 || session?.status === 'voting' ? (
+          {session?.status !== 'completed' && (
+            hasVoted ? (
+            timeLeftMs > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center', width: '100%' }}>
                 <div style={{ 
                   padding: '16px 20px', 
@@ -1531,7 +1532,7 @@ function ApplicationStatusBlock({ application, session, userId, hasVoted, submit
                 <CountdownTimer targetDate={session.eventDate instanceof Date ? session.eventDate : (session.eventDate as any).toDate()} />
               )}
             </div>
-          )}
+          ))}
 
           {/* v8.1.7: 나에게 도착한 호감 (발표 시 노출) */}
           {session?.status === 'completed' && (
@@ -1713,7 +1714,7 @@ function CountdownTimer({ targetDate }: { targetDate: Date }) {
 
   useEffect(() => {
     const target = new Date(targetDate);
-    target.setHours(0, 0, 0, 0); // 행사 당일 자정 기준
+    // target.setHours(0, 0, 0, 0); 제거 (실제 행사 시간 기준 타이머)
 
     const updateTimer = () => {
       const now = new Date();

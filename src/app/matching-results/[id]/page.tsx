@@ -11,6 +11,7 @@ import CherryBlossoms from '@/components/CherryBlossoms';
 
 import { getUserMatchResult, getUserVoteStats } from '@/lib/firestore/userMatching';
 import { getVotesReceivedByMe, getMyVote } from '@/lib/firestore/votes';
+import { formatRegion } from '@/lib/utils/formatRegion';
 
 interface ResultData {
   isMatched: boolean;
@@ -73,15 +74,18 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
             getMyVote(sessionId, currentUser.uid)
           ]);
 
-          // 1. Fetch User Name
+          // 1. Fetch User Name & Admin Status
+          let isAdmin = false;
           if (userSnap.exists()) {
-            setUserName(userSnap.data().name || '영훈');
+            const uData = userSnap.data();
+            setUserName(uData.name || '영훈');
+            isAdmin = uData.role === 'admin' || uData.role === 'super_admin';
           }
 
           // 2. Fetch Session
           if (sessionSnap.exists()) {
             const sd = sessionSnap.data();
-            if (sd.isTest) {
+            if (sd.isTest && !isAdmin) {
               setSession(null);
               setIsLoading(false);
               return;
@@ -153,7 +157,7 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
                     age: calculatedAge,
                     job,
                     height,
-                    residence: appData.residence || '미입력',
+                    residence: appData.residence ? formatRegion(appData.residence) : '미입력',
                     batch: batchTitle || '알 수 없음'
                   };
                 }
@@ -173,7 +177,7 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
                 age: matchResult.partnerProfile.age || '미입력',
                 job: matchResult.partnerProfile.job || '미입력',
                 height: matchResult.partnerProfile.height || '미입력',
-                residence: matchResult.partnerProfile.residence || '미입력',
+                residence: matchResult.partnerProfile.residence ? formatRegion(matchResult.partnerProfile.residence) : '미입력',
                 batch: matchResult.partnerProfile.batch || '알 수 없음'
               } : undefined,
               partners: validPartners
@@ -423,7 +427,11 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
                   ) : null}
 
                   <div className="mt-8 p-5 bg-pink-50/50 rounded-3xl border border-pink-100 italic font-bold text-pink-500 text-sm">
-                    "상대방의 구체적인 연락처와 성함은 운영진을 통해 안전하게 전달될 예정입니다."
+                    <div className="text-center leading-relaxed">
+                      "서로의 프라이버시를 위해,<br/>
+                      운영진이 두 분만의 1:1 오픈채팅방을<br/>
+                      개설하여 초대해 드릴 예정입니다."
+                    </div>
                   </div>
                 </div>
               ) : (

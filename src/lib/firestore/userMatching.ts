@@ -37,7 +37,7 @@ function getPartnerIds(summary: NonNullable<Awaited<ReturnType<typeof getSummary
 /**
  * 사용자가 참여한 기수 목록 및 상태 조회
  */
-export async function getUserParticipations(userId: string) {
+export async function getUserParticipations(userId: string, isAdmin: boolean = false) {
   const q = query(collection(db, 'applications'), where('userId', '==', userId));
   const snap = await getDocs(q);
   if (snap.empty) return [];
@@ -54,7 +54,7 @@ export async function getUserParticipations(userId: string) {
     if (!sessionSnap.exists()) return null;
 
     const d = sessionSnap.data()!;
-    if (d.isTest) return null; // 테스트 기수는 일반 유저 목록에서 제외
+    if (d.isTest && !isAdmin) return null; // 테스트 기수는 일반 유저 목록에서 제외
 
     const sessionData = {
       id: sessionSnap.id,

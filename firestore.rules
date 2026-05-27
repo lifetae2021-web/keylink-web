@@ -141,6 +141,14 @@ service cloud.firestore {
     }
 
     // ─────────────────────────────────────
+    // cms_partners (협업사) 컬렉션
+    // ─────────────────────────────────────
+    match /cms_partners/{docId} {
+      allow read: if isAdmin();  // 관리자에게만 노출 (일반 유저 비공개)
+      allow write: if isAdmin();
+    }
+
+    // ─────────────────────────────────────
     // smsTemplates (문자 템플릿) 컬렉션
     // ─────────────────────────────────────
     match /smsTemplates/{docId} {

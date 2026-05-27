@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { format } from 'date-fns';
-import { collection, query, orderBy, getDocs, where, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, orderBy, getDocs, where, doc, updateDoc, getDoc } from 'firebase/firestore';
 import { Heart, Trophy, Clock, CheckCircle2, ArrowRight, Loader2, XCircle, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cancelApplication } from '@/lib/firestore/applications';
@@ -36,10 +36,18 @@ export default function MatchingResultsListPage() {
         try {
           // v10.2.0: 기수별 참여 내역 및 1:1 매칭 신청 내역을 병렬 조회하여 응답 속도 최적화
           const privateQ = query(collection(db, 'private_applications'), where('userId', '==', currentUser.uid));
-          const [participations, privateSnap] = await Promise.all([
-            getUserParticipations(currentUser.uid),
+          const [userDoc, privateSnap] = await Promise.all([
+            getDoc(doc(db, 'users', currentUser.uid)),
             getDocs(privateQ)
           ]);
+          
+          let isAdmin = false;
+          if (userDoc.exists()) {
+            const uData = userDoc.data();
+            isAdmin = uData.role === 'admin' || uData.role === 'super_admin';
+          }
+          
+          const participations = await getUserParticipations(currentUser.uid, isAdmin);
 
           const roundsData: MatchingRound[] = participations.map(p => ({
             id: p.application.id,
@@ -173,7 +181,16 @@ export default function MatchingResultsListPage() {
               whileHover={{ y: -4 }}
               className="bg-white rounded-[32px] p-6 border border-gray-100 shadow-sm hover:shadow-xl hover:border-pink-200 transition-all group"
             >
-              <Link href={round.status === 'published' ? `/matching-results/${round.sessionId}` : '#'} className={round.status === 'published' ? 'cursor-pointer' : 'cursor-default'}>
+              <Link 
+                href={round.status === 'published' ? `/matching-results/${round.sessionId}` : ''} 
+                onClick={(e) => {
+                  if (round.status !== 'published') {
+                    e.preventDefault();
+                    toast('아직 매칭 결과가 발표되지 않았습니다.', { icon: '⏳', style: { borderRadius: '100px', background: '#333', color: '#fff' } });
+                  }
+                }}
+                className="cursor-pointer block"
+              >
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                   <div className="flex items-center gap-5">
                     <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-colors ${

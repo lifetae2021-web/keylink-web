@@ -72,6 +72,7 @@ export default function VotePage() {
   const [hasVoted, setHasVoted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isEditExpired, setIsEditExpired] = useState(false);
 
   const [realName, setRealName] = useState('');
   const [myAlias, setMyAlias] = useState('');
@@ -177,6 +178,11 @@ export default function VotePage() {
 
       // v10.4.0: 기존에 제출한 투표가 있으면 폼 정보 복원 (자율 수정 지원)
       if (existingVote) {
+        const timeSinceSubmit = Date.now() - existingVote.submittedAt.getTime();
+        if (timeSinceSubmit >= 20 * 60 * 1000) {
+          setIsEditExpired(true);
+        }
+
         setHasVoted(true);
         setRealName(existingVote.realName || app.name || '');
         setMyAlias(existingVote.myAlias || '');
@@ -334,13 +340,12 @@ export default function VotePage() {
     </div>
   );
 
-  const isEventDay = session ? (
-    new Date().toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' }) ===
-    session.eventDate.toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' })
+  const isEventTimeStarted = session ? (
+    Date.now() >= session.eventDate.getTime()
   ) : false;
 
   // 수정 모드(edit=true)가 아닐 때만 투표 잠금 화면 표시
-  if (session?.status !== 'voting' && !isEventDay && !isEditMode) {
+  if (session?.status !== 'voting' && !isEventTimeStarted && !isEditMode) {
     return (
       <div className="min-h-screen bg-[#FFF5F3] flex flex-col items-center justify-center p-6 text-center">
         <div className="w-20 h-20 rounded-3xl bg-slate-100 flex items-center justify-center mb-6">
@@ -357,8 +362,8 @@ export default function VotePage() {
     );
   }
 
-  // v10.4.0: 수정 모드(edit=true)가 아닐 때만 투표 완료 화면으로 차단
-  if (hasVoted && session?.status !== 'voting' && !isEditMode) {
+  // v10.4.0: 수정 모드(edit=true)가 아닐 때 또는 수정 타이머(20분)가 만료되었을 때 투표 완료 화면으로 차단
+  if (hasVoted && (!isEditMode || isEditExpired)) {
     return (
       <div className="min-h-screen bg-[#FFF5F3] flex flex-col items-center justify-center p-6 text-center">
         <div className="w-20 h-20 rounded-3xl bg-green-50 flex items-center justify-center mb-6">

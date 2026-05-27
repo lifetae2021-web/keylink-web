@@ -8,6 +8,7 @@ import {
   getFaqs, addFaq, updateFaq, deleteFaq, FaqItem,
   getContent, saveContent, ContentKey,
   getReviews, addReview, updateReview, deleteReview, ReviewItem,
+  getPartners, addPartner, updatePartner, deletePartner, PartnerItem,
   getVoteConfigTemplate, saveVoteConfigTemplate,
 } from '@/lib/firestore/cms';
 import { storage } from '@/lib/firebase';
@@ -15,20 +16,21 @@ import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { VoteConfig } from '@/lib/types';
 
 type Group = 'ops' | 'legal';
-type Tab = 'notices' | 'faqs' | 'rules' | 'reviews' | 'votes' | 'terms' | 'privacy';
+type Tab = 'notices' | 'faqs' | 'rules' | 'reviews' | 'votes' | 'terms' | 'privacy' | 'partners';
 
 const card = 'bg-white border border-slate-200 rounded-xl shadow-sm';
 
 export default function CmsPage() {
   const [group, setGroup] = useState<Group>('ops');
-  const [tab, setTab] = useState<Tab>('notices');
+  const [tab, setTab] = useState<Tab>('partners');
 
   const OPS_TABS = [
-    { key: 'notices' as Tab, label: '📢 공지사항' },
-    { key: 'faqs'    as Tab, label: '❓ FAQ' },
-    { key: 'rules'   as Tab, label: '📋 이용 규정' },
-    { key: 'reviews' as Tab, label: '💛 후기' },
-    { key: 'votes'   as Tab, label: '🗳️ 투표 설정' },
+    { key: 'partners' as Tab, label: '🤝 협업사' },
+    { key: 'notices'  as Tab, label: '📢 공지사항' },
+    { key: 'faqs'     as Tab, label: '❓ FAQ' },
+    { key: 'rules'    as Tab, label: '📋 이용 규정' },
+    { key: 'reviews'  as Tab, label: '💛 후기' },
+    { key: 'votes'    as Tab, label: '🗳️ 투표 설정' },
   ];
   const LEGAL_TABS = [
     { key: 'terms'   as Tab, label: '⚖ 이용약관' },
@@ -53,7 +55,7 @@ export default function CmsPage() {
             key={g.key}
             onClick={() => {
               setGroup(g.key);
-              setTab(g.key === 'ops' ? 'notices' : 'terms');
+              setTab(g.key === 'ops' ? 'partners' : 'terms');
             }}
             className={`px-5 py-2 text-sm font-bold rounded-full border transition-all ${
               group === g.key ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-500 border-slate-300 hover:border-slate-400'
@@ -81,9 +83,10 @@ export default function CmsPage() {
 
       {tab === 'notices' && <NoticesTab />}
       {tab === 'faqs' && <FaqsTab />}
+      {tab === 'partners' && <PartnersTab />}
       {tab === 'reviews' && <ReviewsTab />}
       {tab === 'votes' && <VoteConfigTab />}
-      {(tab === 'rules' || tab === 'terms' || tab === 'privacy') && <ContentTab contentKey={tab} />}
+      {(tab === 'rules' || tab === 'terms' || tab === 'privacy') && <ContentTab contentKey={tab as ContentKey} />}
     </div>
   );
 }
@@ -1233,6 +1236,8 @@ function ContentTab({ contentKey }: { contentKey: ContentKey }) {
       template = `제1조 (목적)\n본 약관은 키링크(이하 "회사")가 제공하는 오프라인 매칭 서비스(이하 "서비스")의 이용 조건 및 절차, 회사와 회원 간의 권리, 의무 및 책임 사항을 규정함을 목적으로 합니다.\n\n제2조 (용어의 정의)\n1. "서비스"란 회사가 회원에게 제공하는 프리미엄 로테이션 소개팅 및 관련 부가 서비스를 의미합니다.\n2. "회원"이란 본 약관에 동의하고 서비스에 가입하여, 회사가 제공하는 서비스를 이용하는 고객을 의미합니다.\n\n제3조 (서비스의 제공 및 변경)\n1. 회사는 회원에게 정해진 일정과 장소에서 1:1 로테이션 대화 방식의 매칭 서비스를 제공합니다.\n2. 회사는 운영상, 기술상의 필요에 따라 제공하고 있는 서비스를 변경할 수 있으며, 이 경우 사전에 공지합니다.\n\n제4조 (회원의 의무)\n1. 회원은 서비스 가입 및 이용 시 사실에 기반한 정확한 정보(나이, 직업, 혼인 여부 등)를 제공해야 합니다.\n2. 회원은 타인의 개인정보를 도용하거나, 불건전한 목적으로 서비스를 이용해서는 안 됩니다.\n\n제5조 (환불 정책)\n1. 결제 후 행사가 최종 확정되기 전까지는 취소가 가능하나, 확정(매칭 완료) 후에는 환불이 불가합니다.\n2. 회사의 귀책사유로 행사가 취소되거나 파행된 경우 전액 환불합니다.\n3. 중복 만남 방지 정책 등 회사 측이 보장한 조건이 충족되지 않은 경우 규정에 따라 환불을 진행합니다.`;
     } else if (contentKey === 'privacy') {
       template = `제1조 (수집하는 개인정보 항목)\n회사는 원활한 매칭 서비스 제공을 위해 아래의 개인정보를 수집하고 있습니다.\n1. 필수항목: 이름, 성별, 생년월일, 연락처, 직업/직장명, 거주지, 본인 사진, 재직 증명 서류\n2. 선택항목: 종교, 취미, 이상형, 인스타그램 ID 등\n\n제2조 (개인정보의 수집 및 이용 목적)\n회사는 수집한 개인정보를 다음의 목적을 위해 활용합니다.\n1. 본인 확인 및 신원/재직 인증 (안전한 만남 환경 조성)\n2. 개인 성향 및 조건에 맞춘 최적의 로테이션 매칭 파트너 배정\n3. 행사 일정 안내 및 고객 CS 처리\n\n제3조 (개인정보의 보유 및 이용 기간)\n원칙적으로, 개인정보 수집 및 이용 목적이 달성된 후에는 해당 정보를 지체 없이 파기합니다. 단, 관계 법령의 규정에 의하여 보존할 필요가 있는 경우 일정 기간 보관합니다.\n- 재직 증명 서류: 본인 인증 완료 즉시 즉각 파기 (별도 저장하지 않음)\n- 회원 프로필: 회원 탈퇴 시까지 보관\n\n제4조 (개인정보의 제3자 제공)\n회사는 회원의 개인정보를 원칙적으로 외부에 제공하지 않습니다. 단, 행사 진행 시 최소한의 식별 정보(이름의 일부, 나이, 직업군 등)만 프로필 카드 형태로 매칭 상대에게 제공됩니다.`;
+    } else if (contentKey === 'partners') {
+      template = `현재 협업사 페이지를 준비 중입니다.\n추후 다양한 제휴 혜택과 파트너사 정보가 이곳에 업데이트될 예정입니다.`;
     }
     setBody(template);
     toast.success('추천 템플릿이 로드되었습니다. 꼭 저장 버튼을 눌러주세요!');
@@ -1273,6 +1278,362 @@ function ContentTab({ contentKey }: { contentKey: ContentKey }) {
         )}
         <p className="text-xs text-slate-400">줄바꿈은 그대로 반영됩니다.</p>
       </div>
+    </div>
+  );
+}
+
+// ── 협업사 탭 ──────────────────────────────────────────────
+function PartnersTab() {
+  const [items, setItems] = useState<PartnerItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [showForm, setShowForm] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+
+  const emptyForm = {
+    name: '',
+    logoUrl: '',
+    description: '',
+    couponLabel: '쿠폰 받기',
+    couponUrl: '',
+    couponCode: '',
+    detailLabel: '자세히 보기',
+    detailUrl: '',
+    detailContent: '',
+    order: 0,
+    isRandom: false,
+  };
+  const [form, setForm] = useState(emptyForm);
+
+  const load = async () => {
+    setIsLoading(true);
+    try { setItems(await getPartners()); } finally { setIsLoading(false); }
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const openNew = () => {
+    setEditingId(null);
+    setForm({ ...emptyForm, order: items.length + 1 });
+    setShowForm(true);
+  };
+
+  const openEdit = (item: PartnerItem) => {
+    setEditingId(item.id);
+    setForm({
+      name: item.name,
+      logoUrl: item.logoUrl,
+      description: item.description,
+      couponLabel: item.couponLabel || '쿠폰 받기',
+      couponUrl: item.couponUrl || '',
+      couponCode: item.couponCode || '',
+      detailLabel: item.detailLabel || '자세히 보기',
+      detailUrl: item.detailUrl || '',
+      detailContent: item.detailContent || '',
+      order: item.order,
+      isRandom: item.isRandom || false,
+    });
+    setShowForm(true);
+  };
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingLogo(true);
+    toast.loading('로고 업로드 중...', { id: 'logo-upload' });
+    try {
+      const reader = new FileReader();
+      reader.onload = async (ev) => {
+        const dataUrl = ev.target?.result as string;
+        const imgRef = ref(storage, `cms_partners/${Date.now()}_${file.name}`);
+        await uploadString(imgRef, dataUrl, 'data_url');
+        const url = await getDownloadURL(imgRef);
+        setForm(f => ({ ...f, logoUrl: url }));
+        toast.success('로고 업로드 완료!', { id: 'logo-upload' });
+        setUploadingLogo(false);
+      };
+      reader.readAsDataURL(file);
+    } catch {
+      toast.error('업로드 실패', { id: 'logo-upload' });
+      setUploadingLogo(false);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!form.name.trim()) { toast.error('협업사 이름을 입력해주세요.'); return; }
+    if (!form.logoUrl) { toast.error('로고 이미지를 업로드해주세요.'); return; }
+    setSaving(true);
+    try {
+      if (editingId) {
+        await updatePartner(editingId, form);
+        toast.success('협업사 정보가 수정되었습니다.');
+      } else {
+        await addPartner(form);
+        toast.success('협업사가 등록되었습니다.');
+      }
+      setShowForm(false);
+      await load();
+    } finally { setSaving(false); }
+  };
+
+  const handleDelete = async (id: string, name: string) => {
+    if (!confirm(`"${name}"을(를) 삭제하시겠습니까?`)) return;
+    await deletePartner(id);
+    toast.success('삭제되었습니다.');
+    await load();
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-slate-400 font-medium">🤝 협업사 카드를 등록하면 협업사 탭에 그리드 형태로 표시됩니다.</p>
+        <button
+          onClick={openNew}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold text-white"
+          style={{ background: '#FF6F61' }}
+        >
+          <Plus size={15} /> 새 협업사 등록
+        </button>
+      </div>
+
+      {/* 등록 / 수정 폼 */}
+      {showForm && (
+        <div className={`${card} p-6 space-y-5`}>
+          <div className="flex items-center justify-between">
+            <h3 className="font-bold text-slate-800 text-base">{editingId ? '협업사 수정' : '새 협업사 등록'}</h3>
+            <button onClick={() => setShowForm(false)}><X size={18} className="text-slate-400" /></button>
+          </div>
+
+          {/* 로고 업로드 */}
+          <div>
+            <label className="text-xs font-bold text-slate-500 mb-2 block">협업사 로고 / 대표 이미지 <span className="text-rose-500">*</span></label>
+            <div className="flex items-center gap-4">
+              {/* 1:1 비율 미리보기 */}
+              <div className="w-24 h-24 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden shrink-0">
+                {form.logoUrl ? (
+                  <img src={form.logoUrl} alt="logo preview" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-2xl">🤝</span>
+                )}
+              </div>
+              <div className="flex-1 space-y-2">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleLogoUpload}
+                  className="text-sm border border-slate-200 rounded-lg p-2 w-full"
+                  disabled={uploadingLogo}
+                />
+                {uploadingLogo && <p className="text-xs text-[#FF6F61] font-bold animate-pulse">업로드 중...</p>}
+                <p className="text-[0.7rem] text-slate-400">정사각형(1:1) 이미지를 권장합니다. (JPG, PNG, WEBP)</p>
+              </div>
+            </div>
+          </div>
+
+          {/* 기본 정보 */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-bold text-slate-500 mb-1 block">협업사 이름 <span className="text-rose-500">*</span></label>
+              <input
+                value={form.name}
+                onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#FF6F61]"
+                placeholder="예: 카페 키링"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-500 mb-1 flex items-center justify-between">
+                <span>순서</span>
+                <label className="flex items-center gap-1 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={form.isRandom}
+                    onChange={e => setForm(f => ({ ...f, isRandom: e.target.checked }))}
+                    className="w-3.5 h-3.5 rounded border-slate-300 text-[#FF6F61] focus:ring-[#FF6F61]"
+                  />
+                  <span className="text-[10px] text-slate-500 font-medium tracking-tight">랜덤 노출</span>
+                </label>
+              </label>
+              <input
+                type="number"
+                value={form.order}
+                onChange={e => setForm(f => ({ ...f, order: Number(e.target.value) }))}
+                disabled={form.isRandom}
+                className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none ${form.isRandom ? 'bg-slate-50 border-slate-100 text-slate-400' : 'border-slate-200 focus:border-[#FF6F61]'}`}
+              />
+            </div>
+            <div className="col-span-2">
+              <label className="text-xs font-bold text-slate-500 mb-1 block">소개 문구</label>
+              <input
+                value={form.description}
+                onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#FF6F61]"
+                placeholder="예: 키링크 회원 한정 10% 할인 혜택 제공"
+              />
+            </div>
+          </div>
+
+          {/* 쿠폰 버튼 설정 */}
+          <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl space-y-3">
+            <p className="text-xs font-black text-amber-600 uppercase tracking-wider">쿠폰 버튼 설정 (선택)</p>
+            <p className="text-[0.7rem] text-amber-500">비워두면 버튼이 숨겨집니다.</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-bold text-slate-500 mb-1 block">버튼 텍스트</label>
+                <input
+                  value={form.couponLabel}
+                  onChange={e => setForm(f => ({ ...f, couponLabel: e.target.value }))}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-400 bg-white"
+                  placeholder="쿠폰 받기"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-500 mb-1 block">쿠폰 코드 (팝업 표시용)</label>
+                <input
+                  value={form.couponCode}
+                  onChange={e => setForm(f => ({ ...f, couponCode: e.target.value }))}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-400 bg-white font-mono"
+                  placeholder="예: KEYLINK10"
+                />
+              </div>
+              <div className="col-span-2">
+                <label className="text-xs font-bold text-slate-500 mb-1 block">쿠폰 외부 링크 (있으면 링크로 이동, 없으면 코드 팝업)</label>
+                <input
+                  value={form.couponUrl}
+                  onChange={e => setForm(f => ({ ...f, couponUrl: e.target.value }))}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-400 bg-white"
+                  placeholder="https://..."
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* 자세히 버튼 설정 */}
+          <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+            <p className="text-xs font-black text-slate-600 uppercase tracking-wider">자세히 버튼 설정 (선택)</p>
+            <p className="text-[0.7rem] text-slate-400">비워두면 버튼이 숨겨집니다.</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-bold text-slate-500 mb-1 block">버튼 텍스트</label>
+                <input
+                  value={form.detailLabel}
+                  onChange={e => setForm(f => ({ ...f, detailLabel: e.target.value }))}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#FF6F61]"
+                  placeholder="자세히 보기"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-500 mb-1 block">이동 링크</label>
+                <input
+                  value={form.detailUrl}
+                  onChange={e => setForm(f => ({ ...f, detailUrl: e.target.value }))}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#FF6F61]"
+                  placeholder="https://..."
+                />
+              </div>
+              <div className="col-span-2">
+                <label className="text-xs font-bold text-slate-500 mb-1 block">자세히 설명문구 (링크가 없을 때 팝업 표시)</label>
+                <textarea
+                  value={form.detailContent}
+                  onChange={e => setForm(f => ({ ...f, detailContent: e.target.value }))}
+                  rows={3}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#FF6F61] resize-none"
+                  placeholder="일본 현지인 1:1 맞춤 레슨 등 상세 설명을 적어주세요."
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* 저장 버튼 */}
+          <div className="flex justify-end gap-2 pt-2">
+            <button onClick={() => setShowForm(false)} className="px-4 py-2 text-sm font-bold text-slate-500 border border-slate-200 rounded-lg hover:bg-slate-50">취소</button>
+            <button
+              onClick={handleSave}
+              disabled={saving || uploadingLogo}
+              className="flex items-center gap-2 px-5 py-2 text-sm font-bold text-white rounded-lg"
+              style={{ background: '#FF6F61', opacity: (saving || uploadingLogo) ? 0.6 : 1 }}
+            >
+              <Save size={14} /> {saving ? '저장 중...' : '저장'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 목록 */}
+      {isLoading ? (
+        <div className="text-center py-16 text-slate-400 text-sm">불러오는 중...</div>
+      ) : items.length === 0 ? (
+        <div className="text-center py-20 text-slate-300">
+          <span className="text-5xl block mb-4">🤝</span>
+          <p className="text-sm font-bold">등록된 협업사가 없습니다.</p>
+          <p className="text-xs mt-1">위 버튼을 눌러 첫 협업사를 등록해보세요!</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
+          {items.map(item => {
+            const couponLabel = (item.couponLabel || '쿠폰 받기').replace('🎁', '').trim();
+            const detailLabel = (item.detailLabel || '자세히').replace('🔍', '').trim();
+            
+            return (
+              <div key={item.id} className="bg-white border border-slate-100 rounded-[20px] shadow-[0_4px_20px_rgba(0,0,0,0.04)] overflow-hidden flex flex-col">
+                {/* 1:1 로고 이미지 */}
+                <div className="aspect-square w-full bg-slate-50 relative overflow-hidden shrink-0">
+                  {item.logoUrl ? (
+                    <img src={item.logoUrl} alt={item.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-4xl">🤝</div>
+                  )}
+                  
+                  {/* 관리용 절대 위치 버튼 */}
+                  <div className="absolute top-2 right-2 flex gap-1 z-10">
+                    <button
+                      onClick={() => openEdit(item)}
+                      className="w-8 h-8 rounded-lg bg-white/90 backdrop-blur-sm border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-white shadow-sm transition-colors"
+                    >
+                      <Pencil size={13} />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(item.id, item.name)}
+                      className="w-8 h-8 rounded-lg bg-white/90 backdrop-blur-sm border border-rose-200 flex items-center justify-center text-rose-500 hover:bg-rose-50 shadow-sm transition-colors"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                  
+                  <div className="absolute top-2 left-2 z-10">
+                    <span className="text-[0.65rem] font-black text-slate-500 bg-white/90 px-2 py-0.5 rounded-full border border-slate-100">#{item.order}</span>
+                  </div>
+                </div>
+                
+                {/* 정보 및 버튼 */}
+                <div className="pt-3.5 pb-4 px-2.5 flex-1 flex flex-col justify-between">
+                  <div className="space-y-1 mb-3">
+                    <p className="font-black text-slate-800 text-[0.95rem] leading-tight truncate">{item.name}</p>
+                    {item.description && (
+                      <p className="text-[0.78rem] text-slate-400 leading-relaxed line-clamp-2">{item.description}</p>
+                    )}
+                  </div>
+                  
+                  <div className="flex gap-1.5">
+                    <div
+                      className="flex-1 py-[10px] px-1 rounded-full text-white font-extrabold text-[0.76rem] text-center shadow-[0_4px_12px_rgba(255,111,97,0.3)] select-none truncate"
+                      style={{ background: 'linear-gradient(135deg, #FFB347, #FF6F61)' }}
+                    >
+                      {couponLabel}
+                    </div>
+                    <div
+                      className="flex-1 py-[10px] px-1 rounded-full border border-slate-200 text-slate-500 font-bold text-[0.76rem] text-center select-none truncate"
+                    >
+                      {detailLabel}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
