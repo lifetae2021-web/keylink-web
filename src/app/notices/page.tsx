@@ -156,6 +156,7 @@ function NoticesContent() {
             display: 'flex', 
             borderBottom: '1px solid var(--color-border)', 
             overflowX: 'auto', 
+            overflowY: 'hidden',
             flexWrap: 'nowrap', 
             WebkitOverflowScrolling: 'touch' 
           }}
