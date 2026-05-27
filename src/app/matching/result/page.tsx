@@ -115,8 +115,9 @@ export default function ResultListPage() {
             </h1>
 
             <p className="hero-subtitle" style={{ color: '#666', maxWidth: '700px', margin: '0 auto 60px', lineHeight: 1.7, fontWeight: '500' }}>
-              압도적인 매칭률로 증명하는 대화의 힘.<br className="desktop-br"/>
-              오늘도 수많은 인연들이 키링크에서 특별한 대화를 시작하고 있습니다.
+              압도적인 매칭률로 증명하는 대화의 힘.<br/>
+              오늘도 수많은 인연들이<br/>
+              키링크에서 특별한 대화를 시작하고 있습니다.
             </p>
 
             <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
