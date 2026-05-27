@@ -15,7 +15,7 @@ const version = APP_VERSION;
 // '진행 과정' → /#process, '참여 신청' → /#apply 로 스무스 스크롤
 const navLinks = [
   { href: '/', label: 'HOME', anchor: 'top' },
-  { href: '/notices', label: '공지 & FAQ', anchor: null },
+  { href: '/notices', label: '협업사 & 공지', anchor: null },
   { href: '/', label: '진행 과정', anchor: 'process' },
   { href: '/', label: '참여 신청', anchor: 'apply' },
   { href: '/status', label: '실시간 현황', anchor: null },
