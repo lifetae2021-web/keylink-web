@@ -341,16 +341,7 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
                           <Sparkles className="text-pink-200" size={32} />
                         </div>
                         
-                        <div className="grid grid-cols-3 md:grid-cols-6 gap-2 mb-8 p-3 bg-gray-50 rounded-2xl text-[10px] md:text-xs font-black text-gray-400 uppercase tracking-wider text-center">
-                           <span>기수</span>
-                           <span>{partner.gender === 'male' ? '키링남' : '키링녀'}</span>
-                           <span>나이</span>
-                           <span>직업</span>
-                           <span>키</span>
-                           <span>거주지</span>
-                        </div>
-
-                        <div className="grid grid-cols-3 md:grid-cols-6 gap-2 items-center text-center">
+                        <div className="grid grid-cols-3 md:grid-cols-6 gap-2 mt-4 items-center text-center">
                           <div className="font-bold text-gray-500">{partner.batch}</div>
                           <div className="font-black text-pink-500 text-base md:text-lg whitespace-nowrap">
                             {partner.gender === 'male' ? '키링남' : '키링녀'} {partner.number}호
@@ -368,16 +359,7 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
                         <Sparkles className="text-pink-200" size={32} />
                       </div>
                       
-                      <div className="grid grid-cols-3 md:grid-cols-6 gap-2 mb-8 p-3 bg-gray-50 rounded-2xl text-[10px] md:text-xs font-black text-gray-400 uppercase tracking-wider text-center">
-                         <span>기수</span>
-                         <span>{result.partner.gender === 'male' ? '키링남' : '키링녀'}</span>
-                         <span>나이</span>
-                         <span>직업</span>
-                         <span>키</span>
-                         <span>거주지</span>
-                      </div>
-
-                      <div className="grid grid-cols-3 md:grid-cols-6 gap-2 items-center text-center">
+                      <div className="grid grid-cols-3 md:grid-cols-6 gap-2 mt-4 items-center text-center">
                         <div className="font-bold text-gray-500">{result.partner.batch}</div>
                         <div className="font-black text-pink-500 text-base md:text-lg whitespace-nowrap">
                           {result.partner.gender === 'male' ? '키링남' : '키링녀'} {result.partner.number}호
