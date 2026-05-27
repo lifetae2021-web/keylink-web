@@ -17,7 +17,7 @@ const steps = [
   { num: '03', title: '행사 당일 참석', desc: '신분증 지참 후 안내 된 장소에 방문' },
   { num: '04', title: '신원 확인', desc: '신분증 확인 후 자리 안내' },
   { num: '05', title: '1:1 로테이션 대화', desc: '모든 이성과 약 15분 집중 대화' },
-  { num: '06', title: '호감가는 이성 선택', desc: '행사 종료 후\n웹사이트에서 호감가는 이성 3명을 선택하여 제출' },
+  { num: '06', title: '호감가는 이성 선택', desc: '행사 종료 후\n호감가는 이성 3명을 선택하여 제출' },
   { num: '07', title: '매칭 결과 확인', desc: '상호 호감 매칭 시 오픈채팅방 초대' },
   { num: '08', title: '새로운 시작 ✨', desc: '현실 커플 인증 시 다양한 혜택 제공' },
 ];
@@ -189,7 +189,7 @@ export default function HomePage() {
             margin: '0 auto 48px',
             wordBreak: 'keep-all',
           }}>
-            <strong style={{ color: 'var(--color-accent)', fontSize: '1.5em' }}>키링크</strong>에서<br />진짜 인연을 만나보세요.
+            <strong style={{ color: 'var(--color-accent)', fontSize: '1.5em' }}>키링크</strong>에서<br />진짜 인연을 만나보세요
           </p>
 
           <div style={{

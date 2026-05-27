@@ -620,8 +620,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
               {notiOpen && (
                 <div
-                  className="absolute right-0 flex flex-col overflow-hidden"
-                  style={{ top: 'calc(100% + 12px)', width: 360, background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 20, boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)', zIndex: 1000 }}
+                  className="fixed sm:absolute top-[74px] sm:top-[calc(100%+12px)] left-4 right-4 sm:left-auto sm:right-0 w-auto sm:w-[360px] flex flex-col overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200"
+                  style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 20, boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)', zIndex: 1000 }}
                 >
                   <div className="flex items-center justify-between px-6 py-5" style={{ borderBottom: '1px solid #F1F5F9' }}>
                     <div className="flex items-center gap-2.5">

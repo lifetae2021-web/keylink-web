@@ -154,10 +154,7 @@ export default function ResultListPage() {
             </div>
           </div>
 
-          <div style={{ 
-            display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', 
-            gap: '32px' 
-          }}>
+          <div className="result-grid" style={{ gap: '32px' }}>
             {sessions.map((result, idx) => (
               <motion.div
                 key={result.id}
@@ -167,12 +164,7 @@ export default function ResultListPage() {
               >
                 {/* Point to the new matching dashboard structure */}
                 <Link href={result.status === 'completed' ? `/matching-results/${result.id}` : `/matching/result`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                  <div className="result-card" style={{ 
-                    padding: '36px', borderRadius: '32px', background: '#fff',
-                    border: '1.5px solid #eee', transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-                    height: '100%', display: 'flex', flexDirection: 'column',
-                    boxShadow: '0 10px 30px rgba(0,0,0,0.02)'
-                  }}>
+                  <div className="result-card">
                     
                     {/* Header: Label & Episode */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
@@ -209,8 +201,8 @@ export default function ResultListPage() {
                     </div>
 
                     {/* Stats Footer */}
-                    <div style={{ 
-                      padding: '24px', background: 'linear-gradient(135deg, #f8f9fa, #f1f3f5)', borderRadius: '24px',
+                    <div className="result-card-stats" style={{ 
+                      background: 'linear-gradient(135deg, #f8f9fa, #f1f3f5)',
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center'
                     }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#111' }}>
@@ -234,12 +226,32 @@ export default function ResultListPage() {
           font-size: 1.25rem;
           word-break: keep-all;
         }
+        .result-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+        }
+        .result-card {
+          padding: 36px;
+          border-radius: 32px;
+          border: 1.5px solid #eee;
+          background: #fff;
+          transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+          height: 100%;
+          display: flex;
+          flex-direction: column;
+          box-shadow: 0 10px 30px rgba(0,0,0,0.02);
+        }
         .result-card:hover { 
           border-color: #FF6F61; 
           transform: translateY(-12px); 
           box-shadow: 0 30px 60px rgba(255,111,97,0.12); 
         }
         .result-card:hover .detail-link { color: #FF6F61; transform: translateX(5px); }
+        
+        .result-card-stats {
+          padding: 24px;
+          border-radius: 24px;
+        }
         
         @media (max-width: 640px) {
           h1 { font-size: 2.2rem !important; }
@@ -248,6 +260,24 @@ export default function ResultListPage() {
           .hero-subtitle {
             font-size: 1.05rem !important;
             line-height: 1.6 !important;
+          }
+          .result-grid {
+            grid-template-columns: 1fr !important;
+          }
+          .result-card {
+            padding: 24px 20px !important;
+            border-radius: 24px !important;
+          }
+          .result-card h3 {
+            font-size: 1.3rem !important;
+            margin-bottom: 16px !important;
+          }
+          .result-card-stats {
+            padding: 14px 18px !important;
+            border-radius: 16px !important;
+          }
+          .result-card-stats span {
+            font-size: 1.25rem !important;
           }
         }
       `}</style>

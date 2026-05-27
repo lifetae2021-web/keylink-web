@@ -1397,13 +1397,14 @@ function PartnersTab() {
         </button>
       </div>
 
-      {/* 등록 / 수정 폼 */}
+      {/* 등록 / 수정 폼 (모달 팝업으로 변경) */}
       {showForm && (
-        <div className={`${card} p-6 space-y-5`}>
-          <div className="flex items-center justify-between">
-            <h3 className="font-bold text-slate-800 text-base">{editingId ? '협업사 수정' : '새 협업사 등록'}</h3>
-            <button onClick={() => setShowForm(false)}><X size={18} className="text-slate-400" /></button>
-          </div>
+        <div className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200" onClick={() => setShowForm(false)}>
+          <div className="bg-white rounded-[28px] border border-slate-100 shadow-[0_24px_60px_rgba(0,0,0,0.25)] p-6 md:p-8 space-y-5 max-w-lg w-full my-8 max-h-[90vh] overflow-y-auto scrollbar-hide text-left animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="font-black text-slate-800 text-lg leading-tight">{editingId ? '🤝 협업사 수정' : '🤝 새 협업사 등록'}</h3>
+              <button onClick={() => setShowForm(false)} className="w-8 h-8 rounded-full bg-slate-50 hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors"><X size={18} /></button>
+            </div>
 
           {/* 로고 업로드 */}
           <div>
@@ -1558,7 +1559,8 @@ function PartnersTab() {
             </button>
           </div>
         </div>
-      )}
+      </div>
+    )}
 
       {/* 목록 */}
       {isLoading ? (
