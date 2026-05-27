@@ -116,26 +116,26 @@ function NoticesContent() {
       {/* 상세 설명문구 팝업 */}
       {detailPopup && (
         <div
-          style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}
+          style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.56)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', backdropFilter: 'blur(4px)' }}
           onClick={() => setDetailPopup(null)}
         >
           <div
-            style={{ background: '#fff', borderRadius: '24px', padding: '32px 28px', maxWidth: '360px', width: '100%', textAlign: 'center', boxShadow: '0 24px 60px rgba(0,0,0,0.2)' }}
+            style={{ background: '#fff', borderRadius: '24px', padding: '28px 24px', maxWidth: '380px', width: '100%', textAlign: 'center', boxShadow: '0 24px 60px rgba(0,0,0,0.25)', animation: 'klFadeIn 0.3s ease' }}
             onClick={e => e.stopPropagation()}
           >
             {detailPopup.logoUrl && (
-              <img src={detailPopup.logoUrl} alt={detailPopup.name} style={{ width: '72px', height: '72px', objectFit: 'cover', borderRadius: '16px', margin: '0 auto 16px', display: 'block', border: '1px solid #f0f0f0' }} />
+              <img src={detailPopup.logoUrl} alt={detailPopup.name} style={{ width: '68px', height: '68px', objectFit: 'cover', borderRadius: '16px', margin: '0 auto 12px', display: 'block', border: '1px solid #f0f0f0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }} />
             )}
             <p style={{ fontSize: '0.78rem', fontWeight: '700', color: '#FF6F61', marginBottom: '4px', letterSpacing: '0.08em' }}>협업사 상세정보</p>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: '900', color: '#111', marginBottom: '20px' }}>{detailPopup.name}</h3>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: '900', color: '#111', marginBottom: '16px', letterSpacing: '-0.02em' }}>{detailPopup.name}</h3>
             
-            <div style={{ background: '#f8f9fa', borderRadius: '14px', padding: '20px', marginBottom: '20px', textAlign: 'left', maxHeight: '40vh', overflowY: 'auto' }}>
-              <p style={{ fontSize: '0.85rem', color: '#4b5563', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{detailPopup.detailContent}</p>
+            <div style={{ background: '#FFFDFB', border: '1px solid #F3EDE8', borderRadius: '16px', padding: '18px 16px', marginBottom: '20px', textAlign: 'left', maxHeight: '45vh', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }} className="scrollbar-hide">
+              <p style={{ fontSize: '0.8rem', color: '#4b5563', lineHeight: 1.75, whiteSpace: 'pre-wrap', wordBreak: 'keep-all', letterSpacing: '-0.01em' }}>{detailPopup.detailContent}</p>
             </div>
             
             <button
               onClick={() => setDetailPopup(null)}
-              style={{ width: '100%', padding: '12px', borderRadius: '100px', background: 'linear-gradient(135deg, #FF6F61, #FF9A9E)', color: '#fff', fontWeight: '800', fontSize: '0.9rem', border: 'none', cursor: 'pointer' }}
+              style={{ width: '100%', padding: '13px', borderRadius: '100px', background: 'linear-gradient(135deg, #FF6F61, #FF9A9E)', color: '#fff', fontWeight: '800', fontSize: '0.9rem', border: 'none', cursor: 'pointer', boxShadow: '0 4px 14px rgba(255,111,97,0.3)' }}
             >
               확인
             </button>
