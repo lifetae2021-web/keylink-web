@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import CherryBlossoms from '@/components/CherryBlossoms';
 
 import { getUserMatchResult, getUserVoteStats } from '@/lib/firestore/userMatching';
+import { getVotesReceivedByMe, getMyVote } from '@/lib/firestore/votes';
 
 interface ResultData {
   isMatched: boolean;
@@ -39,6 +40,7 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
   const [userName, setUserName] = useState('');
   const [result, setResult] = useState<ResultData | null>(null);
   const [voteCount, setVoteCount] = useState(0);
+  const [receivedVotesList, setReceivedVotesList] = useState<any[]>([]);
   const [myChoices, setMyChoices] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -60,13 +62,15 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
           );
 
           // v10.2.0: 6가지 파이어스토어 요청을 병렬로 한 번에 처리하여 결과 페이지 로딩 600% 이상 단축
-          const [userSnap, sessionSnap, summarySnap, appsSnap, matchResult, stats] = await Promise.all([
+          const [userSnap, sessionSnap, summarySnap, appsSnap, matchResult, stats, receivedVotes, myVote] = await Promise.all([
             getDoc(doc(db, 'users', currentUser.uid)),
             getDoc(doc(db, 'sessions', sessionId)),
             getDoc(doc(db, 'matchingSummaries', sessionId)),
             getDocs(appsQuery),
             getUserMatchResult(currentUser.uid, sessionId),
-            getUserVoteStats(currentUser.uid, sessionId)
+            getUserVoteStats(currentUser.uid, sessionId),
+            getVotesReceivedByMe(sessionId, currentUser.uid),
+            getMyVote(sessionId, currentUser.uid)
           ]);
 
           // 1. Fetch User Name
@@ -177,6 +181,52 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
 
             // 6. Fetch Stats & Choices only if participated
             setVoteCount(stats.receivedCount);
+            
+            // Resolve received votes
+            const visibility = sessionSnap.data()?.voteConfig?.resultVisibility || 'all';
+            const resolvedReceived = await Promise.all(receivedVotes.map(async (v: any) => {
+              const appQuery = query(
+                collection(db, 'applications'),
+                where('sessionId', '==', sessionId),
+                where('userId', '==', v.userId),
+                where('status', '==', 'confirmed')
+              );
+              const appSnap = await getDocs(appQuery);
+              const appData = !appSnap.empty ? appSnap.docs[0].data() : {};
+              return { 
+                id: v.userId, 
+                voteData: v, 
+                gender: appData.gender, 
+                slotNumber: appData.slotNumber 
+              };
+            }));
+
+            const filteredVoters = visibility === 'mutual'
+              ? resolvedReceived.filter(v => myVote?.choices?.some((c: any) => c.targetUserId === v.id))
+              : resolvedReceived;
+
+            const displayedVoters = [...filteredVoters].sort((a, b) => {
+              const aMutual = myVote?.choices?.some((c: any) => c.targetUserId === a.id) ? 0 : 1;
+              const bMutual = myVote?.choices?.some((c: any) => c.targetUserId === b.id) ? 0 : 1;
+              return aMutual - bMutual;
+            });
+
+            setReceivedVotesList(displayedVoters.map(v => {
+              const isMutual = myVote?.choices?.some((c: any) => c.targetUserId === v.id);
+              const isAnonymous = v.voteData?.disclosureMode === 'anonymous' || myVote?.disclosureMode === 'anonymous';
+              const genderPrefix = v.gender === 'male' ? '키링남' : v.gender === 'female' ? '키링녀' : '';
+              const slotLabel = v.slotNumber ? `${genderPrefix} ${v.slotNumber}호` : '익명';
+              const displayName = isAnonymous
+                ? (isMutual && v.slotNumber ? slotLabel : '익명')
+                : (v.voteData?.myAlias || '공개');
+                
+              return {
+                id: v.id,
+                displayName,
+                isMutual,
+                isAnonymous
+              };
+            }));
             
             const resolvedChoices = await Promise.all(stats.myChoices.map(async (v) => {
               let label = '알 수 없음';
@@ -409,6 +459,34 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
                     )}
                   </div>
                 </div>
+                
+                {/* Received Votes List */}
+                {receivedVotesList.length > 0 && (
+                  <div className="mt-8 border-t border-gray-100 pt-6">
+                    <h5 className="text-sm font-black text-gray-800 mb-4 flex items-center gap-2">
+                      <Sparkles size={16} className="text-pink-400" /> 나를 선택한 분들
+                    </h5>
+                    <div className="grid gap-3">
+                      {receivedVotesList.map((voter) => (
+                        <div key={voter.id} className={`flex items-center justify-between p-4 rounded-2xl border ${voter.isMutual ? 'bg-pink-50/50 border-pink-100' : 'bg-gray-50 border-gray-100 hover:bg-white hover:border-pink-200'} transition-all`}>
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm border border-gray-100">
+                              <Heart size={16} className={voter.isMutual ? 'text-pink-500' : 'text-gray-400'} fill={voter.isMutual ? 'currentColor' : 'none'} />
+                            </div>
+                            <div>
+                              <span className="font-black text-gray-900">{voter.displayName}</span>
+                            </div>
+                          </div>
+                          {voter.isMutual && (
+                            <span className="text-xs font-black bg-pink-500 text-white px-3 py-1 rounded-full shadow-sm">
+                              매칭 성공
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* 3. My Choices Section */}
