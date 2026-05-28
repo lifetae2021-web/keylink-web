@@ -2320,7 +2320,7 @@ ${chatLink}
                                                     title="호수 변경"
                                                     className={`text-xs font-black leading-none px-1 py-0.5 rounded hover:bg-slate-100 transition-colors ${isMaleSection ? "text-blue-500" : "text-pink-500"}`}
                                                   >
-                                                    {slotNum}호
+                                                    {isDummyApp(app) ? "-" : `${slotNum}호`}
                                                   </button>
                                                   {getDrinkCode(app.drink) && (
                                                     <span className="text-[0.6rem] font-black text-blue-600 leading-none mt-0.5">
