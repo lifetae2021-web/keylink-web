@@ -279,7 +279,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             list.push({
               id: d.id + '_join',
               type: 'user',
-              text: `${data.name || '신규유저'}님이 가입 승인을 대기 중입니다.`,
+              text: `${data.name || '신규유저'}님이\n가입 승인을 대기 중입니다.`,
               date,
               time: formatTimeAgo(date),
               path: '/admin/users'
@@ -295,7 +295,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             list.push({
               id: d.id + '_update',
               type: 'user',
-              text: `${data.name || '회원'}님이 프로필 정보를 수정했습니다.`,
+              text: `${data.name || '회원'}님이\n프로필 정보를 수정했습니다.`,
               date,
               time: formatTimeAgo(date),
               path: '/admin/users'
@@ -322,7 +322,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           return {
             id: d.id,
             type: 'app' as const,
-            text: `${data.name || '신청자'}님이 새로운 로테이션 참가를 신청했습니다.`,
+            text: `${data.name || '신청자'}님이\n새로운 로테이션 참가를 신청했습니다.`,
             date,
             time: formatTimeAgo(date),
             path: '/admin/applications'
@@ -348,7 +348,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           return {
             id: d.id,
             type: 'private' as const,
-            text: `${data.name || '신청자'}님이 1:1 프라이빗 매칭을 신청했습니다.`,
+            text: `${data.name || '신청자'}님이\n1:1 프라이빗 매칭을 신청했습니다.`,
             date,
             time: formatTimeAgo(date),
             path: '/admin/applications'
@@ -673,7 +673,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             {n.type === 'user' ? <UserPlus size={18} /> : n.type === 'app' ? <ClipboardList size={18} /> : <Zap size={18} />}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p style={{ fontSize: '0.88rem', lineHeight: 1.5, color: isNew ? '#0F172A' : '#64748B', fontWeight: isNew ? '800' : '600', letterSpacing: '-0.01em' }}>{n.text}</p>
+                            <p style={{ fontSize: '0.88rem', lineHeight: 1.5, color: isNew ? '#0F172A' : '#64748B', fontWeight: isNew ? '800' : '600', letterSpacing: '-0.01em', whiteSpace: 'pre-line' }}>{n.text}</p>
                             <p style={{ fontSize: '0.75rem', color: '#94A3B8', marginTop: 6, display: 'flex', alignItems: 'center', gap: '5px', fontWeight: 600 }}>
                               <Clock size={11} className="text-slate-300" /> {n.time}
                             </p>
@@ -684,7 +684,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   </div>
                   {notifications.length > 0 && (
                     <Link 
-                      href="/admin/applications" 
+                      href="/admin/notifications" 
                       onClick={() => setNotiOpen(false)} 
                       className="block text-center py-4 text-[0.8rem] font-bold text-slate-500 bg-slate-50 hover:bg-slate-100 hover:text-[#FF6F61] transition-all border-t border-slate-100"
                     >

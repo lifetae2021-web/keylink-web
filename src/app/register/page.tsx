@@ -107,7 +107,7 @@ function RegisterForm() {
     if (!isAllAgreed) { toast.error('모든 필수 약관에 동의해 주세요.'); return false; }
     if (!form.phone) { toast.error('연락처를 입력해 주세요.'); return false; }
     if (!phoneChecked) { toast.error('연락처 중복확인을 진행해 주세요.'); return false; }
-    if (!form.username) { toast.error('아이디를 입력해 주세요.'); return false; }
+    if (!form.username || form.username.length < 5 || form.username.length > 15) { toast.error('아이디는 5자 이상 15자 이하로 입력해 주세요.'); return false; }
     if (!idChecked) { toast.error('아이디 중복확인을 진행해 주세요.'); return false; }
     if (!form.password || form.password !== form.passwordConfirm) {
       toast.error('비밀번호가 일치하지 않거나 비어 있습니다.');
@@ -122,6 +122,7 @@ function RegisterForm() {
 
   const handleIdCheck = async () => {
     if (!form.username) return toast.error('아이디를 입력해주세요.');
+    if (form.username.length < 5 || form.username.length > 15) return toast.error('아이디는 5자 이상 15자 이하로 입력해 주세요.');
 
     try {
       // v7.3.3: Admin SDK API를 통해 쿼리 (비로그인 클라이언트 Firestore 직접 접근 제거)
@@ -275,11 +276,12 @@ function RegisterForm() {
                     <input
                       className="kl-input"
                       style={{ flex: 1, borderRadius: '12px', height: '54px' }}
-                      placeholder="영문 소문자, 숫자 조합"
+                      placeholder="영문 소문자, 숫자 조합 (5~15자)"
                       value={form.username}
                       onChange={e => { update('username', e.target.value); setIdChecked(false); }}
                       inputMode="email"
                       lang="en"
+                      maxLength={15}
                     />
                     <button type="button" onClick={handleIdCheck} style={{
                       padding: '0 20px', background: idChecked ? '#F0F0F0' : '#333', color: idChecked ? '#999' : '#FFF',

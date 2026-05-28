@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
-import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Eye, EyeOff, Loader2, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -26,6 +26,41 @@ function LoginContent() {
   const [autoLogin, setAutoLogin] = useState(true); // Default to true
   const router = useRouter();
   const searchParams = useSearchParams();
+
+  // 아이디 찾기 모달 상태
+  const [isFindModalOpen, setIsFindModalOpen] = useState(false);
+  const [findTab, setFindTab] = useState<'id' | 'password'>('id');
+  const [findName, setFindName] = useState('');
+  const [findPhone, setFindPhone] = useState('');
+  const [foundId, setFoundId] = useState('');
+  const [isFinding, setIsFinding] = useState(false);
+
+  const handleFindId = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!findName || !findPhone) {
+      toast.error('이름과 전화번호를 모두 입력해 주세요.');
+      return;
+    }
+    setIsFinding(true);
+    setFoundId('');
+    try {
+      const res = await fetch('/api/auth/find-id', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: findName, phone: findPhone }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || '일치하는 회원 정보를 찾을 수 없습니다.');
+      } else {
+        setFoundId(data.maskedId);
+      }
+    } catch (err) {
+      toast.error('서버 오류가 발생했습니다.');
+    } finally {
+      setIsFinding(false);
+    }
+  };
 
   // Show error messages from URL (e.g. from Kakao OAuth callback)
   useEffect(() => {
@@ -233,7 +268,8 @@ function LoginContent() {
           {/* Sub Links */}
           <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', marginBottom: '32px' }}>
             <button
-              onClick={() => toast.error('준비 중인 기능입니다. 고객센터로 문의해 주세요.')}
+              type="button"
+              onClick={() => setIsFindModalOpen(true)}
               style={{ background: 'none', border: 'none', fontSize: '0.8rem', color: '#888', cursor: 'pointer', fontWeight: '500' }}
             >
               아이디/비밀번호 찾기
@@ -257,6 +293,95 @@ function LoginContent() {
 
 
       </div>
+
+      {/* 아이디/비밀번호 찾기 모달 */}
+      {isFindModalOpen && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+          zIndex: 9990, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: '20px', backdropFilter: 'blur(4px)'
+        }}>
+          <div style={{
+            background: '#fff', borderRadius: '24px', width: '100%', maxWidth: '400px',
+            overflow: 'hidden', boxShadow: '0 20px 40px rgba(0,0,0,0.1)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '24px', borderBottom: '1px solid #f1f5f9' }}>
+              <h2 style={{ fontSize: '1.2rem', fontWeight: '800', color: '#111' }}>계정 찾기</h2>
+              <button onClick={() => setIsFindModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748B' }}>
+                <X size={24} />
+              </button>
+            </div>
+            
+            <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0' }}>
+              <button 
+                onClick={() => { setFindTab('id'); setFoundId(''); }}
+                style={{ flex: 1, padding: '16px', background: 'none', border: 'none', borderBottom: findTab === 'id' ? '2px solid #FF6F61' : '2px solid transparent', color: findTab === 'id' ? '#FF6F61' : '#64748B', fontWeight: findTab === 'id' ? '700' : '500', cursor: 'pointer', transition: 'all 0.2s' }}
+              >
+                아이디 찾기
+              </button>
+              <button 
+                onClick={() => { setFindTab('password'); setFoundId(''); }}
+                style={{ flex: 1, padding: '16px', background: 'none', border: 'none', borderBottom: findTab === 'password' ? '2px solid #FF6F61' : '2px solid transparent', color: findTab === 'password' ? '#FF6F61' : '#64748B', fontWeight: findTab === 'password' ? '700' : '500', cursor: 'pointer', transition: 'all 0.2s' }}
+              >
+                비밀번호 찾기
+              </button>
+            </div>
+
+            <div style={{ padding: '24px' }}>
+              {findTab === 'id' ? (
+                <>
+                  <form onSubmit={handleFindId}>
+                    <div style={{ marginBottom: '16px' }}>
+                      <label style={{ fontSize: '0.85rem', fontWeight: '700', color: '#333', display: 'block', marginBottom: '8px' }}>이름</label>
+                      <input
+                        type="text"
+                        className="kl-input"
+                        placeholder="가입 시 등록한 이름"
+                        value={findName}
+                        onChange={(e) => setFindName(e.target.value)}
+                        style={{ borderRadius: '12px', padding: '12px', width: '100%', border: '1px solid #e2e8f0' }}
+                      />
+                    </div>
+                    <div style={{ marginBottom: '24px' }}>
+                      <label style={{ fontSize: '0.85rem', fontWeight: '700', color: '#333', display: 'block', marginBottom: '8px' }}>전화번호</label>
+                      <input
+                        type="text"
+                        className="kl-input"
+                        placeholder="'-' 기호 포함 입력"
+                        value={findPhone}
+                        onChange={(e) => setFindPhone(e.target.value)}
+                        style={{ borderRadius: '12px', padding: '12px', width: '100%', border: '1px solid #e2e8f0' }}
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={isFinding}
+                      className="kl-btn-primary"
+                      style={{ width: '100%', padding: '14px', borderRadius: '12px', fontWeight: '700', fontSize: '0.95rem' }}
+                    >
+                      {isFinding ? '찾는 중...' : '아이디 찾기'}
+                    </button>
+                  </form>
+                  {foundId && (
+                    <div style={{ marginTop: '24px', padding: '16px', background: '#F0FDF4', borderRadius: '12px', textAlign: 'center', border: '1px solid #BBF7D0' }}>
+                      <p style={{ fontSize: '0.9rem', color: '#166534', marginBottom: '8px' }}>일치하는 아이디를 찾았습니다.</p>
+                      <p style={{ fontSize: '1.2rem', fontWeight: '800', color: '#15803D' }}>{foundId}</p>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div style={{ padding: '32px 0', textAlign: 'center' }}>
+                  <p style={{ fontSize: '0.95rem', color: '#64748B', lineHeight: '1.6' }}>
+                    비밀번호 찾기 기능은<br/>현재 시스템 점검 중입니다.<br/>
+                    <br/>
+                    <a href="https://www.instagram.com/keylink_official" target="_blank" rel="noopener noreferrer" style={{ color: '#FF6F61', fontWeight: '800', textDecoration: 'none' }}>@keylink_official</a> 로 DM 문의주세요.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
