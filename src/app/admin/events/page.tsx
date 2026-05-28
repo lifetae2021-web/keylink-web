@@ -2234,10 +2234,10 @@ ${chatLink}
                                   }
                                   slots.sort((a, b) => {
                                     const getPriority = (slot: {slotNum: number, app: any}) => {
-                                      if (!slot.app) return 3;
+                                      if (!slot.app) return 1; // 빈 자리는 실제 참가자와 동일한 우선순위(번호순 정렬)
                                       const user = userMap[slot.app.userId] || {};
                                       const isDummy = slot.app.id?.startsWith('dummy') || slot.app.userId?.startsWith('user_m_') || slot.app.userId?.startsWith('user_f_') || user.isDummy === true;
-                                      return isDummy ? 2 : 1;
+                                      return isDummy ? 2 : 1; // 더미는 무조건 맨 아래로
                                     };
                                     const prioA = getPriority(a);
                                     const prioB = getPriority(b);
