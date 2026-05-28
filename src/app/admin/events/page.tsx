@@ -2223,16 +2223,16 @@ ${chatLink}
                                   const maxSlots = isMaleSection
                                     ? (active?.maxMale ?? 0)
                                     : (active?.maxFemale ?? 0);
-                                  const slots = Array.from(
-                                    { length: maxSlots },
-                                    (_, i) => {
-                                      const slotNum = i + 1;
-                                      const app = genderList.find(
-                                        (a) => a.slotNumber === slotNum,
-                                      );
-                                      return { slotNum, app };
-                                    },
-                                  ).sort((a, b) => {
+                                  const slots: { slotNum: number, app: any }[] = [];
+                                  for (let slotNum = 1; slotNum <= maxSlots; slotNum++) {
+                                    const appsInSlot = genderList.filter(a => a.slotNumber === slotNum);
+                                    const realApp = appsInSlot.find(a => !isDummyApp(a));
+                                    const dummies = appsInSlot.filter(a => isDummyApp(a));
+                                    
+                                    slots.push({ slotNum, app: realApp });
+                                    dummies.forEach(d => slots.push({ slotNum, app: d }));
+                                  }
+                                  slots.sort((a, b) => {
                                     const getPriority = (slot: {slotNum: number, app: any}) => {
                                       if (!slot.app) return 3;
                                       const user = userMap[slot.app.userId] || {};
