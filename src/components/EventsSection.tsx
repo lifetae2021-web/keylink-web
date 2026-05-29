@@ -433,7 +433,7 @@ function EventCard({ event, isSelected = false, userApp }: { event: KeylinkEvent
         )}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', color: 'var(--color-text-muted)', fontSize: '0.9rem', fontWeight: '600' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Calendar size={16} /> {format(event.date, 'M월 d일 (EEEE) · HH:mm', { locale: ko })}
+            <Calendar size={16} /> {format(event.date, 'M월 d일 (EEE) · HH:mm', { locale: ko })}
           </div>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', whiteSpace: 'pre-wrap' }}>
             <MapPin size={16} style={{ marginTop: '2px', flexShrink: 0 }} /> {event.venue}
@@ -441,8 +441,55 @@ function EventCard({ event, isSelected = false, userApp }: { event: KeylinkEvent
         </div>
       </div>
 
+      {/* 마감 임박 / 마감 긴급 알림 (자리가 넉넉할 땐 완전 숨김) */}
+      {(() => {
+        // 참가 확정된 사용자에게는 알림 박스를 아예 표시하지 않음
+        if (userApp?.status === 'confirmed') return null;
+
+        const maleRemaining = Math.max(0, event.maxMale - (event.currentMale || 0));
+        const femaleRemaining = Math.max(0, event.maxFemale - (event.currentFemale || 0));
+        
+        const showMaleAlert = maleRemaining <= 1;
+        const showFemaleAlert = femaleRemaining <= 1;
+
+        if (!showMaleAlert && !showFemaleAlert) return null;
+
+        // 남녀 모두 마감인 경우 한 줄로 통합 표시
+        if (maleRemaining === 0 && femaleRemaining === 0) {
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', background: '#f8fafc', padding: '14px 16px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+              <div style={{ fontSize: '0.85rem', fontWeight: '800', color: '#6b7280', textAlign: 'center' }}>
+                남녀 마감 (대기 가능)
+              </div>
+            </div>
+          );
+        }
+
+        const getStatusText = (remaining: number, gender: 'male'|'female') => {
+          const label = gender === 'male' ? '남성' : '여성';
+          const defaultColor = gender === 'male' ? '#007AFF' : '#FF4D8D';
+          if (remaining === 0) return { text: `${label} 마감 (대기 가능)`, color: '#6b7280' };
+          if (remaining === 1) return { text: `${label} 마감 임박 (딱 1자리 남음!)`, color: '#e11d48' };
+          return { text: `${label} 모집 중`, color: defaultColor };
+        };
+
+        const maleStatus = getStatusText(maleRemaining, 'male');
+        const femaleStatus = getStatusText(femaleRemaining, 'female');
+
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', background: '#fff9f9', padding: '14px 16px', borderRadius: '12px', border: '1px solid #ffe4e6' }}>
+            <div style={{ fontSize: '0.85rem', fontWeight: '800', color: maleStatus.color }}>
+              {maleStatus.text}
+            </div>
+            <div style={{ fontSize: '0.85rem', fontWeight: '800', color: femaleStatus.color }}>
+              {femaleStatus.text}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* 가격 + 신청 버튼 */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 'auto' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <span style={{ fontSize: '0.85rem', color: '#999', textDecoration: 'line-through' }}>40,000원</span>

@@ -510,21 +510,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             const locked = (item as any).superOnly && !isSuperAdmin;
 
             if (locked) {
-              return (
-                <div
-                  key={item.path}
-                  title={collapsed ? item.label : undefined}
-                  className="flex items-center rounded-lg mb-0.5 cursor-not-allowed"
-                  style={{ padding: '0 10px', height: 40, color: '#CBD5E1', background: 'transparent', fontWeight: 500, fontSize: '0.9rem' }}
-                >
-                  <span style={{ width: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <item.icon size={16} />
-                  </span>
-                  {showText && <span className="flex-1 whitespace-nowrap" style={{ marginLeft: 10 }}>{item.label}</span>}
-                  {showText && <Lock size={12} style={{ color: '#CBD5E1', flexShrink: 0 }} />}
-                </div>
-              );
+              return null;
             }
+
 
             return (
               <Link

@@ -236,7 +236,7 @@ function NoticesContent() {
                 <p style={{ color: '#DDD', fontSize: '0.82rem', marginTop: '4px' }}>관리자 페이지 &gt; 콘텐츠 편집 &gt; 협업사에서 등록해주세요.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 md:gap-6">
                 {partners.map(partner => (
                   <div
                     key={partner.id}

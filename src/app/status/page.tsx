@@ -120,125 +120,179 @@ export default function StatusListPage() {
             const progressMale = currentMale / event.maxMale;
             const progressFemale = currentFemale / event.maxFemale;
 
+            const isConfirmed = userApps[event.id]?.status === 'confirmed';
+
             return (
-              <div
-                key={event.id}
-                className="status-card"
-                onClick={() => router.push(`/status/${event.id}`)}
-                style={{
-                  background: '#fff',
-                  borderRadius: '32px',
-                  padding: '32px',
-                  border: '1.5px solid #eee',
-                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                  position: 'relative',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  cursor: 'pointer',
-                  gap: '24px',
-                  textDecoration: 'none',
-                  color: 'inherit',
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.transform = 'translateY(-8px)';
-                  e.currentTarget.style.borderColor = '#FF6F61';
-                  e.currentTarget.style.boxShadow = '0 20px 40px rgba(255,111,97,0.12)';
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.borderColor = '#eee';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-              >
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div key={event.id} style={{ position: 'relative', borderRadius: '32px', overflow: 'hidden' }}>
+                <div
+                  className="status-card"
+                  onClick={() => isConfirmed && router.push(`/status/${event.id}`)}
+                  style={{
+                    background: '#fff',
+                    borderRadius: '32px',
+                    padding: '32px',
+                    border: '1.5px solid #eee',
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    cursor: isConfirmed ? 'pointer' : 'default',
+                    gap: '24px',
+                    color: 'inherit',
+                    filter: isConfirmed ? 'none' : 'blur(6px)',
+                    opacity: isConfirmed ? 1 : 0.5,
+                    pointerEvents: isConfirmed ? 'auto' : 'none',
+                    userSelect: 'none',
+                  }}
+                  onMouseEnter={e => {
+                    if (isConfirmed) {
+                      e.currentTarget.style.transform = 'translateY(-8px)';
+                      e.currentTarget.style.borderColor = '#FF6F61';
+                      e.currentTarget.style.boxShadow = '0 20px 40px rgba(255,111,97,0.12)';
+                    }
+                  }}
+                  onMouseLeave={e => {
+                    if (isConfirmed) {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.borderColor = '#eee';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }
+                  }}
+                >
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div style={{
+                      alignSelf: 'flex-start',
+                      padding: '6px 16px', borderRadius: '100px', fontSize: '0.8rem', fontWeight: '800',
+                      background: status.bg, color: status.color,
+                    }}>
+                      {status.label}
+                    </div>
+                    <h3 style={{ fontSize: '1.2rem', fontWeight: '900', color: '#111', margin: 0, lineHeight: 1.3 }}>
+                      {event.title}
+                    </h3>
+                  </div>
+
+                  <div>
+                    {(event as any).targetMaleAge && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '14px' }}>
+                        <div style={{ display: 'inline-flex', alignSelf: 'flex-start', background: '#FFF5F4', border: '1px solid rgba(255,111,97,0.2)', padding: '4px 10px', borderRadius: '8px' }}>
+                          <span style={{ fontSize: '0.75rem', fontWeight: '800', color: '#FF6F61' }}>남성 연령 : {(event as any).targetMaleAge}</span>
+                        </div>
+                        <div style={{ paddingLeft: '4px' }}>
+                          <p style={{ fontSize: '0.72rem', fontWeight: '700', color: '#64748b', lineHeight: 1.4 }}>
+                            • 여성분들은 남성 연령대 참고 후 신청해주세요.
+                          </p>
+                          <p style={{ fontSize: '0.68rem', fontWeight: '500', color: '#94a3b8', lineHeight: 1.4 }}>
+                            • 선발 시 남녀간 이상형과 나이대를 참고하여 선발합니다.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', color: '#666', fontSize: '0.9rem', fontWeight: '600' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Calendar size={16} /> {event.eventDate.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' })} {event.eventDate.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <MapPin size={16} /> {(event as any).venue ?? (event.region === 'busan' ? '부산' : '창원')}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 마감 임박 / 마감 긴급 알림 (자리가 넉넉할 땐 완전 숨김) - 확정자에게는 숨김 */}
+                  {(() => {
+                    if (isConfirmed) return null;
+
+                    const maleRemaining = Math.max(0, event.maxMale - (event.currentMale || 0));
+                    const femaleRemaining = Math.max(0, event.maxFemale - (event.currentFemale || 0));
+                    
+                    const showMaleAlert = maleRemaining <= 1;
+                    const showFemaleAlert = femaleRemaining <= 1;
+
+                    if (!showMaleAlert && !showFemaleAlert) return null;
+
+                    if (maleRemaining === 0 && femaleRemaining === 0) {
+                      return (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', background: '#f8fafc', padding: '14px 16px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                          <div style={{ fontSize: '0.85rem', fontWeight: '800', color: '#6b7280', textAlign: 'center' }}>
+                            남녀 마감 (대기 가능)
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    const getStatusText = (remaining: number, gender: 'male'|'female') => {
+                      const label = gender === 'male' ? '남성' : '여성';
+                      const defaultColor = gender === 'male' ? '#007AFF' : '#FF4D8D';
+                      if (remaining === 0) return { text: `${label} 마감 (대기 가능)`, color: '#6b7280' };
+                      if (remaining === 1) return { text: `${label} 마감 임박 (딱 1자리 남음!)`, color: '#e11d48' };
+                      return { text: `${label} 모집 중`, color: defaultColor };
+                    };
+
+                    const maleStatus = getStatusText(maleRemaining, 'male');
+                    const femaleStatus = getStatusText(femaleRemaining, 'female');
+
+                    return (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', background: '#fff9f9', padding: '14px 16px', borderRadius: '12px', border: '1px solid #ffe4e6' }}>
+                        <div style={{ fontSize: '0.85rem', fontWeight: '800', color: maleStatus.color }}>
+                          {maleStatus.text}
+                        </div>
+                        <div style={{ fontSize: '0.85rem', fontWeight: '800', color: femaleStatus.color }}>
+                          {femaleStatus.text}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: 'auto' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ fontSize: '0.85rem', color: '#999', textDecoration: 'line-through' }}>40,000원</span>
+                      <span style={{ fontSize: '0.75rem', fontWeight: '800', color: '#FF6F61', background: 'rgba(255,111,97,0.1)', padding: '1px 6px', borderRadius: '4px' }}>28% OFF</span>
+                    </div>
+                    <span style={{ fontSize: '1.3rem', fontWeight: '900', color: '#FF6F61' }}>
+                      {(event as any).price ? `${((event as any).price).toLocaleString()}원` : '29,000원'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* VIP Lounge Overlay for unconfirmed users */}
+                {!isConfirmed && (
                   <div style={{
-                    alignSelf: 'flex-start',
-                    padding: '6px 16px', borderRadius: '100px', fontSize: '0.8rem', fontWeight: '800',
-                    background: status.bg, color: status.color,
+                    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                    background: 'rgba(255, 255, 255, 0.1)',
+                    zIndex: 10,
+                    padding: '20px',
+                    textAlign: 'center'
                   }}>
-                    {status.label}
-                  </div>
-                  <h3 style={{ fontSize: '1.2rem', fontWeight: '900', color: '#111', margin: 0, lineHeight: 1.3 }}>
-                    {event.title}
-                  </h3>
-                </div>
-
-                <div>
-                  {(event as any).targetMaleAge && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '14px' }}>
-                      <div style={{ display: 'inline-flex', alignSelf: 'flex-start', background: '#FFF5F4', border: '1px solid rgba(255,111,97,0.2)', padding: '4px 10px', borderRadius: '8px' }}>
-                        <span style={{ fontSize: '0.75rem', fontWeight: '800', color: '#FF6F61' }}>남성 연령 : {(event as any).targetMaleAge}</span>
+                    <div style={{ 
+                      background: 'rgba(255, 255, 255, 0.95)', 
+                      padding: '24px 20px', 
+                      borderRadius: '24px', 
+                      boxShadow: '0 20px 40px rgba(0,0,0,0.1)', 
+                      border: '1px solid rgba(255,255,255,1)',
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      alignItems: 'center', 
+                      gap: '12px', 
+                      width: '90%',
+                      backdropFilter: 'blur(10px)'
+                    }}>
+                      <div style={{ width: '48px', height: '48px', background: '#FFF5F4', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FF6F61' }}>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
                       </div>
-                      <div style={{ paddingLeft: '4px' }}>
-                        <p style={{ fontSize: '0.72rem', fontWeight: '700', color: '#64748b', lineHeight: 1.4 }}>
-                          • 여성분들은 남성 연령대 참고 후 신청해주세요.
-                        </p>
-                        <p style={{ fontSize: '0.68rem', fontWeight: '500', color: '#94a3b8', lineHeight: 1.4 }}>
-                          • 선발 시 남녀간 이상형과 나이대를 참고하여 선발합니다.
+                      <div>
+                        <h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '900', color: '#111', marginBottom: '6px' }}>프라이빗 현황 보드 🔒</h4>
+                        <p style={{ margin: 0, fontSize: '0.85rem', color: '#666', lineHeight: 1.5, wordBreak: 'keep-all' }}>
+                          참가 확정자만 라인업을 볼 수 있습니다.<br/>신청하고 이번 주말 인연을 확인하세요!
                         </p>
                       </div>
-                    </div>
-                  )}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', color: '#666', fontSize: '0.9rem', fontWeight: '600' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <Calendar size={16} /> {event.eventDate.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' })} {event.eventDate.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <MapPin size={16} /> {(event as any).venue ?? (event.region === 'busan' ? '부산' : '창원')}
+                      <Link href={`/events/${event.id}`} style={{
+                        marginTop: '6px', background: '#111', color: '#fff', padding: '12px 24px', borderRadius: '100px', fontSize: '0.9rem', fontWeight: '800', textDecoration: 'none', transition: 'all 0.2s', width: '100%'
+                      }}>
+                        지금 참여 신청하기 👉
+                      </Link>
                     </div>
                   </div>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', background: '#fcfcfc', padding: '16px', borderRadius: '16px' }}>
-                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.8rem', fontWeight: '800', color: '#666', width: '30px' }}>남성</span>
-                    <div style={{ flex: 1, height: '6px', background: '#eee', borderRadius: '3px', overflow: 'hidden' }}>
-                      <div style={{ width: `${progressMale * 100}%`, height: '100%', background: '#007AFF', borderRadius: '3px' }} />
-                    </div>
-                    <span style={{ fontSize: '0.8rem', fontWeight: '800', color: progressMale >= 1 ? '#007AFF' : '#666' }}>{currentMale}/{event.maxMale}</span>
-                  </div>
-                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.8rem', fontWeight: '800', color: '#666', width: '30px' }}>여성</span>
-                    <div style={{ flex: 1, height: '6px', background: '#eee', borderRadius: '3px', overflow: 'hidden' }}>
-                      <div style={{ width: `${progressFemale * 100}%`, height: '100%', background: '#FF4D8D', borderRadius: '3px' }} />
-                    </div>
-                    <span style={{ fontSize: '0.8rem', fontWeight: '800', color: progressFemale >= 1 ? '#FF4D8D' : '#666' }}>{currentFemale}/{event.maxFemale}</span>
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{ fontSize: '0.85rem', color: '#999', textDecoration: 'line-through' }}>40,000원</span>
-                    <span style={{ fontSize: '0.75rem', fontWeight: '800', color: '#FF6F61', background: 'rgba(255,111,97,0.1)', padding: '1px 6px', borderRadius: '4px' }}>28% OFF</span>
-                  </div>
-                  <span style={{ fontSize: '1.3rem', fontWeight: '900', color: '#FF6F61' }}>
-                    {(event as any).price ? `${((event as any).price).toLocaleString()}원` : '29,000원'}
-                  </span>
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
-                  <Link href={`/status/${event.id}`} onClick={e => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#FF6F61', fontWeight: '800', fontSize: '0.9rem', textDecoration: 'none' }}>
-                    라인업 상세보기 <ArrowRight size={16} />
-                  </Link>
-                  {(status.label === '모집 중' || status.label === '모집 마감') && (
-                    <Link
-                      href={`/events/${event.id}`}
-                      onClick={e => e.stopPropagation()}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: '4px',
-                        background: userApps[event.id]?.status === 'confirmed' ? '#10b981' : (userApps[event.id] ? '#94a3b8' : '#FF6F61'),
-                        color: '#fff',
-                        fontSize: '0.8rem', fontWeight: '800',
-                        padding: '8px 16px', borderRadius: '100px',
-                        textDecoration: 'none',
-                      }}
-                    >
-                      {userApps[event.id]?.status === 'confirmed' 
-                        ? '참가 확정' 
-                        : (userApps[event.id] ? '신청완료' : (status.label === '모집 마감' ? '대기자 신청하기' : '신청하기'))}
-                    </Link>
-                  )}
-                </div>
+                )}
               </div>
             );
           })}
