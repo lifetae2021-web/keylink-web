@@ -441,24 +441,6 @@ function EventCard({ event, isSelected = false, userApp }: { event: KeylinkEvent
         </div>
       </div>
 
-      {/* 프로그레스 바 */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', background: '#fcfcfc', padding: '16px', borderRadius: '16px' }}>
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-          <span style={{ fontSize: '0.8rem', fontWeight: '800', color: 'var(--color-text-muted)', width: '30px' }}>남성</span>
-          <div style={{ flex: 1, height: '6px', background: '#eee', borderRadius: '3px', overflow: 'hidden' }}>
-            <div style={{ width: `${Math.min(progressMale * 100, 100)}%`, height: '100%', background: '#007AFF', borderRadius: '3px' }} />
-          </div>
-          <span style={{ fontSize: '0.8rem', fontWeight: '800', color: progressMale >= 1 ? '#007AFF' : 'var(--color-text-muted)' }}>{event.currentMale}/{event.maxMale}</span>
-        </div>
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-          <span style={{ fontSize: '0.8rem', fontWeight: '800', color: 'var(--color-text-muted)', width: '30px' }}>여성</span>
-          <div style={{ flex: 1, height: '6px', background: '#eee', borderRadius: '3px', overflow: 'hidden' }}>
-            <div style={{ width: `${Math.min(progressFemale * 100, 100)}%`, height: '100%', background: '#FF4D8D', borderRadius: '3px' }} />
-          </div>
-          <span style={{ fontSize: '0.8rem', fontWeight: '800', color: progressFemale >= 1 ? '#FF4D8D' : 'var(--color-text-muted)' }}>{event.currentFemale}/{event.maxFemale}</span>
-        </div>
-      </div>
-
       {/* 가격 + 신청 버튼 */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
