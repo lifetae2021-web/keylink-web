@@ -70,14 +70,14 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
 
           // v10.2.0: 6가지 파이어스토어 요청을 병렬로 한 번에 처리하여 결과 페이지 로딩 600% 이상 단축
           const [userSnap, sessionSnap, summarySnap, appsSnap, matchResult, stats, receivedVotes, myVote] = await Promise.all([
-            getDoc(doc(db, 'users', currentUser.uid)),
-            getDoc(doc(db, 'sessions', sessionId)),
-            getDoc(doc(db, 'matchingSummaries', sessionId)),
-            getDocs(appsQuery),
-            getUserMatchResult(currentUser.uid, sessionId),
-            getUserVoteStats(currentUser.uid, sessionId),
-            getVotesReceivedByMe(sessionId, currentUser.uid),
-            getMyVote(sessionId, currentUser.uid)
+            getDoc(doc(db, 'users', currentUser.uid)).catch(e => { console.error(e); return { exists: () => false, data: () => ({}) } as any; }),
+            getDoc(doc(db, 'sessions', sessionId)).catch(e => { console.error(e); return { exists: () => false, data: () => ({}) } as any; }),
+            getDoc(doc(db, 'matchingSummaries', sessionId)).catch(e => { console.error(e); return { exists: () => false, data: () => ({}) } as any; }),
+            getDocs(appsQuery).catch(e => { console.error(e); return { docs: [], empty: true } as any; }),
+            getUserMatchResult(currentUser.uid, sessionId).catch(e => { console.error(e); return null; }),
+            getUserVoteStats(currentUser.uid, sessionId).catch(e => { console.error(e); return { myVotes: 0, receivedVotes: 0 }; }),
+            getVotesReceivedByMe(sessionId, currentUser.uid).catch(e => { console.error(e); return []; }),
+            getMyVote(sessionId, currentUser.uid).catch(e => { console.error(e); return null; })
           ]);
 
           // 1. Fetch User Name & Admin Status
