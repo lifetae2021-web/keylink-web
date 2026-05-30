@@ -110,7 +110,7 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
 
           // 4. Fetch Participant Slots mapping
           const pMap: Record<string, any> = {};
-          appsSnap.docs.forEach(d => {
+          appsSnap.docs.forEach((d: any) => {
             const data = d.data();
             pMap[data.userId] = {
               gender: data.gender,
@@ -121,7 +121,7 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
           setParticipantMap(pMap);
 
           // 5. 라인업용 데이터 세팅 (appsSnap 재활용)
-          const lineupAppList = appsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+          const lineupAppList = appsSnap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
           setLineupApps(lineupAppList);
 
           // 라인업 유저 상세 정보 (키, 직업 등) 병렬 조회
