@@ -75,7 +75,7 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
             getDoc(doc(db, 'matchingSummaries', sessionId)).catch(e => { console.error(e); return { exists: () => false, data: () => ({}) } as any; }),
             getDocs(appsQuery).catch(e => { console.error(e); return { docs: [], empty: true } as any; }),
             getUserMatchResult(currentUser.uid, sessionId).catch(e => { console.error(e); return null; }),
-            getUserVoteStats(currentUser.uid, sessionId).catch(e => { console.error(e); return { myVotes: 0, receivedVotes: 0 }; }),
+            getUserVoteStats(currentUser.uid, sessionId).catch(e => { console.error(e); return { receivedCount: 0, myChoices: [] }; }),
             getVotesReceivedByMe(sessionId, currentUser.uid).catch(e => { console.error(e); return []; }),
             getMyVote(sessionId, currentUser.uid).catch(e => { console.error(e); return null; })
           ]);
@@ -126,10 +126,10 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
 
           // 라인업 유저 상세 정보 (키, 직업 등) 병렬 조회
           const lineupUserSnaps = await Promise.all(
-            lineupAppList.map(a => getDoc(doc(db, 'users', (a as any).userId)))
+            lineupAppList.map((a: any) => getDoc(doc(db, 'users', a.userId)))
           );
           const luMap: Record<string, any> = {};
-          lineupUserSnaps.forEach(snap => {
+          lineupUserSnaps.forEach((snap: any) => {
             if (snap.exists()) luMap[snap.id] = snap.data();
           });
           setLineupUserMap(luMap);
@@ -138,7 +138,7 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
             setIsParticipant(true);
 
             // Resolve all partner profiles for multi-match support
-            const resolvedPartners = await Promise.all((matchResult.partnerIds || []).map(async (partnerId) => {
+            const resolvedPartners = await Promise.all((matchResult.partnerIds || []).map(async (partnerId: any) => {
               try {
                 const appQuery = query(
                   collection(db, 'applications'),
@@ -255,7 +255,7 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
             // 표 개수를 실제 보여지는 리스트와 일치시킴
             setVoteCount(displayedVoters.length);
             
-            const resolvedChoices = await Promise.all(stats.myChoices.map(async (v) => {
+            const resolvedChoices = await Promise.all(stats.myChoices.map(async (v: any) => {
               let label = '알 수 없음';
               let jobDisplay = '확인 중';
               try {
