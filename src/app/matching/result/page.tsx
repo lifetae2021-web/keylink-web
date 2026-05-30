@@ -173,7 +173,7 @@ export default function ResultListPage() {
                           padding: '6px 14px', borderRadius: '100px', border: '1px solid #eee',
                           color: '#666', fontSize: '0.75rem', fontWeight: '700', background: '#f9f9f9'
                         }}>
-                          매칭 리포트
+                          행사 종료
                         </span>
                       </div>
                       <span style={{ fontSize: '0.9rem', fontWeight: '900', color: '#FF6F61', background: 'rgba(255,111,97,0.1)', padding: '6px 14px', borderRadius: '10px' }}>

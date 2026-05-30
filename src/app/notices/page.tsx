@@ -226,14 +226,14 @@ function NoticesContent() {
           </div>
         )}
 
-        {/* 협업사 (관리자 전용 — 그리드 카드 UI) */}
-        {activeTab === 'partners' && isAdmin && (
+        {/* 협업사 (전체 공개 — 그리드 카드 UI) */}
+        {activeTab === 'partners' && (
           <div>
             {partners.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '60px 20px' }}>
                 <Handshake size={40} color="#FFD3CD" style={{ margin: '0 auto 16px', display: 'block' }} />
                 <p style={{ color: '#CCC', fontWeight: '700', fontSize: '0.9rem' }}>등록된 협업사가 없습니다.</p>
-                <p style={{ color: '#DDD', fontSize: '0.82rem', marginTop: '4px' }}>관리자 페이지 &gt; 콘텐츠 편집 &gt; 협업사에서 등록해주세요.</p>
+                {isAdmin && <p style={{ color: '#DDD', fontSize: '0.82rem', marginTop: '4px' }}>관리자 페이지 &gt; 콘텐츠 편집 &gt; 협업사에서 등록해주세요.</p>}
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 md:gap-6">
@@ -264,22 +264,24 @@ function NoticesContent() {
                         <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', lineHeight: 1.5, marginBottom: '12px' }}>{partner.description}</p>
                       )}
                       <div style={{ display: 'flex', gap: '6px' }}>
-                        <button
-                          onClick={() => handleCouponClick(partner)}
-                          style={{
-                            flex: 1, padding: '10px 4px', borderRadius: '100px',
-                            background: 'linear-gradient(135deg, #FFB347, #FF6F61)',
-                            color: '#fff', fontWeight: '800', fontSize: '0.76rem',
-                            border: 'none', cursor: 'pointer',
-                            boxShadow: '0 4px 12px rgba(255,111,97,0.3)', transition: 'opacity 0.2s',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '2px',
-                            whiteSpace: 'nowrap',
-                          }}
-                          onMouseEnter={e => (e.currentTarget.style.opacity = '0.85')}
-                          onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
-                        >
-                          {(partner.couponLabel || '쿠폰 받기').replace('🎁', '').trim()}
-                        </button>
+                        {partner.useCoupon !== false && (
+                          <button
+                            onClick={() => handleCouponClick(partner)}
+                            style={{
+                              flex: 1, padding: '10px 4px', borderRadius: '100px',
+                              background: 'linear-gradient(135deg, #FFB347, #FF6F61)',
+                              color: '#fff', fontWeight: '800', fontSize: '0.76rem',
+                              border: 'none', cursor: 'pointer',
+                              boxShadow: '0 4px 12px rgba(255,111,97,0.3)', transition: 'opacity 0.2s',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '2px',
+                              whiteSpace: 'nowrap',
+                            }}
+                            onMouseEnter={e => (e.currentTarget.style.opacity = '0.85')}
+                            onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
+                          >
+                            {(partner.couponLabel || '쿠폰 받기').replace('🎁', '').trim()}
+                          </button>
+                        )}
                         
                         <a
                           href={partner.detailUrl || '#'}

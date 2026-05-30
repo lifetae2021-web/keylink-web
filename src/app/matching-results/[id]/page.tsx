@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useState, useEffect } from 'react';
+import { use, useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -50,6 +50,12 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
   const [summary, setSummary] = useState<any>(null);
   const [participantMap, setParticipantMap] = useState<Record<string, any>>({});
   const [isParticipant, setIsParticipant] = useState(false);
+
+  // 라인업 상태
+  const [lineupTab, setLineupTab] = useState<'male' | 'female'>('male');
+  const [shuffleSeed, setShuffleSeed] = useState(0);
+  const [lineupApps, setLineupApps] = useState<any[]>([]);
+  const [lineupUserMap, setLineupUserMap] = useState<Record<string, any>>({});
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -114,6 +120,20 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
           });
           setParticipantMap(pMap);
 
+          // 5. 라인업용 데이터 세팅 (appsSnap 재활용)
+          const lineupAppList = appsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+          setLineupApps(lineupAppList);
+
+          // 라인업 유저 상세 정보 (키, 직업 등) 병렬 조회
+          const lineupUserSnaps = await Promise.all(
+            lineupAppList.map(a => getDoc(doc(db, 'users', (a as any).userId)))
+          );
+          const luMap: Record<string, any> = {};
+          lineupUserSnaps.forEach(snap => {
+            if (snap.exists()) luMap[snap.id] = snap.data();
+          });
+          setLineupUserMap(luMap);
+
           if (matchResult) {
             setIsParticipant(true);
 
@@ -139,17 +159,17 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
                   const birthDateVal = appData.birthDate || userData?.birthDate;
                   if (birthDateVal) {
                     const yearPart = birthDateVal.split('-')[0];
-                    calculatedAge = `${yearPart.length === 4 ? yearPart.slice(2, 4) : yearPart.slice(0, 2)}년생`;
+                    calculatedAge = `${yearPart.length === 4 ? yearPart.slice(2, 4) : yearPart.slice(0, 2)}`;
                   } else if (appData.age || userData?.age) {
                     const n = Number(appData.age || userData?.age);
                     const birthYear = 2026 - n;
-                    calculatedAge = `${String(birthYear).slice(-2)}년생`;
+                    calculatedAge = `${String(birthYear).slice(-2)}`;
                   }
                   
                   const job = appData.displayJob || userData?.admin_job || userData?.job || appData.job || '미입력';
                   
                   const heightVal = appData.height || userData?.height;
-                  const height = heightVal ? `${heightVal}cm` : '미입력';
+                  const height = heightVal ? `${heightVal}` : '미입력';
                   
                   return {
                     gender: appData.gender,
@@ -184,7 +204,6 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
             });
 
             // 6. Fetch Stats & Choices only if participated
-            setVoteCount(stats.receivedCount);
             
             // Resolve received votes
             const visibility = sessionSnap.data()?.voteConfig?.resultVisibility || 'all';
@@ -217,20 +236,24 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
 
             setReceivedVotesList(displayedVoters.map(v => {
               const isMutual = myVote?.choices?.some((c: any) => c.targetUserId === v.id);
-              const isAnonymous = v.voteData?.disclosureMode === 'anonymous' || myVote?.disclosureMode === 'anonymous';
+              const isVoterAnonymous = v.voteData?.disclosureMode === 'anonymous';
               const genderPrefix = v.gender === 'male' ? '키링남' : v.gender === 'female' ? '키링녀' : '';
               const slotLabel = v.slotNumber ? `${genderPrefix} ${v.slotNumber}호` : '익명';
-              const displayName = isAnonymous
-                ? (isMutual && v.slotNumber ? slotLabel : '익명')
-                : (v.voteData?.myAlias || '공개');
+              
+              // 매칭 성공했거나, 상대방이 '공개 투표'를 선택한 경우 누군지 정확히 보여줌
+              const revealIdentity = isMutual || !isVoterAnonymous;
+              const displayName = revealIdentity && v.slotNumber ? slotLabel : '익명';
                 
               return {
                 id: v.id,
                 displayName,
                 isMutual,
-                isAnonymous
+                isAnonymous: !revealIdentity
               };
             }));
+
+            // 표 개수를 실제 보여지는 리스트와 일치시킴
+            setVoteCount(displayedVoters.length);
             
             const resolvedChoices = await Promise.all(stats.myChoices.map(async (v) => {
               let label = '알 수 없음';
@@ -280,12 +303,121 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
           setIsLoading(false);
         }
       } else {
+        // 비로그인 상태에서도 세션 + 라인업 데이터는 공개 로드
+        try {
+          const appsQuery = query(
+            collection(db, 'applications'),
+            where('sessionId', '==', sessionId),
+            where('status', '==', 'confirmed')
+          );
+          const [sessionSnap, summarySnap, appsSnap] = await Promise.all([
+            getDoc(doc(db, 'sessions', sessionId)),
+            getDoc(doc(db, 'matchingSummaries', sessionId)),
+            getDocs(appsQuery),
+          ]);
+
+          if (sessionSnap.exists()) {
+            const sd = sessionSnap.data();
+            if (!sd.isTest) {
+              setSession({ id: sessionId, ...sd, eventDate: sd.eventDate?.toDate?.() || new Date() });
+            }
+          }
+          if (summarySnap.exists()) setSummary(summarySnap.data());
+
+          const lineupAppList = appsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+          setLineupApps(lineupAppList);
+
+          const lineupUserSnaps = await Promise.all(
+            lineupAppList.map(a => getDoc(doc(db, 'users', (a as any).userId)))
+          );
+          const luMap: Record<string, any> = {};
+          lineupUserSnaps.forEach(snap => { if (snap.exists()) luMap[snap.id] = snap.data(); });
+          setLineupUserMap(luMap);
+
+          const pMap: Record<string, any> = {};
+          appsSnap.docs.forEach(d => {
+            const data = d.data();
+            pMap[data.userId] = { gender: data.gender, slotNumber: data.slotNumber || 0, name: data.name };
+          });
+          setParticipantMap(pMap);
+        } catch (e) {
+          console.error('비로그인 세션 로드 오류:', e);
+        }
         setIsLoading(false);
       }
     });
 
     return () => unsubscribe();
   }, [sessionId]);
+
+  // 5초마다 셔플 (실시간 현황과 동일)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setShuffleSeed(prev => prev + 1);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // 라인업 행 계산 (실시간 현황 status/[id] 로직 동일하게 적용)
+  const lineupRows = useMemo(() => {
+    if (!session) return [];
+    const currentList = lineupApps.filter(a => a.gender === lineupTab);
+    const maxSlots = lineupTab === 'male' ? (session.maxMale || 8) : (session.maxFemale || 8);
+
+    const slots: any[] = Array.from({ length: maxSlots }, (_, i) => ({
+      slotNumber: i + 1,
+      isFilled: false,
+      birthYear: '',
+      job: '',
+      height: '',
+    }));
+
+    currentList.forEach((p: any) => {
+      const slotIdx = (p.slotNumber || 1) - 1;
+      if (slotIdx >= 0 && slotIdx < maxSlots) {
+        const u = lineupUserMap[p.userId] || {};
+        const rawBirth = u.birthDate || p.birthDate || '';
+        const year = rawBirth.includes('-')
+          ? rawBirth.split('-')[0].slice(2, 4)
+          : rawBirth.length >= 2 ? rawBirth.slice(0, 2) : '??';
+        slots[slotIdx] = {
+          slotNumber: p.slotNumber || (slotIdx + 1),
+          isFilled: true,
+          birthYear: `${year}`,
+          job: u.admin_job || u.job || p.job || '검토 중',
+          height: u.height ? `${u.height}` : p.height ? `${p.height}` : '비공개',
+        };
+      }
+    });
+
+    const filledSlots = slots.filter(s => s.isFilled);
+    if (filledSlots.length <= 1) return slots;
+
+    const shuffle = <T,>(arr: T[], seed: number): T[] => {
+      const result = [...arr];
+      let s = seed;
+      for (let i = result.length - 1; i > 0; i--) {
+        s = (s * 1664525 + 1013904223) & 0xffffffff;
+        const j = Math.abs(s) % (i + 1);
+        [result[i], result[j]] = [result[j], result[i]];
+      }
+      return result;
+    };
+
+    const jobs = shuffle(filledSlots.map(r => r.job), shuffleSeed);
+    const heights = shuffle(filledSlots.map(r => r.height), shuffleSeed + 999);
+
+    let filledIdx = 0;
+    slots.forEach(s => {
+      if (s.isFilled) {
+        s.job = jobs[filledIdx];
+        s.height = heights[filledIdx];
+        filledIdx++;
+      }
+    });
+
+    return slots;
+  }, [lineupTab, lineupApps, lineupUserMap, shuffleSeed, session]);
 
   if (isLoading) {
     return (
@@ -376,7 +508,69 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
         >
           {isParticipant && result ? (
             <>
+              {/* 0. 라인업 섹션 (참여자 포함 모두에게 공통 표시) */}
+              {lineupRows.length > 0 && (
+                <div className="bg-white rounded-[40px] p-8 border border-gray-100 shadow-lg mb-8">
+                  <h4 className="text-lg font-black text-gray-900 mb-2 flex items-center gap-2">
+                    <Sparkles size={20} className="text-pink-400" /> {session?.episodeNumber}기 참가자 라인업
+                  </h4>
+                  <p className="text-xs text-gray-400 font-medium mb-6">개인정보 보호를 위해 직업·키 정보는 5초마다 랜덤으로 섞입니다.</p>
+
+                  {/* 탭 버튼 */}
+                  <div className="flex gap-3 mb-6">
+                    <button
+                      onClick={() => setLineupTab('male')}
+                      className="flex-1 py-3 rounded-2xl font-black text-sm transition-all"
+                      style={{
+                        background: lineupTab === 'male' ? 'linear-gradient(135deg, #3B82F6, #1D4ED8)' : '#F1F5F9',
+                        color: lineupTab === 'male' ? '#fff' : '#94A3B8',
+                        boxShadow: lineupTab === 'male' ? '0 8px 16px rgba(59,130,246,0.25)' : 'none',
+                      }}
+                    >
+                      🤵 키링남 라인업
+                    </button>
+                    <button
+                      onClick={() => setLineupTab('female')}
+                      className="flex-1 py-3 rounded-2xl font-black text-sm transition-all"
+                      style={{
+                        background: lineupTab === 'female' ? 'linear-gradient(135deg, #FF6F61, #FF8A71)' : '#F1F5F9',
+                        color: lineupTab === 'female' ? '#fff' : '#94A3B8',
+                        boxShadow: lineupTab === 'female' ? '0 8px 16px rgba(255,111,97,0.25)' : 'none',
+                      }}
+                    >
+                      👩 키링녀 라인업
+                    </button>
+                  </div>
+
+                  {/* 헤더 */}
+                  <div className="grid gap-3 px-4 py-2 text-xs font-black text-gray-400 text-center mb-2" style={{ gridTemplateColumns: '45px 1fr 1.2fr 1fr' }}>
+                    <span>번호</span><span>출생연도</span><span>직업 <small className="font-normal">(랜덤)</small></span><span>키 <small className="font-normal">(랜덤)</small></span>
+                  </div>
+
+                  <AnimatePresence mode="wait">
+                    <motion.div key={lineupTab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.25 }} className="flex flex-col gap-2">
+                      {lineupRows.map((row, idx) => (
+                        <div key={idx} className="grid gap-3 px-4 py-4 rounded-2xl text-center text-sm items-center transition-all"
+                          style={{ gridTemplateColumns: '45px 1fr 1.2fr 1fr', background: row.isFilled ? '#fff' : 'rgba(248,250,252,0.6)', border: row.isFilled ? '1.5px solid #F1F5F9' : '1.5px dashed #E2E8F0', boxShadow: row.isFilled ? '0 4px 12px rgba(0,0,0,0.03)' : 'none', opacity: row.isFilled ? 1 : 0.5 }}>
+                          <span className="font-black text-gray-300 text-base">{idx + 1}</span>
+                          {row.isFilled ? (
+                            <>
+                              <span className="font-bold text-gray-700">{row.birthYear}</span>
+                              <span className="font-black whitespace-nowrap" style={{ color: lineupTab === 'male' ? '#3B82F6' : '#FF6F61' }}>{row.job}</span>
+                              <span className="font-bold text-gray-500">{row.height}</span>
+                            </>
+                          ) : (
+                            <span className="col-span-3 text-gray-300 font-medium text-xs">모집 완료</span>
+                          )}
+                        </div>
+                      ))}
+                    </motion.div>
+                  </AnimatePresence>
+                </div>
+              )}
+
               {/* 1. Main Outcome Section */}
+
               {result.isMatched ? (
                 <div className="text-center mb-12">
                   <div className="w-24 h-24 bg-gradient-to-br from-pink-400 to-rose-400 rounded-3xl flex items-center justify-center text-white mx-auto mb-6 shadow-xl rotate-[-4deg]">
@@ -479,7 +673,7 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
                         <div key={voter.id} className={`flex items-center justify-between p-4 rounded-2xl border ${voter.isMutual ? 'bg-pink-50/50 border-pink-100' : 'bg-gray-50 border-gray-100 hover:bg-white hover:border-pink-200'} transition-all`}>
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm border border-gray-100">
-                              <Heart size={16} className={voter.isMutual ? 'text-pink-500' : 'text-gray-400'} fill={voter.isMutual ? 'currentColor' : 'none'} />
+                              <Heart size={16} className={voter.isMutual ? 'text-pink-500' : 'text-pink-300'} fill="currentColor" />
                             </div>
                             <div>
                               <span className="font-black text-gray-900">{voter.displayName}</span>
@@ -549,6 +743,49 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
                   매칭 최종 승인 및 공개 완료
                 </div>
               </div>
+
+              {/* 라인업 섹션 (비참여자도 공개) */}
+              {lineupRows.length > 0 && (
+                <div className="bg-white rounded-[40px] p-8 border border-gray-100 shadow-lg">
+                  <h4 className="text-lg font-black text-gray-900 mb-2 flex items-center gap-2">
+                    <Sparkles size={20} className="text-pink-400" /> {session?.episodeNumber}기 참가자 라인업
+                  </h4>
+                  <p className="text-xs text-gray-400 font-medium mb-6">개인정보 보호를 위해 직업·키 정보는 5초마다 랜덤으로 섞입니다.</p>
+                  <div className="flex gap-3 mb-6">
+                    <button onClick={() => setLineupTab('male')} className="flex-1 py-3 rounded-2xl font-black text-sm transition-all"
+                      style={{ background: lineupTab === 'male' ? 'linear-gradient(135deg, #3B82F6, #1D4ED8)' : '#F1F5F9', color: lineupTab === 'male' ? '#fff' : '#94A3B8', boxShadow: lineupTab === 'male' ? '0 8px 16px rgba(59,130,246,0.25)' : 'none' }}>
+                      🤵 키링남 라인업
+                    </button>
+                    <button onClick={() => setLineupTab('female')} className="flex-1 py-3 rounded-2xl font-black text-sm transition-all"
+                      style={{ background: lineupTab === 'female' ? 'linear-gradient(135deg, #FF6F61, #FF8A71)' : '#F1F5F9', color: lineupTab === 'female' ? '#fff' : '#94A3B8', boxShadow: lineupTab === 'female' ? '0 8px 16px rgba(255,111,97,0.25)' : 'none' }}>
+                      👩 키링녀 라인업
+                    </button>
+                  </div>
+                  {/* 헤더 */}
+                  <div className="grid gap-3 px-4 py-2 text-xs font-black text-gray-400 text-center mb-2" style={{ gridTemplateColumns: '45px 1fr 1.2fr 1fr' }}>
+                    <span>번호</span><span>출생연도</span><span>직업 <small className="font-normal">(랜덤)</small></span><span>키 <small className="font-normal">(랜덤)</small></span>
+                  </div>
+                  <AnimatePresence mode="wait">
+                    <motion.div key={lineupTab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.25 }} className="flex flex-col gap-2">
+                      {lineupRows.map((row, idx) => (
+                        <div key={idx} className="grid gap-3 px-4 py-4 rounded-2xl text-center text-sm items-center transition-all"
+                          style={{ gridTemplateColumns: '45px 1fr 1.2fr 1fr', background: row.isFilled ? '#fff' : 'rgba(248,250,252,0.6)', border: row.isFilled ? '1.5px solid #F1F5F9' : '1.5px dashed #E2E8F0', boxShadow: row.isFilled ? '0 4px 12px rgba(0,0,0,0.03)' : 'none', opacity: row.isFilled ? 1 : 0.5 }}>
+                          <span className="font-black text-gray-300 text-base">{idx + 1}</span>
+                          {row.isFilled ? (
+                            <>
+                              <span className="font-bold text-gray-700">{row.birthYear}</span>
+                              <span className="font-black whitespace-nowrap" style={{ color: lineupTab === 'male' ? '#3B82F6' : '#FF6F61' }}>{row.job}</span>
+                              <span className="font-bold text-gray-500">{row.height}</span>
+                            </>
+                          ) : (
+                            <span className="col-span-3 text-gray-300 font-medium text-xs">모집 완료</span>
+                          )}
+                        </div>
+                      ))}
+                    </motion.div>
+                  </AnimatePresence>
+                </div>
+              )}
 
               {/* Overall Stats Cards */}
               <div className="grid grid-cols-2 gap-4 mb-8">

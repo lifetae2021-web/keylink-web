@@ -1298,6 +1298,7 @@ function PartnersTab() {
     couponLabel: '쿠폰 받기',
     couponUrl: '',
     couponCode: '',
+    useCoupon: true,
     detailLabel: '자세히 보기',
     detailUrl: '',
     detailContent: '',
@@ -1328,6 +1329,7 @@ function PartnersTab() {
       couponLabel: item.couponLabel || '쿠폰 받기',
       couponUrl: item.couponUrl || '',
       couponCode: item.couponCode || '',
+      useCoupon: item.useCoupon !== false,
       detailLabel: item.detailLabel || '자세히 보기',
       detailUrl: item.detailUrl || '',
       detailContent: item.detailContent || '',
@@ -1476,10 +1478,26 @@ function PartnersTab() {
           </div>
 
           {/* 쿠폰 버튼 설정 */}
-          <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl space-y-3">
-            <p className="text-xs font-black text-amber-600 uppercase tracking-wider">쿠폰 버튼 설정 (선택)</p>
-            <p className="text-[0.7rem] text-amber-500">비워두면 버튼이 숨겨집니다.</p>
-            <div className="grid grid-cols-2 gap-3">
+          <div className={`p-4 border rounded-xl space-y-3 transition-colors ${form.useCoupon ? 'bg-amber-50 border-amber-200' : 'bg-slate-50 border-slate-200 opacity-60'}`}>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className={`text-xs font-black uppercase tracking-wider ${form.useCoupon ? 'text-amber-600' : 'text-slate-500'}`}>쿠폰 버튼 설정</p>
+                <p className={`text-[0.7rem] ${form.useCoupon ? 'text-amber-500' : 'text-slate-400'}`}>
+                  {form.useCoupon ? '아래 내용을 입력하면 버튼이 표시됩니다.' : '버튼이 숨겨지고 자세히 보기만 표시됩니다.'}
+                </p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="sr-only peer"
+                  checked={form.useCoupon}
+                  onChange={e => setForm(f => ({ ...f, useCoupon: e.target.checked }))}
+                />
+                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#FF6F61]"></div>
+              </label>
+            </div>
+            {form.useCoupon && (
+              <div className="grid grid-cols-2 gap-3 mt-2">
               <div>
                 <label className="text-xs font-bold text-slate-500 mb-1 block">버튼 텍스트</label>
                 <input
@@ -1507,7 +1525,8 @@ function PartnersTab() {
                   placeholder="https://..."
                 />
               </div>
-            </div>
+              </div>
+            )}
           </div>
 
           {/* 자세히 버튼 설정 */}

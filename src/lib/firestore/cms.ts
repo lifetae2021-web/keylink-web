@@ -80,6 +80,7 @@ export interface PartnerItem {
   couponLabel?: string;  // 쿠폰 버튼 텍스트 (없으면 버튼 숨김)
   couponUrl?: string;    // 쿠폰 링크 or 쿠폰 코드
   couponCode?: string;   // 직접 표시할 쿠폰 코드 (팝업용)
+  useCoupon?: boolean;   // 쿠폰 버튼 사용 여부 (On/Off)
   detailLabel?: string;  // 자세히 버튼 텍스트
   detailUrl?: string;    // 자세히 버튼 링크
   detailContent?: string; // 자세히 설명 문구 (링크가 없을 때 팝업용)
