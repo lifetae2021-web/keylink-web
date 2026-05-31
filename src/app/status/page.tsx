@@ -250,11 +250,7 @@ export default function StatusListPage() {
               <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981' }}></div>
               <h2 style={{ fontSize: '1.3rem', fontWeight: '800', color: '#333', margin: 0 }}>나의 참가 확정 기수</h2>
             </div>
-            <div className="status-grid" style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))',
-              gap: '30px'
-            }}>
+            <div className="status-grid">
               {confirmedSessions.map(event => renderSessionCard(event, true))}
             </div>
           </div>
@@ -271,9 +267,6 @@ export default function StatusListPage() {
             )}
             
             <div className="status-grid" style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))',
-              gap: '30px',
               filter: 'blur(8px)',
               opacity: 0.6,
               pointerEvents: 'none',
@@ -334,9 +327,22 @@ export default function StatusListPage() {
       </div>
 
       <style jsx>{`
+        .status-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+          gap: 30px;
+        }
         @media (max-width: 640px) {
           h1 { font-size: 1.8rem !important; }
           .kl-container { padding: 0 16px !important; padding-top: 100px !important; }
+          .status-grid {
+            grid-template-columns: 1fr !important;
+            gap: 20px !important;
+          }
+          .status-card {
+            padding: 24px 20px !important;
+            border-radius: 24px !important;
+          }
         }
       `}</style>
     </div>
