@@ -520,21 +520,9 @@ function MyPageContent() {
       
       {/* ─── EDIT MODAL (Synchronization with Application Form) ─── */}
       {isEditing && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 9000, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(20px)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
+        <div className="edit-modal-backdrop"
           onClick={(e) => { if (e.target === e.currentTarget) setIsEditing(false); }}>
-          <div style={{ 
-            background: '#FFFFFF', 
-            width: '100%', 
-            maxWidth: '540px', 
-            height: '100%', 
-            maxHeight: '92vh', 
-            display: 'flex', 
-            flexDirection: 'column',
-            borderRadius: '32px 32px 0 0',
-            boxShadow: '0 -20px 60px rgba(255,111,97,0.15)',
-            overflow: 'hidden',
-            position: 'relative'
-          }}>
+          <div className="edit-modal-panel">
             
             {/* [1] Fixed Header */}
             <div style={{ 
@@ -1206,6 +1194,42 @@ function MyPageContent() {
         .kl-scrollbar::-webkit-scrollbar { height: 4px; width: 4px; }
         .kl-scrollbar::-webkit-scrollbar-track { background: #fdfdfd; }
         .kl-scrollbar::-webkit-scrollbar-thumb { background: #FFDBE9; borderRadius: 4px; }
+        .edit-modal-backdrop {
+          position: fixed;
+          inset: 0;
+          z-index: 9000;
+          background: rgba(0, 0, 0, 0.4);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 24px;
+        }
+        .edit-modal-panel {
+          background: #FFFFFF;
+          width: 100%;
+          max-width: 540px;
+          height: 100%;
+          max-height: 85vh;
+          display: flex;
+          flex-direction: column;
+          border-radius: 24px;
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+          overflow: hidden;
+          position: relative;
+        }
+        @media (max-width: 640px) {
+          .edit-modal-backdrop {
+            align-items: flex-end;
+            padding: 0;
+          }
+          .edit-modal-panel {
+            max-height: 100vh;
+            height: 100vh;
+            border-radius: 0;
+          }
+        }
       `}</style>
     </div>
   );
