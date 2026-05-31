@@ -681,10 +681,6 @@ function MyPageContent() {
                 >
                   + 추가
                 </button>
-                <p style={{ fontSize: '0.75rem', color: '#94A3B8', marginTop: '2px', lineHeight: 1.5 }}>
-                  필요한 경우 이름, 직장명, 생년월일을 선택적으로 입력해 주세요.<br/>
-                  <span style={{ color: '#FF6F61', fontWeight: '700' }}>성함을 정확히 입력해야 제외 참가자를 정확히 식별할 수 있습니다.</span>
-                </p>
               </div>
             </EditRow>
 
