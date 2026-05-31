@@ -86,27 +86,43 @@ export async function POST(req: NextRequest) {
       // --- B. 새 기수 슬롯 계산 및 처리 (트랜잭션 내부) ---
       let newSlot: number | null = null;
       let finalStatus = status;
-      if (status === 'confirmed' || status === 'selected') {
-        const maxCount = gender === 'male' ? (newSessionData.maxMale || 8) : (newSessionData.maxFemale || 8);
 
-        const confirmedQuery = adminDb.collection('applications')
-          .where('sessionId', '==', targetSessionId)
-          .where('gender', '==', gender)
-          .where('status', '==', 'confirmed');
-        const confirmedSnap = await transaction.get(confirmedQuery);
-        
-        const usedSlots = new Set(confirmedSnap.docs.map(d => d.data().slotNumber).filter((n): n is number => n != null));
-        let slot = 1;
-        while (slot <= maxCount && usedSlots.has(slot)) slot++;
-        
-        if (slot <= maxCount) {
-          newSlot = slot;
-          transaction.update(newSessionRef, {
-            [counterField]: FieldValue.increment(1),
-            updatedAt: FieldValue.serverTimestamp()
-          });
+      const userSnapForApp = await transaction.get(adminDb.doc(`users/${appData.userId}`));
+      const isDummy = appData.id?.startsWith('dummy') || appData.userId?.startsWith('user_m_') || appData.userId?.startsWith('user_f_') || userSnapForApp.data()?.isDummy === true;
+
+      if (status === 'confirmed' || status === 'selected') {
+        if (isDummy) {
+          newSlot = null;
         } else {
-          finalStatus = 'waitlisted';
+          const maxCount = gender === 'male' ? (newSessionData.maxMale || 8) : (newSessionData.maxFemale || 8);
+
+          const confirmedQuery = adminDb.collection('applications')
+            .where('sessionId', '==', targetSessionId)
+            .where('gender', '==', gender)
+            .where('status', '==', 'confirmed');
+          const confirmedSnap = await transaction.get(confirmedQuery);
+          
+          const usedSlots = new Set(confirmedSnap.docs
+            .filter(d => {
+              const data = d.data();
+              const dIsDummy = data.id?.startsWith('dummy') || data.userId?.startsWith('user_m_') || data.userId?.startsWith('user_f_');
+              return !dIsDummy;
+            })
+            .map(d => d.data().slotNumber)
+            .filter((n): n is number => n != null));
+            
+          let slot = 1;
+          while (slot <= maxCount && usedSlots.has(slot)) slot++;
+          
+          if (slot <= maxCount) {
+            newSlot = slot;
+            transaction.update(newSessionRef, {
+              [counterField]: FieldValue.increment(1),
+              updatedAt: FieldValue.serverTimestamp()
+            });
+          } else {
+            finalStatus = 'waitlisted';
+          }
         }
       }
 

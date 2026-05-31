@@ -80,23 +80,37 @@ export async function POST(req: NextRequest) {
         let assignedSlot: number | null = null;
         const maxCount = gender === 'male' ? (sessionData.maxMale || 8) : (sessionData.maxFemale || 8);
 
-        // 트랜잭션 내부에서 실시간 confirmed 리스트 조회
-        const confirmedQuery = adminDb.collection('applications')
-          .where('sessionId', '==', sessionId)
-          .where('gender', '==', gender)
-          .where('status', '==', 'confirmed');
-        const confirmedSnap = await transaction.get(confirmedQuery);
+        const userSnapForApp = await transaction.get(adminDb.doc(`users/${appData.userId}`));
+        const isDummy = appData.id?.startsWith('dummy') || appData.userId?.startsWith('user_m_') || appData.userId?.startsWith('user_f_') || userSnapForApp.data()?.isDummy === true;
 
-        const usedSlots = new Set(confirmedSnap.docs.map(d => d.data().slotNumber).filter((n): n is number => n != null));
-
-        // 1~maxCount 범위에서 빈 슬롯 탐색
-        let slot = 1;
-        while (slot <= maxCount && usedSlots.has(slot)) slot++;
-
-        if (slot > maxCount) {
-          isWaitlisted = true;
+        if (isDummy) {
+          assignedSlot = null;
         } else {
-          assignedSlot = slot;
+          // 트랜잭션 내부에서 실시간 confirmed 리스트 조회
+          const confirmedQuery = adminDb.collection('applications')
+            .where('sessionId', '==', sessionId)
+            .where('gender', '==', gender)
+            .where('status', '==', 'confirmed');
+          const confirmedSnap = await transaction.get(confirmedQuery);
+
+          const usedSlots = new Set(confirmedSnap.docs
+            .filter(d => {
+              const data = d.data();
+              const dIsDummy = data.id?.startsWith('dummy') || data.userId?.startsWith('user_m_') || data.userId?.startsWith('user_f_');
+              return !dIsDummy;
+            })
+            .map(d => d.data().slotNumber)
+            .filter((n): n is number => n != null));
+
+          // 1~maxCount 범위에서 빈 슬롯 탐색
+          let slot = 1;
+          while (slot <= maxCount && usedSlots.has(slot)) slot++;
+
+          if (slot > maxCount) {
+            isWaitlisted = true;
+          } else {
+            assignedSlot = slot;
+          }
         }
 
         const targetStatus = isWaitlisted ? 'waitlisted' : 'confirmed';

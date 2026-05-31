@@ -78,7 +78,14 @@ export async function POST(req: NextRequest) {
             .where('status', '==', 'confirmed');
           const confirmedSnap = await transaction.get(confirmedQuery);
 
-          const usedSlots = new Set(confirmedSnap.docs.map(d => d.data().slotNumber).filter((n): n is number => n != null));
+          const usedSlots = new Set(confirmedSnap.docs
+            .filter(d => {
+              const data = d.data();
+              const dIsDummy = data.id?.startsWith('dummy') || data.userId?.startsWith('user_m_') || data.userId?.startsWith('user_f_');
+              return !dIsDummy;
+            })
+            .map(d => d.data().slotNumber)
+            .filter((n): n is number => n != null));
 
           // 1~maxCount 범위에서 빈 슬롯 탐색
           let slot = 1;
