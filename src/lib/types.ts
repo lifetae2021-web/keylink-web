@@ -155,7 +155,8 @@ export interface Application {
   drink?: string;
   idealType?: string;
   nonIdealType?: string;
-  avoidAcquaintance?: string;
+  avoidAcquaintance?: string; // legacy - 문자열
+  avoidList?: AvoidEntry[];    // v13.0.0: 구조화된 지인 회피 목록
   etc?: string;
 
   // v8.3.8: 직업 검토 프로세스용 필드
@@ -189,7 +190,16 @@ export interface Application {
 }
 
 // ─────────────────────────────────────────────
-// Votes (투표) 컬렉션
+// AvoidEntry - 지인 회피 항목 (v13.0.0)
+// ─────────────────────────────────────────────
+export interface AvoidEntry {
+  name?: string;      // 이름
+  birthYear?: string; // 년생 (예: '97')
+  workplace?: string; // 직장 또는 거주지
+}
+
+// ─────────────────────────────────────────────
+// Votes (투표) 컴렉션
 // ─────────────────────────────────────────────
 export interface VoteChoice {
   priority: 1 | 2 | 3;

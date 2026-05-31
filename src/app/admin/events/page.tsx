@@ -414,6 +414,7 @@ export default function EventsPage() {
               idealType: d.data().idealType,
               nonIdealType: d.data().nonIdealType,
               avoidAcquaintance: d.data().avoidAcquaintance,
+              avoidList: d.data().avoidList || [],
               etc: d.data().etc,
               slotNumber: d.data().slotNumber ?? null,
               price: d.data().price,
@@ -2227,11 +2228,12 @@ ${chatLink}
                                   for (let slotNum = 1; slotNum <= maxSlots; slotNum++) {
                                     const appsInSlot = genderList.filter(a => a.slotNumber === slotNum);
                                     const realApp = appsInSlot.find(a => !isDummyApp(a));
-                                    const dummies = appsInSlot.filter(a => isDummyApp(a));
-                                    
                                     slots.push({ slotNum, app: realApp });
-                                    dummies.forEach(d => slots.push({ slotNum, app: d }));
                                   }
+                                  
+                                  const allDummies = genderList.filter(a => isDummyApp(a));
+                                  allDummies.forEach(d => slots.push({ slotNum: 0, app: d }));
+                                  
                                   slots.sort((a, b) => {
                                     const getPriority = (slot: {slotNum: number, app: any}) => {
                                       if (!slot.app) return 1; // 빈 자리는 실제 참가자와 동일한 우선순위(번호순 정렬)
@@ -2244,9 +2246,9 @@ ${chatLink}
                                     if (prioA !== prioB) return prioA - prioB;
                                     return a.slotNum - b.slotNum;
                                   });
-                                  // slotNumber 없는 confirmed 참가자 (마이그레이션 전 데이터)
+                                  // slotNumber 없는 confirmed 참가자 (더미 제외, 마이그레이션 전 데이터)
                                   const unassigned = genderList.filter(
-                                    (a) => !a.slotNumber,
+                                    (a) => !a.slotNumber && !isDummyApp(a),
                                   ).sort((a, b) => {
                                     const userA = userMap[a.userId] || {};
                                     const userB = userMap[b.userId] || {};
@@ -2330,7 +2332,7 @@ ${chatLink}
                                                   {/* 빈 슬롯 선택 드롭다운 */}
                                                   {slotMoveOpenId === app.id && (() => {
                                                     const maxSlots = isMaleSection ? (active?.maxMale ?? 0) : (active?.maxFemale ?? 0);
-                                                    const usedSlots = new Set(genderList.map((a: Application) => a.slotNumber).filter(Boolean));
+                                                    const usedSlots = new Set(genderList.filter((a: Application) => !isDummyApp(a)).map((a: Application) => a.slotNumber).filter(Boolean));
                                                     const emptySlots = Array.from({ length: maxSlots }, (_, i) => i + 1).filter(s => !usedSlots.has(s));
                                                     if (emptySlots.length === 0) return <div className="absolute top-7 left-0 z-50 bg-white border border-slate-200 rounded-xl shadow-xl px-3 py-2 text-[0.65rem] text-slate-400 whitespace-nowrap">빈 자리 없음</div>;
                                                     return (

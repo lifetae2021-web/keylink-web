@@ -63,6 +63,7 @@ export default function EventDetailPage() {
     name: '', gender: '', phone: '', // From Firebase
     instaId: '', birthDate: '', height: '', weight: '', residence: '',
     jobRole: '', workplace: '', avoidAcquaintance: '',
+    avoidList: [] as Array<{name: string; birthYear: string; workplace: string}>,
     idealType: '', nonIdealType: '',
     smoking: '', drinking: '', religion: '',
     drink: [] as string[], etc: '',
@@ -121,6 +122,9 @@ export default function EventDetailPage() {
             workplace: d.workplace || '',
             jobRole: d.jobRole || d.workplace || '',
             avoidAcquaintance: d.avoidAcquaintance || '',
+            avoidList: Array.isArray(d.avoidList) && d.avoidList.length > 0
+              ? d.avoidList
+              : [],
             idealType: d.idealType || '',
             nonIdealType: d.nonIdealType || '',
             smoking: d.smoking || '',
@@ -457,6 +461,7 @@ export default function EventDetailPage() {
         idealType: form.idealType || '',
         nonIdealType: form.nonIdealType || '',
         avoidAcquaintance: form.avoidAcquaintance || '',
+        avoidList: form.avoidList || [],
         etc: form.etc || '',
       });
 
@@ -811,7 +816,51 @@ export default function EventDetailPage() {
                       </div>
                       <div>
                         <label className="kl-label">겹치고 싶지 않은 지인 (선택)</label>
-                        <input className="kl-input" placeholder="이름 또는 연락처를 쉼표로 구분하여 입력" value={form.avoidAcquaintance} onChange={(e) => setForm(f => ({ ...f, avoidAcquaintance: e.target.value }))} />
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          {(form.avoidList || []).map((entry, idx) => (
+                            <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                              <input
+                                className="kl-input"
+                                style={{ flex: '2', minWidth: 0 }}
+                                value={entry.name || ''}
+                                onChange={e => setForm(f => ({ ...f, avoidList: f.avoidList.map((v, i) => i === idx ? { ...v, name: e.target.value } : v) }))}
+                                placeholder="이름"
+                              />
+                              <input
+                                className="kl-input"
+                                style={{ flex: '1', minWidth: 0 }}
+                                value={entry.birthYear || ''}
+                                onChange={e => setForm(f => ({ ...f, avoidList: f.avoidList.map((v, i) => i === idx ? { ...v, birthYear: e.target.value } : v) }))}
+                                placeholder="예: 95년생"
+                              />
+                              <input
+                                className="kl-input"
+                                style={{ flex: '2', minWidth: 0 }}
+                                value={entry.workplace || ''}
+                                onChange={e => setForm(f => ({ ...f, avoidList: f.avoidList.map((v, i) => i === idx ? { ...v, workplace: e.target.value } : v) }))}
+                                placeholder="직장명"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setForm(f => ({ ...f, avoidList: f.avoidList.filter((_, i) => i !== idx) }))}
+                                style={{ flexShrink: 0, background: '#FFF0EE', border: 'none', borderRadius: '8px', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#FF6F61', fontSize: '1rem' }}
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ))}
+                          <button
+                            type="button"
+                            onClick={() => setForm(f => ({ ...f, avoidList: [...(f.avoidList || []), { name: '', birthYear: '', workplace: '' }] }))}
+                            style={{ alignSelf: 'flex-start', padding: '8px 16px', borderRadius: '10px', border: '1.5px dashed var(--color-border)', background: 'transparent', color: '#FF6F61', fontWeight: '700', fontSize: '0.85rem', cursor: 'pointer' }}
+                          >
+                            + 추가
+                          </button>
+                          <p style={{ fontSize: '0.75rem', color: '#94A3B8', lineHeight: 1.5 }}>
+                            필요한 경우 이름, 직장명, 생년월일을 선택적으로 입력해 주세요.<br />
+                            <span style={{ color: '#FF6F61', fontWeight: '700' }}>성함을 정확히 입력해야 제외 참가자를 정확히 식별할 수 있습니다.</span>
+                          </p>
+                        </div>
                       </div>
 
                     </div>

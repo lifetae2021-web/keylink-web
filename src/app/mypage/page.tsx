@@ -88,6 +88,7 @@ function MyPageContent() {
   const [editForm, setEditForm] = useState<any>({
     name: '', gender: '', phone: '', instaId: '', birthDate: '', height: '', weight: '',
     residence: '', workplace: '', jobRole: '', avoidAcquaintance: '',
+    avoidList: [] as Array<{name: string; birthYear: string; workplace: string}>,
     idealType: '', nonIdealType: '', smoking: '', drinking: '', religion: '',
     drink: '', etc: '', employmentProof: '',
   });
@@ -173,6 +174,9 @@ function MyPageContent() {
             workplace: d.workplace || '',
             jobRole: d.jobRole || d.workplace || '',
             avoidAcquaintance: d.avoidAcquaintance || '',
+            avoidList: Array.isArray(d.avoidList) && d.avoidList.length > 0
+              ? d.avoidList
+              : [], // 기존 데이터는 마이그레이션 후 avoidList로 이관,
             idealType: d.idealType || '',
             nonIdealType: d.nonIdealType || '',
             smoking: d.smoking || '',
@@ -398,6 +402,7 @@ function MyPageContent() {
         employmentProof: finalVerificationUrl,
         isVerified: nextIsVerified,
         status: nextStatus,
+        avoidList: editForm.avoidList || [],
         // Explicitly clear legacy fields to prevent schema conflicts (v3.5.1 Cleanup)
         profilePhotos: deleteField(),
         facePhotos: deleteField(),
@@ -630,7 +635,57 @@ function MyPageContent() {
 
 
             <EditRow label="겹치고 싶지 않은 지인 (선택)">
-              <input style={inputStyle} value={editForm.avoidAcquaintance} onChange={e => setEditForm((p: any) => ({ ...p, avoidAcquaintance: e.target.value }))} placeholder="이름 또는 연락처" />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {(editForm.avoidList || []).map((entry: any, idx: number) => (
+                  <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <input
+                      style={{ ...inputStyle, flex: '2', minWidth: 0 }}
+                      value={entry.name || ''}
+                      onChange={e => setEditForm((p: any) => ({
+                        ...p,
+                        avoidList: p.avoidList.map((v: any, i: number) => i === idx ? { ...v, name: e.target.value } : v)
+                      }))}
+                      placeholder="이름"
+                    />
+                    <input
+                      style={{ ...inputStyle, flex: '1', minWidth: 0 }}
+                      value={entry.birthYear || ''}
+                      onChange={e => setEditForm((p: any) => ({
+                        ...p,
+                        avoidList: p.avoidList.map((v: any, i: number) => i === idx ? { ...v, birthYear: e.target.value } : v)
+                      }))}
+                      placeholder="예: 95년생"
+                    />
+                    <input
+                      style={{ ...inputStyle, flex: '2', minWidth: 0 }}
+                      value={entry.workplace || ''}
+                      onChange={e => setEditForm((p: any) => ({
+                        ...p,
+                        avoidList: p.avoidList.map((v: any, i: number) => i === idx ? { ...v, workplace: e.target.value } : v)
+                      }))}
+                      placeholder="직장명"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setEditForm((p: any) => ({ ...p, avoidList: p.avoidList.filter((_: any, i: number) => i !== idx) }))}
+                      style={{ flexShrink: 0, background: '#FFF0EE', border: 'none', borderRadius: '8px', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#FF6F61' }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setEditForm((p: any) => ({ ...p, avoidList: [...(p.avoidList || []), { name: '', birthYear: '', workplace: '' }] }))}
+                  style={{ alignSelf: 'flex-start', padding: '8px 16px', borderRadius: '10px', border: '1.5px dashed #FFDBE9', background: 'transparent', color: '#FF6F61', fontWeight: '700', fontSize: '0.85rem', cursor: 'pointer' }}
+                >
+                  + 추가
+                </button>
+                <p style={{ fontSize: '0.75rem', color: '#94A3B8', marginTop: '2px', lineHeight: 1.5 }}>
+                  필요한 경우 이름, 직장명, 생년월일을 선택적으로 입력해 주세요.<br/>
+                  <span style={{ color: '#FF6F61', fontWeight: '700' }}>성함을 정확히 입력해야 제외 참가자를 정확히 식별할 수 있습니다.</span>
+                </p>
+              </div>
             </EditRow>
 
             <EditRow label="이상형 (최대 5가지)">
@@ -912,7 +967,20 @@ function MyPageContent() {
                 <InfoRow label="인스타그램" value={userData?.instaId} />
                 <InfoRow label="거주지" value={userData?.residence} />
                 <InfoRow label="회사명/직무" value={userData?.admin_job || userData?.job || userData?.workplace} />
-                <InfoRow label="지인 회피" value={userData?.avoidAcquaintance} />
+                {userData?.avoidList && userData.avoidList.length > 0 ? (
+                  <div style={{ display: 'flex', borderBottom: '1px solid #FFF0EE', padding: '14px 0', gap: '12px' }}>
+                    <span style={{ minWidth: '90px', fontSize: '0.85rem', color: 'var(--color-text-muted)', fontWeight: '600', flexShrink: 0 }}>지인 회피</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      {userData.avoidList.map((entry: any, i: number) => (
+                        <span key={i} style={{ fontSize: '0.9rem', color: 'var(--color-text-primary)', fontWeight: '600' }}>
+                          {[entry.name, entry.birthYear ? `${entry.birthYear}년생` : '', entry.workplace].filter(Boolean).join(' · ')}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <InfoRow label="지인 회피" value={userData?.avoidAcquaintance} />
+                )}
                 <InfoRow label="음주 빈도" value={userData?.drinking} />
                 <InfoRow label="흡연 유무" value={userData?.smoking} />
                 <InfoRow label="종교" value={userData?.religion} />

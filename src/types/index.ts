@@ -59,7 +59,14 @@ export interface Booking {
   price: number;
   finalPrice?: number;
   workplace?: string; // 동일 직장 방지용
-  avoidAcquaintances?: string; // 지인 방지 (이름/연락처 등)
+  avoidAcquaintances?: string; // 지인 방지 (이름/연락처 등) - legacy
+  avoidList?: AvoidEntry[]; // v13.0.0: 구조화된 지인 회피 목록
+}
+
+export interface AvoidEntry {
+  name?: string;      // 이름
+  birthYear?: string; // 년생 (예: '97')
+  workplace?: string; // 직장 또는 거주지
   photoUrl?: string; // 신원 확인용 업로드 사진
   conversationVibe?: string; // 감성 질문 (대화의 온도 등)
   options?: string[]; // 적용된 결제 옵션

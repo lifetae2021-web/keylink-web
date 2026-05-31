@@ -8,19 +8,27 @@ admin.initializeApp({
 const db = admin.firestore();
 
 async function run() {
-  const sessions = await db.collection('sessions').where('episodeNumber', '==', 128).get();
-  if (sessions.empty) {
-    console.log('No session 128 found');
-    return;
-  }
-  const sessionDoc = sessions.docs[0];
-  console.log(`Found session 128 with ID: ${sessionDoc.id}`);
+  const sessionId = 'OLFCcBwdN8OF7JhGmYhO';
+  const snap = await db.collection('applications').where('sessionId', '==', sessionId).where('gender', '==', 'female').get();
   
-  const snap = await db.collection('applications').where('sessionId', '==', sessionDoc.id).where('gender', '==', 'female').get();
-  console.log(`Found ${snap.docs.length} female applications for session ${sessionDoc.id}`);
+  const batch = db.batch();
   snap.docs.forEach(doc => {
     const data = doc.data();
-    console.log(`ID: ${doc.id}, Name: ${data.name}, Status: ${data.status}, Slot: ${data.slotNumber}, Dummy: ${data.id?.startsWith('dummy') || data.userId?.startsWith('user_f_')}`);
+    if (data.name === '김지희') {
+      batch.update(doc.ref, { slotNumber: 2 });
+      console.log('Moved 김지희 to 2');
+    }
+    if (data.name === '김채윤') {
+      batch.update(doc.ref, { slotNumber: 3 });
+      console.log('Moved 김채윤 to 3');
+    }
+    if (data.id?.startsWith('dummy') || data.userId?.startsWith('user_f_')) {
+      batch.update(doc.ref, { slotNumber: null });
+      console.log(`Cleared slot for dummy: ${data.name}`);
+    }
   });
+  
+  await batch.commit();
+  console.log('Successfully updated slots.');
 }
 run().catch(console.error);

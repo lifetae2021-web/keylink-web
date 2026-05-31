@@ -401,7 +401,26 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
                     </button>
                   </div>
 
-                  <DetailRow label="지인 회피" value={user.avoidAcquaintance} icon={Users2} />
+                  {/* 지인 회피 */}
+                  {user.avoidList && user.avoidList.length > 0 ? (
+                    <div className="flex items-start py-4 border-b border-slate-50 group">
+                      <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center flex-shrink-0 group-hover:bg-[#FF7E7E]/10 transition-colors">
+                        <Users2 size={18} className="text-slate-400 group-hover:text-[#FF7E7E] transition-colors" />
+                      </div>
+                      <div className="ml-4 flex-1">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">지인 회피</p>
+                        <div className="space-y-0.5">
+                          {user.avoidList.map((entry: any, i: number) => (
+                            <p key={i} className="text-[0.88rem] font-bold text-slate-800">
+                              {[entry.name, entry.birthYear ? `${entry.birthYear}년생` : '', entry.workplace].filter(Boolean).join(' · ')}
+                            </p>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <DetailRow label="지인 회피" value={user.avoidAcquaintance} icon={Users2} />
+                  )}
                 </div>
 
                 {/* 3. 라이프스타일 및 취향 */}
