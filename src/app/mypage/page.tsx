@@ -63,6 +63,7 @@ function EditRow({ label, children, required }: { label: string; children: React
 
 const inputStyle: React.CSSProperties = { borderRadius: '12px', border: '1.5px solid #FFDBE9', padding: '12px 16px', fontSize: '0.95rem', fontWeight: '600', width: '100%', boxSizing: 'border-box', background: '#FFFAFA', outline: 'none', transition: 'border-color 0.2s' };
 const textAreaStyle: React.CSSProperties = { ...inputStyle, resize: 'vertical', minHeight: '80px', lineHeight: '1.6' };
+const subInputStyle: React.CSSProperties = { ...inputStyle, borderRadius: '8px', padding: '8px 10px', fontSize: '0.85rem', fontWeight: '500' };
 
 function MyPageContent() {
   const router = useRouter();
@@ -639,31 +640,31 @@ function MyPageContent() {
                 {(editForm.avoidList || []).map((entry: any, idx: number) => (
                   <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                     <input
-                      style={{ ...inputStyle, flex: '2', minWidth: 0 }}
+                      style={{ ...subInputStyle, flex: '2', minWidth: 0 }}
                       value={entry.name || ''}
                       onChange={e => setEditForm((p: any) => ({
                         ...p,
                         avoidList: p.avoidList.map((v: any, i: number) => i === idx ? { ...v, name: e.target.value } : v)
                       }))}
-                      placeholder="이름"
+                      placeholder="이름 (ex. 김민수)"
                     />
                     <input
-                      style={{ ...inputStyle, flex: '1', minWidth: 0 }}
+                      style={{ ...subInputStyle, flex: '1', minWidth: 0 }}
                       value={entry.birthYear || ''}
                       onChange={e => setEditForm((p: any) => ({
                         ...p,
                         avoidList: p.avoidList.map((v: any, i: number) => i === idx ? { ...v, birthYear: e.target.value } : v)
                       }))}
-                      placeholder="예: 95년생"
+                      placeholder="97 (년생)"
                     />
                     <input
-                      style={{ ...inputStyle, flex: '2', minWidth: 0 }}
+                      style={{ ...subInputStyle, flex: '2', minWidth: 0 }}
                       value={entry.workplace || ''}
                       onChange={e => setEditForm((p: any) => ({
                         ...p,
                         avoidList: p.avoidList.map((v: any, i: number) => i === idx ? { ...v, workplace: e.target.value } : v)
                       }))}
-                      placeholder="직장명"
+                      placeholder="직장 (ex. 토스)"
                     />
                     <button
                       type="button"

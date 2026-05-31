@@ -821,24 +821,24 @@ export default function EventDetailPage() {
                             <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                               <input
                                 className="kl-input"
-                                style={{ flex: '2', minWidth: 0 }}
+                                style={{ flex: '2', minWidth: 0, padding: '8px 10px', fontSize: '0.85rem', borderRadius: '8px', fontWeight: '500' }}
                                 value={entry.name || ''}
                                 onChange={e => setForm(f => ({ ...f, avoidList: f.avoidList.map((v, i) => i === idx ? { ...v, name: e.target.value } : v) }))}
-                                placeholder="이름"
+                                placeholder="이름 (ex. 김민수)"
                               />
                               <input
                                 className="kl-input"
-                                style={{ flex: '1', minWidth: 0 }}
+                                style={{ flex: '1', minWidth: 0, padding: '8px 10px', fontSize: '0.85rem', borderRadius: '8px', fontWeight: '500' }}
                                 value={entry.birthYear || ''}
                                 onChange={e => setForm(f => ({ ...f, avoidList: f.avoidList.map((v, i) => i === idx ? { ...v, birthYear: e.target.value } : v) }))}
-                                placeholder="예: 95년생"
+                                placeholder="97 (년생)"
                               />
                               <input
                                 className="kl-input"
-                                style={{ flex: '2', minWidth: 0 }}
+                                style={{ flex: '2', minWidth: 0, padding: '8px 10px', fontSize: '0.85rem', borderRadius: '8px', fontWeight: '500' }}
                                 value={entry.workplace || ''}
                                 onChange={e => setForm(f => ({ ...f, avoidList: f.avoidList.map((v, i) => i === idx ? { ...v, workplace: e.target.value } : v) }))}
-                                placeholder="직장명"
+                                placeholder="직장 (ex. 토스)"
                               />
                               <button
                                 type="button"
