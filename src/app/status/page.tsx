@@ -98,7 +98,7 @@ export default function StatusListPage() {
     const isConfirmed = userApps[event.id]?.status === 'confirmed';
 
     return (
-      <div key={event.id} style={{ position: 'relative', borderRadius: '32px', overflow: 'hidden' }}>
+      <div key={event.id} style={{ position: 'relative' }}>
         <div
           className="status-card"
           onClick={() => isConfirmed && router.push(`/status/${event.id}`)}
