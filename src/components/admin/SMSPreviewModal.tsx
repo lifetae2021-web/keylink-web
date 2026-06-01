@@ -110,11 +110,21 @@ const SMSPreviewModal: React.FC<SMSPreviewModalProps> = ({
   const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
   const [editForm, setEditForm] = useState({ name: '', content: '' });
   const [isSavingTemplate, setIsSavingTemplate] = useState(false);
+  const [solapiBalance, setSolapiBalance] = useState<number | null>(null);
 
   useEffect(() => {
     if (isOpen) {
       const applied = applyVariables(defaultMessage, applicant, session);
       setMessage(applied);
+
+      fetch('/api/admin/solapi/balance')
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            setSolapiBalance(data.balance);
+          }
+        })
+        .catch(console.error);
     }
   }, [defaultMessage, isOpen, applicant, session]);
 
@@ -393,6 +403,18 @@ const SMSPreviewModal: React.FC<SMSPreviewModalProps> = ({
                         }
                       })()}
                     </div>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Solapi Status</h4>
+                  <div className="bg-slate-50/50 rounded-2xl p-4 border border-slate-100 flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-600">남은 금액</span>
+                    {solapiBalance !== null ? (
+                      <span className="text-sm font-black text-blue-600">{solapiBalance.toLocaleString()}원</span>
+                    ) : (
+                      <span className="text-xs text-slate-400 animate-pulse">조회 중...</span>
+                    )}
                   </div>
                 </div>
 

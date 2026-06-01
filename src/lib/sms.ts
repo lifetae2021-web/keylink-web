@@ -79,3 +79,30 @@ export async function sendSMS({ to, text }: SendSMSParams) {
     throw error;
   }
 }
+
+/**
+ * Solapi 잔액 조회
+ */
+export async function getSolapiBalance() {
+  if (!API_KEY || !API_SECRET) {
+    throw new Error('Solapi API 설정이 누락되었습니다.');
+  }
+
+  try {
+    const response = await fetch('https://api.solapi.com/cash/v1/balance', {
+      method: 'GET',
+      headers: getHeaders(),
+      cache: 'no-store'
+    });
+
+    const result = await response.json();
+    if (!response.ok) {
+      throw new Error(result.errorMessage || 'Solapi 잔액 조회 중 오류가 발생했습니다.');
+    }
+
+    return { success: true, balance: result.balance, point: result.point };
+  } catch (error) {
+    console.error('Solapi Balance Error:', error);
+    throw error;
+  }
+}
