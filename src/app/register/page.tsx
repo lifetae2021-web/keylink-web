@@ -114,7 +114,7 @@ function RegisterForm() {
       return false;
     }
     if (!form.gender) { toast.error('성별을 선택해 주세요.'); return false; }
-    if (!form.name) { toast.error('이름을 입력해 주세요.'); return false; }
+    if (!form.name || form.name.length < 2) { toast.error('이름은 2자 이상 입력해 주세요.'); return false; }
     if (!form.birthDate) { toast.error('생년월일을 입력해 주세요.'); return false; }
     if (form.phone !== form.phoneConfirm) { toast.error('연락처 재확인이 일치하지 않습니다.'); return false; }
     return true;
