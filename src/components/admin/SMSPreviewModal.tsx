@@ -121,7 +121,8 @@ const SMSPreviewModal: React.FC<SMSPreviewModalProps> = ({
         .then(res => res.json())
         .then(data => {
           if (data.success) {
-            setSolapiBalance(data.balance);
+            const totalBalance = (data.balance || 0) + (data.point || 0);
+            setSolapiBalance(totalBalance);
           }
         })
         .catch(console.error);
