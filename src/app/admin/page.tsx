@@ -198,8 +198,9 @@ export default function AdminDashboard() {
           // v10.2.0: 성별 단가 차등, 개별 옵션 및 customized amountPaid 연동하여 정밀 합산
           // v12.0.0: 정상 출석 + 환불 대상 = 0원, 지각/노쇼 + 환불 대상 = 보증금 몰수 정상 매출
           const sessionRevenue = confirmedApps.reduce((sum, app: any) => {
-            const isRefunded = app.isRefundDeposit === true && app.attendanceStatus === 'present';
-            if (isRefunded) return sum;
+            const isRefunded = app.isManualRefund === true || app.status === 'refunded' || (app.isRefundDeposit === true && app.attendanceStatus === 'present');
+            const isRefundPending = app.status !== 'refunded' && app.isManualRefund !== true && app.isRefundDeposit === true && (app.attendanceStatus === undefined || app.attendanceStatus === null || app.attendanceStatus === 'none' || !app.attendanceStatus);
+            if (isRefunded || isRefundPending) return sum;
             if (app.amountPaid !== undefined && app.amountPaid !== null && app.amountPaid !== '') return sum + Number(app.amountPaid);
             if (app.price !== undefined && app.price !== null && app.price !== '') return sum + Number(app.price);
             const malePrice = app.maleOption === 'safe' ? 60000 : (s.malePrice || 49000);
