@@ -324,7 +324,7 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
           }
           if (summarySnap.exists()) setSummary(summarySnap.data());
 
-          const lineupAppList = appsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+          const lineupAppList = appsSnap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
           setLineupApps(lineupAppList);
 
           const lineupUserSnaps = await Promise.all(
