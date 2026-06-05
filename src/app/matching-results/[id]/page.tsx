@@ -328,14 +328,14 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
           setLineupApps(lineupAppList);
 
           const lineupUserSnaps = await Promise.all(
-            lineupAppList.map(a => getDoc(doc(db, 'users', (a as any).userId)))
+            lineupAppList.map((a: any) => getDoc(doc(db, 'users', (a as any).userId)))
           );
           const luMap: Record<string, any> = {};
-          lineupUserSnaps.forEach(snap => { if (snap.exists()) luMap[snap.id] = snap.data(); });
+          lineupUserSnaps.forEach((snap: any) => { if (snap.exists()) luMap[snap.id] = snap.data(); });
           setLineupUserMap(luMap);
 
           const pMap: Record<string, any> = {};
-          appsSnap.docs.forEach(d => {
+          appsSnap.docs.forEach((d: any) => {
             const data = d.data();
             pMap[data.userId] = { gender: data.gender, slotNumber: data.slotNumber || 0, name: data.name };
           });
