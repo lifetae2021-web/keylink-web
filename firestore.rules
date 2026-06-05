@@ -105,8 +105,8 @@ service cloud.firestore {
     // matchingSummaries (매칭 요약) 컬렉션
     // ─────────────────────────────────────
     match /matchingSummaries/{sessionId} {
-      // 승인된 결과는 로그인한 유저 누구나 읽기 가능 (본인 결과 필터링은 클라이언트에서)
-      allow read: if isSignedIn() && resource.data.status == 'approved';
+      // 승인된 결과는 누구나 읽기 가능 (본인 결과 필터링은 클라이언트에서)
+      allow read: if resource.data.status == 'approved';
       // 관리자: 모든 읽기/쓰기
       allow read, write: if isAdmin();
     }

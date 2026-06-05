@@ -392,10 +392,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   // Auth guard
   useEffect(() => {
-    if (pathname === '/admin/login') return;
+    if (pathname === '/admin/login') {
+      setAuthState('denied');
+      return;
+    }
 
     const unsub = onAuthStateChanged(auth, async (user) => {
       if (!user) {
+        setAuthState('denied');
         router.replace('/admin/login');
         return;
       }
@@ -407,10 +411,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         } else if (role === 'admin') {
           setAuthState('admin');
         } else {
+          setAuthState('denied');
           await auth.signOut();
           router.replace('/admin/login');
         }
       } catch {
+        setAuthState('denied');
         await auth.signOut();
         router.replace('/admin/login');
       }

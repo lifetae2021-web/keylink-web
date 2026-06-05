@@ -311,9 +311,9 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
             where('status', '==', 'confirmed')
           );
           const [sessionSnap, summarySnap, appsSnap] = await Promise.all([
-            getDoc(doc(db, 'sessions', sessionId)),
-            getDoc(doc(db, 'matchingSummaries', sessionId)),
-            getDocs(appsQuery),
+            getDoc(doc(db, 'sessions', sessionId)).catch(e => { console.error(e); return { exists: () => false, data: () => ({}) } as any; }),
+            getDoc(doc(db, 'matchingSummaries', sessionId)).catch(e => { console.error(e); return { exists: () => false, data: () => ({}) } as any; }),
+            getDocs(appsQuery).catch(e => { console.error(e); return { docs: [], empty: true } as any; }),
           ]);
 
           if (sessionSnap.exists()) {
