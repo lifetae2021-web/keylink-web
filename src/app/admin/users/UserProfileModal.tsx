@@ -58,6 +58,7 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
   // v11.1.0: 참가 이력 출석 관리
   const [userApps, setUserApps] = useState<any[]>([]);
   const [appsLoading, setAppsLoading] = useState(false);
+  const [sessionsMap, setSessionsMap] = useState<Record<string, any>>({});
 
   // v11.2.0: user 로컬 상태 변화를 감지하여 부모 userMap도 실시간 갱신
   // 콜백 함수를 Ref로 관리하여 dependency 목록에서 제외함으로써 무한 렌더링 루프를 원천 방지합니다.
@@ -105,7 +106,8 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
         const { collection: col, query: q, where: wh, getDocs: gd, orderBy } = await import('firebase/firestore');
         const snap = await gd(q(col(db, 'applications'), wh('userId', '==', userId)));
         const apps = snap.docs
-          .map(d => ({ id: d.id, ...d.data() }))
+          .map(d => ({ id: d.id, ...d.data() } as any))
+          .filter((a: any) => a.status === 'confirmed' || a.status === 'selected')
           .sort((a: any, b: any) => {
             const ta = a.appliedAt?.toDate?.() || new Date(0);
             const tb = b.appliedAt?.toDate?.() || new Date(0);
@@ -119,8 +121,23 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
       }
     };
 
+    const fetchSessions = async () => {
+      try {
+        const { collection: col, getDocs: gd } = await import('firebase/firestore');
+        const snap = await gd(col(db, 'sessions'));
+        const mapping: Record<string, any> = {};
+        snap.docs.forEach(d => {
+          mapping[d.id] = d.data();
+        });
+        setSessionsMap(mapping);
+      } catch (e) {
+        console.error('Error fetching sessions:', e);
+      }
+    };
+
     fetchLatest();
     fetchUserApps();
+    fetchSessions();
     setPhotoIndex(0);
     setPrivateAppPhotos([]);
   }, [initialUser, isOpen]);
@@ -532,7 +549,10 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
                     <div className="space-y-2">
                       {userApps.map((app: any) => {
                         const status = app.attendanceStatus as 'present' | 'late' | 'no-show' | null;
+                        const sessionInfo = sessionsMap[app.sessionId];
+                        const eventDate = sessionInfo?.eventDate?.toDate?.() || (sessionInfo?.eventDate ? new Date(sessionInfo.eventDate) : null);
                         const appliedDate = app.appliedAt?.toDate?.() || (app.appliedAt ? new Date(app.appliedAt) : null);
+                        const displayDate = eventDate || appliedDate;
 
                         const handleToggleStatus = async (newStatus: 'present' | 'late' | 'no-show' | null) => {
                           const uid = user.uid || user.id;
@@ -589,24 +609,19 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
                             {/* 기수/날짜 */}
                             <div className="flex-1 min-w-0">
                               <p className="text-[0.78rem] font-black text-slate-700 truncate">
-                                {app.sessionId || '기수 미상'}
+                                {(() => {
+                                  const sessionInfo = sessionsMap[app.sessionId];
+                                  if (!sessionInfo) return app.sessionId || '기수 미상';
+                                  return sessionInfo.title || `${sessionInfo.region === 'busan' ? '부산' : '창원'} ${sessionInfo.episodeNumber ? sessionInfo.episodeNumber + '기' : ''}`;
+                                })()}
                               </p>
-                              {appliedDate && (
+                              {displayDate && (
                                 <p className="text-[0.65rem] text-slate-400 font-semibold">
-                                  {appliedDate.toLocaleDateString('ko-KR', { year: '2-digit', month: 'short', day: 'numeric' })}
+                                  {eventDate ? '소개팅 일시: ' : '신청일: '}
+                                  {displayDate.toLocaleDateString('ko-KR', { year: '2-digit', month: 'short', day: 'numeric' })}
                                 </p>
                               )}
                             </div>
-
-                            {/* 현재 상태 배지 */}
-                            <span className={`text-[0.65rem] font-black px-2 py-0.5 rounded-full shrink-0 ${
-                              status === 'present' ? 'bg-emerald-500 text-white' :
-                              status === 'late'    ? 'bg-amber-500 text-white' :
-                              status === 'no-show' ? 'bg-rose-500 text-white' :
-                              'bg-slate-200 text-slate-500'
-                            }`}>
-                              {status === 'present' ? '출석' : status === 'late' ? '지각' : status === 'no-show' ? '노쇼' : '미지정'}
-                            </span>
 
                             {/* 출석/지각/노쇼 토글 버튼 */}
                             <div className="flex items-center gap-1 shrink-0">

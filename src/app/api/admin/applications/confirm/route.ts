@@ -10,7 +10,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 
 export async function POST(req: NextRequest) {
   try {
-    const { applicationId, customMessage } = await req.json();
+    const { applicationId, customMessage, price } = await req.json();
 
     if (!applicationId) {
       return NextResponse.json({ error: '신청서 ID가 필요합니다.' }, { status: 400 });
@@ -120,6 +120,10 @@ export async function POST(req: NextRequest) {
           status: targetStatus,
           updatedAt: FieldValue.serverTimestamp(),
         };
+
+        if (price !== undefined) {
+          updateData.price = price;
+        }
 
         if (targetStatus === 'confirmed') {
           updateData.paymentConfirmed = true;

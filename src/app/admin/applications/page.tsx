@@ -176,7 +176,7 @@ export default function ApplicationsPage() {
   }, [selectedEventId]);
 
   // status 변경 로직
-  const updateAppStatus = async (app: any, status: string, customMessage?: string) => {
+  const updateAppStatus = async (app: any, status: string, customMessage?: string, updatedPrice?: number) => {
     try {
       const { id: appId, sessionId, gender, status: prevStatus } = app;
       const user = userMap[app.userId] || {};
@@ -191,7 +191,8 @@ export default function ApplicationsPage() {
           },
           body: JSON.stringify({
             applicationId: appId,
-            customMessage: customMessage
+            customMessage: customMessage,
+            price: updatedPrice
           })
         });
 
@@ -229,7 +230,8 @@ export default function ApplicationsPage() {
             },
             body: JSON.stringify({
               applicationId: appId,
-              customMessage: customMessage
+              customMessage: customMessage,
+              price: updatedPrice
             })
           });
 
@@ -316,6 +318,7 @@ export default function ApplicationsPage() {
         .replace(/{{날짜}}/g, fDate)
         .replace(/{{요일}}/g, getPart('weekday') || '')
         .replace(/{{시간}}/g, fTime)
+        .replace(/{{금액}}원/g, priceWithDiscount)
         .replace(/{{금액}}/g, priceWithDiscount)
         .replace(/{{기수}}/g, sessionName)
         .replace(/{{장소}}/g, session.venue || session.location || '')
@@ -1834,8 +1837,8 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
       <SMSPreviewModal
         isOpen={previewModalOpen}
         onClose={() => setPreviewModalOpen(false)}
-        onConfirm={async (msg) => {
-          if (previewData) await updateAppStatus(previewData.app, previewData.targetStatus || 'selected', msg);
+        onConfirm={async (msg, updatedPrice) => {
+          if (previewData) await updateAppStatus(previewData.app, previewData.targetStatus || 'selected', msg, updatedPrice);
         }}
         applicant={previewData?.app}
         session={previewData?.session}

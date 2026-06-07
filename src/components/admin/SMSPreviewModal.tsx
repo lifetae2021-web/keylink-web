@@ -7,7 +7,7 @@ import { collection, query, orderBy, getDocs, doc, updateDoc } from 'firebase/fi
 interface SMSPreviewModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (message: string) => Promise<void>;
+  onConfirm: (message: string, updatedPrice?: number) => Promise<void>;
   applicant: any;
   session: any;
   defaultMessage: string;
@@ -24,7 +24,7 @@ interface Template {
 }
 
 // 변수 치환 함수
-function applyVariables(content: string, applicant: any, session: any): string {
+function applyVariables(content: string, applicant: any, session: any, customPrice?: number): string {
   const eventTime = session?.eventDate?.toDate?.() ?? new Date();
   const formatter = new Intl.DateTimeFormat('ko-KR', {
     timeZone: 'Asia/Seoul',
@@ -52,7 +52,7 @@ function applyVariables(content: string, applicant: any, session: any): string {
   const remainingDays = diffDays > 0 ? String(diffDays) : '0';
 
   // 쿠폰 할인 로직: couponDiscount 필드 기반 최종 금액과 할인 사유 계산
-  const finalPrice = applicant?.price || genderPrice;
+  const finalPrice = customPrice !== undefined ? customPrice : (applicant?.price || genderPrice);
   const couponDiscount = applicant?.couponDiscount && applicant.couponDiscount > 0 ? applicant.couponDiscount : 0;
   const isGroupDiscount = applicant?.gender === 'female' && applicant?.femaleOption === 'group';
   const discountSuffix = couponDiscount > 0
@@ -80,10 +80,13 @@ function applyVariables(content: string, applicant: any, session: any): string {
     // 구버전 호환: {{쿠폰적용여부}} 사용 시 절러주기
     const couponText = couponDiscount > 0 ? ' (쿠폰 할인 적용)' : (isGroupDiscount ? ' (동반할인 적용)' : '');
     result = result
+      .replace(/{{금액}}원/g, finalPrice.toLocaleString('ko-KR') + '원')
       .replace(/{{금액}}/g, finalPrice.toLocaleString('ko-KR'))
       .replace(/{{쿠폰적용여부}}/g, couponText);
   } else {
-    result = result.replace(/{{금액}}/g, formattedPrice);
+    result = result
+      .replace(/{{금액}}원/g, formattedPrice)
+      .replace(/{{금액}}/g, formattedPrice);
   }
 
   return result;
@@ -106,6 +109,10 @@ const SMSPreviewModal: React.FC<SMSPreviewModalProps> = ({
   const [templateOpen, setTemplateOpen] = useState(false);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
 
+  // 가격 수정 상태
+  const [currentPrice, setCurrentPrice] = useState<number>(0);
+  const [lastPriceString, setLastPriceString] = useState<string>('');
+
   // 템플릿 수정 상태
   const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
   const [editForm, setEditForm] = useState({ name: '', content: '' });
@@ -114,8 +121,28 @@ const SMSPreviewModal: React.FC<SMSPreviewModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      const applied = applyVariables(defaultMessage, applicant, session);
-      setMessage(applied);
+      if (applicant) {
+        const gp = applicant.gender === 'male'
+          ? (applicant.maleOption === 'safe' ? 60000 : (session?.malePrice || 49000))
+          : (applicant.femaleOption === 'group' ? 24000 : (session?.femalePrice || 29000));
+        const initialPrice = applicant.price || gp;
+        setCurrentPrice(initialPrice);
+
+        const couponDiscount = applicant.couponDiscount && applicant.couponDiscount > 0 ? applicant.couponDiscount : 0;
+        const isGroupDiscount = applicant.gender === 'female' && applicant.femaleOption === 'group';
+        const discountSuffix = couponDiscount > 0
+          ? ` (할인쿠폰 적용, ${couponDiscount.toLocaleString('ko-KR')}원 할인)`
+          : (isGroupDiscount ? ' (동반할인 적용)' : '');
+        const initialPriceString = `${initialPrice.toLocaleString('ko-KR')}원${discountSuffix}`;
+        setLastPriceString(initialPriceString);
+
+        const applied = applyVariables(defaultMessage, applicant, session, initialPrice);
+        setMessage(applied);
+      } else {
+        setCurrentPrice(0);
+        setLastPriceString('');
+        setMessage(defaultMessage);
+      }
 
       fetch('/api/admin/solapi/balance')
         .then(res => res.json())
@@ -129,6 +156,24 @@ const SMSPreviewModal: React.FC<SMSPreviewModalProps> = ({
     }
   }, [defaultMessage, isOpen, applicant, session]);
 
+  const handlePriceChange = (newPrice: number) => {
+    setCurrentPrice(newPrice);
+
+    if (applicant) {
+      const couponDiscount = applicant.couponDiscount && applicant.couponDiscount > 0 ? applicant.couponDiscount : 0;
+      const isGroupDiscount = applicant.gender === 'female' && applicant.femaleOption === 'group';
+      const discountSuffix = couponDiscount > 0
+        ? ` (할인쿠폰 적용, ${couponDiscount.toLocaleString('ko-KR')}원 할인)`
+        : (isGroupDiscount ? ' (동반할인 적용)' : '');
+      const newPriceString = `${newPrice.toLocaleString('ko-KR')}원${discountSuffix}`;
+
+      if (lastPriceString && message.includes(lastPriceString)) {
+        setMessage(prev => prev.replace(lastPriceString, newPriceString));
+      }
+      setLastPriceString(newPriceString);
+    }
+  };
+
   const fetchTemplates = async () => {
     setLoadingTemplates(true);
     try {
@@ -141,8 +186,21 @@ const SMSPreviewModal: React.FC<SMSPreviewModalProps> = ({
       if (autoSelectTemplateName && !message) {
         const target = fetched.find(t => t.name.includes(autoSelectTemplateName));
         if (target) {
-          const applied = applyVariables(target.content, applicant, session);
+          const gp = applicant?.gender === 'male'
+            ? (applicant?.maleOption === 'safe' ? 60000 : (session?.malePrice || 49000))
+            : (applicant?.femaleOption === 'group' ? 24000 : (session?.femalePrice || 29000));
+          const initialPrice = applicant?.price || gp;
+
+          const applied = applyVariables(target.content, applicant, session, initialPrice);
           setMessage(applied);
+
+          const couponDiscount = applicant?.couponDiscount && applicant?.couponDiscount > 0 ? applicant.couponDiscount : 0;
+          const isGroupDiscount = applicant?.gender === 'female' && applicant?.femaleOption === 'group';
+          const discountSuffix = couponDiscount > 0
+            ? ` (할인쿠폰 적용, ${couponDiscount.toLocaleString('ko-KR')}원 할인)`
+            : (isGroupDiscount ? ' (동반할인 적용)' : '');
+          const initialPriceString = `${initialPrice.toLocaleString('ko-KR')}원${discountSuffix}`;
+          setLastPriceString(initialPriceString);
         }
       }
     } catch (e) {
@@ -160,8 +218,19 @@ const SMSPreviewModal: React.FC<SMSPreviewModalProps> = ({
   }, [isOpen, autoSelectTemplateName, applicant, session]);
 
   const handleSelectTemplate = (t: Template) => {
-    const applied = applyVariables(t.content, applicant, session);
+    const applied = applyVariables(t.content, applicant, session, currentPrice);
     setMessage(applied);
+
+    if (applicant) {
+      const couponDiscount = applicant.couponDiscount && applicant.couponDiscount > 0 ? applicant.couponDiscount : 0;
+      const isGroupDiscount = applicant.gender === 'female' && applicant.femaleOption === 'group';
+      const discountSuffix = couponDiscount > 0
+        ? ` (할인쿠폰 적용, ${couponDiscount.toLocaleString('ko-KR')}원 할인)`
+        : (isGroupDiscount ? ' (동반할인 적용)' : '');
+      const currentPriceString = `${currentPrice.toLocaleString('ko-KR')}원${discountSuffix}`;
+      setLastPriceString(currentPriceString);
+    }
+
     setTemplateOpen(false);
     toast.success(`"${t.name}" 템플릿이 적용되었습니다.`);
   };
@@ -199,7 +268,7 @@ const SMSPreviewModal: React.FC<SMSPreviewModalProps> = ({
   const handleSend = async () => {
     setIsSending(true);
     try {
-      await onConfirm(message);
+      await onConfirm(message, currentPrice);
       onClose();
     } catch (error: any) {
       console.error(error);
@@ -372,37 +441,38 @@ const SMSPreviewModal: React.FC<SMSPreviewModalProps> = ({
                       <span className="text-xs font-bold truncate">{session?.venue || session?.location || '장소 미정'}</span>
                     </div>
                     <div className="flex items-start gap-3 text-slate-600">
-                      <CreditCard size={14} className="text-[#FF7E7E] mt-0.5 shrink-0" />
-                      {(() => {
-                        const gp = applicant?.gender === 'male'
-                          ? (applicant?.maleOption === 'safe' ? 60000 : (session?.malePrice || 49000))
-                          : (applicant?.femaleOption === 'group' ? 24000 : (session?.femalePrice || 29000));
-                        const fp = applicant?.price || gp;
-                        const cd = applicant?.couponDiscount && applicant.couponDiscount > 0 ? applicant.couponDiscount : 0;
-                        const isGrp = applicant?.gender === 'female' && applicant?.femaleOption === 'group';
-                        if (cd > 0) {
-                          const orig = fp + cd;
-                          return (
-                            <div className="flex flex-col gap-1">
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="text-xs text-slate-400 line-through">기존 {orig.toLocaleString('ko-KR')}원</span>
-                                <span className="text-[0.6rem] font-bold text-rose-400 bg-rose-50 px-1 rounded">-{cd.toLocaleString('ko-KR')}원</span>
-                              </div>
-                              <span className="text-sm font-black text-emerald-600">실가 {fp.toLocaleString('ko-KR')}원</span>
-                              <span className="text-[0.55rem] font-bold text-purple-500 bg-purple-50 border border-purple-100 px-1.5 py-0.5 rounded w-fit">할인쿠폰 적용</span>
+                      <CreditCard size={14} className="text-[#FF7E7E] mt-1 shrink-0" />
+                      {applicant ? (
+                        <div className="flex flex-col gap-1.5 w-full">
+                          <div className="flex items-center gap-1.5">
+                            <div className="flex items-center bg-[#F8FAFC] hover:bg-[#F1F5F9]/60 border border-slate-200 rounded-xl px-3 py-1.5 focus-within:border-[#FF7E7E] focus-within:ring-2 focus-within:ring-[#FF7E7E]/10 transition-all w-fit shadow-sm">
+                              <input
+                                type="text"
+                                value={currentPrice === 0 ? '' : currentPrice.toLocaleString('ko-KR')}
+                                onChange={(e) => {
+                                  const val = parseInt(e.target.value.replace(/[^0-9]/g, '')) || 0;
+                                  handlePriceChange(val);
+                                }}
+                                className="w-24 text-xs font-black text-slate-700 bg-transparent border-0 outline-none p-0 text-right pr-1"
+                                placeholder="0"
+                              />
+                              <span className="text-xs font-bold text-slate-400 select-none">원</span>
                             </div>
-                          );
-                        } else if (isGrp) {
-                          return (
-                            <div className="flex flex-col gap-0.5">
-                              <span className="text-xs font-bold">{fp.toLocaleString('ko-KR')}원</span>
-                              <span className="text-[0.55rem] font-bold text-blue-500 bg-blue-50 border border-blue-100 px-1.5 py-0.5 rounded w-fit">동반할인 적용</span>
-                            </div>
-                          );
-                        } else {
-                          return <span className="text-xs font-bold">{fp.toLocaleString('ko-KR')}원</span>;
-                        }
-                      })()}
+                          </div>
+                          {applicant.couponDiscount && applicant.couponDiscount > 0 ? (
+                            <span className="text-[0.55rem] font-bold text-purple-500 bg-purple-50 border border-purple-100 px-1.5 py-0.5 rounded w-fit mt-0.5">
+                              할인쿠폰 적용 (-{applicant.couponDiscount.toLocaleString('ko-KR')}원)
+                            </span>
+                          ) : null}
+                          {applicant.gender === 'female' && applicant.femaleOption === 'group' ? (
+                            <span className="text-[0.55rem] font-bold text-blue-500 bg-blue-50 border border-blue-100 px-1.5 py-0.5 rounded w-fit mt-0.5">
+                              동반할인 적용
+                            </span>
+                          ) : null}
+                        </div>
+                      ) : (
+                        <span className="text-xs font-bold">금액 정보 없음</span>
+                      )}
                     </div>
                   </div>
                 </div>

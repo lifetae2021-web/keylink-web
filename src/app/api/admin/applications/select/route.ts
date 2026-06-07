@@ -10,7 +10,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 
 export async function POST(req: NextRequest) {
   try {
-    const { applicationId, customMessage } = await req.json();
+    const { applicationId, customMessage, price } = await req.json();
 
     if (!applicationId) {
       return NextResponse.json({ error: '신청서 ID가 필요합니다.' }, { status: 400 });
@@ -75,10 +75,14 @@ export async function POST(req: NextRequest) {
         }
 
         // 선발(selected)은 카운터 변경 없이 상태만 업데이트 (카운터는 confirmed 시에만 변경)
-        transaction.update(appRef, {
+        const updateData: any = {
           status: 'selected',
           updatedAt: FieldValue.serverTimestamp(),
-        });
+        };
+        if (price !== undefined) {
+          updateData.price = price;
+        }
+        transaction.update(appRef, updateData);
       });
     } catch (txnError: any) {
       console.error('Selection Transaction Failed:', txnError);
