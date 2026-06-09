@@ -686,7 +686,7 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
   }, [baseFiltered, userMap, searchQuery, filterGender, ageFilter, statusFilter, sortConfig]);
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-400 pb-20">
+    <div className="space-y-6 animate-in fade-in duration-400 pb-8">
       <div className="flex flex-col gap-1">
         <h1 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight">신청 관리</h1>
         <p className="text-slate-400 text-sm font-bold">참가 신청 및 선발 현황을 관리합니다.</p>
@@ -950,7 +950,7 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
 
           {/* Main Content Table (Light Premium Theme - Clean White) */}
           <div className="hidden md:block mx-auto w-full h-fit" style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 16, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-            <div className="overflow-auto h-fit max-h-[75vh]">
+            <div className="overflow-auto h-fit max-h-[calc(100vh-140px)]">
               <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' }}>
                 <thead className="hidden md:table-header-group sticky top-0 z-20" style={{ background: '#F8FAFC' }}>
                   <tr style={{ borderBottom: '1px solid #E2E8F0' }}>
