@@ -255,6 +255,9 @@ export default function EventsPage() {
         const counts: Record<string, { male: number; female: number }> = {};
         snap.docs.forEach((d) => {
           const data = d.data();
+          const isDummy = d.id.startsWith('dummy') || data.userId?.startsWith('user_m_') || data.userId?.startsWith('user_f_') || data.isDummy === true;
+          if (isDummy) return;
+          
           const sid = data.sessionId;
           if (!sid) return;
           if (!counts[sid]) counts[sid] = { male: 0, female: 0 };

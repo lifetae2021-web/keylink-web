@@ -99,7 +99,9 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // 취소 시: 해제되는 슬롯 번호 파악 + 대기자 1번 조회 (트랜잭션 락 보호)
+      let slotsToShift: { id: string; newSlotNumber: number }[] = [];
+
+      // 취소 시: 해제되는 슬롯 번호 파악 + 대기자 1번 조회 + 슬롯 자동 당김 처리 (트랜잭션 락 보호)
       if ((status === 'cancelled' || status === 'applied') && (prevStatus === 'confirmed' || prevStatus === 'waitlisted')) {
         freedSlot = appData.slotNumber ?? null;
 
@@ -117,6 +119,41 @@ export async function POST(req: NextRequest) {
               return at - bt;
             });
             waitlistPromotee = { id: sorted[0].id };
+          }
+
+          // 대기자가 없을 때만 슬롯 자동 당김 검토
+          if (!waitlistPromotee) {
+            const allAppsQuery = adminDb.collection('applications')
+              .where('sessionId', '==', sessionId);
+            const allAppsSnap = await transaction.get(allAppsQuery);
+
+            const hasSentSecondSms = allAppsSnap.docs.some(d => {
+              const data = d.data();
+              return data.secondSmsSentAt != null;
+            });
+
+            // 2차 안내문자가 발송되지 않은 경우에만 자동 당김 실행
+            if (!hasSentSecondSms) {
+              const confirmedAppsOfSameGender = allAppsSnap.docs
+                .filter(d => {
+                  const data = d.data();
+                  const dIsDummy = d.id.startsWith('dummy') || data.userId?.startsWith('user_m_') || data.userId?.startsWith('user_f_');
+                  // 같은 성별, 참가확정 상태이면서 현재 변경 중인 신청서가 아닌 것
+                  return data.gender === gender && data.status === 'confirmed' && d.id !== applicationId && !dIsDummy;
+                })
+                .map(d => ({
+                  id: d.id,
+                  slotNumber: d.data().slotNumber
+                }))
+                .filter(a => a.slotNumber != null && a.slotNumber > freedSlot!);
+
+              confirmedAppsOfSameGender.forEach(app => {
+                slotsToShift.push({
+                  id: app.id,
+                  newSlotNumber: app.slotNumber - 1
+                });
+              });
+            }
           }
         }
       }
@@ -139,6 +176,15 @@ export async function POST(req: NextRequest) {
       }
 
       transaction.update(appRef, updateData);
+
+      // 슬롯 당김 일괄 적용
+      slotsToShift.forEach(item => {
+        const ref = adminDb.collection('applications').doc(item.id);
+        transaction.update(ref, {
+          slotNumber: item.newSlotNumber,
+          updatedAt: FieldValue.serverTimestamp()
+        });
+      });
 
       const counterField = gender === 'male' ? 'currentMale' : 'currentFemale';
       if (isIncreasing) {
