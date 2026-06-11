@@ -24,7 +24,11 @@ export async function POST(req: NextRequest) {
       .where('status', '==', 'confirmed')
       .get();
 
-    const toMigrate = snap.docs.filter(d => d.data().slotNumber == null);
+    const toMigrate = snap.docs.filter(d => {
+      const data = d.data();
+      const isDummy = d.id.startsWith('dummy') || data.userId?.startsWith('user_m_') || data.userId?.startsWith('user_f_') || data.isDummy === true;
+      return data.slotNumber == null && !isDummy;
+    });
 
     // 세션+성별 조합별로 그룹핑
     const groups: Record<string, { docId: string; appliedAt: FirebaseFirestore.Timestamp }[]> = {};

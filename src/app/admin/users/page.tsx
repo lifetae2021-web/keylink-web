@@ -101,6 +101,68 @@ export default function UsersPage() {
   const [smsTargetUser, setSmsTargetUser] = useState<any | null>(null);
   const [generalSmsTargetUser, setGeneralSmsTargetUser] = useState<any | null>(null);
 
+  // 기수 수동 등록 모달
+  const [sessionRegistrationTarget, setSessionRegistrationTarget] = useState<any | null>(null);
+  const [sessions, setSessions] = useState<any[]>([]);
+  const [isFetchingSessions, setIsFetchingSessions] = useState(false);
+  const [selectedSessionId, setSelectedSessionId] = useState('');
+  const [registrationStatus, setRegistrationStatus] = useState<'applied' | 'selected' | 'confirmed'>('selected');
+  const [isRegistering, setIsRegistering] = useState(false);
+
+  useEffect(() => {
+    if (!sessionRegistrationTarget) return;
+    const fetchSessions = async () => {
+      setIsFetchingSessions(true);
+      try {
+        const q = query(collection(db, 'sessions'), orderBy('eventDate', 'desc'));
+        const snap = await getDocs(q);
+        const list = snap.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setSessions(list);
+        if (list.length > 0) {
+          setSelectedSessionId(list[0].id);
+        }
+      } catch (e) {
+        toast.error('기수 목록을 불러오지 못했습니다.');
+      } finally {
+        setIsFetchingSessions(false);
+      }
+    };
+    fetchSessions();
+  }, [sessionRegistrationTarget]);
+
+  const handleManualRegister = async () => {
+    if (!sessionRegistrationTarget || !selectedSessionId || !registrationStatus) {
+      return toast.error('모든 정보를 채워주세요.');
+    }
+    setIsRegistering(true);
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      const res = await fetch('/api/admin/applications/create-manual', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          userId: sessionRegistrationTarget.id,
+          sessionId: selectedSessionId,
+          status: registrationStatus
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '참여 등록에 실패했습니다.');
+      toast.success('기수 참여 등록이 성공적으로 처리되었습니다.');
+      setSessionRegistrationTarget(null);
+    } catch (e: any) {
+      toast.error(e.message || '오류가 발생했습니다.');
+    } finally {
+      setIsRegistering(false);
+    }
+  };
+
   // 쿠폰 발송 모달
   const [couponTarget, setCouponTarget] = useState<any | null>(null);
   const [couponTitle, setCouponTitle] = useState('웰컴 가입 축하 쿠폰');
@@ -920,6 +982,14 @@ export default function UsersPage() {
                             >
                               <Ticket size={14} />
                             </button>
+                            <button
+                              onClick={() => setSessionRegistrationTarget(u)}
+                              className="flex items-center justify-center rounded-lg hover:bg-emerald-50 transition-all text-slate-400 hover:text-emerald-500"
+                              style={{ width: 32, height: 32 }}
+                              title="기수 참여 등록"
+                            >
+                              <UserPlus size={14} />
+                            </button>
                             {isSuperAdmin && u.role !== 'admin' && u.role !== 'super_admin' ? (
                             <button
                               onClick={() => setDeleteTarget(u)}
@@ -1040,6 +1110,35 @@ export default function UsersPage() {
                           </div>
                         </div>
                       </div>
+
+                      {/* Status & Role in Top Right */}
+                      <div className="flex flex-col items-end gap-1.5 shrink-0 ml-auto">
+                        <span
+                          onClick={() => currentStatus === 'pending' && setSmsTargetUser(u)}
+                          className="inline-flex items-center gap-1"
+                          style={{ fontSize: '0.65rem', fontWeight: 800, padding: '3px 8px', borderRadius: 12, color: sc.color, background: sc.bg }}
+                        >
+                          {sc.label}
+                          {currentStatus === 'pending' && u.profileRequestSent && <CheckCircle size={10} />}
+                        </span>
+                        {u.role === 'super_admin' ? (
+                          <span className="inline-flex items-center gap-1 text-[9px] font-black px-2 py-0.5 rounded-full" style={{ background: 'linear-gradient(135deg, #FCD34D, #F59E0B)', color: '#78350F', border: '1px solid #FCD34D' }}>
+                            👑 최고관리자
+                          </span>
+                        ) : !isSuperAdmin && u.role === 'admin' ? (
+                          <span className="inline-flex items-center gap-1 text-[9px] font-black px-2 py-0.5 rounded-full" style={{ background: '#F8FAFC', color: '#475569', border: '1px solid #E2E8F0' }}>
+                            관리자
+                          </span>
+                        ) : (
+                          <select
+                            value={u.role || '일반회원'}
+                            onChange={(e) => updateRole(u.id, e.target.value)}
+                            className="bg-white border border-slate-200 rounded-lg text-[0.68rem] px-1.5 py-0.5 text-slate-700 font-bold outline-none shadow-sm cursor-pointer"
+                          >
+                            {(isSuperAdmin ? ALL_ROLES : ADMIN_ROLES).map(r => <option key={r} value={r}>{r}</option>)}
+                          </select>
+                        )}
+                      </div>
                     </div>
 
                     {/* Middle Row: Metrics & Job Review */}
@@ -1089,70 +1188,48 @@ export default function UsersPage() {
                       </label>
                     </div>
 
-                    {/* Bottom Row: Status & Action Buttons */}
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex flex-col gap-1.5">
-                        <span
-                          onClick={() => currentStatus === 'pending' && setSmsTargetUser(u)}
-                          className="inline-flex items-center gap-1.5"
-                          style={{ fontSize: '0.75rem', fontWeight: 700, padding: '5px 12px', borderRadius: 20, color: sc.color, background: sc.bg }}
-                        >
-                          {sc.label}
-                          {currentStatus === 'pending' && u.profileRequestSent && <CheckCircle size={10} />}
-                        </span>
-                        {u.role === 'super_admin' ? (
-                          <span className="inline-flex items-center gap-1 text-xs font-black px-3 py-1.5 rounded-full" style={{ background: 'linear-gradient(135deg, #FCD34D, #F59E0B)', color: '#78350F', border: '1px solid #FCD34D' }}>
-                            👑 최고관리자
-                          </span>
-                        ) : !isSuperAdmin && u.role === 'admin' ? (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-1 rounded-full" style={{ background: '#F8FAFC', color: '#475569', border: '1px solid #E2E8F0' }}>
-                            관리자
-                          </span>
-                        ) : (
-                        <select
-                          value={u.role || '일반회원'}
-                          onChange={(e) => updateRole(u.id, e.target.value)}
-                          className="bg-white border border-slate-200 rounded-lg text-[0.7rem] px-2 py-1.5 text-slate-700 font-bold outline-none shadow-sm"
-                        >
-                          {(isSuperAdmin ? ALL_ROLES : ADMIN_ROLES).map(r => <option key={r} value={r}>{r}</option>)}
-                        </select>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          onClick={() => setGeneralSmsTargetUser(u)}
-                          className="flex items-center justify-center rounded-xl bg-amber-50 text-amber-600 border border-amber-100"
-                          style={{ width: 40, height: 40 }}
-                          title="문자 발송"
-                        >
-                          <MessageSquare size={18} />
-                        </button>
-                        <button
-                          onClick={() => setCouponTarget(u)}
-                          className="flex items-center justify-center rounded-xl bg-sky-50 text-sky-600 border border-sky-100"
-                          style={{ width: 40, height: 40 }}
-                        >
-                          <Ticket size={18} />
-                        </button>
-                        <button
-                          onClick={() => reject(u.id, u.name)}
-                          className="flex items-center justify-center rounded-xl bg-rose-50 text-rose-600 border border-rose-100"
-                          style={{ width: 40, height: 40 }}
-                        >
-                          <XCircle size={18} />
-                        </button>
-                        {isSuperAdmin && u.role !== 'admin' && u.role !== 'super_admin' ? (
-                        <button
-                          onClick={() => setDeleteTarget(u)}
-                          className="flex items-center justify-center rounded-xl bg-slate-50 text-slate-400 border border-slate-100"
-                          style={{ width: 40, height: 40 }}
-                          title="회원 삭제 (최고관리자 전용)"
-                        >
-                          <Trash2 size={18} />
-                        </button>
-                        ) : null}
-                      </div>
+                    {/* Action Buttons Row */}
+                    <div className="flex items-center justify-end gap-1.5 pt-3 border-t border-slate-100">
+                      <button
+                        onClick={() => setGeneralSmsTargetUser(u)}
+                        className="flex items-center justify-center rounded-xl bg-amber-50 text-amber-600 border border-amber-100 transition-all hover:bg-amber-100"
+                        style={{ width: 38, height: 38 }}
+                        title="문자 발송"
+                      >
+                        <MessageSquare size={16} />
+                      </button>
+                      <button
+                        onClick={() => setCouponTarget(u)}
+                        className="flex items-center justify-center rounded-xl bg-sky-50 text-sky-600 border border-sky-100 transition-all hover:bg-sky-100"
+                        style={{ width: 38, height: 38 }}
+                      >
+                        <Ticket size={16} />
+                      </button>
+                      <button
+                        onClick={() => setSessionRegistrationTarget(u)}
+                        className="flex items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 transition-all hover:bg-emerald-100"
+                        style={{ width: 38, height: 38 }}
+                        title="기수 참여 등록"
+                      >
+                        <UserPlus size={16} />
+                      </button>
+                      <button
+                        onClick={() => reject(u.id, u.name)}
+                        className="flex items-center justify-center rounded-xl bg-rose-50 text-rose-600 border border-rose-100 transition-all hover:bg-rose-100"
+                        style={{ width: 38, height: 38 }}
+                      >
+                        <XCircle size={16} />
+                      </button>
+                      {isSuperAdmin && u.role !== 'admin' && u.role !== 'super_admin' ? (
+                      <button
+                        onClick={() => setDeleteTarget(u)}
+                        className="flex items-center justify-center rounded-xl bg-slate-50 text-slate-400 border border-slate-100 transition-all hover:bg-slate-200"
+                        style={{ width: 38, height: 38 }}
+                        title="회원 삭제 (최고관리자 전용)"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                      ) : null}
                     </div>
                   </div>
                 );
@@ -1442,6 +1519,131 @@ export default function UsersPage() {
         </div>
       )}
 
+      {/* 기수 참여 등록 모달 */}
+      {sessionRegistrationTarget && (
+        <div
+          onClick={() => !isRegistering && setSessionRegistrationTarget(null)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ background: '#fff', borderRadius: '24px', width: '100%', maxWidth: '440px', padding: '32px' }}
+            className="shadow-2xl animate-in zoom-in-95 duration-200"
+          >
+            <div className="flex justify-between items-center mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-500">
+                  <UserPlus size={20} />
+                </div>
+                <div>
+                  <h2 className="text-lg font-black text-slate-900 leading-tight">기수 참여 등록</h2>
+                  <p className="text-xs font-bold text-slate-400 mt-0.5">회원을 특정 기수에 직접 등록합니다.</p>
+                </div>
+              </div>
+              <button onClick={() => !isRegistering && setSessionRegistrationTarget(null)} className="p-2 text-slate-400 hover:bg-slate-100 rounded-full transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="space-y-6">
+              {/* 대상 회원 정보 */}
+              <div>
+                <label className="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2">대상 회원</label>
+                <div className="flex items-center gap-3 bg-slate-50 px-4 py-3 rounded-2xl border border-slate-100">
+                  <div className="w-9 h-9 rounded-full bg-slate-200 overflow-hidden flex items-center justify-center text-xs font-black text-slate-500 shrink-0">
+                    {(() => {
+                      const photo = sessionRegistrationTarget.photos?.[0] || sessionRegistrationTarget.profilePhotos?.[0] || sessionRegistrationTarget.facePhotos?.[0] || sessionRegistrationTarget.bodyPhotos?.[0] || sessionRegistrationTarget.photoUrl;
+                      return photo ? (
+                        <img src={photo} className="w-full h-full object-cover" />
+                      ) : (
+                        sessionRegistrationTarget.name?.[0] || 'U'
+                      );
+                    })()}
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-extrabold text-slate-800">{sessionRegistrationTarget.name}</span>
+                    <span className="text-[10px] font-bold text-slate-400">{sessionRegistrationTarget.phone || '연락처 없음'}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 기수 선택 */}
+              <div>
+                <label className="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2">기수 선택</label>
+                {isFetchingSessions ? (
+                  <div className="flex items-center justify-center py-3 bg-slate-50 rounded-2xl border border-slate-100">
+                    <Loader2 className="animate-spin text-slate-300" size={20} />
+                  </div>
+                ) : sessions.length === 0 ? (
+                  <div className="py-3 px-4 text-sm font-bold text-slate-400 bg-slate-50 rounded-2xl border border-slate-100">
+                    등록 가능한 기수가 없습니다.
+                  </div>
+                ) : (
+                  <select
+                    value={selectedSessionId}
+                    onChange={e => setSelectedSessionId(e.target.value)}
+                    className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-emerald-400 outline-none transition-colors text-sm font-semibold text-slate-700 bg-white cursor-pointer shadow-sm"
+                  >
+                    {sessions.map(s => {
+                      const dateStr = s.eventDate ? format(s.eventDate.toDate ? s.eventDate.toDate() : new Date(s.eventDate), 'MM/dd') : '';
+                      const regionLabel = s.region === 'busan' ? '부산' : '창원';
+                      const epLabel = s.episodeNumber ? `${s.episodeNumber}기` : '';
+                      return (
+                        <option key={s.id} value={s.id}>
+                          [{regionLabel} {epLabel}] {s.title || `${dateStr} 소개팅`} ({dateStr})
+                        </option>
+                      );
+                    })}
+                  </select>
+                )}
+              </div>
+
+              {/* 등록 상태 선택 */}
+              <div>
+                <label className="block text-xs font-black text-slate-400 uppercase tracking-wider mb-3">등록 상태 설정</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { key: 'applied', label: '검토 중', desc: '일반 신청' },
+                    { key: 'selected', label: '선발 대기', desc: '입금 안내' },
+                    { key: 'confirmed', label: '참가 확정', desc: '슬롯 배정' }
+                  ].map(item => (
+                    <button
+                      key={item.key}
+                      onClick={() => setRegistrationStatus(item.key as any)}
+                      className={`flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all text-center ${
+                        registrationStatus === item.key
+                          ? 'border-emerald-500 bg-emerald-50/50 text-emerald-700'
+                          : 'border-slate-100 bg-white text-slate-500 hover:border-slate-200'
+                      }`}
+                    >
+                      <span className="text-xs font-extrabold">{item.label}</span>
+                      <span className="text-[9px] font-bold opacity-60 mt-1">{item.desc}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px', marginTop: '32px' }}>
+              <button
+                onClick={() => setSessionRegistrationTarget(null)}
+                disabled={isRegistering}
+                style={{ flex: 1, padding: '14px', borderRadius: '12px', border: '1px solid #E2E8F0', background: '#F8FAFC', color: '#64748B', fontWeight: '700', fontSize: '0.9rem', cursor: 'pointer' }}
+              >
+                취소
+              </button>
+              <button
+                onClick={handleManualRegister}
+                disabled={isRegistering || sessions.length === 0 || !selectedSessionId}
+                className="disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:bg-emerald-600 shadow-lg shadow-emerald-500/20"
+                style={{ flex: 1, padding: '14px', borderRadius: '12px', border: 'none', background: '#10B981', color: '#fff', fontWeight: '800', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+              >
+                {isRegistering ? <><Loader2 size={16} className="animate-spin" /> 등록 중...</> : '등록하기'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* 보유 쿠폰 현황 모달 */}
       {selectedCouponUser && (
         <div
