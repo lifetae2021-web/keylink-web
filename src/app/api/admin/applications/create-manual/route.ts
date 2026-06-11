@@ -138,6 +138,7 @@ export async function POST(req: NextRequest) {
         status,
         paymentConfirmed: status === 'confirmed',
         slotNumber: assignedSlot,
+        appliedAt: FieldValue.serverTimestamp(),
         createdAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
       };
