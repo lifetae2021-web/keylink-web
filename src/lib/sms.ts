@@ -100,7 +100,9 @@ export async function getSolapiBalance() {
       throw new Error(result.errorMessage || 'Solapi 잔액 조회 중 오류가 발생했습니다.');
     }
 
-    return { success: true, balance: result.balance, point: result.point };
+    // v디버그: 솔라피 API 원본 응답 전체 반환하여 실제 필드명 확인
+    console.log('[Solapi Balance Raw]', JSON.stringify(result));
+    return { success: true, balance: result.balance, point: result.point, _raw: result };
   } catch (error) {
     console.error('Solapi Balance Error:', error);
     throw error;

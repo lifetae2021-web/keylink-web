@@ -118,6 +118,7 @@ const SMSPreviewModal: React.FC<SMSPreviewModalProps> = ({
   const [editForm, setEditForm] = useState({ name: '', content: '' });
   const [isSavingTemplate, setIsSavingTemplate] = useState(false);
   const [solapiBalance, setSolapiBalance] = useState<number | null>(null);
+  const [solapiPoint, setSolapiPoint] = useState<number | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -147,9 +148,10 @@ const SMSPreviewModal: React.FC<SMSPreviewModalProps> = ({
       fetch('/api/admin/solapi/balance')
         .then(res => res.json())
         .then(data => {
+          console.log('[Solapi Balance Response]', data);
           if (data.success) {
-            const totalBalance = (data.balance || 0) + (data.point || 0);
-            setSolapiBalance(totalBalance);
+            setSolapiBalance(data.balance ?? 0);
+            setSolapiPoint(data.point ?? 0);
           }
         })
         .catch(console.error);
@@ -479,12 +481,28 @@ const SMSPreviewModal: React.FC<SMSPreviewModalProps> = ({
 
                 <div className="space-y-3">
                   <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Solapi Status</h4>
-                  <div className="bg-slate-50/50 rounded-2xl p-4 border border-slate-100 flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-600">남은 금액</span>
-                    {solapiBalance !== null ? (
-                      <span className="text-sm font-black text-blue-600">{solapiBalance.toLocaleString()}원</span>
-                    ) : (
-                      <span className="text-xs text-slate-400 animate-pulse">조회 중...</span>
+                  <div className="bg-slate-50/50 rounded-2xl p-4 border border-slate-100 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-600">잔액 (현금)</span>
+                      {solapiBalance !== null ? (
+                        <span className="text-sm font-black text-blue-600">{solapiBalance.toLocaleString()}원</span>
+                      ) : (
+                        <span className="text-xs text-slate-400 animate-pulse">조회 중...</span>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-500">포인트</span>
+                      {solapiPoint !== null ? (
+                        <span className="text-xs font-bold text-emerald-600">{solapiPoint.toLocaleString()}원</span>
+                      ) : (
+                        <span className="text-xs text-slate-400 animate-pulse">조회 중...</span>
+                      )}
+                    </div>
+                    {solapiBalance !== null && solapiPoint !== null && (
+                      <div className="flex items-center justify-between border-t border-slate-100 pt-2">
+                        <span className="text-xs font-black text-slate-600">합계</span>
+                        <span className="text-sm font-black text-indigo-600">{(solapiBalance + solapiPoint).toLocaleString()}원</span>
+                      </div>
                     )}
                   </div>
                 </div>
