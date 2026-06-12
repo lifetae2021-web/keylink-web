@@ -42,6 +42,26 @@ export default function MatchingDrawer({ session, onClose }: Props) {
     };
   }, [votes, participantMap]);
 
+  const { isAnyVoteModifiable, remainingMinutes } = useMemo(() => {
+    let anyModifiable = false;
+    let maxRemaining = 0;
+    const now = Date.now();
+    votes.forEach(v => {
+      if (v.userId && v.userId.startsWith('system_')) return;
+      if (!v.submittedAt) return;
+      const timeSinceSubmit = now - v.submittedAt.getTime();
+      const remaining = 20 * 60 * 1000 - timeSinceSubmit;
+      if (remaining > 0) {
+        anyModifiable = true;
+        if (remaining > maxRemaining) maxRemaining = remaining;
+      }
+    });
+    return { 
+      isAnyVoteModifiable: anyModifiable, 
+      remainingMinutes: Math.ceil(maxRemaining / 1000 / 60) 
+    };
+  }, [votes]);
+
   const receivedVotesMap = useMemo(() => {
     const map: Record<string, number> = {};
     Object.keys(participantMap).forEach(uid => { map[uid] = 0; });
@@ -345,12 +365,17 @@ export default function MatchingDrawer({ session, onClose }: Props) {
                   </p>
                   <button
                     onClick={runAlgorithm}
-                    disabled={running || sessionStatus === 'completed'}
+                    disabled={running || sessionStatus === 'completed' || isAnyVoteModifiable}
                     className="flex items-center gap-2 px-6 py-3 bg-[#FF6F61] hover:bg-[#ff5746] text-white rounded-xl font-black text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-orange-100"
                   >
                     <Play size={16} fill="white" />
                     {running ? '알고리즘 실행 중...' : '매칭 알고리즘 실행'}
                   </button>
+                  {isAnyVoteModifiable && (
+                    <p className="mt-3 text-rose-500 text-xs font-semibold flex items-center gap-1.5">
+                      <AlertCircle size={14} /> 아직 수정 가능한 투표가 있습니다. ({remainingMinutes}분 후 실행 가능)
+                    </p>
+                  )}
                   {sessionStatus === 'completed' && (
                     <p className="mt-3 text-emerald-600 text-xs font-semibold flex items-center gap-1.5">
                       <CheckCircle2 size={14} /> 이 기수는 이미 최종 승인되었습니다.
@@ -359,15 +384,20 @@ export default function MatchingDrawer({ session, onClose }: Props) {
                 </div>
               ) : (
                 sessionStatus !== 'completed' && (
-                  <div className="flex justify-end">
+                  <div className="flex flex-col items-end">
                     <button
                       onClick={runAlgorithm}
-                      disabled={running}
-                      className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-500 text-xs font-bold rounded-xl hover:bg-slate-50 transition-colors shadow-sm disabled:opacity-50"
+                      disabled={running || isAnyVoteModifiable}
+                      className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-500 text-xs font-bold rounded-xl hover:bg-slate-50 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <RefreshCw size={12} className={running ? 'animate-spin' : ''} />
                       {running ? '실행 중...' : '투표매칭 재실행'}
                     </button>
+                    {isAnyVoteModifiable && (
+                      <p className="text-rose-500 text-[10px] font-bold mt-1 text-right flex items-center gap-1">
+                        <AlertCircle size={10} /> 자율 수정 마감 대기 중 ({remainingMinutes}분 후 가능)
+                      </p>
+                    )}
                   </div>
                 )
               )}
