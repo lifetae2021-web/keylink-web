@@ -32,7 +32,7 @@ export default function ResultListPage() {
       try {
         const q = query(
           collection(db, 'sessions'),
-          where('status', '==', 'completed'),
+          where('status', 'in', ['voting', 'matching', 'completed']),
           orderBy('episodeNumber', 'desc')
         );
         const snap = await getDocs(q);
@@ -169,12 +169,26 @@ export default function ResultListPage() {
                     {/* Header: Label & Episode */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
                       <div style={{ display: 'flex', gap: '6px' }}>
-                        <span style={{ 
-                          padding: '6px 14px', borderRadius: '100px', border: '1px solid #eee',
-                          color: '#666', fontSize: '0.75rem', fontWeight: '700', background: '#f9f9f9'
-                        }}>
-                          행사 종료
-                        </span>
+                        {result.status === 'completed' ? (
+                          <span style={{ 
+                            padding: '6px 14px', borderRadius: '100px', border: '1px solid #eee',
+                            color: '#666', fontSize: '0.75rem', fontWeight: '700', background: '#f9f9f9'
+                          }}>
+                            행사 종료
+                          </span>
+                        ) : (
+                          <span style={{ 
+                            padding: '6px 14px', borderRadius: '100px', border: '1px solid rgba(16, 185, 129, 0.2)',
+                            color: '#059669', fontSize: '0.75rem', fontWeight: '800', background: 'rgba(16, 185, 129, 0.05)',
+                            display: 'flex', alignItems: 'center', gap: '6px',
+                            boxShadow: '0 0 10px rgba(16, 185, 129, 0.1)'
+                          }}>
+                            <span className="animate-pulse" style={{ 
+                              width: '6px', height: '6px', borderRadius: '50%', background: '#10B981'
+                            }} />
+                            매칭 진행 중...
+                          </span>
+                        )}
                       </div>
                       <span style={{ fontSize: '0.9rem', fontWeight: '900', color: '#FF6F61', background: 'rgba(255,111,97,0.1)', padding: '6px 14px', borderRadius: '10px' }}>
                         {result.episodeNumber}기
@@ -194,9 +208,17 @@ export default function ResultListPage() {
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#111' }}>
                         <div style={{ width: '36px', height: '36px', borderRadius: '100px', background: 'rgba(255,111,97,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <Heart size={18} color="#FF6F61" fill="#FF6F61" />
+                          {result.status === 'completed' ? (
+                            <Heart size={18} color="#FF6F61" fill="#FF6F61" />
+                          ) : (
+                            <Sparkles size={18} color="#FF6F61" />
+                          )}
                         </div>
-                        <span style={{ fontSize: '1.2rem', fontWeight: '900' }}>{(result as any).matchedCount !== null && (result as any).matchedCount !== undefined ? `${(result as any).matchedCount}쌍 탄생` : `${result.episodeNumber % 5 + 3}쌍 탄생`}</span>
+                        <span style={{ fontSize: '1.2rem', fontWeight: '900' }}>
+                          {result.status === 'completed' 
+                            ? ((result as any).matchedCount !== null && (result as any).matchedCount !== undefined ? `${(result as any).matchedCount}쌍 탄생` : `${result.episodeNumber % 5 + 3}쌍 탄생`)
+                            : '결과 집계 중'}
+                        </span>
                       </div>
                     </div>
 
@@ -209,8 +231,10 @@ export default function ResultListPage() {
                         <BarChart3 size={20} />
                         <span style={{ fontSize: '0.95rem', fontWeight: '800' }}>최종 매칭률</span>
                       </div>
-                      <span style={{ fontSize: '1.5rem', fontWeight: '900', color: '#FF6F61', letterSpacing: '-0.02em' }}>
-                        {(result as any).matchedRate !== null && (result as any).matchedRate !== undefined ? `${(result as any).matchedRate}%` : `${result.episodeNumber % 25 + 60}%`}
+                      <span style={{ fontSize: '1.5rem', fontWeight: '900', color: result.status === 'completed' ? '#FF6F61' : '#999', letterSpacing: '-0.02em' }}>
+                        {result.status === 'completed' 
+                          ? ((result as any).matchedRate !== null && (result as any).matchedRate !== undefined ? `${(result as any).matchedRate}%` : `${result.episodeNumber % 25 + 60}%`)
+                          : '-%'}
                       </span>
                     </div>
                   </div>
