@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { auth, db } from '@/lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 import UserProfileModal from '../users/UserProfileModal';
 import {
   collection, getDocs, doc, query, where, orderBy, Timestamp, getDoc, onSnapshot, writeBatch, increment, limit
@@ -48,7 +49,21 @@ const Skeleton = ({ className }: { className?: string }) => (
 );
 
 export default function ApplicationsPage() {
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [events, setEvents] = useState<any[]>([]);
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, async (user) => {
+      if (!user) return;
+      try {
+        const snap = await getDoc(doc(db, 'users', user.uid));
+        setIsSuperAdmin(snap.exists() && snap.data()?.role === 'super_admin');
+      } catch (e) {
+        console.error('Error fetching user role:', e);
+      }
+    });
+    return () => unsub();
+  }, []);
   const [selectedEventId, setSelectedEventId] = useState<string>('');
   const [applications, setApplications] = useState<any[]>([]);
   const [userMap, setUserMap] = useState<Record<string, any>>({});
@@ -826,7 +841,7 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                   <ChevronDown size={10} />
                 </div>
               </div>
-              {selectedAppIds.length > 0 && (
+              {isSuperAdmin && selectedAppIds.length > 0 && (
                 <button
                   onClick={handleBulkDelete}
                   className="flex items-center gap-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-600 transition-all shadow-sm animate-in fade-in zoom-in-95 duration-200"
@@ -981,7 +996,7 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                     <th style={{ padding: '14px 10px', textAlign: 'center', fontSize: '0.7rem', fontWeight: 700, color: '#94A3B8' }}>거주지</th>
                     <th style={{ padding: '14px 10px', textAlign: 'center', fontSize: '0.7rem', fontWeight: 700, color: '#94A3B8' }}>상태</th>
                     <th style={{ padding: '14px 16px', textAlign: 'center', fontSize: '0.7rem', fontWeight: 700, color: '#94A3B8' }}>선발 관리</th>
-                    <th style={{ padding: '14px 10px', textAlign: 'center', fontSize: '0.7rem', fontWeight: 700, color: '#94A3B8' }}>삭제</th>
+                    {isSuperAdmin && <th style={{ padding: '14px 10px', textAlign: 'center', fontSize: '0.7rem', fontWeight: 700, color: '#94A3B8' }}>삭제</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -1302,18 +1317,20 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                               </div>
                             </td>
 
-                            <td style={{ padding: '0 10px', textAlign: 'center' }}>
-                              <button 
-                                onClick={() => {
-                                  if (window.confirm('정말 삭제하시겠습니까?')) {
-                                    updateAppStatus(app, 'cancelled');
-                                  }
-                                }} 
-                                className="p-2 text-slate-300 hover:text-rose-500 transition-colors"
-                              >
-                                <Trash2 size={16} />
-                              </button>
-                            </td>
+                            {isSuperAdmin && (
+                              <td style={{ padding: '0 10px', textAlign: 'center' }}>
+                                <button 
+                                  onClick={() => {
+                                    if (window.confirm('정말 삭제하시겠습니까?')) {
+                                      updateAppStatus(app, 'cancelled');
+                                    }
+                                  }} 
+                                  className="p-2 text-slate-300 hover:text-rose-500 transition-colors"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              </td>
+                            )}
                           </tr>
 
                           {/* Mobile View: Card Row */}
@@ -1405,16 +1422,18 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                                           <Info size={10} /> 연령부적합
                                         </div>
                                       )}
-                                      <button 
-                                        onClick={() => {
-                                          if (window.confirm('정말 삭제하시겠습니까?')) {
-                                            updateAppStatus(app, 'cancelled');
-                                          }
-                                        }}
-                                        className="text-slate-300 hover:text-rose-500 mt-1"
-                                      >
-                                        <Trash2 size={18} />
-                                      </button>
+                                      {isSuperAdmin && (
+                                        <button 
+                                          onClick={() => {
+                                            if (window.confirm('정말 삭제하시겠습니까?')) {
+                                              updateAppStatus(app, 'cancelled');
+                                            }
+                                          }}
+                                          className="text-slate-300 hover:text-rose-500 mt-1"
+                                        >
+                                          <Trash2 size={18} />
+                                        </button>
+                                      )}
                                     </div>
                                 </div>
 
@@ -1829,7 +1848,7 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
         </>
       ) : (
         /* 1:1 매칭 신청 관리 탭 */
-        <AdminApplicationList />
+        <AdminApplicationList isSuperAdmin={isSuperAdmin} />
       )}
 
       {/* Modal Overlay */}

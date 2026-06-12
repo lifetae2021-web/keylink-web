@@ -15,7 +15,7 @@ const STATUS_MAP: Record<string, { label: string, color: string, bg: string }> =
   success: { label: '매칭성공', color: '#10B981', bg: '#ECFDF5' },
 };
 
-export default function AdminApplicationList() {
+export default function AdminApplicationList({ isSuperAdmin }: { isSuperAdmin?: boolean }) {
 // ... (rest of the state and handlers remain the same)
   const [applications, setApplications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -156,7 +156,7 @@ export default function AdminApplicationList() {
                 <th style={{ padding: '14px 16px', textAlign: 'left', fontSize: '0.7rem', fontWeight: 700, color: '#94A3B8' }}>직업/거주지</th>
                 <th style={{ padding: '14px 16px', textAlign: 'left', fontSize: '0.7rem', fontWeight: 700, color: '#94A3B8' }}>연락처</th>
                 <th style={{ padding: '14px 16px', textAlign: 'center', fontSize: '0.7rem', fontWeight: 700, color: '#94A3B8' }}>진행 상태</th>
-                <th style={{ padding: '14px 16px', textAlign: 'center', fontSize: '0.7rem', fontWeight: 700, color: '#94A3B8' }}>삭제</th>
+                {isSuperAdmin && <th style={{ padding: '14px 16px', textAlign: 'center', fontSize: '0.7rem', fontWeight: 700, color: '#94A3B8' }}>삭제</th>}
               </tr>
             </thead>
             <tbody>
@@ -241,14 +241,16 @@ export default function AdminApplicationList() {
                             )}
                           </div>
                         </td>
-                        <td className="p-4 text-center">
-                          <button 
-                            onClick={() => handleDelete(app.id, app.name)}
-                            className="p-2 text-slate-300 hover:text-rose-500 transition-colors"
-                          >
-                            <Trash2 size={18} />
-                          </button>
-                        </td>
+                        {isSuperAdmin && (
+                          <td className="p-4 text-center">
+                            <button 
+                              onClick={() => handleDelete(app.id, app.name)}
+                              className="p-2 text-slate-300 hover:text-rose-500 transition-colors"
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          </td>
+                        )}
                       </tr>
 
                       {/* Mobile View Card */}
@@ -292,12 +294,14 @@ export default function AdminApplicationList() {
                                 }}>
                                   {statusInfo.label}
                                 </span>
-                                <button 
-                                  onClick={() => handleDelete(app.id, app.name)}
-                                  className="text-slate-300 hover:text-rose-500 p-1"
-                                >
-                                  <Trash2 size={20} />
-                                </button>
+                                {isSuperAdmin && (
+                                  <button 
+                                    onClick={() => handleDelete(app.id, app.name)}
+                                    className="text-slate-300 hover:text-rose-500 p-1"
+                                  >
+                                    <Trash2 size={20} />
+                                  </button>
+                                )}
                               </div>
                             </div>
 

@@ -20,8 +20,8 @@ export async function POST(req: NextRequest) {
     const userSnap = await adminDb.doc(`users/${decodedToken.uid}`).get();
 
     const callerRole = userSnap.data()?.role;
-    if (!userSnap.exists || (callerRole !== 'admin' && callerRole !== 'super_admin')) {
-      return NextResponse.json({ error: '관리자 권한이 없습니다.' }, { status: 403 });
+    if (!userSnap.exists || callerRole !== 'super_admin') {
+      return NextResponse.json({ error: '최고관리자만 참가자를 삭제할 수 있습니다.' }, { status: 403 });
     }
 
     const appPreSnap = await adminDb.doc(`applications/${applicationId}`).get();

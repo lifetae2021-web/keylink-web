@@ -717,7 +717,7 @@ export default function EventsPage() {
   const renderSmsButton = (app: any, isDesktop = false) => {
     const isSent = !!app.secondSmsSentAt;
     const sentTimeStr = isSent
-      ? (app.secondSmsSentAt.toDate ? app.secondSmsSentAt.toDate() : new Date(app.secondSmsSentAt)).toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+      ? format(app.secondSmsSentAt?.toDate ? app.secondSmsSentAt.toDate() : new Date(app.secondSmsSentAt), 'HH:mm')
       : '';
       
     const handleSmsClick = () => {
@@ -733,10 +733,10 @@ export default function EventsPage() {
       return (
         <button
           onClick={handleSmsClick}
-          className={`shrink-0 p-2 rounded-xl border transition-all relative ${isSent ? "bg-slate-50 text-slate-400 border-slate-200" : "bg-white border-[#FF7E7E]/30 text-[#FF6F61] hover:bg-orange-50 hover:border-[#FF7E7E]"}`}
-          title={isSent ? `최근 발송: ${sentTimeStr}` : "문자 보내기"}
+          className={`shrink-0 p-2 rounded-xl border transition-all relative ${isSent ? "bg-orange-50 text-[#FF6F61] border-orange-200 shadow-sm" : "bg-white border-[#FF7E7E]/30 text-[#FF6F61] hover:bg-orange-50 hover:border-[#FF7E7E]"}`}
+          title={isSent ? `발송 완료 시간: ${sentTimeStr}` : "문자 보내기"}
         >
-          <MessageSquare size={13} />
+          <MessageSquare size={13} fill={isSent ? "currentColor" : "none"} />
           {isSent && (
             <div className="absolute -top-1.5 -right-1.5 bg-white rounded-full">
               <CheckCircle2 size={13} className="text-green-500" fill="white" />
@@ -749,10 +749,10 @@ export default function EventsPage() {
     return (
       <button
         onClick={handleSmsClick}
-        className={`p-1.5 rounded-lg border relative ${isSent ? "bg-slate-50 text-slate-400 border-slate-200" : "bg-orange-50 text-[#FF6F61] border-orange-100"}`}
-        title={isSent ? `최근 발송: ${sentTimeStr}` : "문자 보내기"}
+        className={`p-1.5 rounded-lg border relative ${isSent ? "bg-orange-50 text-[#FF6F61] border-orange-200 shadow-sm" : "bg-white border-[#FF7E7E]/30 text-[#FF6F61] hover:bg-orange-50 hover:border-[#FF7E7E]"}`}
+        title={isSent ? `발송 완료 시간: ${sentTimeStr}` : "문자 보내기"}
       >
-        <MessageSquare size={13} />
+        <MessageSquare size={13} fill={isSent ? "currentColor" : "none"} />
         {isSent && (
           <div className="absolute -top-1.5 -right-1.5 bg-white rounded-full">
             <CheckCircle2 size={13} className="text-green-500" fill="white" />
