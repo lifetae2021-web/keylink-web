@@ -430,8 +430,11 @@ export default function EventsPage() {
               displayJob: d.data().displayJob,
               isJobReviewed: d.data().isJobReviewed,
               attended: d.data().attended ?? false,
-            attendanceStatus: d.data().attendanceStatus ?? null,
-            isRefundDeposit: d.data().isRefundDeposit ?? false,
+              attendanceStatus: d.data().attendanceStatus ?? null,
+              isRefundDeposit: d.data().isRefundDeposit ?? false,
+              secondSmsSentAt: d.data().secondSmsSentAt ?? null,
+              maleOption: d.data().maleOption ?? null,
+              couponDiscount: d.data().couponDiscount ?? 0,
             }) as Application,
         );
         list.sort((a, b) => a.appliedAt.getTime() - b.appliedAt.getTime());
