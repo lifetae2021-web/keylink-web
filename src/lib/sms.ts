@@ -100,9 +100,11 @@ export async function getSolapiBalance() {
       throw new Error(result.errorMessage || 'Solapi 잔액 조회 중 오류가 발생했습니다.');
     }
 
-    // v디버그: 솔라피 API 원본 응답 전체 반환하여 실제 필드명 확인
+    // 솔라피 API는 부가세(10%) 제외 금액 반환 → 솔라피 사이트 표시값과 일치시키려면 ×10/9 필요
     console.log('[Solapi Balance Raw]', JSON.stringify(result));
-    return { success: true, balance: result.balance, point: result.point, _raw: result };
+    const balanceWithVat = Math.round((result.balance ?? 0) * (10 / 9) * 100) / 100;
+    const pointWithVat = Math.round((result.point ?? 0) * (10 / 9) * 100) / 100;
+    return { success: true, balance: balanceWithVat, point: pointWithVat, _raw: result };
   } catch (error) {
     console.error('Solapi Balance Error:', error);
     throw error;
