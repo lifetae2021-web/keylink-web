@@ -67,6 +67,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '회원의 성별 정보가 올바르지 않습니다.' }, { status: 400 });
     }
 
+    // 🌑 다크템플러: super_admin 계정은 시스템 전체에서 투명인간 처리
+    const isDarkTemplar = userData.role === 'super_admin';
+
     // 나이 계산
     let age = userData.age;
     if (!age && userData.birthDate) {
@@ -93,7 +96,8 @@ export async function POST(req: NextRequest) {
       let assignedSlot: number | null = null;
       
       if (status === 'confirmed') {
-        if (isDummy) {
+        // 🌑 다크템플러는 슬롯 배정 & 정원 카운트 완전 제외
+        if (isDummy || isDarkTemplar) {
           assignedSlot = null;
         } else {
           const maxCount = gender === 'male' ? (freshSessionData.maxMale || 8) : (freshSessionData.maxFemale || 8);
@@ -109,7 +113,7 @@ export async function POST(req: NextRequest) {
             confirmedSnap.docs
               .filter(d => {
                 const data = d.data();
-                const dIsDummy = d.id.startsWith('dummy') || data.userId?.startsWith('user_m_') || data.userId?.startsWith('user_f_');
+                const dIsDummy = d.id.startsWith('dummy') || data.userId?.startsWith('user_m_') || data.userId?.startsWith('user_f_') || data.isDarkTemplar === true;
                 return !dIsDummy;
               })
               .map(d => d.data().slotNumber)
@@ -119,12 +123,11 @@ export async function POST(req: NextRequest) {
           let slot = 1;
           while (slot <= maxCount && usedSlots.has(slot)) slot++;
 
-          // 정원 초과 시에도 수동 참여 등록은 허용하되, 슬롯 번호는 부여하지 않거나 대기 상태로 처리하지 않고 그대로 기입 가능하게 maxCount를 넘어가더라도 슬롯 부여
           assignedSlot = slot;
         }
       }
 
-      const newAppData = {
+      const newAppData: any = {
         userId,
         sessionId,
         name: userData.name || '참가자',
@@ -143,11 +146,16 @@ export async function POST(req: NextRequest) {
         updatedAt: FieldValue.serverTimestamp(),
       };
 
+      // 🌑 다크템플러 플래그 부여
+      if (isDarkTemplar) {
+        newAppData.isDarkTemplar = true;
+      }
+
       // 신청서 등록
       transaction.set(newAppRef, newAppData);
 
-      // 확정 상태일 경우 세션 카운터 +1
-      if (status === 'confirmed') {
+      // 확정 상태일 경우 세션 카운터 +1 (다크템플러는 정원 카운트 제외)
+      if (status === 'confirmed' && !isDarkTemplar) {
         const counterField = gender === 'male' ? 'currentMale' : 'currentFemale';
         transaction.update(sessionDocRef, {
           [counterField]: FieldValue.increment(1),

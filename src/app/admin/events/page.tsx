@@ -439,6 +439,7 @@ export default function EventsPage() {
               attendanceStatus: d.data().attendanceStatus ?? null,
               isRefundDeposit: d.data().isRefundDeposit ?? false,
               isManualRefund: d.data().isManualRefund ?? false,
+              isDarkTemplar: d.data().isDarkTemplar ?? false,
               secondSmsSentAt: d.data().secondSmsSentAt ?? null,
               maleOption: d.data().maleOption ?? null,
               couponDiscount: d.data().couponDiscount ?? 0,
@@ -2427,6 +2428,9 @@ ${chatLink}
                                                   </span>
                                                   {(app.userId?.startsWith("user_m_") || app.userId?.startsWith("user_f_") || app.id?.startsWith("dummy_")) && (
                                                     <span className="text-[0.6rem] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 border border-slate-200 shrink-0">더미</span>
+                                                  )}
+                                                  {app.isDarkTemplar && (
+                                                    <span className="text-[0.6rem] font-bold px-1.5 py-0.5 rounded bg-violet-100 text-violet-700 border border-violet-300 shrink-0" title="다크템플러 - 매칭 제외">🌑다크</span>
                                                   )}
                                                   {(() => {
                                                     const u = userMap[app.userId];

@@ -82,8 +82,10 @@ export async function POST(req: NextRequest) {
 
         const userSnapForApp = await transaction.get(adminDb.doc(`users/${appData.userId}`));
         const isDummy = appData.id?.startsWith('dummy') || appData.userId?.startsWith('user_m_') || appData.userId?.startsWith('user_f_') || userSnapForApp.data()?.isDummy === true;
+        // 🌑 다크템플러: super_admin은 슬롯 배정 & 정원 카운트 제외
+        const isDarkTemplar = userSnapForApp.data()?.role === 'super_admin' || appData.isDarkTemplar === true;
 
-        if (isDummy) {
+        if (isDummy || isDarkTemplar) {
           assignedSlot = null;
         } else {
           // 트랜잭션 내부에서 실시간 confirmed 리스트 조회
@@ -97,7 +99,7 @@ export async function POST(req: NextRequest) {
             .filter(d => {
               const data = d.data();
               const dIsDummy = data.id?.startsWith('dummy') || data.userId?.startsWith('user_m_') || data.userId?.startsWith('user_f_');
-              return !dIsDummy;
+              return !dIsDummy && data.isDarkTemplar !== true;
             })
             .map(d => d.data().slotNumber)
             .filter((n): n is number => n != null));
@@ -133,7 +135,7 @@ export async function POST(req: NextRequest) {
         transaction.update(appRef, updateData);
 
         const counterField = gender === 'male' ? 'currentMale' : 'currentFemale';
-        if (isIncreasing) {
+        if (isIncreasing && !isDarkTemplar) {
           transaction.update(sessionRef, {
             [counterField]: FieldValue.increment(1),
             updatedAt: FieldValue.serverTimestamp(),

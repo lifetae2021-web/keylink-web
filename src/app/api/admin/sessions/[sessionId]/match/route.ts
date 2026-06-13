@@ -48,10 +48,23 @@ export async function POST(
         .get()
     ]);
 
+    // 🌑 다크템플러 제외: isDarkTemplar 플래그가 있는 참가자는 신청서 목록에서 시작부터 필터링
+    const darkTemplarUserIds = new Set(
+      appsSnap.docs
+        .filter(doc => doc.data().isDarkTemplar === true)
+        .map(doc => doc.data().userId)
+    );
+
     const participants: { id: string; gender: string }[] = appsSnap.docs
-      .filter((doc: FirebaseFirestore.QueryDocumentSnapshot) => doc.data().attended === true)
+      .filter((doc: FirebaseFirestore.QueryDocumentSnapshot) =>
+        doc.data().attended === true && !doc.data().isDarkTemplar
+      )
       .map((doc: FirebaseFirestore.QueryDocumentSnapshot) => ({ id: doc.data().userId, gender: doc.data().gender }));
-    const votes: Vote[] = votesSnap.docs.map((doc: FirebaseFirestore.QueryDocumentSnapshot) => doc.data() as Vote);
+    
+    // 다크템플러의 투표 데이터도 제외
+    const votes: Vote[] = votesSnap.docs
+      .filter(doc => !darkTemplarUserIds.has(doc.data().userId))
+      .map((doc: FirebaseFirestore.QueryDocumentSnapshot) => doc.data() as Vote);
 
     if (participants.length === 0 || votes.length === 0) {
       return NextResponse.json({ error: 'No data to match' }, { status: 400 });
