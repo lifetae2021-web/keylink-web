@@ -324,6 +324,7 @@ function DetailModal({
                         defaultValue={app.adminMemo || ''}
                         placeholder="이유 등 메모 (엔터 저장)"
                         onKeyDown={(e) => {
+                          if (e.nativeEvent.isComposing) return;
                           if (e.key === 'Enter') {
                             e.currentTarget.blur();
                           }
