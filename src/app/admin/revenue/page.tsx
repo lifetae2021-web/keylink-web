@@ -79,6 +79,21 @@ function DetailModal({
     }
   };
 
+  const handleUpdateMemo = async (app: any, newMemo: string) => {
+    if (app.adminMemo === newMemo) return;
+    try {
+      const appRef = doc(db, 'applications', app.id);
+      await updateDoc(appRef, {
+        adminMemo: newMemo,
+        updatedAt: new Date(),
+      });
+      toast.success('메모가 저장되었습니다.');
+    } catch (e) {
+      console.error('Error updating memo:', e);
+      toast.error('메모 저장 중 오류가 발생했습니다.');
+    }
+  };
+
   const rows = useMemo(() => {
     const confirmed = applications.filter(app =>
       app.status === 'confirmed' || app.paymentConfirmed === true
@@ -185,7 +200,7 @@ function DetailModal({
             <table className="w-full text-left text-nowrap">
               <thead className="sticky top-0 bg-slate-50/90 backdrop-blur-sm">
                 <tr>
-                  {['기수', '참여자', '성별', '옵션', '결제 금액', '상태'].map(h => (
+                  {['기수', '참여자', '성별', '옵션', '결제 금액', '상태', '메모'].map(h => (
                     <th key={h} className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100">
                       {h}
                     </th>
@@ -303,14 +318,28 @@ function DetailModal({
                         </div>
                       )}
                     </td>
+                    <td className="px-6 py-4 min-w-[200px]">
+                      <input
+                        type="text"
+                        defaultValue={app.adminMemo || ''}
+                        placeholder="이유 등 메모 (엔터 저장)"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.currentTarget.blur();
+                          }
+                        }}
+                        onBlur={(e) => handleUpdateMemo(app, e.currentTarget.value)}
+                        className="w-full px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded-md focus:outline-none focus:border-[#FF7E7E] focus:ring-1 focus:ring-[#FF7E7E]/20 transition-all placeholder:text-slate-300"
+                      />
+                    </td>
                   </tr>
                 ))}
               </tbody>
               <tfoot className="bg-slate-50 border-t-2 border-slate-100">
                 <tr>
-                  <td colSpan={5} className="px-6 py-4 text-sm font-black text-slate-500">합계</td>
+                  <td colSpan={4} className="px-6 py-4 text-sm font-black text-slate-500 text-right pr-8">합계</td>
                   <td className="px-6 py-4 text-lg font-black text-[#FF7E7E]">₩{total.toLocaleString()}</td>
-                  <td />
+                  <td colSpan={2} />
                 </tr>
               </tfoot>
             </table>
