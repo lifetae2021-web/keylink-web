@@ -1035,16 +1035,24 @@ ${user.name || app.name || "참가자"}님은 ${fDate} ${fDay} ${fTime} 소개�
     }
   };
 
-  // v12.0.0: 보증금 환불 대상 토글
+  // v12.0.0: 보증금 환불 대상 토글 (수동 환불과 동기화)
   const handleToggleRefundDeposit = async (app: Application) => {
     try {
       const { doc: docRef, updateDoc } = await import('firebase/firestore');
-      const next = !app.isRefundDeposit;
-      await updateDoc(docRef(db, 'applications', app.id), {
+      const isCurrentlyRefunded = app.isRefundDeposit || app.isManualRefund;
+      const next = !isCurrentlyRefunded;
+      
+      const updateData: any = {
         isRefundDeposit: next,
         updatedAt: new Date(),
-      });
-      toast.success(next ? '💸 보증금 환불 대상으로 설정되었습니다.' : '보증금 환불 대상이 해제되었습니다.');
+      };
+      
+      if (!next) {
+        updateData.isManualRefund = null; // 환불 해제 시 수동 환불 플래그도 초기화
+      }
+      
+      await updateDoc(docRef(db, 'applications', app.id), updateData);
+      toast.success(next ? '💸 환불 대상으로 설정되었습니다.' : '환불 대상이 해제되었습니다.');
     } catch (e) {
       console.error('Error toggling refund deposit:', e);
       toast.error('처리 중 오류가 발생했습니다.');
@@ -2428,8 +2436,8 @@ ${chatLink}
                                                 >노쇼</button>
                                                 <button
                                                   onClick={() => handleToggleRefundDeposit(app)}
-                                                  title={app.isRefundDeposit ? '환불 대상 해제' : '보증금 환불 대상으로 설정'}
-                                                  className={`px-2 py-0.5 rounded-lg text-[0.6rem] font-bold transition-all ${app.isRefundDeposit ? "bg-sky-500 text-white shadow-sm" : "text-slate-400 hover:text-slate-600 hover:bg-white"}`}
+                                                  title={(app.isRefundDeposit || app.isManualRefund) ? '환불 대상 해제' : '환불 대상으로 설정'}
+                                                  className={`px-2 py-0.5 rounded-lg text-[0.6rem] font-bold transition-all ${(app.isRefundDeposit || app.isManualRefund) ? "bg-sky-500 text-white shadow-sm" : "text-slate-400 hover:text-slate-600 hover:bg-white"}`}
                                                 >💸</button>
                                               </div>
                                             </div>
