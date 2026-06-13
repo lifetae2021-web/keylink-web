@@ -187,6 +187,12 @@ export interface Application {
 
   // 수동 입금 금액 조정 (관리자가 개별 입금액을 직접 지정할 때 사용)
   amountPaid?: number | string | null;
+
+  // v12.1.0: 수동 환불 여부
+  isManualRefund?: boolean;
+
+  // 🌑 다크템플러 모드 (super_admin이 라이브 QA 목적으로 참가 시)
+  isDarkTemplar?: boolean;
 }
 
 // ─────────────────────────────────────────────
