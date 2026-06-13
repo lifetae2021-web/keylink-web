@@ -152,6 +152,11 @@ export default function EventsPage() {
 
   // Instagram Feed Modal State
   const [instagramModalOpen, setInstagramModalOpen] = useState(false);
+  
+  // 음료 서빙 관리 모달 상태
+  const [drinkModalOpen, setDrinkModalOpen] = useState(false);
+  const [selectedDrinkCode, setSelectedDrinkCode] = useState<string>('');
+
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -2180,11 +2185,28 @@ ${chatLink}
                               return (
                                 <div className="flex items-center flex-wrap gap-2 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100">
                                   <span className="text-[0.7rem] font-bold text-blue-700 mr-1">음료 요약</span>
-                                  {codes.map(c => (
-                                    <span key={c} className="text-xs font-black text-blue-600 bg-white px-2 py-0.5 rounded shadow-sm">
-                                      {c} {drinkCounts[c]}
-                                    </span>
-                                  ))}
+                                  {codes.map(c => {
+                                    const totalForDrink = realParticipants.filter(p => {
+                                      if (p.attendanceStatus === 'no-show') return false;
+                                      const code = getDrinkCode(p.drink);
+                                      return code && code.split(', ').includes(c);
+                                    });
+                                    const servedCount = totalForDrink.filter(p => (p as any).drinkServed).length;
+                                    const isAllServed = totalForDrink.length > 0 && servedCount === totalForDrink.length;
+
+                                    return (
+                                      <button 
+                                        key={c} 
+                                        onClick={() => { setSelectedDrinkCode(c); setDrinkModalOpen(true); }}
+                                        className={`flex items-center gap-1 text-xs font-black px-2 py-0.5 rounded shadow-sm transition-all hover:-translate-y-0.5 ${
+                                          isAllServed ? 'bg-green-500 text-white shadow-green-200' : 'bg-white text-blue-600 shadow-blue-100 hover:bg-blue-50'
+                                        }`}
+                                      >
+                                        {c} {drinkCounts[c]}
+                                        {isAllServed && <CheckCircle2 size={12} className="ml-0.5" />}
+                                      </button>
+                                    );
+                                  })}
                                 </div>
                               );
                             })()}
@@ -3187,6 +3209,84 @@ ${chatLink}
                 className="flex-1 h-12 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 disabled:opacity-50"
               >
                 {isConfigSaving ? "저장 중..." : "설정 저장하기"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Drink Distribution Modal */}
+      {drinkModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+          <div className="bg-white rounded-[24px] shadow-2xl w-full max-w-sm overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
+              <h3 className="font-extrabold text-slate-800 text-lg flex items-center gap-2">
+                ☕ 음료 서빙 <span className="text-sm font-black text-blue-600 bg-blue-50 px-2.5 py-1 rounded-lg ml-1">{selectedDrinkCode}</span>
+              </h3>
+              <button onClick={() => setDrinkModalOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors bg-slate-50 hover:bg-slate-100 p-1.5 rounded-full">
+                <X size={20} strokeWidth={2.5} />
+              </button>
+            </div>
+            <div className="p-4 overflow-y-auto max-h-[60vh]">
+              {(() => {
+                const realParticipants = participants.filter(app => {
+                  const user = userMap[app.userId] || {};
+                  return !(app.id?.startsWith('dummy') || app.userId?.startsWith('user_m_') || app.userId?.startsWith('user_f_') || user.isDummy === true);
+                });
+
+                const targetParticipants = realParticipants.filter(p => {
+                  if (p.attendanceStatus === 'no-show') return false;
+                  const code = getDrinkCode(p.drink);
+                  return code && code.split(', ').includes(selectedDrinkCode);
+                });
+                
+                if (targetParticipants.length === 0) return <p className="text-center text-slate-500 py-8 font-medium">해당 음료를 주문한 참가자가 없습니다.</p>;
+                
+                targetParticipants.sort((a, b) => {
+                  if (a.gender !== b.gender) return a.gender === 'male' ? -1 : 1;
+                  return (a.slotNumber || 0) - (b.slotNumber || 0);
+                });
+                
+                return (
+                  <div className="space-y-2.5">
+                    {targetParticipants.map(p => {
+                      const isServed = (p as any).drinkServed === true;
+                      const genderLabel = p.gender === 'male' ? '남성' : '여성';
+                      const genderColor = p.gender === 'male' ? 'text-blue-700 bg-blue-100' : 'text-pink-700 bg-pink-100';
+                      return (
+                        <div key={p.id} className={`flex items-center justify-between p-3.5 rounded-2xl border-2 transition-all duration-200 ${isServed ? 'bg-slate-50 border-transparent shadow-inner' : 'bg-white border-slate-100 shadow-sm'}`}>
+                          <div className="flex items-center gap-3">
+                            <span className={`text-xs font-black px-2.5 py-1 rounded-lg ${isServed ? 'text-slate-400 bg-slate-200' : genderColor}`}>
+                              {genderLabel} {p.slotNumber}호
+                            </span>
+                            <span className={`text-sm font-bold ${isServed ? 'text-slate-400 line-through' : 'text-slate-800'}`}>
+                              {p.name || '이름 없음'}
+                            </span>
+                          </div>
+                          <button
+                            onClick={async () => {
+                              try {
+                                await updateDoc(doc(db, 'applications', p.id), { drinkServed: !isServed });
+                              } catch (e) {
+                                toast.error('상태 변경 실패');
+                              }
+                            }}
+                            className={`p-2 rounded-full transition-all duration-200 transform hover:scale-110 active:scale-95 ${isServed ? 'bg-green-500 text-white shadow-md shadow-green-200' : 'bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-slate-600'}`}
+                          >
+                            <CheckCircle2 size={22} strokeWidth={isServed ? 3 : 2} />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
+            <div className="p-4 border-t border-slate-100 bg-slate-50">
+              <button
+                onClick={() => setDrinkModalOpen(false)}
+                className="w-full py-3.5 bg-slate-800 text-white font-extrabold text-[0.95rem] rounded-xl hover:bg-slate-700 transition-colors shadow-lg shadow-slate-200"
+              >
+                닫기
               </button>
             </div>
           </div>
