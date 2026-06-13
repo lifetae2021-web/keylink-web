@@ -438,6 +438,7 @@ export default function EventsPage() {
               attended: d.data().attended ?? false,
               attendanceStatus: d.data().attendanceStatus ?? null,
               isRefundDeposit: d.data().isRefundDeposit ?? false,
+              isManualRefund: d.data().isManualRefund ?? false,
               secondSmsSentAt: d.data().secondSmsSentAt ?? null,
               maleOption: d.data().maleOption ?? null,
               couponDiscount: d.data().couponDiscount ?? 0,
