@@ -441,6 +441,7 @@ export default function EventsPage() {
               secondSmsSentAt: d.data().secondSmsSentAt ?? null,
               maleOption: d.data().maleOption ?? null,
               couponDiscount: d.data().couponDiscount ?? 0,
+              drinkServed: d.data().drinkServed ?? false,
             }) as Application,
         );
         list.sort((a, b) => a.appliedAt.getTime() - b.appliedAt.getTime());
