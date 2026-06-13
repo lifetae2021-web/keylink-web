@@ -571,6 +571,18 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
 
                             // users 카운트 조정
                             const userRef = docRef(db, 'users', uid);
+                            const isParticipating = (s: string | null) => s === 'present' || s === 'late';
+                            const wasParticipating = isParticipating(prev);
+                            const willParticipate = isParticipating(nextStatus);
+
+                            if (willParticipate && !wasParticipating) {
+                              await upd(userRef, { participationCount: increment(1) });
+                              setUser((u: any) => ({ ...u, participationCount: (u.participationCount || 0) + 1 }));
+                            } else if (!willParticipate && wasParticipating) {
+                              await upd(userRef, { participationCount: increment(-1) });
+                              setUser((u: any) => ({ ...u, participationCount: Math.max(0, (u.participationCount || 0) - 1) }));
+                            }
+
                             if (newStatus === 'no-show' && prev !== 'no-show') {
                               await upd(userRef, { noShowCount: increment(1) });
                               setUser((u: any) => ({ ...u, noShowCount: (u.noShowCount || 0) + 1 }));
@@ -578,6 +590,7 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
                               await upd(userRef, { noShowCount: increment(-1) });
                               setUser((u: any) => ({ ...u, noShowCount: Math.max(0, (u.noShowCount || 0) - 1) }));
                             }
+                            
                             if (newStatus === 'late' && prev !== 'late') {
                               await upd(userRef, { tardyCount: increment(1) });
                               setUser((u: any) => ({ ...u, tardyCount: (u.tardyCount || 0) + 1 }));

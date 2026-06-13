@@ -992,35 +992,56 @@ ${user.name || app.name || "참가자"}님은 ${fDate} ${fDay} ${fTime} 소개�
           const prevStatus = app.attendanceStatus;
           let nsDiff = 0;
           let tdDiff = 0;
+          let pcDiff = 0;
           
+          const isParticipating = (s: string | null) => s === 'present' || s === 'late';
+          const wasParticipating = isParticipating(prevStatus);
+          const willParticipate = isParticipating(status);
+
+          const updates: any = {};
+
+          if (willParticipate && !wasParticipating) {
+            updates.participationCount = increment(1);
+            pcDiff = 1;
+          } else if (!willParticipate && wasParticipating) {
+            updates.participationCount = increment(-1);
+            pcDiff = -1;
+          }
+
           if (status === 'no-show' && prevStatus !== 'no-show') {
-            await updateDoc(docRef(db, 'users', app.userId), { noShowCount: increment(1) });
+            updates.noShowCount = increment(1);
             nsDiff = 1;
           } else if (status !== 'no-show' && prevStatus === 'no-show') {
-            await updateDoc(docRef(db, 'users', app.userId), { noShowCount: increment(-1) });
+            updates.noShowCount = increment(-1);
             nsDiff = -1;
           }
           
           if (status === 'late' && prevStatus !== 'late') {
-            await updateDoc(docRef(db, 'users', app.userId), { tardyCount: increment(1) });
+            updates.tardyCount = increment(1);
             tdDiff = 1;
           } else if (status !== 'late' && prevStatus === 'late') {
-            await updateDoc(docRef(db, 'users', app.userId), { tardyCount: increment(-1) });
+            updates.tardyCount = increment(-1);
             tdDiff = -1;
           }
 
+          if (Object.keys(updates).length > 0) {
+            await updateDoc(docRef(db, 'users', app.userId), updates);
+          }
+
           // v11.2.0: 로컬 userMap 상태 강제 동기화 (실시간 숫자 변경 해결)
-          if (nsDiff !== 0 || tdDiff !== 0) {
+          if (nsDiff !== 0 || tdDiff !== 0 || pcDiff !== 0) {
             setUserMap((prevMap) => {
               const u = prevMap[app.userId] || {};
               const currentNs = u.noShowCount || 0;
               const currentTd = u.tardyCount || 0;
+              const currentPc = u.participationCount || 0;
               return {
                 ...prevMap,
                 [app.userId]: {
                   ...u,
                   noShowCount: Math.max(0, currentNs + nsDiff),
                   tardyCount: Math.max(0, currentTd + tdDiff),
+                  participationCount: Math.max(0, currentPc + pcDiff),
                 }
               };
             });
