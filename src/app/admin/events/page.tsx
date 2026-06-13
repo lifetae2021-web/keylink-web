@@ -2398,9 +2398,6 @@ ${chatLink}
                                                   {(app.userId?.startsWith("user_m_") || app.userId?.startsWith("user_f_") || app.id?.startsWith("dummy_")) && (
                                                     <span className="text-[0.6rem] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 border border-slate-200 shrink-0">더미</span>
                                                   )}
-                                                  <span className={`text-[0.65rem] font-bold px-2 py-0.5 rounded-full whitespace-nowrap shrink-0 ${badge.cls}`}>
-                                                    {badge.label}
-                                                  </span>
                                                   {(() => {
                                                     const u = userMap[app.userId];
                                                     const ns = u?.noShowCount || 0;
