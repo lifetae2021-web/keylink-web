@@ -284,7 +284,7 @@ export default function EventsPage() {
         const counts: Record<string, { male: number; female: number }> = {};
         snap.docs.forEach((d) => {
           const data = d.data();
-          const isDummy = d.id.startsWith('dummy') || data.userId?.startsWith('user_m_') || data.userId?.startsWith('user_f_') || data.isDummy === true;
+          const isDummy = d.id.startsWith('dummy') || data.userId?.startsWith('user_m_') || data.userId?.startsWith('user_f_') || data.isDummy === true || data.isDarkTemplar === true;
           if (isDummy) return;
           
           const sid = data.sessionId;
@@ -645,24 +645,24 @@ export default function EventsPage() {
     [applicants],
   );
 
-  // v11.1.2: UI 통계 표시용 (더미 계정 제외)
+  // v11.1.2: UI 통계 표시용 (더미 계정 및 다크템플러 제외)
   const realParticipants = useMemo(() => {
     return participants.filter(app => {
       const user = userMap[app.userId] || {};
-      return !(app.id?.startsWith('dummy') || app.userId?.startsWith('user_m_') || app.userId?.startsWith('user_f_') || user.isDummy === true);
+      return !(app.id?.startsWith('dummy') || app.userId?.startsWith('user_m_') || app.userId?.startsWith('user_f_') || user.isDummy === true || app.isDarkTemplar === true);
     });
   }, [participants, userMap]);
 
   const realWaitlisted = useMemo(() => {
     return waitlisted.filter(app => {
       const user = userMap[app.userId] || {};
-      return !(app.id?.startsWith('dummy') || app.userId?.startsWith('user_m_') || app.userId?.startsWith('user_f_') || user.isDummy === true);
+      return !(app.id?.startsWith('dummy') || app.userId?.startsWith('user_m_') || app.userId?.startsWith('user_f_') || user.isDummy === true || app.isDarkTemplar === true);
     });
   }, [waitlisted, userMap]);
 
   const isGenderFull = useMemo(() => ({
-    male: participants.filter((a) => a.gender === "male").length >= (active?.maxMale ?? 0),
-    female: participants.filter((a) => a.gender === "female").length >= (active?.maxFemale ?? 0),
+    male: participants.filter((a) => a.gender === "male" && !a.isDarkTemplar).length >= (active?.maxMale ?? 0),
+    female: participants.filter((a) => a.gender === "female" && !a.isDarkTemplar).length >= (active?.maxFemale ?? 0),
   }), [participants, active]);
 
   const overQuotaAppIds = useMemo(() => {
@@ -670,10 +670,10 @@ export default function EventsPage() {
     if (!active) return overIds;
 
     const maleConfirmed = participants
-      .filter((a) => a.gender === "male")
+      .filter((a) => a.gender === "male" && !a.isDarkTemplar)
       .sort((a, b) => a.appliedAt.getTime() - b.appliedAt.getTime());
     const femaleConfirmed = participants
-      .filter((a) => a.gender === "female")
+      .filter((a) => a.gender === "female" && !a.isDarkTemplar)
       .sort((a, b) => a.appliedAt.getTime() - b.appliedAt.getTime());
 
     if (maleConfirmed.length > active.maxMale) {
@@ -2358,7 +2358,7 @@ ${chatLink}
                                   <span
                                     className={`text-[0.72rem] font-bold px-2 py-0.5 rounded-full ${isMaleSection ? "bg-blue-100 text-blue-700" : "bg-pink-100 text-pink-700"}`}
                                   >
-                                    {genderList.length}명
+                                    {genderList.filter(a => !a.isDarkTemplar).length}명
                                   </span>
                                 </div>
                                 {(() => {
