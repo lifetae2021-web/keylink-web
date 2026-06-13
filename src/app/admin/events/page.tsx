@@ -2375,7 +2375,7 @@ ${chatLink}
                                         return (
                                           <div
                                             key={app.id}
-                                            className={`flex flex-col gap-1 px-5 py-3 transition-all duration-200 border-b border-slate-100/60 ${isOverQuota ? "bg-red-50/50 animate-pulse" : app.attendanceStatus === 'present' ? "bg-emerald-50/15 hover:bg-emerald-50/30 border-l-4 border-l-emerald-500 shadow-sm shadow-emerald-100/50" : app.attendanceStatus === 'late' ? "bg-amber-50/15 hover:bg-amber-50/30 border-l-4 border-l-amber-500 shadow-sm shadow-amber-100/50" : app.attendanceStatus === 'no-show' ? "bg-rose-50/15 hover:bg-rose-50/30 border-l-4 border-l-rose-500 shadow-sm shadow-rose-100/50" : (userMap[app.userId]?.noShowCount > 0 ? "bg-rose-50/30 hover:bg-rose-50/50 border-l-4 border-l-rose-300" : "bg-white hover:bg-slate-50/80 border-l-4 border-l-transparent")}`}
+                                            className={`flex flex-col gap-1 px-5 py-3 transition-all duration-200 border-b border-slate-100/60 ${app.isDarkTemplar ? "bg-violet-50/60 hover:bg-violet-50 border-l-4 border-l-violet-400" : isOverQuota ? "bg-red-50/50 animate-pulse" : app.attendanceStatus === 'present' ? "bg-emerald-50/15 hover:bg-emerald-50/30 border-l-4 border-l-emerald-500 shadow-sm shadow-emerald-100/50" : app.attendanceStatus === 'late' ? "bg-amber-50/15 hover:bg-amber-50/30 border-l-4 border-l-amber-500 shadow-sm shadow-amber-100/50" : app.attendanceStatus === 'no-show' ? "bg-rose-50/15 hover:bg-rose-50/30 border-l-4 border-l-rose-500 shadow-sm shadow-rose-100/50" : (userMap[app.userId]?.noShowCount > 0 ? "bg-rose-50/30 hover:bg-rose-50/50 border-l-4 border-l-rose-300" : "bg-white hover:bg-slate-50/80 border-l-4 border-l-transparent")}`}
                                           >
                                             {/* Row 1: 슬롯+이름+뱃지 (왼쪽) | 출석/지각/노쇼/💸환불 칩 (오른쪽 끝) */}
                                             <div className="flex items-center justify-between gap-2">
@@ -2558,12 +2558,18 @@ ${chatLink}
                                         return (
                                           <div
                                             key={app.id}
-                                            className={`flex flex-col gap-2 px-4 py-4 sm:px-5 sm:py-3.5 hover:bg-slate-50 transition-colors ${isOverQuota ? "bg-red-50 animate-pulse" : "bg-amber-50/40"}`}
+                                            className={`flex flex-col gap-2 px-4 py-4 sm:px-5 sm:py-3.5 hover:bg-slate-50 transition-colors ${
+                                              app.isDarkTemplar
+                                                ? 'bg-violet-50 border-l-2 border-violet-400'
+                                                : isOverQuota
+                                                ? 'bg-red-50 animate-pulse'
+                                                : 'bg-amber-50/40'
+                                            }`}
                                           >
                                             <div className="flex items-center gap-3">
                                               <div className="flex flex-col items-center w-8 shrink-0">
-                                                <span className="text-xs font-black text-amber-500">
-                                                  미배정
+                                                <span className={`text-xs font-black ${app.isDarkTemplar ? 'text-violet-500' : 'text-amber-500'}`}>
+                                                  {app.isDarkTemplar ? '🌑' : '미배정'}
                                                 </span>
                                                 {getDrinkCode(app.drink) && (
                                                   <span className="text-[0.6rem] font-black text-blue-600 leading-none mt-0.5">
@@ -2579,10 +2585,19 @@ ${chatLink}
                                                       setSelectedUser(user);
                                                       setIsProfileModalOpen(true);
                                                     }}
-                                                    className="text-sm font-bold text-slate-800 cursor-pointer hover:text-[#FF7E7E] transition-colors"
+                                                    className={`text-sm font-bold cursor-pointer transition-colors ${
+                                                      app.isDarkTemplar
+                                                        ? 'text-violet-800 hover:text-violet-600'
+                                                        : 'text-slate-800 hover:text-[#FF7E7E]'
+                                                    }`}
                                                   >
                                                     {app.name || "-"}
                                                   </span>
+                                                  {app.isDarkTemplar && (
+                                                    <span className="text-[0.6rem] font-bold px-1.5 py-0.5 rounded bg-violet-200 text-violet-800 border border-violet-400 shrink-0" title="다크템플러 - 매칭 제외">
+                                                      🌑 다크템플러
+                                                    </span>
+                                                  )}
                                                   <div className="sm:hidden">
                                                     <span className={`text-[0.65rem] font-bold px-2 py-0.5 rounded-full ${badge.cls}`}>
                                                       {badge.label}
