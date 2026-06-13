@@ -2349,7 +2349,6 @@ ${chatLink}
                                       {slots.map(({ slotNum, app }) => {
                                         const birthYear = app ? getBirthYear(app) : "-";
                                         const displayJob = app ? getEffectiveJob(app) : "-";
-                                        const displayResidence = app ? (app.residence || userMap[app.userId]?.residence || userMap[app.userId]?.location || null) : null;
                                         if (!app)
                                           return (
                                             <div
@@ -2501,12 +2500,7 @@ ${chatLink}
                                                     )}
                                                   </span>
                                                   <span className="text-slate-300">·</span>
-                                                  {displayResidence && (
-                                                    <span className="flex items-center gap-0.5 whitespace-nowrap text-slate-500 bg-slate-50 px-1.5 py-0.5 rounded-md border border-slate-100">
-                                                      <MapPin size={9} className="text-slate-400 shrink-0" />
-                                                      {displayResidence}
-                                                    </span>
-                                                  )}
+                                                  <span className="whitespace-nowrap">{app.residence || "-"}</span>
                                                 </div>
                                                 {/* 메모/문자/선발취소 — 오른쪽 끝 (PC·모바일 공통) */}
                                                 <div className="flex items-center gap-1.5 shrink-0">
@@ -2654,18 +2648,10 @@ ${chatLink}
                                                   </span>
                                                 )}
                                               </span>
-                                              {(() => {
-                                                const res = app.residence || userMap[app.userId]?.residence || userMap[app.userId]?.location || null;
-                                                return res ? (
-                                                  <>
-                                                    <span>·</span>
-                                                    <span className="flex items-center gap-0.5 whitespace-nowrap text-slate-500 bg-slate-50 px-1.5 py-0.5 rounded-md border border-slate-100">
-                                                      <MapPin size={9} className="text-slate-400 shrink-0" />
-                                                      {res}
-                                                    </span>
-                                                  </>
-                                                ) : null;
-                                              })()}
+                                              <span>·</span>
+                                              <span>
+                                                {app.residence || "-"}
+                                              </span>
                                               {app.gender === 'female' && app.femaleOption === 'group' && (
                                                 <>
                                                   <span>·</span>
