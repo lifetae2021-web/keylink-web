@@ -76,7 +76,13 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
             getDocs(appsQuery).catch(e => { console.error(e); return { docs: [], empty: true } as any; }),
             getUserMatchResult(currentUser.uid, sessionId).catch(e => { console.error(e); return null; }),
             getUserVoteStats(currentUser.uid, sessionId).catch(e => { console.error(e); return { receivedCount: 0, myChoices: [] }; }),
-            getVotesReceivedByMe(sessionId, currentUser.uid).catch(e => { console.error(e); return []; }),
+            currentUser.getIdToken().then(async token => {
+              const res = await fetch(`/api/users/me/received-votes?sessionId=${sessionId}`, {
+                headers: { Authorization: `Bearer ${token}` }
+              });
+              const data = await res.json();
+              return data.receivedVotes || [];
+            }).catch(e => { console.error(e); return []; }),
             getMyVote(sessionId, currentUser.uid).catch(e => { console.error(e); return null; })
           ]);
 
