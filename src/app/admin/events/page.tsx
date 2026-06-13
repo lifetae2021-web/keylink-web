@@ -46,6 +46,7 @@ import {
   getDoc,
   setDoc,
   deleteDoc,
+  updateDoc,
   Timestamp,
 } from "firebase/firestore";
 import { format } from "date-fns";
