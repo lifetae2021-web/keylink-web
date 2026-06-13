@@ -259,7 +259,7 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
             }));
 
             // 표 개수는 매칭 엔진 집계 당시의 정확한 총 득표수를 사용함 (실시간 리스트 개수로 덮어씌우지 않음)
-            setVoteCount(stats.receivedCount);
+            setVoteCount(displayedVoters.length);
             
             const resolvedChoices = await Promise.all(stats.myChoices.map(async (v: any) => {
               let label = '알 수 없음';
