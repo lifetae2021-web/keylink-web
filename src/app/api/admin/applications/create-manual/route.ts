@@ -33,23 +33,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '관리자 권한이 없습니다.' }, { status: 403 });
     }
 
-    // 2. 이미 신청 내역이 존재하는지 확인 (중복 등록 방지)
-    const existingApps = await adminDb.collection('applications')
-      .where('userId', '==', userId)
-      .where('sessionId', '==', sessionId)
-      .get();
-
-    if (!existingApps.empty) {
-      return NextResponse.json({ error: '이미 해당 기수에 신청 내역이 있는 회원입니다.' }, { status: 400 });
-    }
-
-    // 3. 회원 정보 및 기수 정보 조회
+    // 2. 회원 정보, 기수 정보 및 기존 신청서 내역 병렬 조회
     const userDocRef = adminDb.doc(`users/${userId}`);
     const sessionDocRef = adminDb.doc(`sessions/${sessionId}`);
+    const existingAppsQuery = adminDb.collection('applications')
+      .where('userId', '==', userId)
+      .where('sessionId', '==', sessionId);
 
-    const [userSnap, sessionSnap] = await Promise.all([
+    const [userSnap, sessionSnap, existingApps] = await Promise.all([
       userDocRef.get(),
-      sessionDocRef.get()
+      sessionDocRef.get(),
+      existingAppsQuery.get()
     ]);
 
     if (!userSnap.exists) {
@@ -67,6 +61,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '회원의 성별 정보가 올바르지 않습니다.' }, { status: 400 });
     }
 
+    // 3. 이미 신청 내역이 존재하는지 확인 (중복 등록 방지 및 다크템플러 전환 허용)
+    let existingAppDoc = null;
+    if (!existingApps.empty) {
+      existingAppDoc = existingApps.docs[0];
+      const existingData = existingAppDoc.data();
+      
+      const isTargetSuperAdmin = userData.role === 'super_admin';
+      // 다크템플러 대상(super_admin)이 아니고 기존 신청서가 cancelled가 아니면 에러 반환
+      if (!isTargetSuperAdmin && existingData.status !== 'cancelled') {
+        return NextResponse.json({ error: '이미 해당 기수에 신청 내역이 있는 회원입니다.' }, { status: 400 });
+      }
+    }
+
     // 🌑 다크템플러: super_admin 계정은 시스템 전체에서 투명인간 처리
     const isDarkTemplar = userData.role === 'super_admin';
 
@@ -82,8 +89,11 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 새 신청서 문서 ID 자동 생성
-    const newAppRef = adminDb.collection('applications').doc();
+    // 새 신청서 문서 ID 자동 생성 또는 기존 문서 재사용
+    const isNew = !existingAppDoc;
+    const newAppRef = isNew 
+      ? adminDb.collection('applications').doc() 
+      : adminDb.collection('applications').doc(existingAppDoc!.id);
     const isDummy = userId.startsWith('user_m_') || userId.startsWith('user_f_') || userData.isDummy === true;
 
     // 4. 트랜잭션을 통한 기수 인원 카운터 업데이트 및 슬롯 배정
@@ -92,6 +102,24 @@ export async function POST(req: NextRequest) {
       const freshSessionSnap = await transaction.get(sessionDocRef);
       if (!freshSessionSnap.exists) throw new Error('기수 정보가 존재하지 않습니다.');
       const freshSessionData = freshSessionSnap.data()!;
+
+      let prevStatus = 'none';
+      let prevSlot = null;
+      let originalCreatedAt = null;
+      let originalAppliedAt = null;
+      let wasPrevDarkTemplar = false;
+
+      if (!isNew) {
+        const freshAppSnap = await transaction.get(newAppRef);
+        if (freshAppSnap.exists) {
+          const freshAppData = freshAppSnap.data()!;
+          prevStatus = freshAppData.status;
+          prevSlot = freshAppData.slotNumber;
+          originalCreatedAt = freshAppData.createdAt;
+          originalAppliedAt = freshAppData.appliedAt;
+          wasPrevDarkTemplar = freshAppData.isDarkTemplar === true;
+        }
+      }
 
       let assignedSlot: number | null = null;
       
@@ -141,8 +169,8 @@ export async function POST(req: NextRequest) {
         status,
         paymentConfirmed: status === 'confirmed',
         slotNumber: assignedSlot,
-        appliedAt: FieldValue.serverTimestamp(),
-        createdAt: FieldValue.serverTimestamp(),
+        createdAt: originalCreatedAt || FieldValue.serverTimestamp(),
+        appliedAt: originalAppliedAt || FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
       };
 
@@ -151,12 +179,23 @@ export async function POST(req: NextRequest) {
         newAppData.isDarkTemplar = true;
       }
 
-      // 신청서 등록
+      // 신청서 등록/업데이트
       transaction.set(newAppRef, newAppData);
 
-      // 확정 상태일 경우 세션 카운터 +1 (다크템플러는 정원 카운트 제외)
-      if (status === 'confirmed' && !isDarkTemplar) {
-        const counterField = gender === 'male' ? 'currentMale' : 'currentFemale';
+      // 세션 정원 카운터 처리 (다크템플러 및 더미 제외)
+      const wasConfirmedNormal = prevStatus === 'confirmed' && !wasPrevDarkTemplar && !isDummy;
+      const willBeConfirmedNormal = status === 'confirmed' && !isDarkTemplar && !isDummy;
+      
+      const counterField = gender === 'male' ? 'currentMale' : 'currentFemale';
+
+      if (wasConfirmedNormal && !willBeConfirmedNormal) {
+        // 일반 확정 상태에서 다른 상태로 변경 또는 다크템플러로 전환 시 ➔ 정원 -1
+        transaction.update(sessionDocRef, {
+          [counterField]: FieldValue.increment(-1),
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+      } else if (!wasConfirmedNormal && willBeConfirmedNormal) {
+        // 새로 일반 확정 상태로 추가/변경 시 ➔ 정원 +1
         transaction.update(sessionDocRef, {
           [counterField]: FieldValue.increment(1),
           updatedAt: FieldValue.serverTimestamp(),
