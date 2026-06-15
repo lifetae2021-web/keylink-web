@@ -1120,6 +1120,42 @@ ${user.name || app.name || "참가자"}님은 ${fDate} ${fDay} ${fTime} 소개�
     }
   };
 
+  // 🌑 다크템플러 참여 해제 핸들러
+  const handleDarkTemplarLeave = async (sessionId: string) => {
+    const user = auth.currentUser;
+    if (!user) return toast.error('로그인이 필요합니다.');
+    if (isDarkTemplarJoining) return;
+    
+    const proceed = window.confirm('다크템플러 참여를 해제하시겠습니까?');
+    if (!proceed) return;
+
+    setIsDarkTemplarJoining(true);
+    try {
+      // 해당 기수에 다크템플러로 등록된 본인의 신청서 ID 찾기
+      const { collection: col, query: q, where: wh, getDocs: gd } = await import('firebase/firestore');
+      const snap = await gd(q(col(db, 'applications'), wh('userId', '==', user.uid), wh('sessionId', '==', sessionId), wh('isDarkTemplar', '==', true)));
+      
+      if (snap.empty) {
+        throw new Error('다크템플러 신청 내역을 찾을 수 없습니다.');
+      }
+
+      const appDocId = snap.docs[0].id;
+      const token = await user.getIdToken();
+      const res = await fetch('/api/admin/applications/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ applicationId: appDocId })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '다크템플러 해제에 실패했습니다.');
+      toast.success('🌑 다크템플러 참여가 해제되었습니다.');
+    } catch (e: any) {
+      toast.error(e.message || '오류가 발생했습니다.');
+    } finally {
+      setIsDarkTemplarJoining(false);
+    }
+  };
+
   // v12.0.0: 보증금 환불 대상 토글 (수동 환불과 동기화)
   const handleToggleRefundDeposit = async (app: Application) => {
     try {
@@ -2150,19 +2186,19 @@ ${chatLink}
                     {/* 데스크톱/패드 전용 세로 구분선 */}
                     <div className="hidden sm:block h-6 w-px bg-slate-200 mx-1 shrink-0" />
 
-                    {/* 🌑 다크템플러 참여 버튼 - super_admin에게만 표시 */}
+                    {/* 🌑 다크템플러 참여/해제 토글 버튼 - super_admin에게만 표시 */}
                     {isSuperAdmin && (() => {
                       const alreadyJoined = applicants.some(a => a.userId === auth.currentUser?.uid && a.isDarkTemplar);
                       return (
                         <button
-                          onClick={() => handleDarkTemplarJoin(active.id)}
-                          disabled={isDarkTemplarJoining || alreadyJoined}
-                          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                          onClick={() => alreadyJoined ? handleDarkTemplarLeave(active.id) : handleDarkTemplarJoin(active.id)}
+                          disabled={isDarkTemplarJoining}
+                          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
                             alreadyJoined
-                              ? 'bg-violet-100 border border-violet-300 text-violet-500 cursor-default'
+                              ? 'bg-violet-100 border border-violet-300 text-violet-700 hover:bg-violet-200'
                               : 'bg-violet-600 text-white hover:bg-violet-700 shadow-md shadow-violet-200'
                           }`}
-                          title={alreadyJoined ? '이미 다크템플러로 참여 중' : '다크템플러로 참여'}
+                          title={alreadyJoined ? '클릭 시 다크템플러 참여 해제' : '다크템플러로 참여'}
                         >
                           {isDarkTemplarJoining ? (
                             <span className="w-3 h-3 border-2 border-white/50 border-t-white rounded-full animate-spin" />
@@ -2693,55 +2729,59 @@ ${chatLink}
                                               </div>
                                             </div>
                                             <div className="flex flex-col gap-1 ml-9 sm:ml-0">
-                                              {!isDummyApp(app) && (
-                                                <span className="flex items-center gap-0.5">
-                                                  <Phone size={10} />
-                                                  {app.phone || "-"}
-                                                </span>
-                                              )}
-                                              {!isDummyApp(app) && <span>·</span>}
-                                              <span>{getBirthYear(app)}</span>
-                                              <span>·</span>
-                                              <span className="flex items-center gap-1">
-                                                {isDummyApp(app) ? (
-                                                  editingAppJobId === app.id ? (
-                                                    <input
-                                                      autoFocus
-                                                      value={tempAppJobValue}
-                                                      onChange={(e) => setTempAppJobValue(e.target.value)}
-                                                      onKeyDown={(e) => {
-                                                        if (e.key === 'Enter') handleEditAppJob(app, tempAppJobValue);
-                                                        if (e.key === 'Escape') setEditingAppJobId(null);
-                                                      }}
-                                                      onBlur={() => setEditingAppJobId(null)}
-                                                      className="text-[0.72rem] font-bold bg-white border border-blue-400 rounded px-1 outline-none w-[80px]"
-                                                    />
-                                                  ) : (
-                                                    <span 
-                                                      onClick={() => {
-                                                        setEditingAppJobId(app.id);
-                                                        setTempAppJobValue(getEffectiveJob(app));
-                                                      }}
-                                                      className="truncate max-w-[80px] cursor-pointer hover:text-blue-500 hover:underline"
-                                                      title="더미 직업명 수정"
-                                                    >
-                                                      {getEffectiveJob(app)}
-                                                    </span>
-                                                  )
-                                                ) : (
-                                                  <span className="truncate max-w-[80px]">
-                                                    {getEffectiveJob(app)}
-                                                  </span>
-                                                )}
-                                              </span>
-                                              <span>·</span>
-                                              <span>
-                                                {app.residence || "-"}
-                                              </span>
-                                              {app.gender === 'female' && app.femaleOption === 'group' && (
+                                              {!app.isDarkTemplar && (
                                                 <>
+                                                  {!isDummyApp(app) && (
+                                                    <span className="flex items-center gap-0.5">
+                                                      <Phone size={10} />
+                                                      {app.phone || "-"}
+                                                    </span>
+                                                  )}
+                                                  {!isDummyApp(app) && <span>·</span>}
+                                                  <span>{getBirthYear(app)}</span>
                                                   <span>·</span>
-                                                  <span className="text-pink-500 font-bold">{app.groupPartnerName ? `동반할인 (${app.groupPartnerName} ${app.groupPartnerBirthYear}년생)` : '동반할인'}</span>
+                                                  <span className="flex items-center gap-1">
+                                                    {isDummyApp(app) ? (
+                                                      editingAppJobId === app.id ? (
+                                                        <input
+                                                          autoFocus
+                                                          value={tempAppJobValue}
+                                                          onChange={(e) => setTempAppJobValue(e.target.value)}
+                                                          onKeyDown={(e) => {
+                                                            if (e.key === 'Enter') handleEditAppJob(app, tempAppJobValue);
+                                                            if (e.key === 'Escape') setEditingAppJobId(null);
+                                                          }}
+                                                          onBlur={() => setEditingAppJobId(null)}
+                                                          className="text-[0.72rem] font-bold bg-white border border-blue-400 rounded px-1 outline-none w-[80px]"
+                                                        />
+                                                      ) : (
+                                                        <span 
+                                                          onClick={() => {
+                                                            setEditingAppJobId(app.id);
+                                                            setTempAppJobValue(getEffectiveJob(app));
+                                                          }}
+                                                          className="truncate max-w-[80px] cursor-pointer hover:text-blue-500 hover:underline"
+                                                          title="더미 직업명 수정"
+                                                        >
+                                                          {getEffectiveJob(app)}
+                                                        </span>
+                                                      )
+                                                    ) : (
+                                                      <span className="truncate max-w-[80px]">
+                                                        {getEffectiveJob(app)}
+                                                      </span>
+                                                    )}
+                                                  </span>
+                                                  <span>·</span>
+                                                  <span>
+                                                    {app.residence || "-"}
+                                                  </span>
+                                                  {app.gender === 'female' && app.femaleOption === 'group' && (
+                                                    <>
+                                                      <span>·</span>
+                                                      <span className="text-pink-500 font-bold">{app.groupPartnerName ? `동반할인 (${app.groupPartnerName} ${app.groupPartnerBirthYear}년생)` : '동반할인'}</span>
+                                                    </>
+                                                  )}
                                                 </>
                                               )}
                                               <div className="flex items-center gap-2">

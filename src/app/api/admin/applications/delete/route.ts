@@ -31,7 +31,10 @@ export async function POST(req: NextRequest) {
     const appPreData = appPreSnap.data()!;
     const { sessionId, gender, status: prevStatus, slotNumber } = appPreData;
 
-    const wasOccupyingSlot = prevStatus === 'confirmed' || prevStatus === 'waitlisted';
+    const isDummy = appPreData.userId?.startsWith('user_m_') || appPreData.userId?.startsWith('user_f_') || appPreData.id?.startsWith('dummy_') || appPreData.isDummy === true;
+    const isDarkTemplar = appPreData.isDarkTemplar === true;
+
+    const wasOccupyingSlot = (prevStatus === 'confirmed' || prevStatus === 'waitlisted') && !isDarkTemplar && !isDummy;
     const freedSlot: number | null = wasOccupyingSlot ? (slotNumber ?? null) : null;
 
     let waitlistPromotee: { id: string } | null = null;
@@ -63,7 +66,7 @@ export async function POST(req: NextRequest) {
       // --- writes ---
       transaction.delete(appRef);
 
-      if (prevStatus === 'confirmed' && !waitlistPromotee) {
+      if (prevStatus === 'confirmed' && !waitlistPromotee && !isDummy && !isDarkTemplar) {
         if (sessionSnap.exists) {
           transaction.update(sessionRef, {
             [counterField]: FieldValue.increment(-1),
