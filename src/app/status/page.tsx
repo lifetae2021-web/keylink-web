@@ -278,9 +278,10 @@ export default function StatusListPage() {
             {/* 원본 디자인 프라이빗 보드 덮개 */}
             <div style={{
               position: 'absolute', top: confirmedSessions.length > 0 ? 50 : 0, left: 0, right: 0, bottom: 0,
-              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start',
               zIndex: 10,
               padding: '20px',
+              paddingTop: '80px',
               textAlign: 'center',
               pointerEvents: 'none'
             }}>
