@@ -25,7 +25,7 @@ const panel = {
   boxShadow: '0 4px 20px -1px rgba(0, 0, 0, 0.03)'
 };
 
-// 상세 모달 컴포넌트
+// 상세 모달 컴포넌 (일부 환불 상태 및 핸들러 추가)
 function DetailModal({
   title,
   filterMonth,
@@ -41,11 +41,69 @@ function DetailModal({
   sessions: any[];
   onClose: () => void;
 }) {
+  const [partialRefundApp, setPartialRefundApp] = useState<any | null>(null);
+  const [partialRefundInput, setPartialRefundInput] = useState<string>('');
+
   const sessionMap = useMemo(() => {
     const m: Record<string, any> = {};
     sessions.forEach(s => { m[s.id] = s; });
     return m;
   }, [sessions]);
+
+  const handleOpenPartialRefundModal = (app: any) => {
+    setPartialRefundApp(app);
+    const session = sessionMap[app.sessionId] || {};
+    const malePrice = app.maleOption === 'safe' ? 60000 : (session.malePrice || 49000);
+    const femalePrice = app.femaleOption === 'group' ? 24000 : (session.femalePrice || 29000);
+    const basePrice = (app.amountPaid !== undefined && app.amountPaid !== null && app.amountPaid !== '')
+      ? Number(app.amountPaid)
+      : (app.price !== undefined && app.price !== null && app.price !== '')
+        ? Number(app.price)
+        : (app.gender === 'male' ? malePrice : femalePrice);
+
+    if (app.refundedAmount > 0) {
+      setPartialRefundInput(String(app.refundedAmount));
+    } else if (basePrice === 60000 || app.maleOption === 'safe') {
+      setPartialRefundInput('18000');
+    } else {
+      setPartialRefundInput('');
+    }
+  };
+
+  const handlePartialRefund = async (app: any, amount: number) => {
+    if (isNaN(amount) || amount < 0) {
+      toast.error('올바른 금액을 입력해주세요.');
+      return;
+    }
+    try {
+      const appRef = doc(db, 'applications', app.id);
+      await updateDoc(appRef, {
+        refundedAmount: amount,
+        updatedAt: new Date(),
+      });
+      toast.success(`${app.name}님에게 💸 ₩${amount.toLocaleString()} 일부 환불 처리되었습니다.`);
+      setPartialRefundApp(null);
+    } catch (e) {
+      console.error('Error setting partial refund:', e);
+      toast.error('일부 환불 처리 중 오류가 발생했습니다.');
+    }
+  };
+
+  const handleCancelPartialRefund = async (app: any) => {
+    try {
+      const confirmCancel = window.confirm(`${app.name}님의 일부 환불 내역(₩${(app.refundedAmount || 0).toLocaleString()})을 취소하시겠습니까?`);
+      if (!confirmCancel) return;
+      const appRef = doc(db, 'applications', app.id);
+      await updateDoc(appRef, {
+        refundedAmount: null,
+        updatedAt: new Date(),
+      });
+      toast.success(`${app.name}님의 일부 환불이 취소되었습니다.`);
+    } catch (e) {
+      console.error('Error cancelling partial refund:', e);
+      toast.error('취소 처리 중 오류가 발생했습니다.');
+    }
+  };
 
   const handleToggleFree = async (app: any, makeFree: boolean) => {
     try {
@@ -127,13 +185,15 @@ function DetailModal({
         const malePrice = app.maleOption === 'safe' ? 60000 : (session.malePrice || 49000);
         const femalePrice = app.femaleOption === 'group' ? 24000 : (session.femalePrice || 29000);
         
-        const amount = (isRefunded || isRefundPending)
+        const baseAmount = (isRefunded || isRefundPending)
           ? 0
           : (app.amountPaid !== undefined && app.amountPaid !== null && app.amountPaid !== '')
             ? Number(app.amountPaid)
             : (app.price !== undefined && app.price !== null && app.price !== '')
               ? Number(app.price)
               : (app.gender === 'male' ? malePrice : femalePrice);
+
+        const amount = Math.max(0, baseAmount - Number(app.refundedAmount || 0));
           
         const sessionName = session.episodeNumber
           ? `${session.region === 'busan' ? '부산' : '창원'} ${session.episodeNumber}기`
@@ -148,7 +208,7 @@ function DetailModal({
         const isFree = !isRefunded && !isRefundPending && amount === 0;
         const isNoShow = app.attendanceStatus === 'no-show';
 
-        return { app, session, amount, sessionName, confirmedAt, optionLabel, isRefunded, isRefundPending, isFree, isNoShow };
+        return { app, session, amount, baseAmount, sessionName, confirmedAt, optionLabel, isRefunded, isRefundPending, isFree, isNoShow };
       })
       .sort((a, b) => {
         const epA = a.session?.episodeNumber || 0;
@@ -240,6 +300,11 @@ function DetailModal({
                       ) : (
                         <span className="text-base font-black text-slate-800">
                           ₩{amount.toLocaleString()}
+                          {app.refundedAmount > 0 && (
+                            <span className="text-xs text-rose-500 font-extrabold block mt-0.5 animate-pulse">
+                              (일부 환불 ₩{Number(app.refundedAmount).toLocaleString()})
+                            </span>
+                          )}
                         </span>
                       )}
                     </td>
@@ -310,6 +375,22 @@ function DetailModal({
                           >
                             💸 수동 환불
                           </button>
+                          <button
+                            onClick={() => handleOpenPartialRefundModal(app)}
+                            className="px-2 py-0.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-md text-[0.68rem] font-black transition-all border border-rose-200/50"
+                            title="일부 금액 환불 처리"
+                          >
+                            {app.refundedAmount > 0 ? '💸 환불액 변경' : '💸 일부 환불'}
+                          </button>
+                          {app.refundedAmount > 0 && (
+                            <button
+                              onClick={() => handleCancelPartialRefund(app)}
+                              className="px-2 py-0.5 bg-slate-50 hover:bg-slate-100 text-slate-500 rounded-md text-[0.68rem] font-bold transition-all border border-slate-200"
+                              title="일부 환불 취소"
+                            >
+                              환불 취소
+                            </button>
+                          )}
                           {isNoShow && (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-extrabold bg-rose-50 text-rose-600 border border-rose-100 animate-pulse">
                               🚨 노쇼
@@ -347,6 +428,87 @@ function DetailModal({
           )}
         </div>
       </div>
+
+      {partialRefundApp && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md"
+          onClick={() => setPartialRefundApp(null)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 flex flex-col gap-4 animate-in zoom-in-95 duration-200"
+            onClick={e => e.stopPropagation()}
+          >
+            <div>
+              <h4 className="text-base font-black text-slate-800 flex items-center gap-1.5">💸 일부 환불 금액 설정</h4>
+              <p className="text-xs text-slate-400 font-bold mt-1">
+                {partialRefundApp.name}님의 결제 금액에 대한 일부 환불액을 입력하세요.
+              </p>
+            </div>
+            
+            <div className="bg-slate-50 p-4 rounded-xl flex flex-col gap-1.5">
+              <div className="flex justify-between text-xs text-slate-500 font-bold">
+                <span>기본 결제액:</span>
+                <span>₩{(() => {
+                  const session = sessionMap[partialRefundApp.sessionId] || {};
+                  const malePrice = partialRefundApp.maleOption === 'safe' ? 60000 : (session.malePrice || 49000);
+                  const femalePrice = partialRefundApp.femaleOption === 'group' ? 24000 : (session.femalePrice || 29000);
+                  const basePrice = (partialRefundApp.amountPaid !== undefined && partialRefundApp.amountPaid !== null && partialRefundApp.amountPaid !== '')
+                    ? Number(partialRefundApp.amountPaid)
+                    : (partialRefundApp.price !== undefined && partialRefundApp.price !== null && partialRefundApp.price !== '')
+                      ? Number(partialRefundApp.price)
+                      : (partialRefundApp.gender === 'male' ? malePrice : femalePrice);
+                  return basePrice.toLocaleString();
+                })()}</span>
+              </div>
+              {partialRefundApp.refundedAmount > 0 && (
+                <div className="flex justify-between text-xs text-rose-500 font-bold">
+                  <span>기존 환불액:</span>
+                  <span>₩{Number(partialRefundApp.refundedAmount).toLocaleString()}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <label className="text-xs font-bold text-slate-500">환불 금액 (₩)</label>
+              <div className="relative">
+                <input
+                  type="number"
+                  value={partialRefundInput}
+                  onChange={e => setPartialRefundInput(e.target.value)}
+                  placeholder="예: 18000"
+                  className="w-full px-4 py-3 text-sm font-bold text-slate-800 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-[#FF7E7E] focus:ring-2 focus:ring-[#FF7E7E]/20 transition-all placeholder:text-slate-300"
+                />
+              </div>
+              
+              {/* 프리셋 버튼 */}
+              <div className="flex gap-2 mt-1">
+                <button
+                  type="button"
+                  onClick={() => setPartialRefundInput('18000')}
+                  className="px-3 py-1.5 text-xs font-black text-rose-600 bg-rose-50 border border-rose-100 hover:bg-rose-100/50 rounded-lg transition-colors"
+                >
+                  🎯 안심보험 환불 프리셋 (₩18,000)
+                </button>
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-2">
+              <button
+                onClick={() => setPartialRefundApp(null)}
+                className="flex-1 py-3 text-sm font-bold text-slate-500 hover:bg-slate-50 rounded-xl border border-slate-200 transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={() => handlePartialRefund(partialRefundApp, Number(partialRefundInput))}
+                className="flex-1 py-3 text-sm font-black text-white bg-[#FF7E7E] hover:opacity-90 rounded-xl shadow-lg shadow-[#FF7E7E]/20 transition-all"
+              >
+                적용하기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -478,13 +640,16 @@ export default function RevenueStatsPage() {
             ? Number(app.price)
             : (app.gender === 'male' ? malePrice : femalePrice);
 
+        const refunded = Number(app.refundedAmount || 0);
+        const actualPrice = Math.max(0, price - refunded);
+
         if (price === 0) {
           freeCount++;
         } else {
           paidCount++;
         }
 
-        return sum + price;
+        return sum + actualPrice;
       }, 0);
 
       // avgFee 왜곡 방지: 유료 결제 인원(paidCount)만 분모로 사용
