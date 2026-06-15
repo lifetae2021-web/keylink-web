@@ -494,7 +494,8 @@ function ReviewsTab() {
 
   const openNew = () => {
     setEditingId(null);
-    setForm({ maleName: '', femaleName: '', text: '', episode: '', region: '부산', order: items.length + 1, imageUrl: '' });
+    const nextOrder = items.length > 0 ? Math.max(...items.map(i => i.order || 0)) + 1 : 1;
+    setForm({ maleName: '', femaleName: '', text: '', episode: '', region: '부산', order: nextOrder, imageUrl: '' });
     setShowForm(true);
   };
 
