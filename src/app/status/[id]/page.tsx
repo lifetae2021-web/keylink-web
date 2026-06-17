@@ -203,7 +203,7 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
         <h1 className="text-2xl font-black text-gray-900 mb-2">라인업 공개 대기 중 🔒</h1>
         <p className="text-gray-600 font-bold mb-1">참가 확정이 완료되었습니다!</p>
         <p className="text-gray-500 mb-6 text-sm">
-          상세 라인업은 <strong className="text-pink-500">{formattedOpenTime}</strong>에 정식 공개됩니다.
+          <strong className="text-pink-500">{formattedOpenTime}</strong>에 정식 공개됩니다.
         </p>
         <Link href="/status" className="px-8 py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-2xl shadow-lg transition-colors">기수 목록으로 돌아가기</Link>
       </div>
