@@ -96,6 +96,9 @@ export default function StatusListPage() {
   const renderSessionCard = (event: Session, hideAlerts: boolean) => {
     const status = getStatusInfo(event);
     const isConfirmed = userApps[event.id]?.status === 'confirmed';
+    const now = new Date();
+    const openTime = new Date(event.eventDate.getTime() - 2 * 24 * 60 * 60 * 1000);
+    const isOpen = now.getTime() >= openTime.getTime();
 
     return (
       <div key={event.id} style={{ position: 'relative' }}>
@@ -130,12 +133,23 @@ export default function StatusListPage() {
           }}
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <div style={{
-              alignSelf: 'flex-start',
-              padding: '6px 16px', borderRadius: '100px', fontSize: '0.8rem', fontWeight: '800',
-              background: status.bg, color: status.color,
-            }}>
-              {status.label}
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <div style={{
+                alignSelf: 'flex-start',
+                padding: '6px 16px', borderRadius: '100px', fontSize: '0.8rem', fontWeight: '800',
+                background: status.bg, color: status.color,
+              }}>
+                {status.label}
+              </div>
+              {isConfirmed && !isOpen && (
+                <div style={{
+                  alignSelf: 'flex-start',
+                  padding: '6px 16px', borderRadius: '100px', fontSize: '0.8rem', fontWeight: '800',
+                  background: '#FFF5F4', color: '#FF6F61', border: '1px solid rgba(255,111,97,0.2)'
+                }}>
+                  🔒 라인업 공개 대기
+                </div>
+              )}
             </div>
             <h3 style={{ fontSize: '1.2rem', fontWeight: '900', color: '#111', margin: 0, lineHeight: 1.3 }}>
               {event.title}

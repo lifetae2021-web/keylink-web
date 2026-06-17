@@ -172,6 +172,10 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
   const progressMale = session ? (session.currentMale / session.maxMale) : 0;
   const progressFemale = session ? (session.currentFemale / session.maxFemale) : 0;
 
+  const now = new Date();
+  const openTime = session ? new Date(session.eventDate.getTime() - 2 * 24 * 60 * 60 * 1000) : null;
+  const isOpen = openTime ? now.getTime() >= openTime.getTime() : false;
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -191,10 +195,25 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
     );
   }
 
+  if (session && !isOpen) {
+    const formattedOpenTime = openTime ? openTime.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-6 text-center">
+        <Timer className="text-pink-500 mb-4 animate-bounce" size={60} />
+        <h1 className="text-2xl font-black text-gray-900 mb-2">라인업 공개 대기 중 🔒</h1>
+        <p className="text-gray-600 font-bold mb-1">참가 확정이 완료되었습니다!</p>
+        <p className="text-gray-500 mb-6 text-sm">
+          안전하고 조화로운 매칭 관리를 위해 상세 라인업은 행사 2일 전인<br />
+          <strong className="text-pink-500">{formattedOpenTime}</strong>에 정식 공개됩니다.
+        </p>
+        <Link href="/status" className="px-8 py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-2xl shadow-lg transition-colors">기수 목록으로 돌아가기</Link>
+      </div>
+    );
+  }
+
   const currentMale = session.currentMale || 0;
   const currentFemale = session.currentFemale || 0;
 
-  const now = new Date();
   const twoHoursAfter = new Date(session.eventDate.getTime() + 2 * 60 * 60 * 1000);
   const isFinished = now >= twoHoursAfter;
   const isSoldOut = (session.maxMale > 0 && currentMale >= session.maxMale) && (session.maxFemale > 0 && currentFemale >= session.maxFemale);
