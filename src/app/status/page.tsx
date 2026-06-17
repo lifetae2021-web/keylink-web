@@ -306,7 +306,7 @@ export default function StatusListPage() {
                 <div>
                   <h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '900', color: '#111', marginBottom: '6px' }}>프라이빗 현황 보드 🔒</h4>
                   <p style={{ margin: 0, fontSize: '0.85rem', color: '#666', lineHeight: 1.5, wordBreak: 'keep-all' }}>
-                    참가 확정자만 라인업을 볼 수 있습니다.<br/>간편한 참여 신청 후, 실시간 매칭 라인업을 확인해 보세요.
+                    참가 확정자만 라인업을 볼 수 있습니다.<br/>간편한 참여 신청 후,<br/>실시간 매칭 라인업을 확인해 보세요.
                   </p>
                 </div>
                 <Link href="/events" style={{
