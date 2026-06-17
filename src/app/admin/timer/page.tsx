@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, query, orderBy, getDocs, updateDoc, doc, Timestamp, onSnapshot } from 'firebase/firestore';
+import { collection, query, orderBy, getDocs, updateDoc, setDoc, doc, Timestamp, onSnapshot } from 'firebase/firestore';
 import { Session } from '@/lib/types';
 import { Clock, Users, Play, Square, RotateCcw, Volume2, Save, ExternalLink, RefreshCw, AlertCircle, FastForward, Rewind, Settings, Mic, PlayCircle, Upload, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -21,6 +21,50 @@ type RelativeBlock = {
 
 export default function AdminTimerPage() {
   const [sessions, setSessions] = useState<Session[]>([]);
+  const [openingScript, setOpeningScript] = useState<string>('');
+  const [closingScript, setClosingScript] = useState<string>('');
+  const [isEditingOpening, setIsEditingOpening] = useState(false);
+  const [isEditingClosing, setIsEditingClosing] = useState(false);
+
+  useEffect(() => {
+    const unsubScripts = onSnapshot(doc(db, 'settings', 'timer_scripts'), (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        setOpeningScript(data.opening || '안녕하세요, 키링크 2030 로테이션 소개팅에 오신 것을 환영합니다! 오늘 행사는 테이블 번호 순서에 따라 시계 방향으로 한 칸씩 이동하며 진행됩니다. 마음에 드는 이성이 있다면 대화 종료 후 꼭 메모해 두세요. 그럼 시작하겠습니다!');
+        setClosingScript(data.closing || '오늘 모든 테이블의 로테이션 대화가 종료되었습니다! 참여해주신 모든 분들께 감사드립니다. 지금 마이페이지에 접속하셔서 마음에 들었던 분들을 1지망부터 3지망까지 작성하여 투표해 주시기 바랍니다. 조심히 귀가해 주세요!');
+      } else {
+        setOpeningScript('안녕하세요, 키링크 2030 로테이션 소개팅에 오신 것을 환영합니다! 오늘 행사는 테이블 번호 순서에 따라 시계 방향으로 한 칸씩 이동하며 진행됩니다. 마음에 드는 이성이 있다면 대화 종료 후 꼭 메모해 두세요. 그럼 시작하겠습니다!');
+        setClosingScript('오늘 모든 테이블의 로테이션 대화가 종료되었습니다! 참여해주신 모든 분들께 감사드립니다. 지금 마이페이지에 접속하셔서 마음에 들었던 분들을 1지망부터 3지망까지 작성하여 투표해 주시기 바랍니다. 조심히 귀가해 주세요!');
+      }
+    });
+    return () => unsubScripts();
+  }, []);
+
+  const handleSaveOpeningScript = async (text: string) => {
+    try {
+      await setDoc(doc(db, 'settings', 'timer_scripts'), {
+        opening: text
+      }, { merge: true });
+      setIsEditingOpening(false);
+      toast.success('시작 멘트가 저장되었습니다.');
+    } catch (e) {
+      console.error(e);
+      toast.error('저장 중 오류가 발생했습니다.');
+    }
+  };
+
+  const handleSaveClosingScript = async (text: string) => {
+    try {
+      await setDoc(doc(db, 'settings', 'timer_scripts'), {
+        closing: text
+      }, { merge: true });
+      setIsEditingClosing(false);
+      toast.success('종료 멘트가 저장되었습니다.');
+    } catch (e) {
+      console.error(e);
+      toast.error('저장 중 오류가 발생했습니다.');
+    }
+  };
   const [selectedSessionId, setSelectedSessionId] = useState<string>('');
 
   const [totalRounds, setTotalRounds] = useState<number | ''>(8);
@@ -802,6 +846,99 @@ export default function AdminTimerPage() {
              <button onClick={() => playGuide('end')} className="px-4 py-2 bg-rose-50 text-rose-600 hover:bg-rose-100 font-bold rounded-lg text-sm border border-rose-200 shadow-sm">자리 교체 독촉</button>
            </div>
          </div>
+
+          {/* 📢 사회자 진행 가이드 멘트 */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+            <h3 className="font-black text-slate-800 flex items-center gap-2 mb-4">
+              <Mic size={18} className="text-blue-500" /> 사회자 진행 가이드 멘트
+            </h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* 시작 멘트 */}
+              <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 flex flex-col gap-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-black text-emerald-600 bg-emerald-50 px-2 py-1 rounded border border-emerald-100">📢 소개팅 시작 안내</span>
+                  {!isEditingOpening ? (
+                    <button
+                      onClick={() => setIsEditingOpening(true)}
+                      className="text-[10px] font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1 bg-white border border-slate-200 px-2.5 py-1 rounded transition-colors"
+                    >
+                      수정하기
+                    </button>
+                  ) : (
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => {
+                          setIsEditingOpening(false);
+                        }}
+                        className="text-[10px] font-bold text-slate-400 hover:text-slate-600 bg-white border border-slate-200 px-2 py-1 rounded"
+                      >
+                        취소
+                      </button>
+                      <button
+                        onClick={() => handleSaveOpeningScript(openingScript)}
+                        className="text-[10px] font-bold text-blue-600 hover:text-blue-800 bg-white border border-blue-200 px-2 py-1 rounded"
+                      >
+                        저장
+                      </button>
+                    </div>
+                  )}
+                </div>
+                {isEditingOpening ? (
+                  <textarea
+                    value={openingScript}
+                    onChange={e => setOpeningScript(e.target.value)}
+                    className="w-full h-32 p-3 text-xs font-bold text-slate-700 bg-white border border-slate-300 rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none resize-none"
+                  />
+                ) : (
+                  <div className="text-xs font-bold text-slate-600 leading-relaxed whitespace-pre-line h-32 overflow-y-auto bg-white p-3 rounded-lg border border-slate-100 custom-scrollbar">
+                    {openingScript}
+                  </div>
+                )}
+              </div>
+
+              {/* 종료 멘트 */}
+              <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 flex flex-col gap-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-black text-purple-600 bg-purple-50 px-2 py-1 rounded border border-purple-100">🏁 소개팅 종료 안내</span>
+                  {!isEditingClosing ? (
+                    <button
+                      onClick={() => setIsEditingClosing(true)}
+                      className="text-[10px] font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1 bg-white border border-slate-200 px-2.5 py-1 rounded transition-colors"
+                    >
+                      수정하기
+                    </button>
+                  ) : (
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => setIsEditingClosing(false)}
+                        className="text-[10px] font-bold text-slate-400 hover:text-slate-600 bg-white border border-slate-200 px-2 py-1 rounded"
+                      >
+                        취소
+                      </button>
+                      <button
+                        onClick={() => handleSaveClosingScript(closingScript)}
+                        className="text-[10px] font-bold text-blue-600 hover:text-blue-800 bg-white border border-blue-200 px-2 py-1 rounded"
+                      >
+                        저장
+                      </button>
+                    </div>
+                  )}
+                </div>
+                {isEditingClosing ? (
+                  <textarea
+                    value={closingScript}
+                    onChange={e => setClosingScript(e.target.value)}
+                    className="w-full h-32 p-3 text-xs font-bold text-slate-700 bg-white border border-slate-300 rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none resize-none"
+                  />
+                ) : (
+                  <div className="text-xs font-bold text-slate-600 leading-relaxed whitespace-pre-line h-32 overflow-y-auto bg-white p-3 rounded-lg border border-slate-100 custom-scrollbar">
+                    {closingScript}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
 
         {/* 뷰 토글 버튼 (더 크게, 인스턴트 스왑용) */}
         <div className="flex justify-center -my-3 relative z-20">
