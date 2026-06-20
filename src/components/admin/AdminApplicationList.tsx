@@ -15,7 +15,7 @@ const STATUS_MAP: Record<string, { label: string, color: string, bg: string }> =
   success: { label: '매칭성공', color: '#10B981', bg: '#ECFDF5' },
 };
 
-export default function AdminApplicationList({ isSuperAdmin }: { isSuperAdmin?: boolean }) {
+export default function AdminApplicationList({ isSuperAdmin, isAdmin }: { isSuperAdmin?: boolean; isAdmin?: boolean }) {
 // ... (rest of the state and handlers remain the same)
   const [applications, setApplications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,6 +56,10 @@ export default function AdminApplicationList({ isSuperAdmin }: { isSuperAdmin?: 
   };
 
   useEffect(() => {
+    if (!isAdmin) {
+      setLoading(false);
+      return;
+    }
     const unsubscribe = auth.onAuthStateChanged((currentUser) => {
       if (!currentUser) {
         setLoading(false);
@@ -80,7 +84,7 @@ export default function AdminApplicationList({ isSuperAdmin }: { isSuperAdmin?: 
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [isAdmin]);
 
   const handleStatusChange = async (appId: string, newStatus: string) => {
     try {
@@ -104,6 +108,26 @@ export default function AdminApplicationList({ isSuperAdmin }: { isSuperAdmin?: 
     }
   };
 
+  // v12.0.0: 전체, 남성, 여성 성별 수 계산 (성별 필터를 제외한 다른 모든 필터 적용 상태 기준)
+  const genderCounts = React.useMemo(() => {
+    const counts = { all: 0, male: 0, female: 0 };
+    applications.forEach(app => {
+      const matchesSearch = 
+        (app.name || '').includes(searchQuery) ||
+        (app.phone || '').includes(searchQuery) ||
+        (app.job || '').includes(searchQuery);
+      if (matchesSearch) {
+        counts.all++;
+        if (app.gender === 'male') {
+          counts.male++;
+        } else if (app.gender === 'female') {
+          counts.female++;
+        }
+      }
+    });
+    return counts;
+  }, [applications, searchQuery]);
+
   const filtered = applications.filter(app => {
     const matchesSearch = 
       (app.name || '').includes(searchQuery) ||
@@ -119,7 +143,11 @@ export default function AdminApplicationList({ isSuperAdmin }: { isSuperAdmin?: 
       <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
-            {[{ id: 'all', label: '전체' }, { id: 'male', label: '남성' }, { id: 'female', label: '여성' }].map(t => (
+            {[
+              { id: 'all', label: `전체 (${genderCounts.all})` },
+              { id: 'male', label: `남성 (${genderCounts.male})` },
+              { id: 'female', label: `여성 (${genderCounts.female})` }
+            ].map(t => (
               <button
                 key={t.id}
                 onClick={() => setFilterGender(t.id as any)}

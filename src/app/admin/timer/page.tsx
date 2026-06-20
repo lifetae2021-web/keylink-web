@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { db } from '@/lib/firebase';
-import { collection, query, orderBy, getDocs, updateDoc, setDoc, doc, Timestamp, onSnapshot } from 'firebase/firestore';
+import { db, auth } from '@/lib/firebase';
+import { collection, query, orderBy, getDocs, updateDoc, setDoc, doc, Timestamp, onSnapshot, getDoc } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
 import { Session } from '@/lib/types';
 import { Clock, Users, Play, Square, RotateCcw, Volume2, Save, ExternalLink, RefreshCw, AlertCircle, FastForward, Rewind, Settings, Mic, PlayCircle, Upload, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -19,52 +20,89 @@ type RelativeBlock = {
   durationMs: number;
 };
 
+// 멘트 모달 타입
+type ScriptKey = 'opening' | 'breakTime' | 'closing' | 'wrapUp';
+
+const SCRIPT_META: Record<ScriptKey, { label: string; emoji: string; color: string; border: string; bg: string; defaultText: string }> = {
+  opening:   { label: '시작 멘트',     emoji: '🎙', color: 'text-emerald-700', border: 'border-emerald-300', bg: 'bg-emerald-50',  defaultText: '안녕하세요, 키링크 2030 로테이션 소개팅에 오신 것을 환영합니다! 오늘 행사는 테이블 번호 순서에 따라 시계 방향으로 한 칸씩 이동하며 진행됩니다. 마음에 드는 이성이 있다면 대화 종료 후 꼭 메모해 두세요. 그럼 시작하겠습니다!' },
+  breakTime: { label: '쉬는 시간 멘트', emoji: '☕', color: 'text-amber-700',   border: 'border-amber-300',  bg: 'bg-amber-50',   defaultText: '잠시 자리 교체 및 휴식 시간입니다! 케이크와 음료를 즐기시면서 편안하게 쉬어가세요. 잠시 후 다음 회차를 시작하겠습니다.' },
+  closing:   { label: '종료 멘트',     emoji: '🏁', color: 'text-rose-700',    border: 'border-rose-300',   bg: 'bg-rose-50',    defaultText: '오늘 모든 테이블의 로테이션 대화가 종료되었습니다! 참여해주신 모든 분들께 감사드립니다. 지금 마이페이지에 접속하셔서 마음에 들었던 분들을 1지망부터 3지망까지 작성하여 투표해 주시기 바랍니다.' },
+  wrapUp:    { label: '마무리 멘트',   emoji: '👏', color: 'text-purple-700',  border: 'border-purple-300', bg: 'bg-purple-50',  defaultText: '오늘 키링크 소개팅에 참여해 주셔서 진심으로 감사합니다! 매칭 결과는 투표 마감 후 마이페이지에서 확인하실 수 있습니다. 조심히 귀가하세요!' },
+};
+
 export default function AdminTimerPage() {
+  const [isAdmin, setIsAdmin] = useState(false);
   const [sessions, setSessions] = useState<Session[]>([]);
-  const [openingScript, setOpeningScript] = useState<string>('');
-  const [closingScript, setClosingScript] = useState<string>('');
+
+  // 4개 멘트 상태
+  const [scripts, setScripts] = useState<Record<ScriptKey, string>>({
+    opening:   SCRIPT_META.opening.defaultText,
+    breakTime: SCRIPT_META.breakTime.defaultText,
+    closing:   SCRIPT_META.closing.defaultText,
+    wrapUp:    SCRIPT_META.wrapUp.defaultText,
+  });
+
+  // 멘트 모달 상태
+  const [scriptModal, setScriptModal] = useState<{ key: ScriptKey; editing: boolean; draft: string } | null>(null);
+
+  // 하위 호환성 (기존 코드에서 openingScript/closingScript 직접 참조하는 부분 유지)
+  const openingScript = scripts.opening;
+  const closingScript = scripts.closing;
+  const setOpeningScript = (v: string) => setScripts(prev => ({ ...prev, opening: v }));
+  const setClosingScript = (v: string) => setScripts(prev => ({ ...prev, closing: v }));
   const [isEditingOpening, setIsEditingOpening] = useState(false);
   const [isEditingClosing, setIsEditingClosing] = useState(false);
 
+  // v12.1.0: auth 확인 후 isAdmin 설정
   useEffect(() => {
+    const unsub = onAuthStateChanged(auth, async (user) => {
+      if (!user) { setIsAdmin(false); return; }
+      try {
+        await user.getIdToken(true);
+        const snap = await getDoc(doc(db, 'users', user.uid));
+        const role = snap.exists() ? snap.data()?.role : null;
+        setIsAdmin(role === 'admin' || role === 'super_admin');
+      } catch { setIsAdmin(false); }
+    });
+    return () => unsub();
+  }, []);
+
+  // settings/timer_scripts 리스너
+  useEffect(() => {
+    if (!isAdmin) return;
     const unsubScripts = onSnapshot(doc(db, 'settings', 'timer_scripts'), (snap) => {
       if (snap.exists()) {
         const data = snap.data();
-        setOpeningScript(data.opening || '안녕하세요, 키링크 2030 로테이션 소개팅에 오신 것을 환영합니다! 오늘 행사는 테이블 번호 순서에 따라 시계 방향으로 한 칸씩 이동하며 진행됩니다. 마음에 드는 이성이 있다면 대화 종료 후 꼭 메모해 두세요. 그럼 시작하겠습니다!');
-        setClosingScript(data.closing || '오늘 모든 테이블의 로테이션 대화가 종료되었습니다! 참여해주신 모든 분들께 감사드립니다. 지금 마이페이지에 접속하셔서 마음에 들었던 분들을 1지망부터 3지망까지 작성하여 투표해 주시기 바랍니다. 조심히 귀가해 주세요!');
+        setScripts({
+          opening:   data.opening   || SCRIPT_META.opening.defaultText,
+          breakTime: data.breakTime || SCRIPT_META.breakTime.defaultText,
+          closing:   data.closing   || SCRIPT_META.closing.defaultText,
+          wrapUp:    data.wrapUp    || SCRIPT_META.wrapUp.defaultText,
+        });
       } else {
         setOpeningScript('안녕하세요, 키링크 2030 로테이션 소개팅에 오신 것을 환영합니다! 오늘 행사는 테이블 번호 순서에 따라 시계 방향으로 한 칸씩 이동하며 진행됩니다. 마음에 드는 이성이 있다면 대화 종료 후 꼭 메모해 두세요. 그럼 시작하겠습니다!');
         setClosingScript('오늘 모든 테이블의 로테이션 대화가 종료되었습니다! 참여해주신 모든 분들께 감사드립니다. 지금 마이페이지에 접속하셔서 마음에 들었던 분들을 1지망부터 3지망까지 작성하여 투표해 주시기 바랍니다. 조심히 귀가해 주세요!');
       }
     });
     return () => unsubScripts();
-  }, []);
+  }, [isAdmin]);
 
-  const handleSaveOpeningScript = async (text: string) => {
+  // 멘트 저장 (공통)
+  const handleSaveScript = async (key: ScriptKey, text: string) => {
     try {
-      await setDoc(doc(db, 'settings', 'timer_scripts'), {
-        opening: text
-      }, { merge: true });
-      setIsEditingOpening(false);
-      toast.success('시작 멘트가 저장되었습니다.');
+      await setDoc(doc(db, 'settings', 'timer_scripts'), { [key]: text }, { merge: true });
+      setScripts(prev => ({ ...prev, [key]: text }));
+      setScriptModal(prev => prev ? { ...prev, editing: false } : null);
+      toast.success(`${SCRIPT_META[key].label}가 저장되었습니다.`);
     } catch (e) {
       console.error(e);
       toast.error('저장 중 오류가 발생했습니다.');
     }
   };
 
-  const handleSaveClosingScript = async (text: string) => {
-    try {
-      await setDoc(doc(db, 'settings', 'timer_scripts'), {
-        closing: text
-      }, { merge: true });
-      setIsEditingClosing(false);
-      toast.success('종료 멘트가 저장되었습니다.');
-    } catch (e) {
-      console.error(e);
-      toast.error('저장 중 오류가 발생했습니다.');
-    }
-  };
+  // 기존 핸들러 유지 (하위 호환)
+  const handleSaveOpeningScript = (text: string) => handleSaveScript('opening', text);
+  const handleSaveClosingScript = (text: string) => handleSaveScript('closing', text);
   const [selectedSessionId, setSelectedSessionId] = useState<string>('');
 
   const [totalRounds, setTotalRounds] = useState<number | ''>(8);
@@ -536,7 +574,7 @@ export default function AdminTimerPage() {
               disabled={isLive}
             >
               <option value="">-- 기수 선택 안함 (로컬 테스트) --</option>
-              {sessions.map(s => (
+              {sessions.filter(s => !(s.episodeNumber >= 124 && s.episodeNumber <= 129)).map(s => (
                 <option key={s.id} value={s.id}>
                   {s.region === 'busan' ? '부산' : '창원'} {s.episodeNumber}기 {s.status === 'open' ? '(모집 중)' : ''}
                 </option>
@@ -847,98 +885,109 @@ export default function AdminTimerPage() {
            </div>
          </div>
 
-          {/* 📢 사회자 진행 가이드 멘트 */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+          {/* 📢 사회자 진행 가이드 멘트 — 버튼 4개 + 팝업 모달 */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
             <h3 className="font-black text-slate-800 flex items-center gap-2 mb-4">
               <Mic size={18} className="text-blue-500" /> 사회자 진행 가이드 멘트
             </h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* 시작 멘트 */}
-              <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 flex flex-col gap-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-xs font-black text-emerald-600 bg-emerald-50 px-2 py-1 rounded border border-emerald-100">📢 소개팅 시작 안내</span>
-                  {!isEditingOpening ? (
-                    <button
-                      onClick={() => setIsEditingOpening(true)}
-                      className="text-[10px] font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1 bg-white border border-slate-200 px-2.5 py-1 rounded transition-colors"
-                    >
-                      수정하기
-                    </button>
-                  ) : (
-                    <div className="flex gap-1">
-                      <button
-                        onClick={() => {
-                          setIsEditingOpening(false);
-                        }}
-                        className="text-[10px] font-bold text-slate-400 hover:text-slate-600 bg-white border border-slate-200 px-2 py-1 rounded"
-                      >
-                        취소
-                      </button>
-                      <button
-                        onClick={() => handleSaveOpeningScript(openingScript)}
-                        className="text-[10px] font-bold text-blue-600 hover:text-blue-800 bg-white border border-blue-200 px-2 py-1 rounded"
-                      >
-                        저장
-                      </button>
-                    </div>
-                  )}
-                </div>
-                {isEditingOpening ? (
-                  <textarea
-                    value={openingScript}
-                    onChange={e => setOpeningScript(e.target.value)}
-                    className="w-full h-32 p-3 text-xs font-bold text-slate-700 bg-white border border-slate-300 rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none resize-none"
-                  />
-                ) : (
-                  <div className="text-xs font-bold text-slate-600 leading-relaxed whitespace-pre-line h-32 overflow-y-auto bg-white p-3 rounded-lg border border-slate-100 custom-scrollbar">
-                    {openingScript}
-                  </div>
-                )}
-              </div>
-
-              {/* 종료 멘트 */}
-              <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 flex flex-col gap-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-xs font-black text-purple-600 bg-purple-50 px-2 py-1 rounded border border-purple-100">🏁 소개팅 종료 안내</span>
-                  {!isEditingClosing ? (
-                    <button
-                      onClick={() => setIsEditingClosing(true)}
-                      className="text-[10px] font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1 bg-white border border-slate-200 px-2.5 py-1 rounded transition-colors"
-                    >
-                      수정하기
-                    </button>
-                  ) : (
-                    <div className="flex gap-1">
-                      <button
-                        onClick={() => setIsEditingClosing(false)}
-                        className="text-[10px] font-bold text-slate-400 hover:text-slate-600 bg-white border border-slate-200 px-2 py-1 rounded"
-                      >
-                        취소
-                      </button>
-                      <button
-                        onClick={() => handleSaveClosingScript(closingScript)}
-                        className="text-[10px] font-bold text-blue-600 hover:text-blue-800 bg-white border border-blue-200 px-2 py-1 rounded"
-                      >
-                        저장
-                      </button>
-                    </div>
-                  )}
-                </div>
-                {isEditingClosing ? (
-                  <textarea
-                    value={closingScript}
-                    onChange={e => setClosingScript(e.target.value)}
-                    className="w-full h-32 p-3 text-xs font-bold text-slate-700 bg-white border border-slate-300 rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none resize-none"
-                  />
-                ) : (
-                  <div className="text-xs font-bold text-slate-600 leading-relaxed whitespace-pre-line h-32 overflow-y-auto bg-white p-3 rounded-lg border border-slate-100 custom-scrollbar">
-                    {closingScript}
-                  </div>
-                )}
-              </div>
+            <div className="grid grid-cols-2 gap-3">
+              {(Object.keys(SCRIPT_META) as ScriptKey[]).map((key) => {
+                const m = SCRIPT_META[key];
+                return (
+                  <button
+                    key={key}
+                    onClick={() => setScriptModal({ key, editing: false, draft: scripts[key] })}
+                    className={`flex items-center gap-2.5 px-4 py-3 rounded-xl border font-bold text-sm transition-all hover:scale-[1.02] active:scale-95 shadow-sm ${m.bg} ${m.border} ${m.color}`}
+                  >
+                    <span className="text-base">{m.emoji}</span>
+                    {m.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
+
+          {/* 멘트 팝업 모달 */}
+          {scriptModal && (() => {
+            const m = SCRIPT_META[scriptModal.key];
+            return (
+              <div
+                className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+                style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}
+                onClick={(e) => { if (e.target === e.currentTarget) setScriptModal(null); }}
+              >
+                <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
+                  {/* 헤더 */}
+                  <div className={`flex items-center justify-between px-6 py-5 ${m.bg} border-b ${m.border}`}>
+                    <div className="flex items-center gap-2">
+                      <span className="text-2xl">{m.emoji}</span>
+                      <span className={`font-black text-lg ${m.color}`}>{m.label}</span>
+                    </div>
+                    <button
+                      onClick={() => setScriptModal(null)}
+                      className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-black/10 transition-colors text-slate-500 font-black text-lg"
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  {/* 본문 */}
+                  <div className="p-6 flex flex-col gap-4">
+                    {scriptModal.editing ? (
+                      <textarea
+                        autoFocus
+                        value={scriptModal.draft}
+                        onChange={e => setScriptModal(prev => prev ? { ...prev, draft: e.target.value } : null)}
+                        className="w-full min-h-[12rem] h-72 p-4 text-sm font-semibold text-slate-700 bg-slate-50 border border-slate-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none resize-y leading-relaxed"
+                      />
+                    ) : (
+                      <div
+                        className="w-full min-h-[12rem] h-72 p-4 text-sm font-semibold text-slate-700 bg-slate-50 border border-slate-200 rounded-xl overflow-y-auto leading-relaxed whitespace-pre-line cursor-text select-all"
+                        onClick={e => (e.currentTarget as HTMLElement).focus()}
+                      >
+                        {scripts[scriptModal.key]}
+                      </div>
+                    )}
+
+                    {/* 액션 버튼 */}
+                    <div className="flex gap-2 justify-end">
+                      {scriptModal.editing ? (
+                        <>
+                          <button
+                            onClick={() => setScriptModal(prev => prev ? { ...prev, editing: false, draft: scripts[prev.key] } : null)}
+                            className="px-4 py-2 text-sm font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
+                          >
+                            취소
+                          </button>
+                          <button
+                            onClick={() => handleSaveScript(scriptModal.key, scriptModal.draft)}
+                            className="px-5 py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors shadow-md shadow-blue-500/25"
+                          >
+                            저장
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => setScriptModal(null)}
+                            className="px-4 py-2 text-sm font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
+                          >
+                            닫기
+                          </button>
+                          <button
+                            onClick={() => setScriptModal(prev => prev ? { ...prev, editing: true } : null)}
+                            className="px-5 py-2 text-sm font-bold text-white bg-slate-800 hover:bg-slate-900 rounded-xl transition-colors"
+                          >
+                            ✏️ 수정
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
         {/* 뷰 토글 버튼 (더 크게, 인스턴트 스왑용) */}
         <div className="flex justify-center -my-3 relative z-20">

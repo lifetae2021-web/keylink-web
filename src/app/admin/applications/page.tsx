@@ -50,16 +50,27 @@ const Skeleton = ({ className }: { className?: string }) => (
 
 export default function ApplicationsPage() {
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [events, setEvents] = useState<any[]>([]);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
-      if (!user) return;
+      if (!user) {
+        setIsAdmin(false);
+        setIsSuperAdmin(false);
+        return;
+      }
       try {
+        // v12.1.0: 토큰 강제 갱신 → Firestore 리스너 실행 전 최신 인증 토큰 보장
+        await user.getIdToken(true);
         const snap = await getDoc(doc(db, 'users', user.uid));
-        setIsSuperAdmin(snap.exists() && snap.data()?.role === 'super_admin');
+        const role = snap.exists() ? snap.data()?.role : null;
+        setIsAdmin(role === 'admin' || role === 'super_admin');
+        setIsSuperAdmin(snap.exists() && role === 'super_admin');
       } catch (e) {
         console.error('Error fetching user role:', e);
+        setIsAdmin(false);
+        setIsSuperAdmin(false);
       }
     });
     return () => unsub();
@@ -94,8 +105,9 @@ export default function ApplicationsPage() {
   // 매칭 결과 (matchingSummaries 컬렉션)
   const [matchingSummary, setMatchingSummary] = useState<any>(null);
 
-  // 1. sessions 컬렉션 실시간 동기화
+  // 1. sessions 컬렉션 실시간 동기화 (isAdmin 확인 후에만 실행)
   useEffect(() => {
+    if (!isAdmin) return; // 권한 확인 전에는 리스너 미실행
     // v7.4.1: episodeNumber 기준 내림차순 정렬 (최신 기수가 맨 위로)
     const q = query(collection(db, 'sessions'), orderBy('episodeNumber', 'desc'));
     const unsub = onSnapshot(q, (snap) => {
@@ -112,11 +124,11 @@ export default function ApplicationsPage() {
       setIsLoading(false);
     });
     return () => unsub();
-  }, [selectedEventId]);
+  }, [isAdmin, selectedEventId]);
 
-  // 2. 신청 내역 실시간 동기화
+  // 2. 신청 내역 실시간 동기화 (isAdmin 확인 후에만 실행)
   useEffect(() => {
-    if (!selectedEventId) return;
+    if (!isAdmin || !selectedEventId) return;
 
     setIsDataLoading(true);
     const q = selectedEventId === 'all'
@@ -161,19 +173,20 @@ export default function ApplicationsPage() {
     });
 
     return () => unsub();
-  }, [selectedEventId]);
+  }, [isAdmin, selectedEventId]);
 
   // 필터 변경 시 다중 선택 상태 자동 초기화 (안전 장치)
   useEffect(() => {
     setSelectedAppIds([]);
   }, [selectedEventId, filterGender, searchQuery, dummyFilter, statusFilter, ageFilter, activeTab]);
 
-  // 3. SMS 템플릿 로드
+  // 3. SMS 템플릿 로드 (isAdmin 확인 후에만 실행)
   useEffect(() => {
+    if (!isAdmin) return;
     getDocs(collection(db, 'smsTemplates')).then(snap => {
       setSmsTemplates(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     });
-  }, []);
+  }, [isAdmin]);
 
   // 4. 매칭 요약 로드 (기수 선택 시)
   useEffect(() => {
@@ -647,6 +660,44 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
     return ids;
   }, [baseFiltered, activeEvent, selectedEventId]);
 
+  // v12.0.0: 전체, 남성, 여성 성별 수 계산 (성별 필터를 제외한 다른 모든 필터 적용 상태 기준)
+  const genderCounts = useMemo(() => {
+    const counts = { all: 0, male: 0, female: 0 };
+    baseFiltered.forEach(app => {
+      const user = userMap[app.userId] || {};
+      const normalizedQuery = searchQuery.replace(/[^0-9]/g, '');
+      const userPhoneDigits = (user.phone || '').replace(/[^0-9]/g, '');
+
+      const matchesSearch =
+        (user.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (user.workplace || user.job || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (user.residence || user.location || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (normalizedQuery !== '' && userPhoneDigits.includes(normalizedQuery));
+
+      // 나이대 필터링
+      let matchesAge = true;
+      if (ageFilter !== 'all') {
+        const birthYear = user.birthDate ? parseInt(user.birthDate.includes('-') ? user.birthDate.slice(0, 4) : (user.birthDate.length === 6 ? '19' + user.birthDate.slice(0, 2) : user.birthDate.slice(0, 4))) : 0;
+        if (ageFilter === '90s') matchesAge = birthYear >= 1990 && birthYear <= 1999;
+        else if (ageFilter === '80s') matchesAge = birthYear >= 1980 && birthYear <= 1989;
+        else if (ageFilter === '00s') matchesAge = birthYear >= 2000 && birthYear <= 2009;
+      }
+
+      // 상태 필터링
+      const matchesStatus = statusFilter === 'all' || app.status === statusFilter;
+
+      if (matchesSearch && matchesAge && matchesStatus) {
+        counts.all++;
+        if (app.gender === 'male') {
+          counts.male++;
+        } else if (app.gender === 'female') {
+          counts.female++;
+        }
+      }
+    });
+    return counts;
+  }, [baseFiltered, userMap, searchQuery, ageFilter, statusFilter]);
+
   const filtered = useMemo(() => {
     let result = baseFiltered.filter(app => {
       const user = userMap[app.userId] || {};
@@ -731,9 +782,9 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
             <div className="flex flex-wrap items-center gap-2">
               <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
                 {[
-                  { id: 'all', label: '전체' },
-                  { id: 'male', label: '남성' },
-                  { id: 'female', label: '여성' }
+                  { id: 'all', label: `전체 (${genderCounts.all})` },
+                  { id: 'male', label: `남성 (${genderCounts.male})` },
+                  { id: 'female', label: `여성 (${genderCounts.female})` }
                 ].map(t => (
                   <button
                     key={t.id}
@@ -1848,7 +1899,7 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
         </>
       ) : (
         /* 1:1 매칭 신청 관리 탭 */
-        <AdminApplicationList isSuperAdmin={isSuperAdmin} />
+        <AdminApplicationList isSuperAdmin={isSuperAdmin} isAdmin={isAdmin} />
       )}
 
       {/* Modal Overlay */}

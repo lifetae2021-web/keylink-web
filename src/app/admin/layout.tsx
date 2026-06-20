@@ -216,6 +216,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         if (!isEnded) activeIds.add(d.id);
       });
       setActiveSessionIds(activeIds);
+    }, (err) => {
+      console.error('Error syncing active sessions:', err);
     });
 
     // 1-b. 대기 신청서 동기화
@@ -231,6 +233,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         return !isDummy;
       }).map(d => d.data());
       setPendingApps(realDocs);
+    }, (err) => {
+      console.error('Error syncing pending apps:', err);
     });
 
     return () => {
@@ -304,6 +308,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           return list;
         }).flat();
         setUserNotis(items);
+      },
+      (err) => {
+        console.error('Error syncing user notifications:', err);
       }
     );
 
@@ -329,6 +336,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           };
         });
         setAppNotis(items);
+      },
+      (err) => {
+        console.error('Error syncing app notifications:', err);
       }
     );
 
@@ -355,6 +365,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           };
         });
         setPrivateNotis(items);
+      },
+      (err) => {
+        console.error('Error syncing private notifications:', err);
       }
     );
 
@@ -404,6 +417,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         return;
       }
       try {
+        // v12.1.0: 토큰 강제 갱신 후 role 확인 → Firestore 리스너 실행 전에 최신 인증 토큰 보장
+        await user.getIdToken(true);
         const snap = await getDoc(doc(db, 'users', user.uid));
         const role = snap.exists() ? snap.data().role : null;
         if (role === 'super_admin') {
@@ -455,7 +470,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   if (pathname === '/admin/login') return <>{children}</>;
 
   // Loading / access denied
-  if (authState === 'loading') {
+  if (authState === 'loading' || (authState === 'denied' && pathname !== '/admin/login')) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-3" style={{ background: '#09090b' }}>
         <Loader2 className="animate-spin" size={28} style={{ color: '#FF6F61' }} />

@@ -79,17 +79,24 @@ export default function UsersPage() {
 
   // 최고관리자 여부
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [isAuthChecked, setIsAuthChecked] = useState(false);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
       if (!user) {
+        setIsAdmin(false);
+        setIsSuperAdmin(false);
         setIsAuthChecked(true);
         return;
       }
       try {
+        // v12.1.0: 토큰 강제 갱신 → Firestore 리스너 실행 전 최신 인증 토큰 보장
+        await user.getIdToken(true);
         const snap = await getDoc(doc(db, 'users', user.uid));
-        setIsSuperAdmin(snap.exists() && snap.data().role === 'super_admin');
+        const role = snap.exists() ? snap.data().role : null;
+        setIsAdmin(role === 'admin' || role === 'super_admin');
+        setIsSuperAdmin(snap.exists() && role === 'super_admin');
       } finally {
         setIsAuthChecked(true);
       }
@@ -258,6 +265,7 @@ export default function UsersPage() {
   };
 
   useEffect(() => {
+    if (!isAdmin) return;
     setIsLoading(true);
     const q = query(collection(db, 'users'), orderBy('createdAt', 'desc'));
 
@@ -315,7 +323,7 @@ export default function UsersPage() {
       .catch(() => { });
 
     return () => unsubscribe();
-  }, []);
+  }, [isAdmin]);
 
   const counts = useMemo(() => {
     const isDummy = (u: any) => u.isDummy === true || u.id?.startsWith('dummy') || u.id?.startsWith('user_m_') || u.id?.startsWith('user_f_');
@@ -327,6 +335,21 @@ export default function UsersPage() {
       dummy: users.filter(u => isDummy(u)).length,
     };
   }, [users]);
+
+  const genderCounts = useMemo(() => {
+    const isDummy = (u: any) => u.isDummy === true || u.id?.startsWith('dummy') || u.id?.startsWith('user_m_') || u.id?.startsWith('user_f_');
+    const baseUsers = users.filter(u => {
+      const isD = isDummy(u);
+      if (filter === 'dummy') return isD;
+      if (filter === 'all') return !isD;
+      return !isD && (u.status || 'pending') === filter;
+    });
+    return {
+      all: baseUsers.length,
+      male: baseUsers.filter(u => u.gender === 'male').length,
+      female: baseUsers.filter(u => u.gender === 'female').length,
+    };
+  }, [users, filter]);
 
   const filtered = useMemo(() => {
     return users.filter(u => {
@@ -665,9 +688,21 @@ export default function UsersPage() {
             <button
               key={g}
               onClick={() => setGenderFilter(g as any)}
-              className={`px-4 py-1.5 text-[0.75rem] font-bold rounded-lg transition-all ${genderFilter === g ? 'bg-white text-[#FF7E7E] shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+              className={`px-4 py-1.5 text-[0.75rem] font-bold rounded-lg transition-all flex items-center gap-1.5 ${genderFilter === g ? 'bg-white text-[#FF7E7E] shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
             >
-              {g === 'all' ? '전체' : g === 'male' ? '남성' : '여성'}
+              <span>{g === 'all' ? '전체' : g === 'male' ? '남성' : '여성'}</span>
+              <span
+                style={{
+                  fontSize: '0.65rem',
+                  fontWeight: 800,
+                  padding: '1px 5px',
+                  borderRadius: 6,
+                  background: genderFilter === g ? 'rgba(255,126,126,0.1)' : '#E2E8F0',
+                  color: genderFilter === g ? '#FF7E7E' : '#64748B',
+                }}
+              >
+                {genderCounts[g as 'all' | 'male' | 'female']}
+              </span>
             </button>
           ))}
         </div>

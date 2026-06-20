@@ -157,6 +157,15 @@ service cloud.firestore {
     }
 
     // ─────────────────────────────────────
+    // settings (시스템 설정) 컬렉션
+    // timer_scripts 등 관리자 전용 설정값
+    // ─────────────────────────────────────
+    match /settings/{docId} {
+      allow read: if isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // ─────────────────────────────────────
     // private_applications (1:1 매칭 신청) 컬렉션
     // ─────────────────────────────────────
     match /private_applications/{appId} {

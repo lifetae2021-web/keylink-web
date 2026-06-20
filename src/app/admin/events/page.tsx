@@ -377,6 +377,9 @@ export default function EventsPage() {
         }
       }
       setIsLoading(false);
+    }, (error) => {
+      console.error("Error listening to sessions:", error);
+      setIsLoading(false);
     });
     return () => unsub();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -532,6 +535,8 @@ export default function EventsPage() {
         status: doc.data().status,
       }));
       setMatchingHistory(history);
+    }, (error) => {
+      console.error("Error listening to matching history:", error);
     });
     return () => unsub();
   }, []);
