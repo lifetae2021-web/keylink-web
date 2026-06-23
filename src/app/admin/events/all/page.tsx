@@ -16,7 +16,8 @@ export default function AllSessionsPage() {
   useEffect(() => {
     getAllSessions()
       .then((data) => {
-        setSessions(data.sort((a, b) => b.eventDate.getTime() - a.eventDate.getTime()));
+        const activeSessions = data.filter((s) => s.status !== "cancelled");
+        setSessions(activeSessions.sort((a, b) => b.eventDate.getTime() - a.eventDate.getTime()));
       })
       .finally(() => setIsLoading(false));
   }, []);
@@ -56,7 +57,7 @@ export default function AllSessionsPage() {
           <div className="flex justify-center py-20 text-slate-400 text-sm">불러오는 중...</div>
         ) : (
           <div className="flex flex-col gap-3">
-            {sessions.map((ev) => {
+            {sessions.filter(ev => ev.status !== 'cancelled').map((ev) => {
               const badge = getBadge(ev);
               const currentMale = ev.currentMale || 0;
               const currentFemale = ev.currentFemale || 0;

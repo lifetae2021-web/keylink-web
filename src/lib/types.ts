@@ -16,7 +16,8 @@ export type SessionStatus =
   | 'closed'     // 신청 마감 (선발 진행 중)
   | 'voting'     // 행사 당일, 투표 활성화
   | 'matching'   // 투표 완료, 매칭 집계 중
-  | 'completed'; // 매칭 결과 승인 완료
+  | 'completed'  // 매칭 결과 승인 완료
+  | 'cancelled'; // 기수 취소 (지원자 → 우선 대기풀 이동)
 
 export interface VoteConfig {
   maxSelection: number;          // 최대 선택 인원 (기본 3)

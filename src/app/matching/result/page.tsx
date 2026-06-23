@@ -16,7 +16,7 @@ export default function ResultListPage() {
   
   // Cumulative counter animation
   useEffect(() => {
-    const controls = animate(0, 706, { // This could eventually be dynamic
+    const controls = animate(0, 718, { // This could eventually be dynamic
       duration: 3,
       delay: 0.5,
       ease: "easeOut",
@@ -42,21 +42,23 @@ export default function ResultListPage() {
           
           let matchedCount = 0;
           let matchedRate = 0;
-          try {
-            const summarySnap = await getDoc(doc(db, 'matchingSummaries', sessionId));
-            if (summarySnap.exists()) {
-              const summaryData = summarySnap.data();
-              const matchedPairs = summaryData.matchedPairs || [];
-              matchedCount = matchedPairs.length;
-              
-              const unmatchedCount = (summaryData.unmatchedUserIds || []).length;
-              const total = matchedCount * 2 + unmatchedCount;
-              if (total > 0) {
-                matchedRate = Math.round((matchedCount * 2 / total) * 100);
+          if (d.status === 'completed') {
+            try {
+              const summarySnap = await getDoc(doc(db, 'matchingSummaries', sessionId));
+              if (summarySnap.exists()) {
+                const summaryData = summarySnap.data();
+                const matchedPairs = summaryData.matchedPairs || [];
+                matchedCount = matchedPairs.length;
+                
+                const unmatchedCount = (summaryData.unmatchedUserIds || []).length;
+                const total = matchedCount * 2 + unmatchedCount;
+                if (total > 0) {
+                  matchedRate = Math.round((matchedCount * 2 / total) * 100);
+                }
               }
+            } catch (e) {
+              console.error("Error fetching matchingSummary:", sessionId, e);
             }
-          } catch (e) {
-            console.error("Error fetching matchingSummary:", sessionId, e);
           }
           
           return {

@@ -193,13 +193,6 @@ export default function MatchingResultsListPage() {
               >
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                   <div className="flex items-center gap-5">
-                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-colors ${
-                      round.status === 'published' ? 'bg-pink-50 text-pink-500' : 
-                      round.status === 'confirmed' ? 'bg-blue-50 text-blue-500' : 
-                      'bg-gray-50 text-gray-400 group-hover:bg-pink-50 group-hover:text-pink-500'
-                    }`}>
-                      <Heart size={28} fill={round.status === 'published' ? 'currentColor' : 'none'} />
-                    </div>
                     <div>
                       <div className="flex items-center gap-3 mb-1">
                         <span className="text-sm font-black text-pink-500">{round.episode}기</span>
@@ -269,15 +262,6 @@ export default function MatchingResultsListPage() {
                 <div key={app.id} className="bg-white rounded-[32px] p-6 border border-purple-100 shadow-sm hover:shadow-xl transition-all">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <div className="flex items-center gap-5">
-                      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-colors ${
-                        app.status === 'success' ? 'bg-emerald-50 text-emerald-500' :
-                        app.status === 'profile_sent' ? 'bg-blue-50 text-blue-500 animate-pulse shadow-sm shadow-blue-100' :
-                        app.status === 'negotiating' ? 'bg-amber-50 text-amber-500' :
-                        app.status === 'pending_payment' ? 'bg-purple-50 text-purple-600' :
-                        'bg-purple-50 text-purple-400'
-                      }`}>
-                        <Heart size={28} fill={app.status === 'success' ? 'currentColor' : 'none'} />
-                      </div>
                       <div>
                         <div className="flex items-center gap-3 mb-1">
                           <span className="text-sm font-black text-purple-600">1:1 프라이빗 매칭</span>

@@ -93,15 +93,28 @@ export default function PrivateMatching() {
                   mbti: appData.mbti || prev.mbti,
                   maritalStatus: appData.maritalStatus || false,
                 }));
+
+                // v8.15.14: 수정 모드 시 기존 신청서의 서류 및 사진 연동
+                if (appData.idProofUrl) {
+                  setIdProof(appData.idProofUrl);
+                }
+                if (appData.employmentProofUrl) {
+                  setJobProof(appData.employmentProofUrl);
+                }
+                if (appData.photos && appData.photos.length > 0) {
+                  setPhotos(appData.photos);
+                }
               }
             }
 
-            // v8.12.9: 프로필 데이터 연동 (사진 및 재직증명)
-            if (userData.photos && userData.photos.length > 0) {
-              setPhotos(userData.photos);
-            }
-            if (userData.employmentProof) {
-              setJobProof(userData.employmentProof);
+            // v8.12.9: 프로필 데이터 연동 (사진 및 재직증명) - 수정 모드가 아닐 때만 기본 유저 프로필 연동
+            if (!isEditMode) {
+              if (userData.photos && userData.photos.length > 0) {
+                setPhotos(userData.photos);
+              }
+              if (userData.employmentProof) {
+                setJobProof(userData.employmentProof);
+              }
             }
 
           } else {

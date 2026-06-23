@@ -1,9 +1,10 @@
 'use client';
 
-import { X, User, ShieldCheck, Phone, Camera, MapPin, Briefcase, Users2, Wine, Cigarette, Info, Coffee, Heart, HeartOff, Calendar, Ruler, Weight, ExternalLink, History, AlertCircle, CheckCircle, ChevronLeft, ChevronRight, ClipboardList } from 'lucide-react';
+import { X, User, ShieldCheck, Phone, Camera, MapPin, Briefcase, Users2, Wine, Cigarette, Info, Coffee, Heart, HeartOff, Calendar, Ruler, Weight, ExternalLink, History, AlertCircle, CheckCircle, ChevronLeft, ChevronRight, ClipboardList, KeyRound } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
-import { db } from '@/lib/firebase';
+import { db, auth } from '@/lib/firebase';
+import { getIdToken } from 'firebase/auth';
 import { doc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import toast from 'react-hot-toast';
 import { useState, useEffect, useRef } from 'react';
@@ -52,6 +53,8 @@ const TextBox = ({ label, value, icon: Icon, color }: { label: string; value?: s
 export default function UserProfileModal({ user: initialUser, isOpen, onClose, onUserUpdate }: UserProfileModalProps) {
   const [user, setUser] = useState(initialUser);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isResettingPw, setIsResettingPw] = useState(false);
+  const [tempPassword, setTempPassword] = useState<string | null>(null);
   const [photoIndex, setPhotoIndex] = useState(0);
   const [privateAppPhotos, setPrivateAppPhotos] = useState<string[]>([]);
   const [showProofPopup, setShowProofPopup] = useState(false);
@@ -196,6 +199,42 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
       toast.error('상태 변경에 실패했습니다.');
     } finally {
       setIsUpdating(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    const targetUid = user.uid || user.id;
+    if (!targetUid) {
+      toast.error('회원 UID를 찾을 수 없습니다.');
+      return;
+    }
+    if (!window.confirm(`[${user.name}] 님의 비밀번호를 임시 비밀번호로 초기화하시겠습니까?\n초기화 후 임시 비밀번호를 회원에게 직접 전달해야 합니다.`)) return;
+
+    setIsResettingPw(true);
+    try {
+      const currentUser = auth.currentUser;
+      if (!currentUser) throw new Error('관리자 로그인이 필요합니다.');
+      const idToken = await getIdToken(currentUser);
+
+      const res = await fetch('/api/admin/users/reset-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({ uid: targetUid }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '오류가 발생했습니다.');
+
+      setTempPassword(data.tempPassword);
+      toast.success('임시 비밀번호가 생성되었습니다.');
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.message || '비밀번호 초기화에 실패했습니다.');
+    } finally {
+      setIsResettingPw(false);
     }
   };
 
@@ -371,6 +410,42 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
                   <DetailRow label="연락처" value={user.phone} icon={Phone} />
                   <DetailRow label="인스타그램" value={user.instaId} icon={Camera} />
                   <DetailRow label="거주지" value={user.residence || user.location} icon={MapPin} />
+
+                {/* 비밀번호 재설정 */}
+                  <div className="flex items-center justify-between py-4 border-t border-slate-100 mt-1">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center">
+                        <KeyRound size={18} className="text-slate-400" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">비밀번호 초기화</p>
+                        <p className="text-[0.75rem] font-bold text-slate-400 mt-0.5">임시 비밀번호 생성 후 전달</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleResetPassword}
+                      disabled={isResettingPw}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black transition-all bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-200 disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      <KeyRound size={13} />
+                      {isResettingPw ? '처리 중...' : '비밀번호 초기화'}
+                    </button>
+                  </div>
+
+                  {/* 임시 비밀번호 표시 */}
+                  {tempPassword && (
+                    <div className="mt-1 p-4 rounded-2xl bg-amber-50 border border-amber-200">
+                      <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-2">🔑 임시 비밀번호 (회원에게 전달하세요)</p>
+                      <div className="flex items-center gap-2">
+                        <code className="flex-1 text-lg font-black text-amber-800 tracking-widest bg-white px-4 py-2 rounded-xl border border-amber-200">{tempPassword}</code>
+                        <button
+                          onClick={() => { navigator.clipboard.writeText(tempPassword); toast.success('복사되었습니다.'); }}
+                          className="px-3 py-2 rounded-xl bg-amber-500 text-white text-xs font-black hover:bg-amber-600 transition-all shrink-0"
+                        >복사</button>
+                      </div>
+                      <p className="text-[0.7rem] text-amber-500 font-bold mt-2">⚠️ 이 화면을 닫으면 다시 확인할 수 없습니다.</p>
+                    </div>
+                  )}
                 </div>
 
                 {/* 2. 신체 및 직업 정보 */}

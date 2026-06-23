@@ -17,7 +17,7 @@ import { format } from 'date-fns';
 import UserProfileModal from './UserProfileModal';
 import SMSPreviewModal from '@/components/admin/SMSPreviewModal';
 
-type Status = 'all' | 'pending' | 'verified' | 'rejected' | 'dummy';
+type Status = 'all' | 'pending' | 'verified' | 'rejected' | 'dummy' | 'waitpool';
 
 const STATUS_CFG = {
   verified: { label: '인증 완료', color: '#10B981', bg: '#ECFDF5' },
@@ -25,14 +25,15 @@ const STATUS_CFG = {
   rejected: { label: '인증 반려', color: '#EF4444', bg: '#FEF2F2' },
 };
 
-const ALL_ROLES = ['일반회원', '신뢰회원', 'VIP회원', '블랙리스트', 'admin'];
-const ADMIN_ROLES = ['일반회원', '신뢰회원', 'VIP회원', '블랙리스트']; // admin 항목 없음
+const ALL_ROLES = ['일반회원', '신뢰회원', 'VIP회원', '블랙', 'admin'];
+const ADMIN_ROLES = ['일반회원', '신뢰회원', 'VIP회원', '블랙']; // admin 항목 없음
 
 const TABS: { key: Status; label: string }[] = [
   { key: 'all', label: '전체' },
   { key: 'pending', label: '승인 대기' },
   { key: 'verified', label: '인증 완료' },
   { key: 'rejected', label: '반려' },
+  { key: 'waitpool', label: '⚡ 우선 대기' },
   { key: 'dummy', label: '더미계정' },
 ];
 
@@ -329,10 +330,11 @@ export default function UsersPage() {
     const isDummy = (u: any) => u.isDummy === true || u.id?.startsWith('dummy') || u.id?.startsWith('user_m_') || u.id?.startsWith('user_f_');
     return {
       all: users.filter(u => !isDummy(u)).length,
-      pending: users.filter(u => !isDummy(u) && (u.status || 'pending') === 'pending').length,
-      verified: users.filter(u => !isDummy(u) && u.status === 'verified').length,
+      pending: users.filter(u => !isDummy(u) && ((u.status || 'pending') === 'pending' || u.isJobReviewed === false)).length,
+      verified: users.filter(u => !isDummy(u) && (u.status || 'pending') === 'verified' && u.isJobReviewed !== false).length,
       rejected: users.filter(u => !isDummy(u) && u.status === 'rejected').length,
       dummy: users.filter(u => isDummy(u)).length,
+      waitpool: users.filter(u => !isDummy(u) && Array.isArray(u.cancelledSessionHistory) && u.cancelledSessionHistory.length > 0).length,
     };
   }, [users]);
 
@@ -341,7 +343,10 @@ export default function UsersPage() {
     const baseUsers = users.filter(u => {
       const isD = isDummy(u);
       if (filter === 'dummy') return isD;
+      if (filter === 'waitpool') return !isD && Array.isArray(u.cancelledSessionHistory) && u.cancelledSessionHistory.length > 0;
       if (filter === 'all') return !isD;
+      if (filter === 'pending') return !isD && ((u.status || 'pending') === 'pending' || u.isJobReviewed === false);
+      if (filter === 'verified') return !isD && (u.status || 'pending') === 'verified' && u.isJobReviewed !== false;
       return !isD && (u.status || 'pending') === filter;
     });
     return {
@@ -365,8 +370,14 @@ export default function UsersPage() {
       let matchFilter = false;
       if (filter === 'dummy') {
         matchFilter = isDummy;
+      } else if (filter === 'waitpool') {
+        matchFilter = !isDummy && Array.isArray(u.cancelledSessionHistory) && u.cancelledSessionHistory.length > 0;
       } else if (filter === 'all') {
         matchFilter = !isDummy;
+      } else if (filter === 'pending') {
+        matchFilter = !isDummy && ((u.status || 'pending') === 'pending' || u.isJobReviewed === false);
+      } else if (filter === 'verified') {
+        matchFilter = !isDummy && (u.status || 'pending') === 'verified' && u.isJobReviewed !== false;
       } else {
         matchFilter = !isDummy && (u.status || 'pending') === filter;
       }
@@ -651,34 +662,40 @@ export default function UsersPage() {
 
       {/* Filter tabs */}
       <div className="flex items-center gap-2 flex-wrap">
-        {TABS.map(t => (
-          <button
-            key={t.key}
-            onClick={() => setFilter(t.key)}
-            className="flex items-center gap-2 rounded-xl transition-all duration-200"
-            style={{
-              padding: '8px 18px',
-              fontSize: '0.82rem',
-              fontWeight: filter === t.key ? 700 : 500,
-              color: filter === t.key ? '#fff' : '#64748B',
-              background: filter === t.key ? '#FF7E7E' : '#fff',
-              border: `1px solid ${filter === t.key ? '#FF7E7E' : '#E2E8F0'}`,
-              boxShadow: filter === t.key ? '0 4px 12px rgba(255,126,126,0.2)' : 'none',
-            }}
-          >
-            {t.label}
-            <span
+        {TABS.map(t => {
+          const isWaitpool = t.key === 'waitpool';
+          const isActive = filter === t.key;
+          return (
+            <button
+              key={t.key}
+              onClick={() => setFilter(t.key)}
+              className="flex items-center gap-2 rounded-xl transition-all duration-200"
               style={{
-                fontSize: '0.65rem', fontWeight: 800,
-                padding: '1px 6px', borderRadius: 10,
-                background: filter === t.key ? 'rgba(0,0,0,0.1)' : '#F1F5F9',
-                color: filter === t.key ? '#fff' : '#64748B',
+                padding: '8px 18px',
+                fontSize: '0.82rem',
+                fontWeight: isActive ? 700 : 500,
+                color: isActive ? '#fff' : isWaitpool ? '#B45309' : '#64748B',
+                background: isActive
+                  ? isWaitpool ? '#F59E0B' : '#FF7E7E'
+                  : isWaitpool ? '#FFFBEB' : '#fff',
+                border: `1px solid ${isActive ? (isWaitpool ? '#F59E0B' : '#FF7E7E') : isWaitpool ? '#FCD34D' : '#E2E8F0'}`,
+                boxShadow: isActive ? (isWaitpool ? '0 4px 12px rgba(245,158,11,0.25)' : '0 4px 12px rgba(255,126,126,0.2)') : 'none',
               }}
             >
-              {counts[t.key]}
-            </span>
-          </button>
-        ))}
+              {t.label}
+              <span
+                style={{
+                  fontSize: '0.65rem', fontWeight: 800,
+                  padding: '1px 6px', borderRadius: 10,
+                  background: isActive ? 'rgba(0,0,0,0.1)' : isWaitpool ? '#FEF3C7' : '#F1F5F9',
+                  color: isActive ? '#fff' : isWaitpool ? '#B45309' : '#64748B',
+                }}
+              >
+                {counts[t.key]}
+              </span>
+            </button>
+          );
+        })}
 
         <div className="w-[1px] h-6 bg-slate-200 mx-2" />
 
@@ -854,6 +871,29 @@ export default function UsersPage() {
                             <span className={`text-[10px] font-bold ${u.gender === 'male' ? 'text-blue-500' : 'text-rose-500'}`}>
                               {u.gender === 'male' ? '남성' : '여성'}
                             </span>
+                             {/* 취소 이력 배지 */}
+                             {Array.isArray(u.cancelledSessionHistory) && u.cancelledSessionHistory.length > 0 && (
+                               <div className="flex flex-wrap gap-1 mt-0.5">
+                                 {u.cancelledSessionHistory.map((h: any, idx: number) => {
+                                   const legacyDates: Record<string, string> = {
+                                     '부산 로테이션 소개팅 130기': '06.19',
+                                     '부산 130기': '06.19',
+                                     '창원 로테이션 소개팅 1기': '06.20',
+                                     '창원 1기': '06.20',
+                                   };
+                                   const displayDate = h.sessionDate || legacyDates[h.sessionTitle] || h.sessionTitle?.replace('로테이션 소개팅 ', '') || '기수 취소';
+                                   return (
+                                     <span
+                                       key={idx}
+                                       title={`${h.sessionTitle} 지원 후 취소 (상태: ${h.applicationStatus === 'confirmed' ? '확정' : '신청'})`}
+                                       style={{ fontSize: '8px', fontWeight: 800, padding: '1px 5px', borderRadius: 4, background: h.applicationStatus === 'confirmed' ? '#FEF3C7' : '#F1F5F9', color: h.applicationStatus === 'confirmed' ? '#B45309' : '#64748B', border: `1px solid ${h.applicationStatus === 'confirmed' ? '#FCD34D' : '#CBD5E1'}` }}
+                                     >
+                                       ⚡ {displayDate} {h.applicationStatus === 'confirmed' ? '(확정)' : '(신청)'}
+                                     </span>
+                                   );
+                                 })}
+                               </div>
+                             )}
                           </div>
                         </td>
 
@@ -937,15 +977,45 @@ export default function UsersPage() {
                               <span className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-1 rounded-full" style={{ background: '#F8FAFC', color: '#475569', border: '1px solid #E2E8F0' }}>
                                 관리자
                               </span>
-                            ) : (
-                            <select
-                              value={u.role || '일반회원'}
-                              onChange={(e) => updateRole(u.id, e.target.value)}
-                              className="bg-slate-50 border border-slate-200 rounded-lg text-[10px] px-2 py-1 text-slate-700 outline-none focus:border-[#FF7E7E]/50 cursor-pointer shadow-sm"
-                            >
-                              {(isSuperAdmin ? ALL_ROLES : ADMIN_ROLES).map(r => <option key={r} value={r} className="bg-white">{r}</option>)}
-                            </select>
-                            )}
+                            ) : (() => {
+                              const roleStyles: Record<string, { bg: string; color: string; border: string }> = {
+                                '일반회원':  { bg: '#F8FAFC', color: '#64748B', border: '#E2E8F0' },
+                                '신뢰회원':  { bg: '#EFF6FF', color: '#2563EB', border: '#BFDBFE' },
+                                'VIP회원':   { bg: '#FDF4FF', color: '#9333EA', border: '#E9D5FF' },
+                                '블랙':      { bg: '#FFF1F2', color: '#E11D48', border: '#FECDD3' },
+                                '블랙리스트':{ bg: '#FFF1F2', color: '#E11D48', border: '#FECDD3' },
+                                'admin':     { bg: '#F0FDF4', color: '#16A34A', border: '#BBF7D0' },
+                              };
+                              const userRole = u.role === '블랙리스트' ? '블랙' : (u.role || '일반회원');
+                              const rs = roleStyles[userRole] || roleStyles['일반회원'];
+                              return (
+                                <select
+                                  value={userRole}
+                                  onChange={(e) => updateRole(u.id, e.target.value)}
+                                  style={{
+                                    appearance: 'none',
+                                    WebkitAppearance: 'none',
+                                    display: 'inline-block',
+                                    width: 'fit-content',
+                                    maxWidth: 80,
+                                    background: `${rs.bg} url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='${encodeURIComponent(rs.color)}'%3E%3Cpath fill-rule='evenodd' d='M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z' clip-rule='evenodd'/%3E%3C/svg%3E") no-repeat right 3px center / 7px 7px`,
+                                    border: `1px solid ${rs.border}`,
+                                    borderRadius: 20,
+                                    color: rs.color,
+                                    fontSize: '9px',
+                                    fontWeight: 800,
+                                    padding: '1.5px 13px 1.5px 5px',
+                                    cursor: 'pointer',
+                                    outline: 'none',
+                                    lineHeight: 1.2,
+                                    letterSpacing: '-0.03em',
+                                    zoom: 0.85,
+                                  }}
+                                >
+                                  {(isSuperAdmin ? ALL_ROLES : ADMIN_ROLES).map(r => <option key={r} value={r} className="bg-white text-slate-700">{r}</option>)}
+                                </select>
+                              );
+                            })()}
                           </div>
                         </td>
 
@@ -1102,7 +1172,7 @@ export default function UsersPage() {
                           </span>
                           <div className="flex items-center gap-2">
                             {editingJobId === u.id ? (
-                              <div className="flex items-center gap-1 w-full">
+                              <div className="flex items-center gap-1 w-full min-w-0">
                                 <input
                                   autoFocus
                                   value={tempJobValue}
@@ -1111,13 +1181,13 @@ export default function UsersPage() {
                                     if (e.key === 'Enter') handleJobUpdate(u.id, tempJobValue);
                                     if (e.key === 'Escape') setEditingJobId(null);
                                   }}
-                                  className="flex-1 h-7 px-2 rounded border-2 border-blue-400 text-[0.75rem] font-bold outline-none"
+                                  className="flex-1 min-w-0 h-6 px-1.5 rounded border border-blue-400 text-[10px] font-bold outline-none focus:border-blue-500"
                                 />
                                 <button 
                                   onClick={() => handleJobUpdate(u.id, tempJobValue)}
-                                  className="p-1.5 rounded bg-blue-600 text-white"
+                                  className="p-1 rounded bg-blue-600 text-white shrink-0"
                                 >
-                                  <CheckCircle size={12} />
+                                  <CheckCircle size={10} />
                                 </button>
                               </div>
                             ) : (
@@ -1164,15 +1234,45 @@ export default function UsersPage() {
                           <span className="inline-flex items-center gap-1 text-[9px] font-black px-2 py-0.5 rounded-full" style={{ background: '#F8FAFC', color: '#475569', border: '1px solid #E2E8F0' }}>
                             관리자
                           </span>
-                        ) : (
-                          <select
-                            value={u.role || '일반회원'}
-                            onChange={(e) => updateRole(u.id, e.target.value)}
-                            className="bg-white border border-slate-200 rounded-lg text-[0.68rem] px-1.5 py-0.5 text-slate-700 font-bold outline-none shadow-sm cursor-pointer"
-                          >
-                            {(isSuperAdmin ? ALL_ROLES : ADMIN_ROLES).map(r => <option key={r} value={r}>{r}</option>)}
-                          </select>
-                        )}
+                        ) : (() => {
+                          const roleStyles: Record<string, { bg: string; color: string; border: string }> = {
+                            '일반회원':  { bg: '#F8FAFC', color: '#64748B', border: '#E2E8F0' },
+                            '신뢰회원':  { bg: '#EFF6FF', color: '#2563EB', border: '#BFDBFE' },
+                            'VIP회원':   { bg: '#FDF4FF', color: '#9333EA', border: '#E9D5FF' },
+                            '블랙':      { bg: '#FFF1F2', color: '#E11D48', border: '#FECDD3' },
+                            '블랙리스트':{ bg: '#FFF1F2', color: '#E11D48', border: '#FECDD3' },
+                            'admin':     { bg: '#F0FDF4', color: '#16A34A', border: '#BBF7D0' },
+                          };
+                          const userRole = u.role === '블랙리스트' ? '블랙' : (u.role || '일반회원');
+                          const rs = roleStyles[userRole] || roleStyles['일반회원'];
+                          return (
+                            <select
+                              value={userRole}
+                              onChange={(e) => updateRole(u.id, e.target.value)}
+                              style={{
+                                appearance: 'none',
+                                WebkitAppearance: 'none',
+                                display: 'inline-block',
+                                width: 'fit-content',
+                                maxWidth: 80,
+                                background: `${rs.bg} url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='${encodeURIComponent(rs.color)}'%3E%3Cpath fill-rule='evenodd' d='M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z' clip-rule='evenodd'/%3E%3C/svg%3E") no-repeat right 3px center / 7px 7px`,
+                                border: `1px solid ${rs.border}`,
+                                borderRadius: 20,
+                                color: rs.color,
+                                fontSize: '9px',
+                                fontWeight: 800,
+                                padding: '1.5px 13px 1.5px 5px',
+                                cursor: 'pointer',
+                                outline: 'none',
+                                lineHeight: 1.2,
+                                letterSpacing: '-0.03em',
+                                zoom: 0.85,
+                              }}
+                            >
+                              {(isSuperAdmin ? ALL_ROLES : ADMIN_ROLES).map(r => <option key={r} value={r} className="bg-white text-slate-700">{r}</option>)}
+                            </select>
+                          );
+                        })()}
                       </div>
                     </div>
 

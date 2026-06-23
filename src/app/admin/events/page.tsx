@@ -1703,6 +1703,108 @@ ${chatLink}
     }
   };
 
+  // 4.4.1 기수 취소 처리 — 지원자를 users.cancelledSessionHistory에 기록
+  const handleCancelSession = async (session: Session) => {
+    const regionLabel = session.region === 'busan' ? '부산' : '창원';
+    const sessionTitle = `${regionLabel} 로테이션 소개팅 ${session.episodeNumber}기`;
+
+    if (!window.confirm(
+      `[${sessionTitle}]을 취소 처리하시겠습니까?\n\n지원·확정된 회원들이 '우선 대기풀'에 자동으로 등록됩니다.\n기수 데이터는 삭제되지 않고 '취소됨' 상태로 보존됩니다.`
+    )) return;
+
+    try {
+      const { getDocs, writeBatch, arrayUnion } = await import('firebase/firestore');
+      // arrayUnion() 내부 객체에는 serverTimestamp() 사용 불가 → Timestamp.now() 사용
+      const cancelledAt = Timestamp.now();
+
+      // eventDate 포맷팅 (MM.dd)
+      let sessionDateStr = '';
+      if (session.eventDate) {
+        try {
+          const dateObj = (session.eventDate as any).toDate 
+            ? (session.eventDate as any).toDate() 
+            : new Date(session.eventDate);
+          const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+          const day = String(dateObj.getDate()).padStart(2, '0');
+          sessionDateStr = `${month}.${day}`;
+        } catch (e) {
+          console.error("Failed to parse eventDate:", e);
+        }
+      }
+
+      // 1. 해당 기수에 지원·확정된 신청자 목록 조회
+      const appSnap = await getDocs(
+        query(collection(db, 'applications'), where('sessionId', '==', session.id))
+      );
+      const eligibleApps = appSnap.docs.filter(d => {
+        const status = d.data().status;
+        return status === 'applied' || status === 'confirmed' || status === 'selected';
+      });
+
+      // 2. Batch write: 각 회원의 cancelledSessionHistory에 이력 추가 + 기수 상태 cancelled로 변경
+      const batch = writeBatch(db);
+
+      // 기수 상태를 cancelled로 (최상위 필드는 serverTimestamp() 사용 가능)
+      batch.update(doc(db, 'sessions', session.id), {
+        status: 'cancelled' as SessionStatus,
+        cancelledAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+
+      // 각 지원자 회원 문서에 취소 이력 기록
+      const userIds = new Set<string>();
+      eligibleApps.forEach(appDoc => {
+        const data = appDoc.data();
+        if (!data.userId) return;
+        userIds.add(data.userId);
+      });
+
+      eligibleApps.forEach(appDoc => {
+        const data = appDoc.data();
+        if (!data.userId) return;
+        const userRef = doc(db, 'users', data.userId);
+        batch.update(userRef, {
+          // arrayUnion 내부 객체는 Timestamp.now() 사용 (serverTimestamp 불가)
+          cancelledSessionHistory: arrayUnion({
+            sessionId: session.id,
+            sessionTitle,
+            sessionDate: sessionDateStr,
+            applicationStatus: data.status,
+            cancelledAt,          // Timestamp.now()
+          }),
+          updatedAt: serverTimestamp(), // 최상위 필드는 serverTimestamp() 사용 가능
+        });
+      });
+
+      // 3. 이후 기수들 번호 조정 (동일 지역, 더 높은 기수 번호)
+      const qSessions = query(
+        collection(db, "sessions"),
+        where("region", "==", session.region)
+      );
+      const sessionSnap = await getDocs(qSessions);
+
+      sessionSnap.docs
+        .filter((d) => d.id !== session.id && (d.data().episodeNumber || 0) > session.episodeNumber)
+        .forEach((d) => {
+          const data = d.data();
+          const newEpisodeNumber = (data.episodeNumber || 0) - 1;
+          const newTitle = `${data.region === "busan" ? "부산" : "창원"} 로테이션 소개팅 ${newEpisodeNumber}기`;
+
+          batch.update(d.ref, {
+            episodeNumber: newEpisodeNumber,
+            title: newTitle,
+            updatedAt: serverTimestamp(),
+          });
+        });
+
+      await batch.commit();
+      toast.success(`${sessionTitle} 취소 처리 및 이후 기수 번호 조정 완료. ${userIds.size}명이 우선 대기풀에 등록되었습니다.`);
+    } catch (err: any) {
+      console.error(err);
+      toast.error('기수 취소 처리 중 오류 발생: ' + err.message);
+    }
+  };
+
   // 4.5. 기수 수동 종료 처리
   const handleEndSession = async (session: Session) => {
     if (
@@ -2004,11 +2106,13 @@ ${chatLink}
           <div className="flex flex-row gap-2 overflow-x-auto pb-2 custom-scrollbar">
             {sessions.filter((ev) => {
               if (selectedId === ev.id) return true;
+              if (ev.status === 'cancelled') return false; // 취소된 기수는 보이지 않음
               const now = new Date();
               const twentyFourHoursAfter = new Date(ev.eventDate.getTime() + 24 * 60 * 60 * 1000);
               return now < twentyFourHoursAfter && !ev.isForceHidden;
             }).sort((a, b) => a.eventDate.getTime() - b.eventDate.getTime()).map((ev) => {
               // v8.2.3: 전역 applicants 데이터 기반 실시간 집계 (선발 + 확정 합산)
+              const isCancelled = ev.status === 'cancelled';
               const live = globalCounts[ev.id] || { male: 0, female: 0 };
               const total = live.male + live.female;
               const maxT = ev.maxMale + ev.maxFemale;
@@ -2019,8 +2123,8 @@ ${chatLink}
               const now = new Date();
               const twentyFourHoursAfter = new Date(ev.eventDate.getTime() + 24 * 60 * 60 * 1000);
               const isEnded = ev.isForceHidden || now >= twentyFourHoursAfter;
-              const badgeLabel = isEnded ? '종료' : now >= ev.eventDate ? '진행 중' : isOver ? '마감' : '모집 중';
-              const badgeCls = isEnded ? 'bg-slate-100 text-slate-500' : now >= ev.eventDate ? 'bg-blue-100 text-blue-700' : isOver ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-700';
+              const badgeLabel = isCancelled ? '취소' : isEnded ? '종료' : now >= ev.eventDate ? '진행 중' : isOver ? '마감' : '모집 중';
+              const badgeCls = isCancelled ? 'bg-amber-100 text-amber-600' : isEnded ? 'bg-slate-100 text-slate-500' : now >= ev.eventDate ? 'bg-blue-100 text-blue-700' : isOver ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-700';
 
               // 디데이 계산
               const eventDay = new Date(ev.eventDate.getFullYear(), ev.eventDate.getMonth(), ev.eventDate.getDate());
@@ -2036,10 +2140,15 @@ ${chatLink}
                     setSelectedId(ev.id);
                     setActiveTab("participants");
                   }}
-                  className={`shrink-0 w-52 text-left rounded-xl transition-all duration-150 p-4 ${sel
-                    ? "bg-orange-50 border-2 border-[#FF6F61] shadow-md shadow-orange-100"
-                    : "bg-white border border-slate-200 hover:border-slate-300 hover:shadow-sm"
-                    }`}
+                  className={`shrink-0 w-52 text-left rounded-xl transition-all duration-150 p-4 ${
+                    isCancelled
+                      ? sel
+                        ? "bg-amber-50 border-2 border-amber-300 shadow-md opacity-80"
+                        : "bg-slate-50 border border-slate-200 opacity-60 hover:opacity-80"
+                      : sel
+                        ? "bg-orange-50 border-2 border-[#FF6F61] shadow-md shadow-orange-100"
+                        : "bg-white border border-slate-200 hover:border-slate-300 hover:shadow-sm"
+                  }`}
                 >
                   <div className="flex items-center justify-between mb-2">
                     <p
@@ -2221,6 +2330,21 @@ ${chatLink}
                     >
                       <Edit2 size={13} /> 수정
                     </button>
+                    {/* 기수 취소 — super_admin 전용, 이미 취소된 기수는 버튼 숨김 */}
+                    {isSuperAdmin && active.status !== 'cancelled' && (
+                      <button
+                        onClick={() => handleCancelSession(active)}
+                        className="flex items-center gap-1.5 rounded-xl transition-all px-4 py-2 bg-amber-50 border border-amber-200 text-xs font-bold text-amber-700 hover:bg-amber-100 hover:border-amber-300 shrink-0"
+                        title="기수를 취소하고 지원자를 우선 대기풀에 등록합니다"
+                      >
+                        <StopCircle size={13} /> 기수 취소
+                      </button>
+                    )}
+                    {active.status === 'cancelled' && (
+                      <span className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-100 border border-slate-200 text-xs font-bold text-slate-400">
+                        <StopCircle size={13} /> 취소된 기수
+                      </span>
+                    )}
                     <button
                       onClick={() =>
                         handleDeleteSession(

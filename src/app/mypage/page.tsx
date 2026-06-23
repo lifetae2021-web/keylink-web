@@ -415,15 +415,17 @@ function MyPageContent() {
         updatedAt: serverTimestamp()
       };
 
-      updateData.isJobReviewed = false;
+      if (hasCoreInfoChanged) {
+        updateData.isJobReviewed = false;
+      }
       updateData.user_logs = arrayUnion(...newLogs);
 
-      console.log('Saving profile, setting isJobReviewed to false for admin notification. Revoking isVerified if core info changed.');
+      console.log('Saving profile. Revoking isVerified and isJobReviewed if core info changed.');
 
       await updateDoc(doc(db, 'users', user!.uid), updateData);
       
-      // Update local state, ensuring isJobReviewed is explicitly false
-      setUserData((p: any) => ({ ...p, ...updateData, isJobReviewed: false }));
+      // Update local state
+      setUserData((p: any) => ({ ...p, ...updateData }));
       setPhotos(uploadedUrls); // Update local state with URLs
       setIsEditing(false);
       
@@ -1264,10 +1266,21 @@ function ApplicationStatusSection({ applications, sessionsMap, userId, isAdmin =
   const [votedMap, setVotedMap] = useState<Record<string, { voted: boolean; submittedAt?: Date | null }>>({});
 
   // 테스트 기수 신청서 필터링 (isTest: true 인 세션은 관리자가 아닌 경우에만 제외)
+  // + confirmed 상태이고 행사일 기준 7일이 지난 앱은 메인에서 숨김 처리
   const visibleApps = applications.filter(app => {
     const s = sessionsMap[app.sessionId];
     if (isAdmin) return true; // 관리자는 테스트 기수 신청서도 표시
-    return !s || !s.isTest;
+    if (s?.isTest) return false;
+
+    // confirmed 앱은 행사일 기준 7일 이후 메인에서 숨김
+    if (app.status === 'confirmed' && s?.eventDate) {
+      const ed = s.eventDate;
+      const eventDate = ed instanceof Date ? ed : (ed as any)?.toDate?.() || new Date(0);
+      const isSevenDaysOver = Date.now() > eventDate.getTime() + 7 * 24 * 60 * 60 * 1000;
+      if (isSevenDaysOver) return false;
+    }
+
+    return true;
   });
 
   useEffect(() => {
@@ -1326,6 +1339,13 @@ function ApplicationStatusSection({ applications, sessionsMap, userId, isAdmin =
           return false;
         }
       }
+
+      // 행사가 시작된 지 7일이 지났는지 확인 (메인 화면에서 숨김 처리)
+      const isSevenDaysOver = Date.now() > eventDate.getTime() + 7 * 24 * 60 * 60 * 1000;
+      if (isSevenDaysOver) {
+        return false;
+      }
+
       return true;
     })
     .sort((a, b) => {
@@ -1669,11 +1689,29 @@ function ApplicationStatusBlock({ application, session, userId, hasVoted, submit
                   fontSize: '0.9rem',
                   textDecoration: 'none',
                   boxShadow: '0 6px 16px rgba(255,111,97,0.25)',
-                  transition: 'all 0.2s'
+                  transition: 'all 0.2s',
+                  marginBottom: '12px'
                 }}
               >
                 내 매칭 결과 확인하기 →
               </Link>
+              <div style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '8px',
+                marginTop: '4px',
+                padding: '10px 14px',
+                background: 'rgba(255,111,97,0.05)',
+                borderRadius: '12px',
+                border: '1px dashed rgba(255,111,97,0.2)',
+                textAlign: 'left',
+              }}>
+                <span style={{ fontSize: '0.8rem', flexShrink: 0, lineHeight: 1 }}>🗓️</span>
+                <p style={{ fontSize: '0.73rem', color: '#94A3B8', fontWeight: '600', lineHeight: 1.6, margin: 0 }}>
+                  <strong style={{ color: '#FF9A9E', fontWeight: '800' }}>7일 후</strong>부터는<br />
+                  히스토리에서만 확인 가능합니다.
+                </p>
+              </div>
             </div>
           )}
 
