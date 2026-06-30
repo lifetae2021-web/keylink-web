@@ -263,10 +263,10 @@ function MyPageContent() {
     if (!editForm.birthDate) return toast.error('생년월일을 입력해주세요.');
     if (!editForm.workplace) return toast.error('회사명 / 직무를 입력해주세요.');
     
-    // v7.8.5: 재직 증명 필수 검사 (employmentProof 필드명 표준화)
-    if (!verificationFile && !editForm.employmentProof) {
-      return toast.error('재직 증명 서류를 업로드해 주세요.');
-    }
+    // v7.8.5: 재직 증명 필수 검사 해제 (선택사항으로 변경)
+    // if (!verificationFile && !editForm.employmentProof) {
+    //   return toast.error('재직 증명 서류를 업로드해 주세요.');
+    // }
 
     // v5.1.0 추가 필수 항목 검사
     if (!editForm.phone) return toast.error('연락처를 입력해주세요.');
@@ -773,10 +773,11 @@ function MyPageContent() {
             </EditRow>
 
              {/* v7.8.5 재직 증명 업로드 섹션 (미리보기 강화) */}
-             <EditRow label="재직 증명 (필수)" required>
+             <EditRow label="재직 증명 (선택)">
                <div style={{ background: '#F8FAFC', border: '1.5px solid #E2E8F0', borderRadius: '16px', padding: '20px', marginBottom: '24px' }}>
                  <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', lineHeight: 1.6, marginBottom: '16px' }}>
-                   신뢰할 수 있는 모임을 위해 서류(재직증명서, 급여명세서, 건강보험, 사원증, 명함 등) 중 하나를 반드시 업로드해 주세요.
+                   <strong style={{ color: '#FF6F61' }}>지금 당장 서류가 없으신가요? 일단 비워두고 가입하셔도 됩니다! (행사 선발 후 제출 가능)</strong><br />
+                   신뢰할 수 있는 모임을 위해 서류(재직증명서, 급여명세서, 건강보험, 사원증, 명함 등) 중 하나를 업로드해 주세요.
                  </p>
                  
                  {/* 미리보기 영역 */}

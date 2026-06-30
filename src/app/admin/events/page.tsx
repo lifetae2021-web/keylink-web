@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
+import { createPortal } from "react-dom";
 import {
   Calendar,
   MapPin,
@@ -73,16 +74,40 @@ const card = "bg-white border border-slate-200 rounded-xl shadow-sm";
 const PhoneActionBadge = ({ phone }: { phone: string }) => {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const popupRef = useRef<HTMLDivElement>(null);
+  const [coords, setCoords] = useState({ top: 0, left: 0 });
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (
+        containerRef.current && !containerRef.current.contains(target) &&
+        (!popupRef.current || !popupRef.current.contains(target))
+      ) {
         setIsOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    if (isOpen && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      const popupHeight = 120;
+      const spaceBelow = window.innerHeight - rect.bottom;
+
+      let top = rect.bottom + 4;
+      if (spaceBelow < popupHeight && rect.top > popupHeight) {
+        top = rect.top - popupHeight - 4;
+      }
+
+      setCoords({
+        top,
+        left: rect.left
+      });
+    }
+  }, [isOpen]);
 
   const handleCopy = () => {
     if (!phone) return;
@@ -92,7 +117,7 @@ const PhoneActionBadge = ({ phone }: { phone: string }) => {
   };
 
   return (
-    <div className="relative" ref={containerRef}>
+    <div className="relative inline-block" ref={containerRef}>
       <button 
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-1 text-blue-600/70 bg-blue-50/50 hover:bg-blue-100/60 px-1.5 py-0.5 rounded shrink-0 whitespace-nowrap transition-colors"
@@ -100,8 +125,12 @@ const PhoneActionBadge = ({ phone }: { phone: string }) => {
         <Phone size={10} className="text-blue-400/70" />
         {phone || "-"}
       </button>
-      {isOpen && phone && (
-        <div className="absolute left-0 top-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-50 flex flex-col py-1 min-w-[120px] animate-in fade-in zoom-in-95 duration-100">
+      {isOpen && phone && typeof document !== 'undefined' && createPortal(
+        <div 
+          ref={popupRef}
+          style={{ position: 'fixed', top: coords.top, left: coords.left }}
+          className="bg-white border border-slate-200 rounded-lg shadow-lg z-[99999] flex flex-col py-1 min-w-[120px] animate-in fade-in zoom-in-95 duration-100"
+        >
           <a href={`tel:${phone}`} onClick={() => setIsOpen(false)} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors">
             <Phone size={14} className="text-blue-500" /> 통화 연결
           </a>
@@ -111,7 +140,8 @@ const PhoneActionBadge = ({ phone }: { phone: string }) => {
           <button onClick={handleCopy} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors text-left w-full">
             <Copy size={14} className="text-slate-500" /> 번호 복사
           </button>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

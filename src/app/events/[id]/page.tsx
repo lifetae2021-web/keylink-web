@@ -340,10 +340,11 @@ export default function EventDetailPage() {
       return;
     }
 
-    if (!verificationFile && !form.employmentProof) {
-      toast.error('재직 증명 서류를 업로드해 주세요.');
-      return;
-    }
+    // v7.8.5: 재직 증명 필수 검사 해제 (선택사항으로 변경)
+    // if (!verificationFile && !form.employmentProof) {
+    //   toast.error('재직 증명 서류를 업로드해 주세요.');
+    //   return;
+    // }
 
     if (!currentUser) {
       toast.error('로그인이 필요합니다.');
@@ -914,9 +915,10 @@ export default function EventDetailPage() {
 
                   {/* v7.8.5 재직 증명 업로드 섹션 (미리보기 강화) */}
                   <div className="kl-card">
-                    <h3 style={{ fontSize: '1rem', fontWeight: '800', color: 'var(--color-text-primary)', marginBottom: '16px', borderBottom: '1px solid var(--color-border)', paddingBottom: '12px' }}>재직 증명 (필수)</h3>
+                    <h3 style={{ fontSize: '1rem', fontWeight: '800', color: 'var(--color-text-primary)', marginBottom: '16px', borderBottom: '1px solid var(--color-border)', paddingBottom: '12px' }}>재직 증명 (선택)</h3>
                     <p style={{ fontSize: '0.8rem', color: '#64748B', lineHeight: 1.6, marginBottom: '16px' }}>
-                      신뢰할 수 있는 모임을 위해 서류(재직증명서, 급여명세서, 건강보험, 사원증, 명함 등) 중 하나를 반드시 업로드해 주세요.
+                      <strong style={{ color: '#FF6F61' }}>지금 당장 서류가 없으신가요? 일단 비워두고 가입하셔도 됩니다! (행사 선발 후 제출 가능)</strong><br />
+                      신뢰할 수 있는 모임을 위해 서류(재직증명서, 급여명세서, 건강보험, 사원증, 명함 등) 중 하나를 업로드해 주세요.
                     </p>
 
                     {/* 미리보기 영역 */}
