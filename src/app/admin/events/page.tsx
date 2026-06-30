@@ -91,23 +91,25 @@ const PhoneActionBadge = ({ phone }: { phone: string }) => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  useEffect(() => {
-    if (isOpen && containerRef.current) {
-      const rect = containerRef.current.getBoundingClientRect();
-      const popupHeight = 120;
-      const spaceBelow = window.innerHeight - rect.bottom;
+  const handleToggle = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!isOpen) {
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        const popupHeight = 120;
+        const spaceBelow = window.innerHeight - rect.bottom;
 
-      let top = rect.bottom + 4;
-      if (spaceBelow < popupHeight && rect.top > popupHeight) {
-        top = rect.top - popupHeight - 4;
+        let top = rect.bottom + 4;
+        if (spaceBelow < popupHeight && rect.top > popupHeight) {
+          top = rect.top - popupHeight - 4;
+        }
+        setCoords({ top, left: rect.left });
       }
-
-      setCoords({
-        top,
-        left: rect.left
-      });
+      setIsOpen(true);
+    } else {
+      setIsOpen(false);
     }
-  }, [isOpen]);
+  };
 
   const handleCopy = () => {
     if (!phone) return;
@@ -119,7 +121,7 @@ const PhoneActionBadge = ({ phone }: { phone: string }) => {
   return (
     <div className="relative inline-block" ref={containerRef}>
       <button 
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={handleToggle}
         className="flex items-center gap-1 text-blue-600/70 bg-blue-50/50 hover:bg-blue-100/60 px-1.5 py-0.5 rounded shrink-0 whitespace-nowrap transition-colors"
       >
         <Phone size={10} className="text-blue-400/70" />
