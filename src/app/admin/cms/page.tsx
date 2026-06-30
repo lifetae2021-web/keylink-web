@@ -1652,17 +1652,11 @@ function PartnersTab() {
                   </div>
 
                   {/* 클릭 수 통계 */}
-                  <div className="flex gap-1.5 mt-2">
-                    <div className="flex-1 flex items-center justify-center gap-1 bg-amber-50 border border-amber-100 rounded-lg py-1.5 px-1">
-                      <MousePointerClick size={10} className="text-amber-500 shrink-0" />
-                      <span className="text-[0.68rem] font-black text-amber-600 truncate">쿠폰</span>
-                      <span className="text-[0.72rem] font-black text-amber-700">{(item.couponClicks ?? 0).toLocaleString()}</span>
-                    </div>
-                    <div className="flex-1 flex items-center justify-center gap-1 bg-slate-50 border border-slate-100 rounded-lg py-1.5 px-1">
-                      <TrendingUp size={10} className="text-slate-400 shrink-0" />
-                      <span className="text-[0.68rem] font-black text-slate-500 truncate">자세히</span>
-                      <span className="text-[0.72rem] font-black text-slate-600">{(item.detailClicks ?? 0).toLocaleString()}</span>
-                    </div>
+                  <div className="flex items-center justify-center gap-1 mt-2 text-slate-400">
+                    <Eye size={11} className="shrink-0" />
+                    <span className="text-[0.72rem] font-black text-slate-500">
+                      {((item.couponClicks ?? 0) + (item.detailClicks ?? 0)).toLocaleString()}
+                    </span>
                   </div>
                 </div>
               </div>
