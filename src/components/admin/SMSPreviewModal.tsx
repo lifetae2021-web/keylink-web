@@ -52,7 +52,7 @@ function applyVariables(content: string, applicant: any, session: any, customPri
   const remainingDays = diffDays > 0 ? String(diffDays) : '0';
 
   // 쿠폰 할인 로직: couponDiscount 필드 기반 최종 금액과 할인 사유 계산
-  const finalPrice = customPrice !== undefined ? customPrice : (applicant?.price || genderPrice);
+  const finalPrice = customPrice !== undefined ? customPrice : (applicant?.price ?? genderPrice);
   const couponDiscount = applicant?.couponDiscount && applicant.couponDiscount > 0 ? applicant.couponDiscount : 0;
   const isGroupDiscount = applicant?.gender === 'female' && applicant?.femaleOption === 'group';
   const discountSuffix = couponDiscount > 0
@@ -126,7 +126,10 @@ const SMSPreviewModal: React.FC<SMSPreviewModalProps> = ({
         const gp = applicant.gender === 'male'
           ? (applicant.maleOption === 'safe' ? 60000 : (session?.malePrice || 49000))
           : (applicant.femaleOption === 'group' ? 24000 : (session?.femalePrice || 29000));
-        const initialPrice = applicant.price || gp;
+        let initialPrice = applicant.price ?? gp;
+        if (autoSelectTemplateName && autoSelectTemplateName.includes('100%')) {
+          initialPrice = 29000;
+        }
         setCurrentPrice(initialPrice);
 
         const couponDiscount = applicant.couponDiscount && applicant.couponDiscount > 0 ? applicant.couponDiscount : 0;
@@ -191,7 +194,11 @@ const SMSPreviewModal: React.FC<SMSPreviewModalProps> = ({
           const gp = applicant?.gender === 'male'
             ? (applicant?.maleOption === 'safe' ? 60000 : (session?.malePrice || 49000))
             : (applicant?.femaleOption === 'group' ? 24000 : (session?.femalePrice || 29000));
-          const initialPrice = applicant?.price || gp;
+          let initialPrice = applicant?.price ?? gp;
+          if (autoSelectTemplateName && autoSelectTemplateName.includes('100%')) {
+            initialPrice = 29000;
+            setCurrentPrice(initialPrice);
+          }
 
           const applied = applyVariables(target.content, applicant, session, initialPrice);
           setMessage(applied);

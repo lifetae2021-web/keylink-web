@@ -322,7 +322,7 @@ export default function ApplicationsPage() {
       : (app.femaleOption === 'group' ? 24000 : (session.femalePrice || 29000));
 
     // 쿠폰 할인 로직: couponDiscount 필드 기반 최종 금액과 할인 사유 계산
-    const finalPrice = app.price || genderPrice;
+    const finalPrice = app.price ?? genderPrice;
     const couponDiscount = app.couponDiscount && app.couponDiscount > 0 ? app.couponDiscount : 0;
     const isGroupDiscount = app.gender === 'female' && app.femaleOption === 'group';
     const discountSuffix = couponDiscount > 0
@@ -386,7 +386,14 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
 좋은 인연 만날 수 있도록 키링크가 끝까지 책임질게요🥰`;
     }
 
-    setPreviewData({ app, session, defaultMsg, targetStatus: type === 'confirm' ? 'confirmed' : 'selected' });
+    const is100PercentDiscount = finalPrice === 0;
+    setPreviewData({ 
+      app, 
+      session, 
+      defaultMsg, 
+      targetStatus: type === 'confirm' ? 'confirmed' : 'selected',
+      autoSelectTemplateName: is100PercentDiscount && type !== 'confirm' ? '선발 (100% 할인/보증금)' : undefined
+    });
     setPreviewModalOpen(true);
   };
 
@@ -1913,6 +1920,7 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
         applicant={previewData?.app}
         session={previewData?.session}
         defaultMessage={previewData?.defaultMsg || ''}
+        autoSelectTemplateName={previewData?.autoSelectTemplateName}
       />
       {generalSmsTarget && (
         <SMSPreviewModal

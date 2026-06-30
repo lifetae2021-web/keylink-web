@@ -1132,7 +1132,7 @@ export default function UsersPage() {
                         {/* 가입일 */}
                         <td style={{ padding: '0 20px', verticalAlign: 'middle', textAlign: 'center' }}>
                           <div className="flex flex-col items-center">
-                            <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#64748B' }}>
+                            <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#64748B', whiteSpace: 'nowrap' }}>
                               {u.createdAt?.seconds ? format(new Date(u.createdAt.seconds * 1000), 'yyyy-MM-dd') : <span style={{ color: '#94A3B8' }}>-</span>}
                             </span>
                             {u.createdAt?.seconds && (

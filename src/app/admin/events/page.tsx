@@ -31,6 +31,7 @@ import {
   StickyNote,
   Pencil,
   StopCircle,
+  Copy,
 } from "lucide-react";
 import { auth, db } from "@/lib/firebase";
 import {
@@ -68,6 +69,53 @@ import MatchingDrawer from "@/components/admin/MatchingDrawer";
 import InstagramFeedModal from "./InstagramFeedModal";
 
 const card = "bg-white border border-slate-200 rounded-xl shadow-sm";
+
+const PhoneActionBadge = ({ phone }: { phone: string }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleCopy = () => {
+    if (!phone) return;
+    navigator.clipboard.writeText(phone);
+    toast.success("번호가 복사되었습니다.");
+    setIsOpen(false);
+  };
+
+  return (
+    <div className="relative" ref={containerRef}>
+      <button 
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center gap-1 text-blue-600/70 bg-blue-50/50 hover:bg-blue-100/60 px-1.5 py-0.5 rounded shrink-0 whitespace-nowrap transition-colors"
+      >
+        <Phone size={10} className="text-blue-400/70" />
+        {phone || "-"}
+      </button>
+      {isOpen && phone && (
+        <div className="absolute left-0 top-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-50 flex flex-col py-1 min-w-[120px] animate-in fade-in zoom-in-95 duration-100">
+          <a href={`tel:${phone}`} onClick={() => setIsOpen(false)} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors">
+            <Phone size={14} className="text-blue-500" /> 통화 연결
+          </a>
+          <a href={`sms:${phone}`} onClick={() => setIsOpen(false)} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors">
+            <MessageSquare size={14} className="text-emerald-500" /> 문자 전송
+          </a>
+          <button onClick={handleCopy} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors text-left w-full">
+            <Copy size={14} className="text-slate-500" /> 번호 복사
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
 
 export default function EventsPage() {
   const searchParams = useSearchParams();
@@ -849,7 +897,8 @@ export default function EventsPage() {
         ? `${session.region === 'busan' ? '부산' : '창원'} ${session.episodeNumber}기`
         : '';
 
-      const formattedPrice = (app.price || genderPrice).toLocaleString('ko-KR');
+      const finalPrice = app.price ?? genderPrice;
+      const formattedPrice = finalPrice.toLocaleString('ko-KR');
 
       let result = targetTemplate.content
         .replace(/{{이름}}/g, user.name || app.name || '참가자')
@@ -875,14 +924,21 @@ export default function EventsPage() {
       defaultMsg = `안녕하세요 ! 키링크에 지원해주셔서 감사합니다☺️
 ${user.name || app.name || "참가자"}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 지정되었습니다
 
-아래 계좌번호로 ${(app.price || genderPrice).toLocaleString("ko-KR")}원${couponText} 입금해주셔야 라인업에 확정등록되니 참고 부탁드립니다 :)
+아래 계좌번호로 ${(app.price ?? genderPrice).toLocaleString("ko-KR")}원${couponText} 입금해주셔야 라인업에 확정등록되니 참고 부탁드립니다 :)
 3333359229548 카카오뱅크 태영훈(키링크) 입금 또는 참석가능 여부 알려주세요😭
 혹시나 입금이 늦을 것 같은 경우 말씀해주세요.
 
 좋은 인연 만날 수 있도록 키링크가 끝까지 책임질게요🥰`;
     }
 
-    setSelectPreviewData({ app, session, defaultMsg });
+    const finalPriceForApp = app.price ?? genderPrice;
+    const is100PercentDiscount = finalPriceForApp === 0;
+    setSelectPreviewData({ 
+      app, 
+      session, 
+      defaultMsg,
+      autoSelectTemplateName: is100PercentDiscount ? '선발 (100% 할인/보증금)' : undefined
+    });
     setSelectPreviewOpen(true);
   };
 
@@ -2780,10 +2836,7 @@ ${chatLink}
                                               </div>
                                               <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[0.72rem] text-slate-400 font-medium">
                                                 {!isDummyApp(app) && (
-                                                  <span className="flex items-center gap-1 text-blue-600/70 bg-blue-50/50 px-1.5 py-0.5 rounded shrink-0 whitespace-nowrap">
-                                                    <Phone size={10} className="text-blue-400/70" />
-                                                    {app.phone || "-"}
-                                                  </span>
+                                                  <PhoneActionBadge phone={app.phone} />
                                                 )}
                                                 {app.gender === 'female' && app.femaleOption === 'group' && (
                                                   <>
@@ -2867,10 +2920,7 @@ ${chatLink}
                                               {!app.isDarkTemplar && (
                                                 <>
                                                   {!isDummyApp(app) && (
-                                                    <span className="flex items-center gap-0.5">
-                                                      <Phone size={10} />
-                                                      {app.phone || "-"}
-                                                    </span>
+                                                    <PhoneActionBadge phone={app.phone} />
                                                   )}
                                                   {!isDummyApp(app) && <span>·</span>}
                                                   <span>{getBirthYear(app)}</span>
@@ -3211,10 +3261,7 @@ ${chatLink}
                                         {/* Row 2: 휴대폰번호, 동반참여 */}
                                         <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[0.72rem] text-slate-400 font-medium">
                                           {!isDummyApp(app) && (
-                                            <span className="flex items-center gap-1 text-blue-600/70 bg-blue-50/50 px-1.5 py-0.5 rounded shrink-0 whitespace-nowrap">
-                                              <Phone size={10} className="text-blue-400/70" />
-                                              {app.phone || "-"}
-                                            </span>
+                                            <PhoneActionBadge phone={app.phone} />
                                           )}
                                           {app.gender === 'female' && app.femaleOption === 'group' && (
                                             <>
@@ -3629,6 +3676,7 @@ ${chatLink}
         applicant={selectPreviewData?.app}
         session={selectPreviewData?.session}
         defaultMessage={selectPreviewData?.defaultMsg || ""}
+        autoSelectTemplateName={selectPreviewData?.autoSelectTemplateName}
         confirmLabel="선발 및 문자 발송"
       />
 
