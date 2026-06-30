@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, Fragment } from 'react';
+import { useState, useEffect, useMemo, Fragment, useRef } from 'react';
 import {
   Search, CheckCircle, XCircle, Eye,
   Download, ShieldCheck, ChevronLeft, ChevronRight, ChevronDown, Loader2,
@@ -851,54 +851,12 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
 
             {/* Right: Actions */}
             <div className="flex items-center gap-1.5 md:gap-2">
-              <div className="relative group">
-                <select
-                  value={selectedEventId}
-                  onChange={(e) => setSelectedEventId(e.target.value)}
-                  className="bg-white border border-slate-200 rounded-lg pr-7 text-[0.7rem] font-bold text-slate-700 outline-none focus:border-[#FF7E7E]/40 transition-all cursor-pointer shadow-sm appearance-none"
-                  style={{ minWidth: '130px', height: '36px', paddingLeft: '10px' }}
-                >
-                  <option value="all">전체 기수 보기</option>
-                  {[...events]
-                    .filter(ev => {
-                      const now = new Date();
-                      const date = ev.eventDate?.toDate?.() || new Date();
-                      const isEnded = ev.status === 'completed' || now >= new Date(date.getTime() + 2 * 60 * 60 * 1000);
-                      return !isEnded;
-                    })
-                    .sort((a, b) => {
-                      const dateA = a.eventDate?.toDate?.() || new Date();
-                      const dateB = b.eventDate?.toDate?.() || new Date();
-                      return dateA.getTime() - dateB.getTime();
-                    })
-                    .map(ev => {
-                      const now = new Date();
-                      const eventDate = ev.eventDate?.toDate?.() || new Date();
-                      const twoHoursAfter = new Date(eventDate.getTime() + 2 * 60 * 60 * 1000);
-                      
-                      const totalParticipants = (ev.currentMale || 0) + (ev.currentFemale || 0);
-                      const maxParticipants = (ev.maxMale || 0) + (ev.maxFemale || 0);
-                      const isOver = maxParticipants > 0 && totalParticipants >= maxParticipants;
-                      
-                      let statusLabel = '모집중';
-                      if (ev.status === 'completed' || now >= twoHoursAfter) statusLabel = '종료';
-                      else if (now >= eventDate) statusLabel = '진행중';
-                      else if (isOver) statusLabel = '마감';
-                      else statusLabel = '모집중';
-
-                      const dateLabel = eventDate ? `(${format(eventDate, 'MM/dd')})` : '';
-
-                      return (
-                        <option key={ev.id} value={ev.id}>
-                          {ev.region === 'busan' ? '부산' : ev.region === 'changwon' ? '창원' : (ev.region ?? '부산')} {ev.episodeNumber}기 {dateLabel} [{statusLabel}]
-                        </option>
-                      );
-                    })}
-                </select>
-                <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                  <ChevronDown size={10} />
-                </div>
-              </div>
+              {/* 기수 선택 커스텀 드롭다운 */}
+              <SessionDropdown
+                events={events}
+                selectedEventId={selectedEventId}
+                setSelectedEventId={setSelectedEventId}
+              />
               {isSuperAdmin && selectedAppIds.length > 0 && (
                 <button
                   onClick={handleBulkDelete}
@@ -2019,6 +1977,92 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
         </div>
       )}
 
+    </div>
+  );
+}
+
+// ── 기수 선택 커스텀 드롭다운 ──────────────────────────────────
+function SessionDropdown({
+  events,
+  selectedEventId,
+  setSelectedEventId,
+}: {
+  events: any[];
+  selectedEventId: string;
+  setSelectedEventId: (id: string) => void;
+}) {
+  const [dropOpen, setDropOpen] = useState(false);
+  const dropRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (dropRef.current && !dropRef.current.contains(e.target as Node)) setDropOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const eventOptions = [
+    { value: 'all', label: '전체 기수 보기' },
+    ...[...events]
+      .filter(ev => {
+        const now = new Date();
+        const date = ev.eventDate?.toDate?.() || new Date();
+        return !(ev.status === 'completed' || now >= new Date(date.getTime() + 2 * 60 * 60 * 1000));
+      })
+      .sort((a, b) => {
+        const dateA = a.eventDate?.toDate?.() || new Date();
+        const dateB = b.eventDate?.toDate?.() || new Date();
+        return dateA.getTime() - dateB.getTime();
+      })
+      .map(ev => {
+        const now = new Date();
+        const eventDate = ev.eventDate?.toDate?.() || new Date();
+        const twoHoursAfter = new Date(eventDate.getTime() + 2 * 60 * 60 * 1000);
+        const totalParticipants = (ev.currentMale || 0) + (ev.currentFemale || 0);
+        const maxParticipants = (ev.maxMale || 0) + (ev.maxFemale || 0);
+        const isOver = maxParticipants > 0 && totalParticipants >= maxParticipants;
+        let statusLabel = '모집중';
+        if (ev.status === 'completed' || now >= twoHoursAfter) statusLabel = '종료';
+        else if (now >= eventDate) statusLabel = '진행중';
+        else if (isOver) statusLabel = '마감';
+        const dateLabel = eventDate ? `(${format(eventDate, 'MM/dd')})` : '';
+        const regionLabel = ev.region === 'busan' ? '부산' : ev.region === 'changwon' ? '창원' : (ev.region ?? '부산');
+        return { value: ev.id, label: `${regionLabel} ${ev.episodeNumber}기 ${dateLabel} [${statusLabel}]` };
+      }),
+  ];
+
+  const selectedLabel = eventOptions.find(o => o.value === selectedEventId)?.label || '전체 기수 보기';
+
+  return (
+    <div ref={dropRef} className="relative">
+      <button
+        onClick={() => setDropOpen(v => !v)}
+        className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl text-[0.72rem] font-bold text-slate-700 hover:border-slate-300 hover:bg-slate-50 transition-all shadow-sm"
+        style={{ height: '36px', padding: '0 10px 0 12px', minWidth: '148px' }}
+      >
+        <Calendar size={12} className="text-slate-400 shrink-0" />
+        <span className="flex-1 text-left truncate">{selectedLabel}</span>
+        <ChevronDown size={11} className={`text-slate-400 transition-transform duration-200 shrink-0 ${dropOpen ? 'rotate-180' : ''}`} />
+      </button>
+
+      {dropOpen && (
+        <div className="absolute right-0 top-full mt-1.5 z-[9999] bg-white border border-slate-200 rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.12)] py-1.5 min-w-[200px] animate-in fade-in zoom-in-95 duration-150 origin-top-right overflow-hidden">
+          {eventOptions.map(opt => (
+            <button
+              key={opt.value}
+              onClick={() => { setSelectedEventId(opt.value); setDropOpen(false); }}
+              className={`w-full text-left px-4 py-2.5 text-[0.75rem] font-bold transition-colors ${
+                selectedEventId === opt.value
+                  ? 'bg-[#FFF5F4] text-[#FF6F61]'
+                  : 'text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
