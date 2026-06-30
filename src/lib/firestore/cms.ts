@@ -1,7 +1,7 @@
 import { db } from '@/lib/firebase';
 import {
   collection, doc, getDocs, addDoc, updateDoc, deleteDoc,
-  orderBy, query, serverTimestamp, Timestamp, getDoc, setDoc,
+  orderBy, query, serverTimestamp, Timestamp, getDoc, setDoc, increment,
 } from 'firebase/firestore';
 import { VoteConfig } from '@/lib/types';
 
@@ -86,6 +86,8 @@ export interface PartnerItem {
   detailContent?: string; // 자세히 설명 문구 (링크가 없을 때 팝업용)
   order: number;
   isRandom?: boolean;    // 랜덤 노출 여부
+  couponClicks?: number; // 쿠폰 버튼 클릭 수
+  detailClicks?: number; // 자세히 버튼 클릭 수
 }
 
 export async function getPartners(): Promise<PartnerItem[]> {
@@ -104,6 +106,12 @@ export async function updatePartner(id: string, data: Partial<Omit<PartnerItem, 
 
 export async function deletePartner(id: string) {
   await deleteDoc(doc(db, 'cms_partners', id));
+}
+
+// 협업사 클릭 수 증가
+export async function incrementPartnerClick(id: string, type: 'coupon' | 'detail') {
+  const field = type === 'coupon' ? 'couponClicks' : 'detailClicks';
+  await updateDoc(doc(db, 'cms_partners', id), { [field]: increment(1) });
 }
 
 // ── 후기 ──

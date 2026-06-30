@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Pencil, Trash2, Save, X, Star, Heart, User, Eye, EyeOff, CheckCircle2, MessageSquare, HelpCircle } from 'lucide-react';
+import { Plus, Pencil, Trash2, Save, X, Star, Heart, User, Eye, EyeOff, CheckCircle2, MessageSquare, HelpCircle, TrendingUp, MousePointerClick } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
   getNotices, addNotice, updateNotice, deleteNotice, NoticeItem,
@@ -1648,6 +1648,20 @@ function PartnersTab() {
                       className="flex-1 py-[10px] px-1 rounded-full border border-slate-200 text-slate-500 font-bold text-[0.76rem] text-center select-none truncate"
                     >
                       {detailLabel}
+                    </div>
+                  </div>
+
+                  {/* 클릭 수 통계 */}
+                  <div className="flex gap-1.5 mt-2">
+                    <div className="flex-1 flex items-center justify-center gap-1 bg-amber-50 border border-amber-100 rounded-lg py-1.5 px-1">
+                      <MousePointerClick size={10} className="text-amber-500 shrink-0" />
+                      <span className="text-[0.68rem] font-black text-amber-600 truncate">쿠폰</span>
+                      <span className="text-[0.72rem] font-black text-amber-700">{(item.couponClicks ?? 0).toLocaleString()}</span>
+                    </div>
+                    <div className="flex-1 flex items-center justify-center gap-1 bg-slate-50 border border-slate-100 rounded-lg py-1.5 px-1">
+                      <TrendingUp size={10} className="text-slate-400 shrink-0" />
+                      <span className="text-[0.68rem] font-black text-slate-500 truncate">자세히</span>
+                      <span className="text-[0.72rem] font-black text-slate-600">{(item.detailClicks ?? 0).toLocaleString()}</span>
                     </div>
                   </div>
                 </div>

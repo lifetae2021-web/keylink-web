@@ -2,7 +2,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ChevronDown, Handshake, Copy, ExternalLink } from 'lucide-react';
-import { getNotices, getFaqs, getContent, getPartners, NoticeItem, FaqItem, PartnerItem } from '@/lib/firestore/cms';
+import { getNotices, getFaqs, getContent, getPartners, NoticeItem, FaqItem, PartnerItem, incrementPartnerClick } from '@/lib/firestore/cms';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
@@ -61,6 +61,8 @@ function NoticesContent() {
   }, [searchParams]);
 
   const handleCouponClick = (partner: PartnerItem) => {
+    // 클릭 수 카운트 (fire-and-forget)
+    incrementPartnerClick(partner.id, 'coupon').catch(() => {});
     if (partner.couponUrl) {
       window.open(partner.couponUrl, '_blank');
     } else if (partner.couponCode) {
@@ -288,6 +290,8 @@ function NoticesContent() {
                           target={partner.detailUrl ? "_blank" : "_self"}
                           rel="noopener noreferrer"
                           onClick={(e) => {
+                            // 클릭 수 카운트 (fire-and-forget)
+                            incrementPartnerClick(partner.id, 'detail').catch(() => {});
                             if (!partner.detailUrl) {
                               e.preventDefault();
                               if (partner.detailContent) {
