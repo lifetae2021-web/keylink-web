@@ -185,7 +185,7 @@ const SMSPreviewModal: React.FC<SMSPreviewModalProps> = ({
       setTemplates(fetched);
 
       // 자동 선택 로직 (v8.13.0)
-      if (autoSelectTemplateName && !message) {
+      if (autoSelectTemplateName) {
         const target = fetched.find(t => t.name.includes(autoSelectTemplateName));
         if (target) {
           const gp = applicant?.gender === 'male'

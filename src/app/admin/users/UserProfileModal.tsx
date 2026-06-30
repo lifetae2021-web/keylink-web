@@ -58,6 +58,7 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
   const [photoIndex, setPhotoIndex] = useState(0);
   const [privateAppPhotos, setPrivateAppPhotos] = useState<string[]>([]);
   const [showProofPopup, setShowProofPopup] = useState(false);
+  const [imgError, setImgError] = useState(false); // v11.3.1: 이미지 로드 실패 처리
   // v11.1.0: 참가 이력 출석 관리
   const [userApps, setUserApps] = useState<any[]>([]);
   const [appsLoading, setAppsLoading] = useState(false);
@@ -751,7 +752,10 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 className="fixed inset-0 z-[20000] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md"
-                onClick={() => setShowProofPopup(false)}
+                onClick={() => {
+                  setShowProofPopup(false);
+                  setTimeout(() => setImgError(false), 300); // 팝업 닫힐 때 에러 상태 초기화
+                }}
               >
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95 }}
@@ -761,7 +765,10 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
                   onClick={(e) => e.stopPropagation()}
                 >
                   <button
-                    onClick={() => setShowProofPopup(false)}
+                    onClick={() => {
+                      setShowProofPopup(false);
+                      setTimeout(() => setImgError(false), 300);
+                    }}
                     className="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 transition-colors shadow-sm"
                   >
                     <X size={20} />
@@ -775,17 +782,34 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
                         return (
                           <iframe
                             src={docUrl}
-                            className="w-full h-[70vh] rounded-2xl shadow-sm border-none"
+                            className="w-full h-[70vh] rounded-2xl shadow-sm border-none bg-slate-50"
                             title="재직 인증 서류 (PDF)"
                           />
                         );
                       }
                       
+                      if (imgError) {
+                        return (
+                          <div className="w-full h-[300px] bg-slate-50 rounded-2xl border border-slate-200 border-dashed flex flex-col items-center justify-center gap-3 p-6 text-center">
+                            <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm text-slate-400">
+                              <ExternalLink size={24} />
+                            </div>
+                            <div>
+                              <p className="text-[0.95rem] font-bold text-slate-700">미리보기를 지원하지 않는 파일 형식입니다</p>
+                              <p className="text-xs font-semibold text-slate-400 mt-1">
+                                하단의 <span className="text-blue-500 font-bold">'원본 파일 보기'</span>를 클릭하여 확인해 주세요.
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      }
+
                       return (
                         <img
                           src={docUrl}
                           alt="재직 인증 서류"
-                          className="max-w-full max-h-[70vh] object-contain rounded-2xl shadow-sm"
+                          onError={() => setImgError(true)}
+                          className="max-w-full max-h-[70vh] object-contain rounded-2xl shadow-sm bg-slate-50"
                         />
                       );
                     })()}

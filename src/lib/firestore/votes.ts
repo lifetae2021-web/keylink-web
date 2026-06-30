@@ -38,7 +38,11 @@ function fromDoc(snap: DocumentSnapshot): Vote | null {
     disclosureMode: d.disclosureMode || 'public', // v8.1.7
     feedback: d.feedback,
     customAnswer: d.customAnswer || '', // v11.4.0
-    submittedAt: (d.submittedAt as Timestamp).toDate(),
+    submittedAt: d.submittedAt ? (d.submittedAt as Timestamp).toDate() : null,
+    isManualReview: d.isManualReview,
+    gender: d.gender,
+    name: d.name,
+    slotNumber: d.slotNumber
   };
 }
 

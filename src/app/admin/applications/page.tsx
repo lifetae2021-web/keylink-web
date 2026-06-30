@@ -1237,9 +1237,9 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                                 {(() => {
                                   const gp = app.gender === 'male'
                                     ? (app.maleOption === 'safe' ? 60000 : (events.find(e => e.id === app.sessionId)?.malePrice || 49000))
-                                    : (app.femaleOption === 'group' ? 24000 : (events.find(e => e.id === app.sessionId)?.femalePrice || 29000));
+                                    : (app.femaleOption === 'group' ? (events.find(e => e.id === app.sessionId)?.femaleGroupPrice || 24000) : (events.find(e => e.id === app.sessionId)?.femalePrice || 29000));
                                   const cd = app.couponDiscount && app.couponDiscount > 0 ? app.couponDiscount : 0;
-                                  const fp = app.price || gp;
+                                  const fp = app.price ?? gp;
                                   const origPrice = cd > 0 ? fp + cd : null;
                                   return cd > 0 ? (
                                     <div className="flex flex-col items-center gap-0.5">

@@ -178,7 +178,7 @@ export default function VotePage() {
 
       // v10.4.0: 기존에 제출한 투표가 있으면 폼 정보 복원 (자율 수정 지원)
       if (existingVote) {
-        const timeSinceSubmit = Date.now() - existingVote.submittedAt.getTime();
+        const timeSinceSubmit = existingVote.submittedAt ? Date.now() - existingVote.submittedAt.getTime() : 0;
         if (timeSinceSubmit >= 20 * 60 * 1000) {
           setIsEditExpired(true);
         }

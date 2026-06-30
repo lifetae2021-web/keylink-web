@@ -268,7 +268,7 @@ export default function EventDetailPage() {
   // 성별 및 옵션 기반 가격 로직
   let displayBasePrice = form.gender === 'female' ? 40000 : (form.maleOption === 'safe' ? 60000 : 49000);
   let basePriceBeforeCoupon = form.gender === 'female'
-    ? (form.femaleOption === 'group' ? 24000 : 29000)
+    ? (form.femaleOption === 'group' ? (event.femaleGroupPrice ?? 24000) : (event.price ?? 29000))
     : displayBasePrice;
 
   // v8.15.9: 쿠폰 할인 계산

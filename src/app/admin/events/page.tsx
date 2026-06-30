@@ -196,6 +196,7 @@ export default function EventsPage() {
     venue: "서면역 인근 프라이빗한 파티룸",
     venueAddress: "",
     price: "29,000",
+    femaleGroupPrice: "24,000",
     ageStart: "", // v7.5.3: 빈칸으로 시작
     ageEnd: "", // v7.5.3: 빈칸으로 시작
     maxMale: "8",
@@ -1556,6 +1557,7 @@ ${chatLink}
       venue: session.venue || "서면역 인근 프라이빗한 파티룸",
       venueAddress: session.venueAddress || "",
       price: Number(session.price || 0).toLocaleString(),
+      femaleGroupPrice: Number(session.femaleGroupPrice || 24000).toLocaleString(),
       ageStart,
       ageEnd,
       maxMale: String(session.maxMale),
@@ -1611,14 +1613,16 @@ ${chatLink}
     try {
       const votes = await getAllVotesBySession(session.id);
       const list = votes
-        .filter(v => v.feedback && v.feedback.trim())
+        .filter(v => v.feedback && v.feedback.trim() && !v.userId.startsWith('system_'))
         .map(v => {
           const app = participants.find(p => p.userId === v.userId);
           return {
-            name: app?.name || '익명',
-            gender: app?.gender || 'unknown',
-            slotNumber: app?.slotNumber || 0,
-            content: v.feedback || ''
+            name: app?.name || v.realName || v.name || '익명',
+            gender: app?.gender || v.gender || 'unknown',
+            slotNumber: app?.slotNumber || v.slotNumber || 0,
+            content: v.feedback || '',
+            userId: v.userId,
+            isManualReview: v.isManualReview
           };
         })
         .sort((a, b) => {
@@ -1848,6 +1852,7 @@ ${chatLink}
 
     // v8.2.3: 콤마 제거 후 숫자로 변환
     const numericPrice = Number(formData.price.replace(/,/g, ""));
+    const numericGroupPrice = Number(formData.femaleGroupPrice.replace(/,/g, ""));
     // v8.2.3: 연령대 결합
     const combinedAge = `${formData.ageStart}~${formData.ageEnd}년생`;
 
@@ -1864,6 +1869,7 @@ ${chatLink}
         location: formData.venue, // v8.6.2: 데이터 일관성을 위해 두 필드 모두 저장
         venueAddress: formData.venueAddress,
         price: numericPrice,
+        femaleGroupPrice: numericGroupPrice,
         originalPrice: numericPrice + 10000,
         targetMaleAge: combinedAge,
         targetFemaleAge: combinedAge, // 남성과 동일하게 설정
@@ -4275,6 +4281,25 @@ ${chatLink}
                         setFormData({
                           ...formData,
                           price: val ? Number(val).toLocaleString() : "",
+                        });
+                      }}
+                      className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-800 font-semibold focus:ring-2 focus:ring-[#FF6F61]/20 focus:border-[#FF6F61] outline-none transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">
+                      여성 동반참가비 (원)
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="예: 24,000"
+                      value={formData.femaleGroupPrice}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/[^0-9]/g, "");
+                        setFormData({
+                          ...formData,
+                          femaleGroupPrice: val ? Number(val).toLocaleString() : "",
                         });
                       }}
                       className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-800 font-semibold focus:ring-2 focus:ring-[#FF6F61]/20 focus:border-[#FF6F61] outline-none transition-all"

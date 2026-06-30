@@ -101,6 +101,7 @@ export interface Session {
   price?: number;                  // 29000
   malePrice?: number;              // v8.12.3: 남성 개별 가격
   femalePrice?: number;            // v8.12.3: 여성 개별 가격
+  femaleGroupPrice?: number;       // 여성 동반참여 가격 (기본 24000)
   originalPrice?: number;          // 39000 (할인 표시용)
   targetMaleAge?: string;          // 94년생~01년생
   targetFemaleAge?: string;        // 94년생~01년생
@@ -231,7 +232,13 @@ export interface Vote {
   // v11.4.0: 커스텀 질문 응답
   customAnswer?: string;     
 
-  submittedAt: Date;
+  submittedAt: Date | null;  // 수동 후기 등에서 없을 수 있으므로 null 허용
+
+  // 관리자 수동 입력 후기 또는 명단 미스매칭 시 복원용 필드
+  isManualReview?: boolean;
+  gender?: string;
+  name?: string;
+  slotNumber?: number;
 }
 
 // ─────────────────────────────────────────────

@@ -6,7 +6,7 @@ import {
   Coins, History, ArrowUpRight, ArrowDownLeft, Trash2,
   AlertCircle, Loader2, ShieldCheck
 } from 'lucide-react';
-import { db } from '@/lib/firebase';
+import { db, auth } from '@/lib/firebase';
 import { 
   collection, addDoc, getDocs, query, orderBy, 
   Timestamp, serverTimestamp, doc, updateDoc,
@@ -73,24 +73,37 @@ export default function AssetModal({ user, isOpen, onClose }: AssetModalProps) {
 
     try {
       setIsLoading(true);
-      await addDoc(collection(db, 'users', user.id, 'coupons'), {
-        title: couponTitle,
-        type: couponType,
-        amount: couponType === 'discount' ? couponAmount : 0,
-        expireAt: Timestamp.fromDate(new Date(couponExpiry)),
-        createdAt: serverTimestamp(),
-        status: 'active',
-        issuedBy: 'admin'
+      const token = await auth.currentUser?.getIdToken();
+      const res = await fetch('/api/admin/coupons/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          userId: user.id,
+          couponData: {
+            title: couponTitle,
+            type: couponType,
+            amount: couponType === 'discount' ? couponAmount : 0,
+            expireAt: new Date(couponExpiry).toISOString(),
+            status: 'active',
+            issuedBy: 'admin'
+          }
+        })
       });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '쿠폰 발급에 실패했습니다.');
+
       toast.success('쿠폰이 발급되었습니다.');
       fetchData();
       setView('list');
       setCouponTitle('');
       setCouponAmount(0);
       setCouponExpiry('');
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      toast.error('발급 중 오류가 발생했습니다.');
+      toast.error(err.message || '발급 중 오류가 발생했습니다.');
     } finally {
       setIsLoading(false);
     }

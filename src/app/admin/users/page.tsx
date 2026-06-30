@@ -25,8 +25,8 @@ const STATUS_CFG = {
   rejected: { label: '인증 반려', color: '#EF4444', bg: '#FEF2F2' },
 };
 
-const ALL_ROLES = ['일반회원', '신뢰회원', 'VIP회원', '블랙', 'admin'];
-const ADMIN_ROLES = ['일반회원', '신뢰회원', 'VIP회원', '블랙']; // admin 항목 없음
+const ALL_ROLES = ['일반회원', '신뢰회원', 'VIP회원', '제안', '블랙', 'admin'];
+const ADMIN_ROLES = ['일반회원', '신뢰회원', 'VIP회원', '제안', '블랙']; // admin 항목 없음
 
 const TABS: { key: Status; label: string }[] = [
   { key: 'all', label: '전체' },
@@ -182,6 +182,8 @@ export default function UsersPage() {
   const [couponMap, setCouponMap] = useState<Record<string, any[]>>({});
   const [selectedCouponUser, setSelectedCouponUser] = useState<any | null>(null);
 
+  const isCouponSubmitDisabled = isSendingCoupon || (couponTitle === '직접 입력' ? !customCouponTitle : !couponTitle) || !discountValue;
+
   const handleSendCoupon = async () => {
     const finalCouponTitle = couponTitle === '직접 입력' ? customCouponTitle : couponTitle;
     if (!couponTarget || !finalCouponTitle || !discountValue) {
@@ -189,9 +191,29 @@ export default function UsersPage() {
     }
     setIsSendingCoupon(true);
     try {
-      const { addDoc, collection: coll } = await import('firebase/firestore');
-      const userRef = doc(db, 'users', couponTarget.id);
+      const token = await auth.currentUser?.getIdToken();
+      const res = await fetch('/api/admin/coupons/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          userId: couponTarget.id,
+          couponData: {
+            title: finalCouponTitle,
+            type: discountType,
+            value: Number(discountValue),
+            validityMonths: validityPeriod,
+            isUsed: false,
+          }
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '쿠폰 발송에 실패했습니다.');
+
       const newCoupon = {
+        id: data.id,
         title: finalCouponTitle,
         type: discountType,
         value: Number(discountValue),
@@ -199,8 +221,6 @@ export default function UsersPage() {
         isUsed: false,
         createdAt: Timestamp.now(),
       };
-      
-      await addDoc(coll(userRef, 'coupons'), newCoupon);
       
       toast.success(`${couponTarget.name} 회원에게 쿠폰이 발송되었습니다.`);
       setCouponMap(prev => ({
@@ -211,8 +231,8 @@ export default function UsersPage() {
       setCouponTitle('웰컴 가입 축하 쿠폰');
       setCustomCouponTitle('');
       setDiscountValue('');
-    } catch (e) {
-      toast.error('쿠폰 발송 중 오류가 발생했습니다.');
+    } catch (e: any) {
+      toast.error(e.message || '쿠폰 발송 중 오류가 발생했습니다.');
     } finally {
       setIsSendingCoupon(false);
     }
@@ -982,6 +1002,7 @@ export default function UsersPage() {
                                 '일반회원':  { bg: '#F8FAFC', color: '#64748B', border: '#E2E8F0' },
                                 '신뢰회원':  { bg: '#EFF6FF', color: '#2563EB', border: '#BFDBFE' },
                                 'VIP회원':   { bg: '#FDF4FF', color: '#9333EA', border: '#E9D5FF' },
+                                '제안':      { bg: '#FEF3C7', color: '#B45309', border: '#FDE68A' },
                                 '블랙':      { bg: '#FFF1F2', color: '#E11D48', border: '#FECDD3' },
                                 '블랙리스트':{ bg: '#FFF1F2', color: '#E11D48', border: '#FECDD3' },
                                 'admin':     { bg: '#F0FDF4', color: '#16A34A', border: '#BBF7D0' },
@@ -1239,6 +1260,7 @@ export default function UsersPage() {
                             '일반회원':  { bg: '#F8FAFC', color: '#64748B', border: '#E2E8F0' },
                             '신뢰회원':  { bg: '#EFF6FF', color: '#2563EB', border: '#BFDBFE' },
                             'VIP회원':   { bg: '#FDF4FF', color: '#9333EA', border: '#E9D5FF' },
+                            '제안':      { bg: '#FEF3C7', color: '#B45309', border: '#FDE68A' },
                             '블랙':      { bg: '#FFF1F2', color: '#E11D48', border: '#FECDD3' },
                             '블랙리스트':{ bg: '#FFF1F2', color: '#E11D48', border: '#FECDD3' },
                             'admin':     { bg: '#F0FDF4', color: '#16A34A', border: '#BBF7D0' },
@@ -1643,9 +1665,23 @@ export default function UsersPage() {
               </button>
               <button
                 onClick={handleSendCoupon}
-                disabled={isSendingCoupon || (couponTitle === '직접 입력' ? !customCouponTitle : !couponTitle) || !discountValue}
-                className="disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:bg-blue-600 shadow-lg shadow-blue-500/20"
-                style={{ flex: 1, padding: '14px', borderRadius: '12px', border: 'none', background: '#3b82f6', color: '#fff', fontWeight: '800', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                disabled={isCouponSubmitDisabled}
+                className="transition-all shadow-lg hover:enabled:bg-blue-600 shadow-blue-500/20"
+                style={{
+                  flex: 1,
+                  padding: '14px',
+                  borderRadius: '12px',
+                  border: 'none',
+                  background: isCouponSubmitDisabled ? '#E2E8F0' : '#3b82f6',
+                  color: isCouponSubmitDisabled ? '#94A3B8' : '#fff',
+                  fontWeight: '800',
+                  fontSize: '0.9rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  cursor: isCouponSubmitDisabled ? 'not-allowed' : 'pointer'
+                }}
               >
                 {isSendingCoupon ? <><Loader2 size={16} className="animate-spin" /> 발송 중...</> : '발송하기'}
               </button>

@@ -13,7 +13,7 @@ import {
   Settings, LogOut, Bell, Menu, X,
   ExternalLink, ChevronDown,
   FileText, Loader2, Timer, ChevronsLeft, ChevronsRight, MessageSquare,
-  UserPlus, ClipboardList, Clock, Zap, Lock, Crown
+  UserPlus, ClipboardList, Clock, Zap, Lock, Crown, FileSpreadsheet
 } from 'lucide-react';
 import Link from 'next/link';
 import { format } from 'date-fns';
@@ -30,6 +30,7 @@ const PAGE_TITLE: Record<string, string> = {
   '/admin/cms':           '콘텐츠 편집',
   '/admin/settings':      '시스템 설정',
   '/admin/sms-templates': 'SMS 템플릿',
+  '/admin/excel-cleaner': '참여자 엑셀 정리',
 };
 
 // v8.12.8: 리얼타임 알림 시스템 (더미데이터 제거)
@@ -76,6 +77,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { label: 'SMS 템플릿',     icon: MessageSquare,   path: '/admin/sms-templates' },
     { label: '콘텐츠 편집',   icon: FileText,        path: '/admin/cms' },
     { label: '시스템 설정',   icon: Settings,        path: '/admin/settings',       superOnly: true },
+    { label: '엑셀 정리기',   icon: FileSpreadsheet, path: '/admin/excel-cleaner' },
   ];
 
   // [소개팅 진행] 글로벌 실시간 동기화 구독
