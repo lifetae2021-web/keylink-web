@@ -3143,9 +3143,9 @@ ${chatLink}
                                       key={app.id}
                                       className={`flex flex-col gap-2.5 px-4 sm:px-6 py-4 transition-all duration-200 border-b border-slate-100/60 ${app.attendanceStatus === 'present' ? "bg-emerald-50/15 hover:bg-emerald-50/30 border-l-4 border-l-emerald-500 shadow-sm shadow-emerald-100/50" : app.attendanceStatus === 'late' ? "bg-amber-50/15 hover:bg-amber-50/30 border-l-4 border-l-amber-500 shadow-sm shadow-amber-100/50" : app.attendanceStatus === 'no-show' ? "bg-rose-50/15 hover:bg-rose-50/30 border-l-4 border-l-rose-500 shadow-sm shadow-rose-100/50" : (userMap[app.userId]?.noShowCount > 0 ? "bg-rose-50/30 hover:bg-rose-50/50 border-l-4 border-l-rose-300" : "bg-white hover:bg-slate-50/80 border-l-4 border-l-transparent")}`}
                                     >
-                                      {/* Top Row: Slot, Name, Status Badge, and Action Buttons */}
-                                      <div className="flex items-center justify-between gap-3">
-                                        {/* Top Left: Slot, Name, Badges */}
+                                      {/* Top Row: 번호 + 이름/뱃지 | 메모 + 삭제 (항상 가로) */}
+                                      <div className="flex items-center justify-between gap-2">
+                                        {/* Left: 번호 + 이름 + 상태뱃지 */}
                                         <div className="flex items-center gap-2 min-w-0">
                                           <span className="text-xs font-black w-8 shrink-0 text-amber-500">
                                             {idx + 1}
@@ -3171,9 +3171,8 @@ ${chatLink}
                                           </div>
                                         </div>
 
-                                        {/* Top Right: Actions (Memo, SMS, Selection Buttons, Trash) */}
-                                        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
-                                          {/* Memo Button (Visible on both PC & Mobile) */}
+                                        {/* Right: 메모 + 삭제 (항상 오른쪽 상단 고정) */}
+                                        <div className="flex items-center gap-1 shrink-0">
                                           <button
                                             onClick={() => handleOpenMemo(app)}
                                             className={`p-1.5 rounded-lg border transition-all ${app.adminMemo ? "bg-amber-50 text-amber-600 border-amber-200 shadow-sm" : "bg-slate-50 text-slate-400 border-slate-200 hover:bg-slate-100"}`}
@@ -3181,66 +3180,6 @@ ${chatLink}
                                           >
                                             <StickyNote size={13} fill={app.adminMemo ? "currentColor" : "none"} />
                                           </button>
-
-                                          {/* SMS Button (Visible on both PC & Mobile) */}
-                                          {renderSmsButton(app, true)}
-
-                                          {/* Selection Actions (Desktop Only, hidden on Mobile to keep it clean) */}
-                                          <div className="hidden sm:flex items-center gap-1 ml-1 pl-2.5 border-l border-slate-200">
-                                            {app.status === "selected" ? (
-                                              <>
-                                                <button
-                                                  onClick={() => handleWaitlistConfirm(app)}
-                                                  className="px-2.5 py-1 rounded-lg text-[0.7rem] font-black bg-[#FFD700]/10 text-[#B8860B] border border-[#FFD700]/30 hover:bg-[#FFD700] hover:text-white transition-all shadow-sm"
-                                                >
-                                                  입금확정
-                                                </button>
-                                                <button
-                                                  onClick={() => {
-                                                    if (window.confirm('선발을 취소하고 다시 검토 중 상태로 되돌리시겠습니까?')) {
-                                                      callStatusApi(app.id, "applied").then(() => toast.success("검토 중으로 변경되었습니다.")).catch((e: any) => toast.error(e.message));
-                                                    }
-                                                  }}
-                                                  className="px-2.5 py-1 rounded-lg text-[0.7rem] font-black bg-rose-50 text-rose-500 border border-rose-100 hover:bg-rose-500 hover:text-white transition-all shadow-sm"
-                                                >
-                                                  선발 취소
-                                                </button>
-                                              </>
-                                            ) : (
-                                              <>
-                                                {app.status === "held" && (
-                                                  <button
-                                                    onClick={() => callStatusApi(app.id, "applied").then(() => toast.success("검토 중으로 변경되었습니다.")).catch((e: any) => toast.error(e.message))}
-                                                    className="px-2 py-1 rounded-lg text-[0.7rem] font-black bg-amber-100 text-amber-700 border border-amber-200 hover:bg-amber-200 transition-all flex items-center gap-0.5"
-                                                  >
-                                                    보류 중 <X size={10} />
-                                                  </button>
-                                                )}
-                                                <button
-                                                  onClick={() => handleWaitlistSelect(app)}
-                                                  disabled={isGenderFull[app.gender as "male" | "female"]}
-                                                  className="px-2.5 py-1 rounded-lg text-[0.7rem] font-black bg-[#FF7E7E]/10 text-[#FF7E7E] border border-[#FF7E7E]/20 hover:bg-[#FF7E7E] hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
-                                                >
-                                                  선발
-                                                </button>
-                                                <button
-                                                  onClick={() => handleWaitlistHold(app)}
-                                                  className="px-2.5 py-1 rounded-lg text-[0.7rem] font-black bg-slate-50 text-slate-500 border border-slate-200 hover:bg-slate-200 transition-all shadow-sm"
-                                                >
-                                                  보류
-                                                </button>
-                                                <button
-                                                  onClick={() => handleWaitlistConfirm(app)}
-                                                  disabled={isGenderFull[app.gender as "male" | "female"]}
-                                                  className="px-2.5 py-1 rounded-lg text-[0.7rem] font-black bg-[#FFD700]/10 text-[#B8860B] border border-[#FFD700]/30 hover:bg-[#FFD700] hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
-                                                >
-                                                  선발확정
-                                                </button>
-                                              </>
-                                            )}
-                                          </div>
-
-                                          {/* Delete Button (Visible on both PC & Mobile) */}
                                           <button
                                             onClick={() => handleWaitlistDelete(app)}
                                             className="p-1.5 rounded-lg bg-slate-50 text-slate-400 border border-slate-200 hover:bg-rose-50 hover:text-rose-500 hover:border-rose-200 transition-all"
@@ -3249,6 +3188,61 @@ ${chatLink}
                                             <Trash2 size={13} />
                                           </button>
                                         </div>
+                                      </div>
+
+                                      {/* 선발 버튼 줄 (이름 줄 아래, 왼쪽 번호 여백에 맞춰 정렬) */}
+                                      <div className="ml-10 flex items-center gap-1 flex-wrap">
+                                        {app.status === "selected" ? (
+                                          <>
+                                            <button
+                                              onClick={() => handleWaitlistConfirm(app)}
+                                              className="px-2.5 py-1 rounded-lg text-[0.7rem] font-black bg-[#FFD700]/10 text-[#B8860B] border border-[#FFD700]/30 hover:bg-[#FFD700] hover:text-white transition-all shadow-sm"
+                                            >
+                                              입금확정
+                                            </button>
+                                            <button
+                                              onClick={() => {
+                                                if (window.confirm('선발을 취소하고 다시 검토 중 상태로 되돌리시겠습니까?')) {
+                                                  callStatusApi(app.id, "applied").then(() => toast.success("검토 중으로 변경되었습니다.")).catch((e: any) => toast.error(e.message));
+                                                }
+                                              }}
+                                              className="px-2.5 py-1 rounded-lg text-[0.7rem] font-black bg-rose-50 text-rose-500 border border-rose-100 hover:bg-rose-500 hover:text-white transition-all shadow-sm"
+                                            >
+                                              선발 취소
+                                            </button>
+                                          </>
+                                        ) : (
+                                          <>
+                                            {app.status === "held" && (
+                                              <button
+                                                onClick={() => callStatusApi(app.id, "applied").then(() => toast.success("검토 중으로 변경되었습니다.")).catch((e: any) => toast.error(e.message))}
+                                                className="px-2 py-1 rounded-lg text-[0.7rem] font-black bg-amber-100 text-amber-700 border border-amber-200 hover:bg-amber-200 transition-all flex items-center gap-0.5"
+                                              >
+                                                보류 중 <X size={10} />
+                                              </button>
+                                            )}
+                                            <button
+                                              onClick={() => handleWaitlistSelect(app)}
+                                              disabled={isGenderFull[app.gender as "male" | "female"]}
+                                              className="px-2.5 py-1 rounded-lg text-[0.7rem] font-black bg-[#FF7E7E]/10 text-[#FF7E7E] border border-[#FF7E7E]/20 hover:bg-[#FF7E7E] hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
+                                            >
+                                              선발
+                                            </button>
+                                            <button
+                                              onClick={() => handleWaitlistHold(app)}
+                                              className="px-2.5 py-1 rounded-lg text-[0.7rem] font-black bg-slate-50 text-slate-500 border border-slate-200 hover:bg-slate-200 transition-all shadow-sm"
+                                            >
+                                              보류
+                                            </button>
+                                            <button
+                                              onClick={() => handleWaitlistConfirm(app)}
+                                              disabled={isGenderFull[app.gender as "male" | "female"]}
+                                              className="px-2.5 py-1 rounded-lg text-[0.7rem] font-black bg-[#FFD700]/10 text-[#B8860B] border border-[#FFD700]/30 hover:bg-[#FFD700] hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
+                                            >
+                                              선발확정
+                                            </button>
+                                          </>
+                                        )}
                                       </div>
 
                                       {/* Bottom Details Row (Aligned nicely under the name with ml-10) */}

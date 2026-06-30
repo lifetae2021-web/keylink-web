@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, Fragment, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Search, CheckCircle, XCircle, Eye,
   Download, ShieldCheck, ChevronLeft, ChevronRight, ChevronDown, Loader2,
@@ -1981,7 +1982,7 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
   );
 }
 
-// ── 기수 선택 커스텀 드롭다운 ──────────────────────────────────
+// ── 기수 선택 커스텀 드롭다운 (Portal 방식으로 overflow clipping 방지) ──
 function SessionDropdown({
   events,
   selectedEventId,
@@ -1992,15 +1993,35 @@ function SessionDropdown({
   setSelectedEventId: (id: string) => void;
 }) {
   const [dropOpen, setDropOpen] = useState(false);
+  const [coords, setCoords] = useState({ top: 0, left: 0 });
+  const btnRef = useRef<HTMLButtonElement>(null);
   const dropRef = useRef<HTMLDivElement>(null);
 
+  // 바깥 클릭 시 닫기
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (dropRef.current && !dropRef.current.contains(e.target as Node)) setDropOpen(false);
+      const t = e.target as Node;
+      if (
+        btnRef.current && !btnRef.current.contains(t) &&
+        dropRef.current && !dropRef.current.contains(t)
+      ) setDropOpen(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
+
+  const handleToggle = () => {
+    if (!dropOpen && btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect();
+      const DROPDOWN_W = 170;
+      const MARGIN = 8;
+      // 버튼 오른쪽 끝 기준 좌측 정렬, 화면 밖으로 나가지 않게 클램핑
+      const idealLeft = rect.right - DROPDOWN_W;
+      const left = Math.max(MARGIN, Math.min(idealLeft, window.innerWidth - DROPDOWN_W - MARGIN));
+      setCoords({ top: rect.bottom + 4, left });
+    }
+    setDropOpen(v => !v);
+  };
 
   const eventOptions = [
     { value: 'all', label: '전체 기수 보기' },
@@ -2035,9 +2056,10 @@ function SessionDropdown({
   const selectedLabel = eventOptions.find(o => o.value === selectedEventId)?.label || '전체 기수 보기';
 
   return (
-    <div ref={dropRef} className="relative">
+    <>
       <button
-        onClick={() => setDropOpen(v => !v)}
+        ref={btnRef}
+        onClick={handleToggle}
         className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl text-[0.72rem] font-bold text-slate-700 hover:border-slate-300 hover:bg-slate-50 transition-all shadow-sm"
         style={{ height: '36px', padding: '0 10px 0 12px', minWidth: '148px' }}
       >
@@ -2046,13 +2068,22 @@ function SessionDropdown({
         <ChevronDown size={11} className={`text-slate-400 transition-transform duration-200 shrink-0 ${dropOpen ? 'rotate-180' : ''}`} />
       </button>
 
-      {dropOpen && (
-        <div className="absolute right-0 top-full mt-1.5 z-[9999] bg-white border border-slate-200 rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.12)] py-1.5 min-w-[200px] animate-in fade-in zoom-in-95 duration-150 origin-top-right overflow-hidden">
+      {dropOpen && typeof document !== 'undefined' && createPortal(
+        <div
+          ref={dropRef}
+          style={{
+            position: 'fixed',
+            top: coords.top,
+            left: coords.left,
+            zIndex: 99999,
+          }}
+          className="bg-white border border-slate-200 rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.12)] py-1.5 min-w-[160px] animate-in fade-in zoom-in-95 duration-150 origin-top-right overflow-hidden"
+        >
           {eventOptions.map(opt => (
             <button
               key={opt.value}
               onClick={() => { setSelectedEventId(opt.value); setDropOpen(false); }}
-              className={`w-full text-left px-4 py-2.5 text-[0.75rem] font-bold transition-colors ${
+              className={`w-full text-left px-3 py-2 text-[0.73rem] font-bold transition-colors ${
                 selectedEventId === opt.value
                   ? 'bg-[#FFF5F4] text-[#FF6F61]'
                   : 'text-slate-600 hover:bg-slate-50'
@@ -2061,8 +2092,9 @@ function SessionDropdown({
               {opt.label}
             </button>
           ))}
-        </div>
+        </div>,
+        document.body
       )}
-    </div>
+    </>
   );
 }
