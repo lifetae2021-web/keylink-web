@@ -895,7 +895,7 @@ export default function EventsPage() {
     return data;
   };
 
-  const handleWaitlistSelect = (app: Application) => {
+  const handleWaitlistSelect = (app: Application, confirmLabel?: string) => {
     const session = active;
     if (!session) return toast.error("세션 정보를 찾을 수 없습니다.");
     const user = userMap[app.userId] || {};
@@ -969,7 +969,8 @@ ${user.name || app.name || "참가자"}님은 ${fDate} ${fDay} ${fTime} 소개�
       app, 
       session, 
       defaultMsg,
-      autoSelectTemplateName: is100PercentDiscount ? '선발 (100% 할인/보증금)' : undefined
+      autoSelectTemplateName: is100PercentDiscount ? '선발 (100% 할인/보증금)' : undefined,
+      confirmLabel,
     });
     setSelectPreviewOpen(true);
   };
@@ -3194,6 +3195,14 @@ ${chatLink}
                                       <div className="ml-10 flex items-center gap-1 flex-wrap">
                                         {app.status === "selected" ? (
                                           <>
+                                            {/* 재요청: 입금 요청 문자 재발송 */}
+                                            <button
+                                              onClick={() => handleWaitlistSelect(app, '문자 발송')}
+                                              className="px-2.5 py-1 rounded-lg text-[0.7rem] font-black bg-blue-50 text-blue-500 border border-blue-100 hover:bg-blue-500 hover:text-white transition-all shadow-sm flex items-center gap-1"
+                                            >
+                                              <RefreshCw size={10} />
+                                              재요청
+                                            </button>
                                             <button
                                               onClick={() => handleWaitlistConfirm(app)}
                                               className="px-2.5 py-1 rounded-lg text-[0.7rem] font-black bg-[#FFD700]/10 text-[#B8860B] border border-[#FFD700]/30 hover:bg-[#FFD700] hover:text-white transition-all shadow-sm"
@@ -3703,7 +3712,7 @@ ${chatLink}
         session={selectPreviewData?.session}
         defaultMessage={selectPreviewData?.defaultMsg || ""}
         autoSelectTemplateName={selectPreviewData?.autoSelectTemplateName}
-        confirmLabel="선발 및 문자 발송"
+        confirmLabel={selectPreviewData?.confirmLabel || "문자 발송"}
       />
 
       <SMSPreviewModal
