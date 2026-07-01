@@ -39,3 +39,50 @@ export const compressImage = (base64: string): Promise<string> => {
     };
   });
 };
+
+/**
+ * 초성 검색을 포함하는 문자열 포함 여부 확인 함수
+ */
+export const chosungIncludes = (target: string | undefined | null, query: string | undefined | null): boolean => {
+  if (!target || !query) return false;
+  
+  const CHOSUNG_LIST = ['ㄱ','ㄲ','ㄴ','ㄷ','ㄸ','ㄹ','ㅁ','ㅂ','ㅃ','ㅅ','ㅆ','ㅇ','ㅈ','ㅉ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
+  
+  const getCho = (char: string) => {
+    const code = char.charCodeAt(0);
+    // 한글 음절 (가~힣)
+    if (code >= 44032 && code <= 55203) {
+      return CHOSUNG_LIST[Math.floor((code - 44032) / 588)];
+    }
+    return char.toLowerCase();
+  };
+  
+  const tLen = target.length;
+  const qLen = query.length;
+  
+  if (qLen > tLen) return false;
+  
+  for (let i = 0; i <= tLen - qLen; i++) {
+    let match = true;
+    for (let j = 0; j < qLen; j++) {
+      const tChar = target[i + j];
+      const qChar = query[j];
+      
+      // 검색어가 초성인 경우
+      if (CHOSUNG_LIST.includes(qChar)) {
+        if (getCho(tChar) !== qChar) {
+          match = false;
+          break;
+        }
+      } else {
+        // 일반 문자인 경우 대소문자 무시 비교
+        if (tChar.toLowerCase() !== qChar.toLowerCase()) {
+          match = false;
+          break;
+        }
+      }
+    }
+    if (match) return true;
+  }
+  return false;
+};

@@ -7,14 +7,14 @@ import {
   Download, ShieldCheck, ChevronLeft, ChevronRight, ChevronDown, Loader2,
   FileText, Users, CreditCard, Filter, Calendar, MapPin,
   X, Phone, Briefcase, Ruler, Smile, Cigarette, Beer, Camera, Info,
-  Ticket, Edit3, Trash2, UserPlus, User, MessageSquare, Heart, UserX
+  Ticket, Edit3, Trash2, UserPlus, User, MessageSquare, Heart, UserX, UserCheck
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import UserProfileModal from '../users/UserProfileModal';
 import {
-  collection, getDocs, doc, query, where, orderBy, Timestamp, getDoc, onSnapshot, writeBatch, increment, limit
+  collection, getDocs, doc, query, where, orderBy, Timestamp, getDoc, onSnapshot, writeBatch, increment, limit, deleteField
 } from 'firebase/firestore';
 import {
   selectApplicant,
@@ -26,6 +26,7 @@ import {
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import SMSPreviewModal from '@/components/admin/SMSPreviewModal';
+import { chosungIncludes } from '@/lib/utils';
 import { updateDoc } from 'firebase/firestore';
 import AdminApplicationList from '@/components/admin/AdminApplicationList'; // v8.12.7: 1:1 매칭 리스트 컴포넌트 추가
 
@@ -548,6 +549,26 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
     }
   };
 
+  const handleUnmarkNoShow = async (app: any) => {
+    if (!window.confirm(`${userMap[app.userId]?.name || app.name}님의 노쇼 처리를 취소하시겠습니까?\n(출석 체크가 복원되고, 회원의 노쇼 횟수가 -1 감소합니다.)`)) return;
+    try {
+      await updateDoc(doc(db, 'applications', app.id), {
+        attended: deleteField(),
+        attendanceStatus: deleteField(),
+      });
+      if (app.userId && !app.userId.startsWith('user_m_') && !app.userId.startsWith('user_f_')) {
+        const userRef = doc(db, 'users', app.userId);
+        const userSnap = await getDoc(userRef);
+        const currentCount = userSnap.data()?.noShowCount || 0;
+        await updateDoc(userRef, { noShowCount: Math.max(0, currentCount - 1) });
+      }
+      toast.success(`${userMap[app.userId]?.name || app.name}님의 노쇼 처리가 취소되었습니다.`);
+    } catch (e: any) {
+      console.error(e);
+      toast.error('노쇼 취소에 실패했습니다.');
+    }
+  };
+
   // 다중 선택된 신청서 일괄 삭제 처리 핸들러
   const handleBulkDelete = async () => {
     if (selectedAppIds.length === 0) return;
@@ -676,10 +697,13 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
       const normalizedQuery = searchQuery.replace(/[^0-9]/g, '');
       const userPhoneDigits = (user.phone || '').replace(/[^0-9]/g, '');
 
+      const q = searchQuery.trim();
+      const qLower = q.toLowerCase();
       const matchesSearch =
-        (user.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (user.workplace || user.job || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (user.residence || user.location || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        !q ||
+        chosungIncludes(user.name, q) ||
+        (user.workplace || user.job || '').toLowerCase().includes(qLower) ||
+        (user.residence || user.location || '').toLowerCase().includes(qLower) ||
         (normalizedQuery !== '' && userPhoneDigits.includes(normalizedQuery));
 
       // 나이대 필터링
@@ -712,10 +736,13 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
       const normalizedQuery = searchQuery.replace(/[^0-9]/g, '');
       const userPhoneDigits = (user.phone || '').replace(/[^0-9]/g, '');
 
+      const q = searchQuery.trim();
+      const qLower = q.toLowerCase();
       const matchesSearch =
-        (user.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (user.workplace || user.job || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (user.residence || user.location || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        !q ||
+        chosungIncludes(user.name, q) ||
+        (user.workplace || user.job || '').toLowerCase().includes(qLower) ||
+        (user.residence || user.location || '').toLowerCase().includes(qLower) ||
         (normalizedQuery !== '' && userPhoneDigits.includes(normalizedQuery));
       const matchesGender = filterGender === 'all' || app.gender === filterGender;
 
@@ -1239,6 +1266,17 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                                     <UserX size={14} />
                                   </button>
                                 )}
+                                {/* 노쇼 취소 버튼 */}
+                                {isSessionEnded && app.status === 'confirmed' && app.attended === false && (
+                                  <button
+                                    onClick={() => handleUnmarkNoShow(app)}
+                                    className="flex items-center justify-center rounded-xl bg-amber-50 text-amber-600 border border-amber-100 hover:bg-amber-100 transition-all shrink-0"
+                                    style={{ width: 32, height: 32 }}
+                                    title="노쇼 취소"
+                                  >
+                                    <UserCheck size={14} />
+                                  </button>
+                                )}
                                 {(app.status === 'applied' || app.status === 'held' || app.status === 'selected') && (() => {
                                   const handleSelection = async () => {
                                     if (!user.isJobReviewed) return toast.error('먼저 회원 관리에서 직업 정보를 확인하고 승인(Job Reviewed)해 주세요.');
@@ -1494,6 +1532,15 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                                        <UserX size={16} />
                                      </button>
                                    )}
+                                   {isSessionEnded && app.status === 'confirmed' && app.attended === false && (
+                                      <button
+                                        onClick={() => handleUnmarkNoShow(app)}
+                                        className="w-10 h-10 bg-amber-50 text-amber-600 border border-amber-100 rounded-xl flex items-center justify-center active:scale-95 transition-all shrink-0"
+                                        title="노쇼 취소"
+                                      >
+                                        <UserCheck size={16} />
+                                      </button>
+                                    )}
                                   {(app.status === 'applied' || app.status === 'held' || app.status === 'selected') && (
                                     <>
                                       {/* 입금확인 또는 선발 */}

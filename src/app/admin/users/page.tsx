@@ -14,6 +14,7 @@ import {
 } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { format } from 'date-fns';
+import { chosungIncludes } from '@/lib/utils';
 import UserProfileModal from './UserProfileModal';
 import SMSPreviewModal from '@/components/admin/SMSPreviewModal';
 
@@ -378,12 +379,14 @@ export default function UsersPage() {
 
   const filtered = useMemo(() => {
     return users.filter(u => {
-      const q = search.toLowerCase();
+      const q = search.trim();
+      const qLower = q.toLowerCase();
       const matchSearch =
-        (u.name || '').toLowerCase().includes(q) ||
-        (u.job || '').toLowerCase().includes(q) ||
-        (u.phone || '').toLowerCase().includes(q) ||
-        (u.email || '').toLowerCase().includes(q);
+        !q ||
+        chosungIncludes(u.name, q) ||
+        (u.job || '').toLowerCase().includes(qLower) ||
+        (u.phone || '').toLowerCase().includes(qLower) ||
+        (u.email || '').toLowerCase().includes(qLower);
       
       const isDummy = u.isDummy === true || u.id?.startsWith('dummy') || u.id?.startsWith('user_m_') || u.id?.startsWith('user_f_');
       
