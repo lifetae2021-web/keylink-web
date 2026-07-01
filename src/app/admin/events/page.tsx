@@ -3195,9 +3195,28 @@ ${chatLink}
                                       <div className="ml-10 flex items-center gap-1 flex-wrap">
                                         {app.status === "selected" ? (
                                           <>
-                                            {/* 재요청: 입금 요청 문자 재발송 */}
+                                            {/* 재요청: 신청현황과 동일한 일반 SMS 모달 사용 */}
                                             <button
-                                              onClick={() => handleWaitlistSelect(app, '문자 발송')}
+                                              onClick={() => {
+                                                const _name = app.name || '참가자';
+                                                const session = active;
+                                                const eventDate = session?.eventDate instanceof Date ? session.eventDate : (session?.eventDate as any)?.toDate?.() || new Date();
+                                                const fDate = format(eventDate, 'MM/dd', { locale: ko });
+                                                const fDay = format(eventDate, 'E', { locale: ko });
+                                                const fTime = format(eventDate, 'HH:mm', { locale: ko });
+                                                const daysLeft = Math.ceil((eventDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                                                const genderPrice = app.gender === 'male'
+                                                  ? (app.maleOption === 'safe' ? 60000 : (session?.malePrice || 49000))
+                                                  : (app.femaleOption === 'group' ? 24000 : (session?.femalePrice || 29000));
+                                                const finalPrice = (app.price ?? genderPrice).toLocaleString('ko-KR');
+                                                const daysText = daysLeft > 0 ? `행사까지 딱 ${daysLeft}일 남았습니다!` : '행사가 곧 시작됩니다!';
+                                                const msg = `[키링크] ${daysText}\n\n${_name}님, 안녕하세요!\n아직까지 ${fDate}(${fDay}) ${fTime} 모임의 입금 내역이 확인되지 않아 다시 안내드립니다.\n\n인원이 일찍 마감되거나 기한 내에 ${finalPrice}원 입금이 되지 않을 경우, 부득이하게 예약이 취소될 수 있습니다.\n\n3333359229548 카카오뱅크 태영훈(키링크)\n\n혹시나 입금이 늦을 것 같은 경우 말씀해주세요 :)`;
+                                                setSmsTargets([{ phone: app.phone, name: _name, gender: app.gender, slotNumber: app.slotNumber, userId: app.userId, appId: app.id }]);
+                                                setSmsSingleTarget(app);
+                                                setSmsRecipientLabel(`${_name}님`);
+                                                setSmsDefaultMsg(msg);
+                                                setSmsModalOpen(true);
+                                              }}
                                               className="px-2.5 py-1 rounded-lg text-[0.7rem] font-black bg-blue-50 text-blue-500 border border-blue-100 hover:bg-blue-500 hover:text-white transition-all shadow-sm flex items-center gap-1"
                                             >
                                               <RefreshCw size={10} />
