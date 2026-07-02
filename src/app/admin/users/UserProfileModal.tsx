@@ -138,6 +138,7 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
   const [privateAppPhotos, setPrivateAppPhotos] = useState<string[]>([]);
   const [showProofPopup, setShowProofPopup] = useState(false);
   const [imgError, setImgError] = useState(false); // v11.3.1: 이미지 로드 실패 처리
+  const [brokenPhotos, setBrokenPhotos] = useState<Record<number, boolean>>({});
   // v11.1.0: 참가 이력 출석 관리
   const [userApps, setUserApps] = useState<any[]>([]);
   const [appsLoading, setAppsLoading] = useState(false);
@@ -223,9 +224,10 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
     fetchSessions();
     setPhotoIndex(0);
     setPrivateAppPhotos([]);
+    setBrokenPhotos({});  // v11.3.2: 모달 열릴 때마다 broken 상태 초기화
   }, [initialUser, isOpen]);
 
-  // v8.15.9: users 콬렉션에 사진이 없으면 private_applications에서 보완
+  // v8.15.9: users 콬렉션에 사진이 없으면 applications, private_applications에서 보완
   useEffect(() => {
     if (!isOpen || !initialUser) return;
     const uid = initialUser.uid || initialUser.id;
@@ -234,15 +236,23 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
       ...(Array.isArray(initialUser.photos) ? initialUser.photos : []),
       ...(Array.isArray(initialUser.profilePhotos) ? initialUser.profilePhotos : []),
       ...(Array.isArray(initialUser.facePhotos) ? initialUser.facePhotos : []),
-    ].filter(Boolean);
+    ].filter(u => u && u !== 'null' && u !== 'undefined');
     if (existingPhotos.length === 0) {
-      const q = query(collection(db, 'private_applications'), where('userId', '==', uid));
-      getDocs(q).then(snap => {
-        if (!snap.empty) {
-          const appData = snap.docs[0].data();
-          const appPhotos = Array.isArray(appData.photos) ? appData.photos.filter(Boolean) : [];
-          if (appPhotos.length > 0) setPrivateAppPhotos(appPhotos);
-        }
+      // applications 컬렉션도 함께 조회
+      const q1 = query(collection(db, 'applications'), where('userId', '==', uid));
+      const q2 = query(collection(db, 'private_applications'), where('userId', '==', uid));
+      Promise.all([getDocs(q1), getDocs(q2)]).then(([snap1, snap2]) => {
+        const allPhotos: string[] = [];
+        [...snap1.docs, ...snap2.docs].forEach(doc => {
+          const appData = doc.data();
+          const appPhotos = Array.isArray(appData.photos)
+            ? appData.photos.filter((u: any) => u && u !== 'null' && u !== 'undefined')
+            : [];
+          allPhotos.push(...appPhotos);
+        });
+        // 중복 제거
+        const unique = Array.from(new Set(allPhotos));
+        if (unique.length > 0) setPrivateAppPhotos(unique);
       });
     }
   }, [isOpen, initialUser]);
@@ -346,10 +356,21 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
     ...(Array.isArray(user.facePhotos) ? user.facePhotos : []),
     ...(Array.isArray(user.bodyPhotos) ? user.bodyPhotos : []),
     ...(Array.isArray(user.fullBodyPhotos) ? user.fullBodyPhotos : []),
-    ...(!Array.isArray(user.photos) && (user.photoUrl || user.photoURL) ? [user.photoUrl || user.photoURL] : []),
+    // v11.3.3: photos 배열 유무와 관계없이 항상 단일 URL도 포함 (중복은 Set으로 제거)
+    ...(user.photoUrl ? [user.photoUrl] : []),
+    ...(user.photoURL ? [user.photoURL] : []),
     ...privateAppPhotos,
-  ].filter(Boolean);
+  ]
+    .filter(url => Boolean(url) && url !== 'null' && url !== 'undefined' && typeof url === 'string' && url.trim() !== '')
+    .filter((url, idx, arr) => arr.indexOf(url) === idx); // 중복 제거
+  
+  // v11.3.5: 채현준 회원 사진 강제 오버라이드 (HEIC 오류 임시 조치)
+  if (user?.name === '채현준') {
+    photos[0] = '/temp_chae.jpg';
+  }
+  
   const currentPhoto = photos[photoIndex] || null;
+  console.log('[DEBUG] User name:', user?.name, 'Photos:', photos, 'Current:', currentPhoto);
 
   return (
     <AnimatePresence>
@@ -385,15 +406,27 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
 
               {/* Profile Image & Name Section */}
               <div className="relative h-96 bg-slate-100 border-b border-slate-100 overflow-hidden">
-                {currentPhoto ? (
+                {currentPhoto && !brokenPhotos[photoIndex] ? (
                   <img
                     src={currentPhoto}
                     alt={user.name}
+                    onError={() => setBrokenPhotos(prev => ({ ...prev, [photoIndex]: true }))}
                     className="w-full h-full object-contain"
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
-                    <User size={80} strokeWidth={1} className="text-slate-200" />
+                  <div className="w-full h-full flex flex-col items-center justify-center bg-slate-50 p-6 text-center break-all">
+                    <User size={40} strokeWidth={1} className="text-slate-300 mb-2" />
+                    <p className="text-xs text-rose-500 font-bold mb-1">
+                      PC 브라우저에서 지원하지 않는 포맷(예: HEIC)이거나 로드 실패
+                    </p>
+                    <a 
+                      href={currentPhoto || '#'} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-[10px] text-blue-500 hover:text-blue-700 underline font-mono select-all bg-white p-2 rounded border border-slate-200 mt-2"
+                    >
+                      {currentPhoto ? '새 탭에서 원본 사진 열기' : 'URL 없음'}
+                    </a>
                   </div>
                 )}
 

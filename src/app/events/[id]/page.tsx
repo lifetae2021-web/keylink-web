@@ -268,7 +268,7 @@ export default function EventDetailPage() {
   // 성별 및 옵션 기반 가격 로직
   let displayBasePrice = form.gender === 'female' ? 40000 : (form.maleOption === 'safe' ? 60000 : 49000);
   let basePriceBeforeCoupon = form.gender === 'female'
-    ? (form.femaleOption === 'group' ? (event.femaleGroupPrice ?? 24000) : (event.price ?? 29000))
+    ? (form.femaleOption === 'group' ? (event.femaleGroupPrice ?? 19000) : (event.price ?? 29000))
     : displayBasePrice;
 
   // v8.15.9: 쿠폰 할인 계산
@@ -1228,20 +1228,24 @@ export default function EventDetailPage() {
                     <div>
                       <p style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--color-text-secondary)', marginBottom: '12px' }}>성별 선택</p>
                       <div style={{ display: 'flex', gap: '10px' }}>
-                        {['male', 'female'].map((g) => (
-                          <button
-                            key={g}
-                            onClick={() => setForm(f => ({ ...f, gender: g as 'male' | 'female' }))}
-                            style={{
-                              flex: 1, padding: '12px', borderRadius: '10px',
-                              border: form.gender === g ? '2px solid #FF6F61' : '1px solid #ddd',
-                              background: form.gender === g ? '#FFF5F4' : '#fff', color: form.gender === g ? '#FF6F61' : 'var(--color-text-secondary)',
-                              fontWeight: '700', cursor: 'pointer'
-                            }}
-                          >
-                            {g === 'male' ? '남성' : '여성'}
-                          </button>
-                        ))}
+                        {['male', 'female'].map((g) => {
+                          // v10.0.0: 마이페이지에 성별이 등록되어 있으면 해당 성별 버튼만 노출
+                          if (userGender && userGender !== g) return null;
+                          return (
+                            <button
+                              key={g}
+                              onClick={() => setForm(f => ({ ...f, gender: g as 'male' | 'female' }))}
+                              style={{
+                                flex: 1, padding: '12px', borderRadius: '10px',
+                                border: form.gender === g ? '2px solid #FF6F61' : '1px solid #ddd',
+                                background: form.gender === g ? '#FFF5F4' : '#fff', color: form.gender === g ? '#FF6F61' : 'var(--color-text-secondary)',
+                                fontWeight: '700', cursor: 'pointer'
+                              }}
+                            >
+                              {g === 'male' ? '남성' : '여성'}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
 
@@ -1396,14 +1400,14 @@ export default function EventDetailPage() {
                                   {selectedCoupon ? (
                                     <>
                                       <p style={{ fontSize: '0.75rem', color: '#94A3B8', textDecoration: 'line-through', marginBottom: '2px', fontWeight: '500' }}>
-                                        {opt === 'normal' ? '29,000원' : '24,000원'}
+                                        {opt === 'normal' ? '29,000원' : '19,000원'}
                                       </p>
                                       <p style={{ fontSize: '0.9rem', fontWeight: '800', color: '#FF6F61' }}>
-                                        {((opt === 'normal' ? 29000 : 24000) - (selectedCoupon.type === 'free' ? (opt === 'normal' ? 29000 : 24000) : (selectedCoupon.type === 'percent' ? Math.floor((opt === 'normal' ? 29000 : 24000) * ((selectedCoupon.value || selectedCoupon.amount || 0) / 100)) : (selectedCoupon.value || selectedCoupon.amount || 0)))).toLocaleString()}원
+                                        {((opt === 'normal' ? 29000 : 19000) - (selectedCoupon.type === 'free' ? (opt === 'normal' ? 29000 : 19000) : (selectedCoupon.type === 'percent' ? Math.floor((opt === 'normal' ? 29000 : 19000) * ((selectedCoupon.value || selectedCoupon.amount || 0) / 100)) : (selectedCoupon.value || selectedCoupon.amount || 0)))).toLocaleString()}원
                                       </p>
                                     </>
                                   ) : (
-                                    <span style={{ fontSize: '0.9rem', fontWeight: '800' }}>{opt === 'normal' ? '29,000원' : '24,000원'}</span>
+                                    <span style={{ fontSize: '0.9rem', fontWeight: '800' }}>{opt === 'normal' ? '29,000원' : '19,000원'}</span>
                                   )}
                                 </div>
                               </div>
@@ -1422,7 +1426,7 @@ export default function EventDetailPage() {
                               />
                               <input
                                 className="kl-input"
-                                placeholder="년생 (ex. 1998)"
+                                placeholder="년생 (ex. 98)"
                                 value={form.groupPartnerBirthYear}
                                 onChange={(e) => setForm(f => ({ ...f, groupPartnerBirthYear: e.target.value }))}
                               />

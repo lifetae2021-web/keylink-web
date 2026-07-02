@@ -322,7 +322,7 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
               참가 확정 라인업
             </h3>
             <p style={{ color: 'var(--color-text-secondary)', fontWeight: '500', maxWidth: '600px', margin: '0 auto' }}>
-              개인정보 보호를 위해 성함과 연락처를 제외한 <br className="desktop-br" />
+              개인정보 보호를 위해 성함과 연락처를 제외한 <br />
               나이, 직업, 키 정보만 투명하게 공개합니다.
             </p>
           </div>
@@ -340,7 +340,7 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
                 transform: activeTab === 'male' ? 'scale(1.05)' : 'scale(1)'
               }}
             >
-              키링남 라인업
+              키링남
             </button>
             <button
               onClick={() => setActiveTab('female')}
@@ -354,7 +354,7 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
                 transform: activeTab === 'female' ? 'scale(1.05)' : 'scale(1)'
               }}
             >
-              키링녀 라인업
+              키링녀
             </button>
           </div>
 

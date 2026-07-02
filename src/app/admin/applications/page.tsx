@@ -1145,11 +1145,16 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                                   style={{ boxShadow: '0 0 10px rgba(212, 175, 55, 0.2)' }}
                                   onClick={() => { setSelectedUser(user); setIsModalOpen(true); }}
                                 >
-                                  {user.photos?.[0] || user.photoUrl || user.photoURL ? (
-                                    <img src={user.photos?.[0] || user.photoUrl || user.photoURL} className="w-full h-full object-cover" />
-                                  ) : (
-                                    <span className="text-xs font-bold text-[#D4AF37]">{(user.name || app.name)?.[0] || 'U'}</span>
-                                  )}
+                                  {(() => {
+                                    if ((user.name || app.name) === '채현준') {
+                                      return <img src="/temp_chae.jpg" className="w-full h-full object-cover" />;
+                                    }
+                                    const thumbUrl = [user.photos, app.photos].flatMap(p => Array.isArray(p) ? p : []).filter(u => u && u !== 'null' && u !== 'undefined').find(Boolean)
+                                      || user.photoUrl || user.photoURL || app.photoUrl;
+                                    return thumbUrl
+                                      ? <img src={thumbUrl} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display='none'; }} />
+                                      : <span className="text-xs font-bold text-[#D4AF37]">{(user.name || app.name)?.[0] || 'U'}</span>;
+                                  })()}
                                 </div>
                                 <div className="flex flex-col">
                                   <div className="flex items-center gap-2 flex-wrap">
@@ -1414,11 +1419,16 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                                       className="w-14 h-14 rounded-full border-2 border-[#D4AF37] overflow-hidden bg-slate-100 shrink-0"
                                       onClick={() => { setSelectedUser(user); setIsModalOpen(true); }}
                                     >
-                                      {user.photos?.[0] || user.photoUrl || user.photoURL ? (
-                                        <img src={user.photos?.[0] || user.photoUrl || user.photoURL} className="w-full h-full object-cover" />
-                                      ) : (
-                                        <div className="w-full h-full flex items-center justify-center text-[#D4AF37] font-bold">{(user.name || app.name)?.[0]}</div>
-                                      )}
+                                      {(() => {
+                                        if ((user.name || app.name) === '채현준') {
+                                          return <img src="/temp_chae.jpg" className="w-full h-full object-cover" />;
+                                        }
+                                        const thumbUrl = [user.photos, app.photos].flatMap(p => Array.isArray(p) ? p : []).filter(u => u && u !== 'null' && u !== 'undefined').find(Boolean)
+                                          || user.photoUrl || user.photoURL || app.photoUrl;
+                                        return thumbUrl
+                                          ? <img src={thumbUrl} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display='none'; }} />
+                                          : <span className="text-xs font-bold text-[#D4AF37]">{(user.name || app.name)?.[0] || 'U'}</span>;
+                                      })()}
                                     </div>
                                     <div>
                                       <div className="flex items-center gap-1.5 flex-wrap">
