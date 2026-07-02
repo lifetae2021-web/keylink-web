@@ -1203,7 +1203,7 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
 
                             <td style={{ padding: '0 16px' }}>
                               <div className="flex flex-col">
-                                <p className={`text-[0.85rem] font-bold tracking-tight ${(user.admin_job || user.job || app.job) ? 'text-slate-800' : 'text-slate-400'}`}>
+                                <p className={`text-[0.85rem] font-bold tracking-tight whitespace-nowrap ${(user.admin_job || user.job || app.job) ? 'text-slate-800' : 'text-slate-400'}`}>
                                   {user.admin_job || (user.job && user.job !== '-' ? user.job : null) || user.workplace?.split(',')[0] || app.job || <span className="font-normal">-</span>}
                                 </p>
                                 <span className="text-[0.72rem] text-slate-400">{user.company || ''}</span>

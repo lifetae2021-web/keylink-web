@@ -793,9 +793,9 @@ export default function UsersPage() {
               <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
                 <colgroup>
                   <col style={{ width: '80px' }} />
-                  <col style={{ width: '140px' }} />
-                  <col style={{ width: '120px' }} />
-                  <col style={{ width: '100px' }} />
+                  <col style={{ width: '130px' }} />
+                  <col style={{ width: '150px' }} />
+                  <col style={{ width: '80px' }} />
                   <col style={{ width: '140px' }} />
                   <col style={{ width: '220px' }} />
                   <col style={{ width: '140px' }} />
@@ -938,8 +938,8 @@ export default function UsersPage() {
                                 />
                               ) : (
                                 <>
-                                  <p className={`text-[0.82rem] font-bold tracking-tight flex items-center flex-wrap gap-1 ${u.admin_job || u.job ? 'text-blue-600' : 'text-slate-800'}`}>
-                                    <span>{u.admin_job || u.job || u.occupation || <span className="text-slate-300 font-normal">-</span>}</span>
+                                  <p className={`text-[0.82rem] font-bold tracking-tight flex items-center gap-1 ${u.admin_job || u.job ? 'text-blue-600' : 'text-slate-800'}`}>
+                                    <span className="whitespace-nowrap">{u.admin_job || u.job || u.occupation || <span className="text-slate-300 font-normal">-</span>}</span>
                                   </p>
                                   <button
                                     onClick={() => {
