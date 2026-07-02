@@ -523,7 +523,7 @@ export default function UsersPage() {
         updatedAt: Timestamp.now()
       });
       setEditingJobId(null);
-      toast.success('직업 정보가 수정 및 승인되었습니다.');
+      toast.success('직업 정보가 수정 및 승인되었습니다.', { id: `job-update-${userId}` });
     } catch (e) {
       toast.error('직업 정보 업데이트에 실패했습니다.');
     }

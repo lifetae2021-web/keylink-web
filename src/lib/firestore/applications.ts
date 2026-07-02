@@ -217,5 +217,6 @@ export async function cancelApplication(applicationId: string) {
   await updateDoc(docRef, {
     status: 'cancelled',
     updatedAt: serverTimestamp(),
+    cancelledAt: serverTimestamp(),
   });
 }

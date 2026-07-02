@@ -1,6 +1,6 @@
 'use client';
 
-import { X, User, ShieldCheck, Phone, Camera, MapPin, Briefcase, Users2, Wine, Cigarette, Info, Coffee, Heart, HeartOff, Calendar, Ruler, Weight, ExternalLink, History, AlertCircle, CheckCircle, ChevronLeft, ChevronRight, ClipboardList, KeyRound } from 'lucide-react';
+import { X, User, ShieldCheck, Phone, Camera, MapPin, Briefcase, Users2, Wine, Cigarette, Info, Coffee, Heart, HeartOff, Calendar, Ruler, Weight, ExternalLink, History, AlertCircle, CheckCircle, ChevronLeft, ChevronRight, ClipboardList, KeyRound, Copy, MessageSquare } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 import { db, auth } from '@/lib/firebase';
@@ -8,6 +8,7 @@ import { getIdToken } from 'firebase/auth';
 import { doc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import toast from 'react-hot-toast';
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 
 interface UserProfileModalProps {
   user: any;
@@ -16,9 +17,87 @@ interface UserProfileModalProps {
   onUserUpdate?: (updatedUser: any) => void;
 }
 
+// ── 전화번호 액션 팝업
+const PhoneActionBadge = ({ phone }: { phone: string }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const popupRef = useRef<HTMLDivElement>(null);
+  const [coords, setCoords] = useState({ top: 0, left: 0 });
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (
+        containerRef.current && !containerRef.current.contains(target) &&
+        (!popupRef.current || !popupRef.current.contains(target))
+      ) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleToggle = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!isOpen) {
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        const popupHeight = 120;
+        const spaceBelow = window.innerHeight - rect.bottom;
+
+        let top = rect.bottom + 4;
+        if (spaceBelow < popupHeight && rect.top > popupHeight) {
+          top = rect.top - popupHeight - 4;
+        }
+        setCoords({ top, left: rect.left });
+      }
+      setIsOpen(true);
+    } else {
+      setIsOpen(false);
+    }
+  };
+
+  const handleCopy = () => {
+    if (!phone) return;
+    navigator.clipboard.writeText(phone);
+    toast.success("번호가 복사되었습니다.");
+    setIsOpen(false);
+  };
+
+  return (
+    <div className="relative inline-block" ref={containerRef}>
+      <button 
+        onClick={handleToggle}
+        className="flex items-center gap-1 text-slate-800 hover:text-blue-600 transition-colors"
+      >
+        {phone || "-"}
+      </button>
+      {isOpen && phone && typeof document !== 'undefined' && createPortal(
+        <div 
+          ref={popupRef}
+          style={{ position: 'fixed', top: coords.top, left: coords.left }}
+          className="bg-white border border-slate-200 rounded-lg shadow-lg z-[99999] flex flex-col py-1 min-w-[120px] animate-in fade-in zoom-in-95 duration-100"
+        >
+          <a href={`tel:${phone}`} onClick={() => setIsOpen(false)} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors">
+            <Phone size={14} className="text-blue-500" /> 통화 연결
+          </a>
+          <a href={`sms:${phone}`} onClick={() => setIsOpen(false)} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors">
+            <MessageSquare size={14} className="text-emerald-500" /> 문자 전송
+          </a>
+          <button onClick={handleCopy} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors text-left w-full">
+            <Copy size={14} className="text-slate-500" /> 번호 복사
+          </button>
+        </div>,
+        document.body
+      )}
+    </div>
+  );
+};
+
 // ── 상세 정보 행 (마이페이지 스타일)
-const DetailRow = ({ label, value, icon: Icon }: { label: string; value?: string | number | null; icon: any }) => {
-  const isEmpty = !value || value === '미입력';
+const DetailRow = ({ label, value, icon: Icon, valueNode }: { label: string; value?: string | number | null; icon: any; valueNode?: React.ReactNode }) => {
+  const isEmpty = !value && !valueNode || value === '미입력';
   return (
     <div className="flex items-center py-4 border-b border-slate-50 last:border-0 group">
       <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center flex-shrink-0 group-hover:bg-[#FF7E7E]/10 transition-colors">
@@ -26,9 +105,9 @@ const DetailRow = ({ label, value, icon: Icon }: { label: string; value?: string
       </div>
       <div className="ml-4 flex-1">
         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{label}</p>
-        <p className={`text-[0.92rem] font-bold mt-0.5 ${isEmpty ? 'text-slate-300 italic font-normal' : 'text-slate-800'}`}>
-          {isEmpty ? '미입력' : value}
-        </p>
+        <div className={`text-[0.92rem] font-bold mt-0.5 ${isEmpty ? 'text-slate-300 italic font-normal' : 'text-slate-800'}`}>
+          {isEmpty ? '미입력' : (valueNode || value)}
+        </div>
       </div>
     </div>
   );
@@ -408,7 +487,7 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
 
                 {/* 1. 핵심 연락 정보 */}
                 <div className="bg-slate-50/50 border border-slate-100 rounded-[2rem] p-6 space-y-1">
-                  <DetailRow label="연락처" value={user.phone} icon={Phone} />
+                  <DetailRow label="연락처" value={user.phone} valueNode={user.phone ? <PhoneActionBadge phone={user.phone} /> : undefined} icon={Phone} />
                   <DetailRow label="인스타그램" value={user.instaId} icon={Camera} />
                   <DetailRow label="거주지" value={user.residence || user.location} icon={MapPin} />
 

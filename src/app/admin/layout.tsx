@@ -54,6 +54,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [userNotis, setUserNotis] = useState<NotificationItem[]>([]);
   const [appNotis, setAppNotis] = useState<NotificationItem[]>([]);
   const [privateNotis, setPrivateNotis] = useState<NotificationItem[]>([]);
+  const [cancelledNotis, setCancelledNotis] = useState<NotificationItem[]>([]);
   const [lastViewedNoti, setLastViewedNoti] = useState<number>(0);
   const [authState, setAuthState] = useState<'loading' | 'super_admin' | 'admin' | 'denied'>('loading');
   const isSuperAdmin = authState === 'super_admin';
@@ -373,16 +374,44 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       }
     );
 
-    return () => { unsubUsers(); unsubApps(); unsubPrivate(); };
+    // 2d. 취소 알림 (더미계정 제외)
+    const unsubCancelled = onSnapshot(
+      query(collection(db, 'applications'), orderBy('cancelledAt', 'desc'), limit(15)),
+      (snapshot) => {
+        const items = snapshot.docs.filter(d => {
+          const data = d.data();
+          if (data.status !== 'cancelled') return false;
+          const isDummy = d.id.startsWith('dummy') || data.userId?.startsWith('user_m_') || data.userId?.startsWith('user_f_') || data.isDummy === true;
+          return !isDummy;
+        }).map(d => {
+          const data = d.data();
+          const date = safeDate(data.cancelledAt);
+          return {
+            id: d.id + '_cancelled',
+            type: 'app' as const,
+            text: `${data.name || '참여자'}님이\n로테이션 신청을 취소했습니다.`,
+            date,
+            time: formatTimeAgo(date),
+            path: '/admin/applications'
+          };
+        });
+        setCancelledNotis(items);
+      },
+      (err) => {
+        console.error('Error syncing cancelled notifications:', err);
+      }
+    );
+
+    return () => { unsubUsers(); unsubApps(); unsubPrivate(); unsubCancelled(); };
   }, [authState]);
 
   // 3. 알림 통합 및 정렬
   useEffect(() => {
-    const combined = [...userNotis, ...appNotis, ...privateNotis]
+    const combined = [...userNotis, ...appNotis, ...privateNotis, ...cancelledNotis]
       .sort((a, b) => b.date.getTime() - a.date.getTime())
       .slice(0, 20);
     setNotifications(combined);
-  }, [userNotis, appNotis, privateNotis]);
+  }, [userNotis, appNotis, privateNotis, cancelledNotis]);
 
   function formatTimeAgo(date: Date) {
     if (date.getTime() === 0) return '시간 정보 없음';

@@ -175,6 +175,10 @@ export async function POST(req: NextRequest) {
         updateData.slotNumber = null;
       }
 
+      if (status === 'cancelled') {
+        updateData.cancelledAt = FieldValue.serverTimestamp();
+      }
+
       transaction.update(appRef, updateData);
 
       // 슬롯 당김 일괄 적용
