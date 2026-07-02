@@ -31,15 +31,15 @@ import { updateDoc } from 'firebase/firestore';
 import AdminApplicationList from '@/components/admin/AdminApplicationList'; // v8.12.7: 1:1 매칭 리스트 컴포넌트 추가
 
 const DEPOSIT_STATUS = {
-  pending: { label: '입금 대기', color: '#64748B', bg: '#F1F5F9' },
-  confirmed: { label: '입금 확인', color: '#2563EB', bg: '#EFF6FF' },
+  pending: { label: '입금대기', color: '#64748B', bg: '#F1F5F9' },
+  confirmed: { label: '입금확인', color: '#2563EB', bg: '#EFF6FF' },
 };
 
 const APP_STATUS: Record<string, { label: string; color: string; bg: string }> = {
-  applied: { label: '검토 중', color: '#D97706', bg: '#FFFBEB' },
-  selected: { label: '입금 대기', color: '#7C3AED', bg: '#F5F3FF' },
+  applied: { label: '검토중', color: '#D97706', bg: '#FFFBEB' },
+  selected: { label: '입금대기', color: '#7C3AED', bg: '#F5F3FF' },
   held: { label: '보류', color: '#EA580C', bg: '#FFF7ED' },
-  confirmed: { label: '참가 확정', color: '#059669', bg: '#ECFDF5' },
+  confirmed: { label: '참가확정', color: '#059669', bg: '#ECFDF5' },
   cancelled: { label: '취소', color: '#DC2626', bg: '#FEF2F2' },
 };
 
@@ -1223,7 +1223,8 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                                   borderRadius: 6,
                                   color: aStatus.color,
                                   background: aStatus.bg,
-                                  border: `1px solid ${aStatus.color}20`
+                                  border: `1px solid ${aStatus.color}20`,
+                                  whiteSpace: 'nowrap'
                                 }}>
                                   {aStatus.label}
                                 </span>

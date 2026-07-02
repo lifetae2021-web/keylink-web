@@ -21,9 +21,9 @@ import SMSPreviewModal from '@/components/admin/SMSPreviewModal';
 type Status = 'all' | 'pending' | 'verified' | 'rejected' | 'dummy' | 'waitpool';
 
 const STATUS_CFG = {
-  verified: { label: '인증 완료', color: '#10B981', bg: '#ECFDF5' },
-  pending: { label: '승인 대기', color: '#F59E0B', bg: '#FFFBEB' },
-  rejected: { label: '인증 반려', color: '#EF4444', bg: '#FEF2F2' },
+  verified: { label: '인증완료', color: '#10B981', bg: '#ECFDF5' },
+  pending: { label: '승인대기', color: '#F59E0B', bg: '#FFFBEB' },
+  rejected: { label: '인증반려', color: '#EF4444', bg: '#FEF2F2' },
 };
 
 const ALL_ROLES = ['일반회원', '신뢰회원', 'VIP회원', '제안', '블랙', 'admin'];
@@ -31,8 +31,8 @@ const ADMIN_ROLES = ['일반회원', '신뢰회원', 'VIP회원', '제안', '블
 
 const TABS: { key: Status; label: string }[] = [
   { key: 'all', label: '전체' },
-  { key: 'pending', label: '승인 대기' },
-  { key: 'verified', label: '인증 완료' },
+  { key: 'pending', label: '승인대기' },
+  { key: 'verified', label: '인증완료' },
   { key: 'rejected', label: '반려' },
   { key: 'waitpool', label: '⚡ 우선 대기' },
   { key: 'dummy', label: '더미계정' },
@@ -979,7 +979,7 @@ export default function UsersPage() {
                             <span
                               onClick={() => currentStatus === 'pending' && setSmsTargetUser(u)}
                               className={`inline-flex items-center gap-1.5 ${currentStatus === 'pending' ? 'cursor-pointer hover:scale-105 active:scale-95 transition-all' : ''}`}
-                              style={{ width: 'fit-content', fontSize: '0.72rem', fontWeight: 600, padding: '4px 10px', borderRadius: 20, color: sc.color, background: sc.bg }}
+                              style={{ width: 'fit-content', fontSize: '0.72rem', fontWeight: 600, padding: '4px 10px', borderRadius: 20, color: sc.color, background: sc.bg, whiteSpace: 'nowrap' }}
                               title={currentStatus === 'pending' ? '프로필 작성 요청 문자 보내기' : ''}
                             >
                               <span style={{ width: 5, height: 5, borderRadius: '50%', background: sc.color, display: 'inline-block' }} />
