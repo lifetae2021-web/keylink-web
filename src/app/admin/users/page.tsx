@@ -1818,7 +1818,7 @@ export default function UsersPage() {
                 취소
               </button>
               <button
-                onClick={handleManualRegister}
+                onClick={() => handleManualRegister()}
                 disabled={isRegistering || sessions.length === 0 || !selectedSessionId}
                 className="disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:bg-emerald-600 shadow-lg shadow-emerald-500/20"
                 style={{ flex: 1, padding: '14px', borderRadius: '12px', border: 'none', background: '#10B981', color: '#fff', fontWeight: '800', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
