@@ -38,6 +38,7 @@ export async function POST(req: NextRequest) {
 
     let successCount = 0;
     let failCount = 0;
+    let lastError = null;
 
     for (const target of targets) {
       // app.phone이 비어있으면 users 컬렉션에서 조회 (기존 select 라우트와 동일 패턴)
@@ -62,12 +63,13 @@ export async function POST(req: NextRequest) {
         successCount++;
       } catch (e: any) {
         console.error(`SMS 발송 실패 (${phone}):`, e?.message || e);
+        lastError = e?.message || String(e);
         failCount++;
       }
     }
 
     const isMock = process.env.NODE_ENV === 'development';
-    return NextResponse.json({ success: true, successCount, failCount, isMock });
+    return NextResponse.json({ success: true, successCount, failCount, isMock, lastError });
   } catch (error) {
     console.error('SMS 발송 오류:', error);
     return NextResponse.json({ error: '문자 발송 중 오류가 발생했습니다.' }, { status: 500 });

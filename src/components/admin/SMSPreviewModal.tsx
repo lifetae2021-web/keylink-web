@@ -3,6 +3,7 @@ import { X, MessageSquare, Send, User, Calendar, MapPin, CreditCard, ChevronDown
 import toast from 'react-hot-toast';
 import { db } from '@/lib/firebase';
 import { collection, query, orderBy, getDocs, doc, updateDoc } from 'firebase/firestore';
+import { format } from 'date-fns';
 
 interface SMSPreviewModalProps {
   isOpen: boolean;
@@ -131,6 +132,9 @@ const SMSPreviewModal: React.FC<SMSPreviewModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
+      setScheduledDate(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
+      setIsScheduled(false);
+
       if (bulkTargets) {
         setCheckedTargetIds(new Set(bulkTargets.map(t => t.appId)));
       }

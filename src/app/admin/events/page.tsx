@@ -815,7 +815,7 @@ export default function EventsPage() {
     }
 
     const msg = data.failCount > 0
-      ? `${data.successCount}명 발송 완료 (${data.failCount}명 실패)`
+      ? `${data.successCount}명 발송 완료 (${data.failCount}명 실패). 사유: ${data.lastError || '알 수 없음'}`
       : `${data.successCount}명에게 문자 발송 완료`;
 
     if (data.isMock) {
