@@ -285,7 +285,7 @@ export default function VotePage() {
       toast.error('호감 가는 이성을 선택해주세요.');
       return;
     }
-    if (feedback.trim().length > 0 && feedback.trim().length < 5) {
+    if (feedback.trim().length < 5) {
       toast.error('소중한 의견을 5자 이상 들려주시면 키링크가 더 발전하는 데 큰 힘이 됩니다! 😊');
       return;
     }
@@ -723,7 +723,7 @@ export default function VotePage() {
         </div>
 
         {/* 섹션 4: 후기 */}
-        <SectionCard number={feedbackNum} icon={<MessageSquare size={16} />} title={q5Label}>
+        <SectionCard number={feedbackNum} icon={<MessageSquare size={16} />} title={q5Label} required>
           <textarea
             value={feedback}
             onChange={e => setFeedback(e.target.value)}
