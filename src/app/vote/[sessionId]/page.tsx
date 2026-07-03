@@ -743,7 +743,7 @@ export default function VotePage() {
         {/* 제출 전 결과 안내 */}
         <div className="bg-slate-50 rounded-xl p-3 text-center mb-4 border border-slate-100 mt-2">
           <p className="text-[11px] text-slate-500 font-semibold leading-relaxed whitespace-pre-wrap">
-            {session?.voteConfig?.resultNoticeDesc || "결과는 1시간 뒤 마이페이지에서 확인가능합니다.\n기타 문의사항은 공식 인스타그램 DM으로 남겨주세요."}
+            {session?.voteConfig?.resultNoticeDesc || "결과는 2시간 안으로 마이페이지에서 확인가능합니다.\n기타 문의사항은 공식 인스타그램 DM으로 남겨주세요."}
           </p>
         </div>
 

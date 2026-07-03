@@ -871,7 +871,7 @@ function VoteMobilePreview({ form }: { form: VoteConfig }) {
           {/* 제출 전 결과 안내 */}
           <div className="bg-slate-50 rounded-xl p-3 text-center mb-4 border border-slate-100 mt-2">
             <p className="text-[10px] text-slate-500 font-semibold leading-relaxed whitespace-pre-wrap">
-              {form.resultNoticeDesc || "결과는 1시간 뒤 마이페이지에서 확인가능합니다.\n기타 문의사항은 공식 인스타그램 DM으로 남겨주세요."}
+              {form.resultNoticeDesc || "결과는 2시간 안으로 마이페이지에서 확인가능합니다.\n기타 문의사항은 공식 인스타그램 DM으로 남겨주세요."}
             </p>
           </div>
 
@@ -897,7 +897,7 @@ function VoteConfigTab() {
     anonymousModeDesc: '상대방에게 \'익명\'으로 보이며, 나를 선택한 상대방이 공개모드라도 나에게는 무조건 \'익명\'으로 표시됩니다.',
     feedbackPlaceholder: '작성해주신 소중한 후기는 키링크가 한 걸음 더 발전하는 데 정말 큰 힘이 됩니다! ❤️ (최소 5자 이상)',
     feedbackHelpText: '* 보내주신 소중한 후기는 키링크가 더 발전할 수 있는 밑거름이 됩니다. 5자 이상 작성해 주세요!',
-    resultNoticeDesc: '결과는 1시간 뒤 마이페이지에서 확인가능합니다.\n기타 문의사항은 공식 인스타그램 DM으로 남겨주세요.'
+    resultNoticeDesc: '결과는 2시간 안으로 마이페이지에서 확인가능합니다.\n기타 문의사항은 공식 인스타그램 DM으로 남겨주세요.'
   });
   const [isLoading, setIsLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -1092,7 +1092,7 @@ function VoteConfigTab() {
                   value={form.resultNoticeDesc || ''}
                   onChange={e => setForm(f => ({ ...f, resultNoticeDesc: e.target.value }))}
                   className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 h-20 resize-none"
-                  placeholder="결과는 1시간 뒤 마이페이지에서 확인가능합니다.&#13;&#10;기타 문의사항은 공식 인스타그램 DM으로 남겨주세요."
+                  placeholder="결과는 2시간 안으로 마이페이지에서 확인가능합니다.&#13;&#10;기타 문의사항은 공식 인스타그램 DM으로 남겨주세요."
                 />
               </div>
             </div>
