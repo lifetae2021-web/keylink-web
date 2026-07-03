@@ -46,6 +46,7 @@ import {
   where,
   doc,
   getDoc,
+  getDocs,
   setDoc,
   deleteDoc,
   updateDoc,
@@ -209,6 +210,11 @@ export default function EventsPage() {
   const [smsTargets, setSmsTargets] = useState<{ phone: string; name: string; gender: string; slotNumber?: number; userId: string; appId?: string }[]>([]);
   const [smsDefaultMsg, setSmsDefaultMsg] = useState('');
   const [smsRecipientLabel, setSmsRecipientLabel] = useState('');
+
+  // 중복만남 확인 관련 상태
+  const [overlapModalOpen, setOverlapModalOpen] = useState(false);
+  const [overlapResults, setOverlapResults] = useState<{ male: any, female: any, sessionName: string }[]>([]);
+  const [checkingOverlap, setCheckingOverlap] = useState(false);
 
   // Voting Status Modal State
   const [votingStatusModalOpen, setVotingStatusModalOpen] = useState(false);
@@ -886,6 +892,94 @@ ${chatLink}`;
 
     setSmsDefaultMsg(defaultMsg);
     setSmsModalOpen(true);
+  };
+
+  const handleCheckOverlap = async () => {
+    if (!active) return;
+    setCheckingOverlap(true);
+    setOverlapResults([]);
+    try {
+      const confirmedApps = participants.filter(app => {
+        const user = userMap[app.userId] || {};
+        return !(app.id?.startsWith('dummy') || app.userId?.startsWith('user_m_') || app.userId?.startsWith('user_f_') || user.isDummy === true) && app.status === 'confirmed';
+      });
+
+      if (confirmedApps.length === 0) {
+        toast.error("확정된 참가자가 없습니다.");
+        setCheckingOverlap(false);
+        return;
+      }
+
+      // 각 참가자의 과거 확정 기수들을 병렬로 조회
+      const promises = confirmedApps.map(async (app) => {
+        const q = query(
+          collection(db, 'applications'),
+          where('userId', '==', app.userId),
+          where('status', '==', 'confirmed')
+        );
+        const snap = await getDocs(q);
+        const pastSessions = snap.docs
+          .map(d => d.data())
+          .filter(data => data.sessionId !== active.id) // 현재 기수 제외
+          .map(data => data.sessionId);
+        return {
+          userId: app.userId,
+          name: app.name || '참가자',
+          gender: app.gender,
+          slotNumber: app.slotNumber,
+          pastSessions
+        };
+      });
+
+      const participantPastData = await Promise.all(promises);
+
+      // 전체 과거 기수 ID 추출하여 기수명 정보 한번에 가져오기
+      const allPastSessionIds = Array.from(new Set(participantPastData.flatMap(p => p.pastSessions)));
+      const sessionNamesMap: Record<string, string> = {};
+      
+      if (allPastSessionIds.length > 0) {
+        const sessionPromises = allPastSessionIds.map(async (sid) => {
+          const sDoc = await getDoc(doc(db, 'sessions', sid));
+          if (sDoc.exists()) {
+            const data = sDoc.data();
+            const regionName = data.region === 'busan' ? '부산' : '창원';
+            const episode = data.episodeNumber ? `${data.episodeNumber}기` : '';
+            sessionNamesMap[sid] = `${regionName} ${episode}`;
+          } else {
+            sessionNamesMap[sid] = `알 수 없는 기수`;
+          }
+        });
+        await Promise.all(sessionPromises);
+      }
+
+      // 과거 같은 기수에서 만나 호감이 겹쳤던 남녀 쌍 매칭
+      const males = participantPastData.filter(p => p.gender === 'male');
+      const females = participantPastData.filter(p => p.gender === 'female');
+      const results: any[] = [];
+
+      males.forEach(m => {
+        females.forEach(f => {
+          const commonSessions = m.pastSessions.filter(sid => f.pastSessions.includes(sid));
+          if (commonSessions.length > 0) {
+            commonSessions.forEach(sid => {
+              results.push({
+                male: m,
+                female: f,
+                sessionName: sessionNamesMap[sid] || `기수: ${sid}`
+              });
+            });
+          }
+        });
+      });
+
+      setOverlapResults(results);
+      setOverlapModalOpen(true);
+    } catch (e: any) {
+      console.error(e);
+      toast.error("중복만남 조회 중 오류가 발생했습니다.");
+    } finally {
+      setCheckingOverlap(false);
+    }
   };
 
   const handleEditAppJob = async (app: any, newValue: string) => {
@@ -2619,6 +2713,19 @@ ${chatLink}
                                 <MessageSquare size={12} />
                                 2차안내 단체문자
                               </button>
+                              
+                              <button
+                                onClick={handleCheckOverlap}
+                                disabled={checkingOverlap}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 text-rose-600 border border-rose-100 rounded-lg hover:bg-rose-500 hover:text-white transition-all text-[0.7rem] font-bold shadow-sm disabled:opacity-50"
+                              >
+                                {checkingOverlap ? (
+                                  <div className="w-3 h-3 border-2 border-rose-500/30 border-t-rose-500 rounded-full animate-spin" />
+                                ) : (
+                                  <RefreshCw size={12} />
+                                )}
+                                중복만남 확인
+                              </button>
                             </div>
                             {(() => {
                               const drinkCounts = realParticipants.reduce((acc, p) => {
@@ -3790,6 +3897,69 @@ ${chatLink}
         sessionName={sessions.find(s => s.id === selectedId)?.title || ''}
         participants={participants}
       />
+
+      {/* Overlap Check Modal */}
+      {overlapModalOpen && (
+        <div onClick={() => setOverlapModalOpen(false)} className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div onClick={e => e.stopPropagation()} className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+              <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                <AlertCircle size={16} className="text-rose-500" /> 중복만남 확인 결과
+              </h3>
+              <button
+                onClick={() => setOverlapModalOpen(false)}
+                className="p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-50 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="p-6 max-h-[60vh] overflow-y-auto">
+              {overlapResults.length === 0 ? (
+                <div className="text-center py-8 text-slate-500 font-bold text-sm">
+                  🎉 이번 기수 참가자 중 중복만남 대상자가 없습니다!
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-[11px] text-rose-500 font-bold mb-4">
+                    ⚠️ 과거에 같은 기수에 참가한 이력이 있는 남녀 리스트입니다.
+                  </p>
+                  {overlapResults.map((res, idx) => (
+                    <div key={idx} className="flex items-center justify-between p-4 bg-rose-50/50 border border-rose-100 rounded-xl">
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-black text-blue-600">
+                            {res.male.name} (남 {res.male.slotNumber ?? '?'})
+                          </span>
+                          <span className="text-[10px] font-bold text-slate-400">와</span>
+                          <span className="text-xs font-black text-pink-600">
+                            {res.female.name} (여 {res.female.slotNumber ?? '?'})
+                          </span>
+                        </div>
+                        <p className="text-[10px] font-bold text-slate-500">
+                          만난 적 있음: {res.sessionName}
+                        </p>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-rose-100 text-rose-700 border border-rose-200">
+                        중복 매칭 주의
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end">
+              <button
+                onClick={() => setOverlapModalOpen(false)}
+                className="px-4 py-2 bg-slate-800 text-white rounded-xl text-xs font-bold hover:bg-slate-700 transition-colors shadow-sm"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Bulk SMS Modal */}
       <SMSPreviewModal
