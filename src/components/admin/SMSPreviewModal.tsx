@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, MessageSquare, Send, User, Calendar, MapPin, CreditCard, ChevronDown, Pencil, Save, Check } from 'lucide-react';
+import { X, MessageSquare, Send, User, Calendar, MapPin, CreditCard, ChevronDown, Pencil, Save, Check, Clock } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { db } from '@/lib/firebase';
 import { collection, query, orderBy, getDocs, doc, updateDoc } from 'firebase/firestore';
@@ -7,7 +7,7 @@ import { collection, query, orderBy, getDocs, doc, updateDoc } from 'firebase/fi
 interface SMSPreviewModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (message: string, updatedPrice?: number, extra?: any) => Promise<void>;
+  onConfirm: (message: string, updatedPrice?: number, extra?: any, scheduledDate?: string) => Promise<void>;
   applicant: any;
   bulkTargets?: any[];
   session: any;
@@ -126,6 +126,8 @@ const SMSPreviewModal: React.FC<SMSPreviewModalProps> = ({
   const [isSavingTemplate, setIsSavingTemplate] = useState(false);
   const [solapiBalance, setSolapiBalance] = useState<number | null>(null);
   const [solapiPoint, setSolapiPoint] = useState<number | null>(null);
+  const [isScheduled, setIsScheduled] = useState(false);
+  const [scheduledDate, setScheduledDate] = useState<string>('');
 
   useEffect(() => {
     if (isOpen) {
@@ -290,7 +292,8 @@ const SMSPreviewModal: React.FC<SMSPreviewModalProps> = ({
     setIsSending(true);
     try {
       const finalTargets = bulkTargets ? bulkTargets.filter(t => checkedTargetIds.has(t.appId)) : undefined;
-      await onConfirm(message, currentPrice, finalTargets);
+      const finalScheduledDate = isScheduled && scheduledDate ? new Date(scheduledDate).toISOString() : undefined;
+      await onConfirm(message, currentPrice, finalTargets, finalScheduledDate);
       onClose();
     } catch (error: any) {
       console.error(error);
@@ -539,10 +542,42 @@ const SMSPreviewModal: React.FC<SMSPreviewModalProps> = ({
                   </div>
                 </div>
 
-                {!confirmLabel && (
+                <div className="space-y-3">
+                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Scheduling</h4>
+                  <div className="bg-slate-50/50 rounded-2xl p-4 border border-slate-100 flex flex-col gap-3">
+                    <label className="flex items-center gap-2 cursor-pointer w-fit">
+                      <input 
+                        type="checkbox" 
+                        checked={isScheduled} 
+                        onChange={e => setIsScheduled(e.target.checked)} 
+                        className="w-4 h-4 rounded border-slate-300 text-[#FF7E7E] focus:ring-[#FF7E7E]" 
+                      />
+                      <span className="text-sm font-bold text-slate-700 flex items-center gap-1.5">
+                        <Clock size={14} className="text-slate-400" /> 예약 발송
+                      </span>
+                    </label>
+                    {isScheduled && (
+                      <input 
+                        type="datetime-local" 
+                        value={scheduledDate}
+                        onChange={e => setScheduledDate(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-[#FF7E7E]/20 outline-none"
+                      />
+                    )}
+                  </div>
+                </div>
+
+                {!confirmLabel && !isScheduled && (
                   <div className="p-4 bg-blue-50 rounded-2xl border border-blue-100/50">
                     <p className="text-[10px] font-semibold text-blue-600/80 leading-relaxed">
                       💡 발송 버튼을 누르면 상태가 <b className="text-blue-700">'선발(입금 대기)'</b>로 변경되며 수정한 메시지가 솔라피를 통해 즉시 발송됩니다.
+                    </p>
+                  </div>
+                )}
+                {!confirmLabel && isScheduled && (
+                  <div className="p-4 bg-blue-50 rounded-2xl border border-blue-100/50">
+                    <p className="text-[10px] font-semibold text-blue-600/80 leading-relaxed">
+                      💡 발송 버튼을 누르면 상태가 <b className="text-blue-700">'선발(입금 대기)'</b>로 변경되며 수정한 메시지가 설정한 시간에 발송됩니다.
                     </p>
                   </div>
                 )}
@@ -598,7 +633,7 @@ const SMSPreviewModal: React.FC<SMSPreviewModalProps> = ({
               ) : (
                 <Send size={16} />
               )}
-              {confirmLabel ?? '메시지 발송'}
+              {isScheduled ? '예약 발송하기' : (confirmLabel ?? '메시지 발송')}
             </button>
           </div>
         </div>

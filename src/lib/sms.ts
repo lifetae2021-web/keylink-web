@@ -8,6 +8,7 @@ import crypto from 'crypto';
 interface SendSMSParams {
   to: string;
   text: string;
+  scheduledDate?: string;
 }
 
 // Solapi용 환경변수로 명칭 변경
@@ -34,7 +35,7 @@ function getHeaders() {
 /**
  * 단일 문자/알림톡 발송
  */
-export async function sendSMS({ to, text }: SendSMSParams) {
+export async function sendSMS({ to, text, scheduledDate }: SendSMSParams) {
   // 번호 형식 정리 (하이픈 제거)
   const cleanTo = to.replace(/[^0-9]/g, '');
 
@@ -42,7 +43,7 @@ export async function sendSMS({ to, text }: SendSMSParams) {
 
   if (isDev) {
     console.warn(`SMS 발송 차단(로컬 환경): Mock 모드 작동 중`);
-    console.log(`[Mock SMS] TO: ${cleanTo}, TEXT: ${text}`);
+    console.log(`[Mock SMS] TO: ${cleanTo}, TEXT: ${text}${scheduledDate ? `, SCHEDULED: ${scheduledDate}` : ''}`);
     return { success: true, mock: true };
   }
 
@@ -64,7 +65,8 @@ export async function sendSMS({ to, text }: SendSMSParams) {
           to: cleanTo,
           from: SENDER_NUMBER,
           text: text
-        }
+        },
+        ...(scheduledDate && { scheduledDate })
       })
     });
 

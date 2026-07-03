@@ -4,9 +4,10 @@ import { sendSMS } from '@/lib/sms';
 
 export async function POST(req: NextRequest) {
   try {
-    const { targets, message } = await req.json() as {
+    const { targets, message, scheduledDate } = await req.json() as {
       targets: { phone: string; name: string; gender: string; slotNumber?: number; userId?: string }[];
       message: string;
+      scheduledDate?: string;
     };
 
     if (!targets?.length || !message) {
@@ -57,7 +58,7 @@ export async function POST(req: NextRequest) {
         .replace(/\{성별\}/g, genderLabel)
         .replace(/\{호수\}/g, slotLabel);
       try {
-        await sendSMS({ to: phone, text: personalized });
+        await sendSMS({ to: phone, text: personalized, scheduledDate });
         successCount++;
       } catch (e: any) {
         console.error(`SMS 발송 실패 (${phone}):`, e?.message || e);

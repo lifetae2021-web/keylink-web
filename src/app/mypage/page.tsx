@@ -1713,6 +1713,32 @@ function ApplicationStatusBlock({ application, session, userId, hasVoted, submit
                   히스토리에서만 확인 가능합니다.
                 </p>
               </div>
+              {(() => {
+                const d = session?.eventDate instanceof Date ? session.eventDate : (session?.eventDate as any)?.toDate?.();
+                if (d && d.getHours() === 20) {
+                  return (
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '8px',
+                      marginTop: '8px',
+                      padding: '10px 14px',
+                      background: 'rgba(255,111,97,0.05)',
+                      borderRadius: '12px',
+                      border: '1px dashed rgba(255,111,97,0.2)',
+                      textAlign: 'left',
+                    }}>
+                      <span style={{ fontSize: '0.8rem', flexShrink: 0, lineHeight: 1 }}>🌙</span>
+                      <p style={{ fontSize: '0.73rem', color: '#94A3B8', fontWeight: '600', lineHeight: 1.6, margin: 0 }}>
+                        20시 기수는 종료 시간이 늦어,<br />
+                        매칭 성공 시 카카오톡 연결은<br />
+                        <strong style={{ color: '#FF9A9E', fontWeight: '800' }}>다음날 오전 중</strong>에 진행됩니다.
+                      </p>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
             </div>
           )}
 

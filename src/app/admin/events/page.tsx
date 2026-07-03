@@ -778,13 +778,13 @@ export default function EventsPage() {
     return overIds;
   }, [participants, active]);
 
-  const handleBulkSMSConfirm = async (message: string, updatedPrice?: number, finalTargets?: any[]) => {
+  const handleBulkSMSConfirm = async (message: string, updatedPrice?: number, finalTargets?: any[], scheduledDate?: string) => {
     const token = await auth.currentUser?.getIdToken();
     const targetsToSend = finalTargets && finalTargets.length > 0 ? finalTargets : smsTargets;
     const res = await fetch('/api/admin/sms/send', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-      body: JSON.stringify({ targets: targetsToSend, message }),
+      body: JSON.stringify({ targets: targetsToSend, message, scheduledDate }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || '문자 발송 실패');
