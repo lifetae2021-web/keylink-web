@@ -27,7 +27,7 @@ export async function checkOverlap(userId: string, sessionId: string, gender: st
       .where('status', '==', 'confirmed')
       .get();
     
-    const currentOpposites = currentOppositesSnap.docs
+    const currentOpposites: any[] = currentOppositesSnap.docs
       .map(d => ({ id: d.id, ...d.data() }))
       .filter((app: any) => {
         const isDummy = app.id?.startsWith('dummy') || app.userId?.startsWith('user_m_') || app.userId?.startsWith('user_f_') || app.isDummy === true;
