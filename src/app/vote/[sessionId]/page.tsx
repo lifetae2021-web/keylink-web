@@ -280,7 +280,10 @@ export default function VotePage() {
 
   const handleSubmit = async () => {
     if (!realName.trim()) { toast.error('실명을 적어주세요.'); return; }
-    if (!myAlias) { toast.error('본인 호수를 선택해주세요.'); return; }
+    if (!myAlias && !isAdmin && !(myApplication as any)?.isDarkTemplar) { 
+      toast.error('본인 호수를 선택해주세요.'); 
+      return; 
+    }
     if (Object.keys(choices).length === 0 && !nextEventOpt) {
       toast.error('호감 가는 이성을 선택해주세요.');
       return;
