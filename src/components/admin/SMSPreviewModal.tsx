@@ -7,7 +7,7 @@ import { collection, query, orderBy, getDocs, doc, updateDoc } from 'firebase/fi
 interface SMSPreviewModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (message: string, updatedPrice?: number, finalTargets?: any[]) => Promise<void>;
+  onConfirm: (message: string, updatedPrice?: number, extra?: any) => Promise<void>;
   applicant: any;
   bulkTargets?: any[];
   session: any;
