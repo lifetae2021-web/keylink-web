@@ -533,7 +533,7 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
                         boxShadow: lineupTab === 'male' ? '0 8px 16px rgba(59,130,246,0.25)' : 'none',
                       }}
                     >
-                      키링남 라인업
+                      키링남
                     </button>
                     <button
                       onClick={() => setLineupTab('female')}
@@ -544,7 +544,7 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
                         boxShadow: lineupTab === 'female' ? '0 8px 16px rgba(255,111,97,0.25)' : 'none',
                       }}
                     >
-                      키링녀 라인업
+                      키링녀
                     </button>
                   </div>
 
@@ -760,11 +760,11 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
                   <div className="flex gap-3 mb-6">
                     <button onClick={() => setLineupTab('male')} className="flex-1 py-3 rounded-2xl font-black text-sm transition-all"
                       style={{ background: lineupTab === 'male' ? 'linear-gradient(135deg, #3B82F6, #1D4ED8)' : '#F1F5F9', color: lineupTab === 'male' ? '#fff' : '#94A3B8', boxShadow: lineupTab === 'male' ? '0 8px 16px rgba(59,130,246,0.25)' : 'none' }}>
-                      키링남 라인업
+                      키링남
                     </button>
                     <button onClick={() => setLineupTab('female')} className="flex-1 py-3 rounded-2xl font-black text-sm transition-all"
                       style={{ background: lineupTab === 'female' ? 'linear-gradient(135deg, #FF6F61, #FF8A71)' : '#F1F5F9', color: lineupTab === 'female' ? '#fff' : '#94A3B8', boxShadow: lineupTab === 'female' ? '0 8px 16px rgba(255,111,97,0.25)' : 'none' }}>
-                      키링녀 라인업
+                      키링녀
                     </button>
                   </div>
                   {/* 헤더 */}
