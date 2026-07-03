@@ -223,7 +223,10 @@ export default function MatchingDrawer({ session, onClose }: Props) {
         feedback: '위로의 하트', submittedAt: Timestamp.now(),
       });
       toast.success('익명 하트 발송 완료!');
-      loadData();
+      
+      // 깜빡임 방지를 위해 loadData() 전체를 호출하지 않고 투표 데이터만 조용히 갱신합니다.
+      const refreshedVotes = await getAllVotesBySession(sessionId);
+      setVotes(refreshedVotes);
     } catch (e: any) { toast.error('하트 발송 실패: ' + e.message); }
   };
 
