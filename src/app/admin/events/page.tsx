@@ -771,19 +771,20 @@ export default function EventsPage() {
     return overIds;
   }, [participants, active]);
 
-  const handleBulkSMSConfirm = async (message: string) => {
+  const handleBulkSMSConfirm = async (message: string, updatedPrice?: number, finalTargets?: any[]) => {
     const token = await auth.currentUser?.getIdToken();
+    const targetsToSend = finalTargets && finalTargets.length > 0 ? finalTargets : smsTargets;
     const res = await fetch('/api/admin/sms/send', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-      body: JSON.stringify({ targets: smsTargets, message }),
+      body: JSON.stringify({ targets: targetsToSend, message }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || '문자 발송 실패');
     
     // v9.1.7: 문자가 성공적으로 발송되었을 때 applications 컬렉션의 secondSmsSentAt 필드 업데이트
     const sentAt = new Date();
-    const sentAppIds = smsTargets.filter((t) => t.appId).map((t) => t.appId!);
+    const sentAppIds = targetsToSend.filter((t: any) => t.appId).map((t: any) => t.appId!);
     try {
       const { doc, updateDoc, serverTimestamp } = await import('firebase/firestore');
       await Promise.all(
@@ -815,6 +816,76 @@ export default function EventsPage() {
     } else {
       toast.success(msg);
     }
+  };
+
+  const handleBulk2ndSMSClick = () => {
+    const targetParticipants = participants.filter(app => {
+      const user = userMap[app.userId] || {};
+      return !(app.id?.startsWith('dummy') || app.userId?.startsWith('user_m_') || app.userId?.startsWith('user_f_') || user.isDummy === true) && app.status === 'confirmed';
+    });
+
+    if (targetParticipants.length === 0) {
+      toast.error('확정된 참가자가 없습니다.');
+      return;
+    }
+
+    targetParticipants.sort((a, b) => {
+      if (a.gender !== b.gender) {
+        return a.gender === 'male' ? -1 : 1;
+      }
+      const slotA = a.slotNumber ?? 999;
+      const slotB = b.slotNumber ?? 999;
+      return slotA - slotB;
+    });
+
+    setSmsTargets(targetParticipants.map(app => ({
+      phone: app.phone,
+      name: app.name || '참가자',
+      gender: app.gender,
+      slotNumber: app.slotNumber,
+      userId: app.userId,
+      appId: app.id
+    })));
+
+    setSmsSingleTarget(null);
+    setSmsRecipientLabel(`총 ${targetParticipants.length}명`);
+
+    // 단체 발송 시에는 기본 템플릿의 형식을 그대로 유지하여 서버에서 치환되도록 함
+    const targetTemplate = smsTemplates.find(t => t.name === '2차 안내 (행사 당일)');
+    let defaultMsg = "";
+    
+    const session = active;
+    const chatLink = session?.openChatLink || "{오픈채팅링크}";
+    const eventDate = session?.eventDate instanceof Date ? session.eventDate : (session?.eventDate as any)?.toDate?.() || new Date();
+    const fDate = format(eventDate, "MM/dd", { locale: ko });
+    const fTime = format(eventDate, "HH:mm", { locale: ko });
+    const fDay = format(eventDate, "E", { locale: ko });
+    const location = session?.venue || session?.location || "부산진구 중앙대로 763-1 데일리팡 4층";
+
+    if (targetTemplate) {
+      defaultMsg = targetTemplate.content
+        .replace(/{{이름}}/g, "{이름}")
+        .replace(/{{성별}}/g, "{성별}")
+        .replace(/{{호수}}/g, "{호수}")
+        .replace(/{{날짜}}/g, fDate)
+        .replace(/{{요일}}/g, fDay)
+        .replace(/{{시간}}/g, fTime)
+        .replace(/{{장소}}/g, location)
+        .replace(/{{오픈채팅링크}}/g, chatLink);
+    } else {
+      defaultMsg = `안녕하세요😊 키링크입니다 :)
+일시 : ${fDate} ${fDay} ${fTime} (약 2시간 소요)
+장소 : ${location}
+
+❤️{이름}님은 키링{성별} {호수}호입니다❤️
+입장 전 신분증(모바일 가능)을 미리 꺼내놔주세요
+
+슬리퍼, 운동복 등 소개팅 분위기와 맞지 않는 복장은 ❌❌
+${chatLink}`;
+    }
+
+    setSmsDefaultMsg(defaultMsg);
+    setSmsModalOpen(true);
   };
 
   const handleEditAppJob = async (app: any, newValue: string) => {
@@ -2540,6 +2611,15 @@ ${chatLink}
                                 </span>
                               </div>
                             </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={handleBulk2ndSMSClick}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#FFD700]/10 text-[#B8860B] border border-[#FFD700]/30 rounded-lg hover:bg-[#FFD700] hover:text-white transition-all text-[0.7rem] font-bold shadow-sm"
+                              >
+                                <MessageSquare size={12} />
+                                2차안내 단체문자
+                              </button>
+                            </div>
                             {(() => {
                               const drinkCounts = realParticipants.reduce((acc, p) => {
                                 if (p.attendanceStatus === 'no-show') return acc;
@@ -3715,6 +3795,7 @@ ${chatLink}
         onClose={() => { setSmsModalOpen(false); setSmsSingleTarget(null); }}
         onConfirm={handleBulkSMSConfirm}
         applicant={smsSingleTarget || undefined}
+        bulkTargets={smsSingleTarget ? undefined : smsTargets}
         session={active}
         defaultMessage={smsDefaultMsg}
         recipientLabel={smsRecipientLabel}

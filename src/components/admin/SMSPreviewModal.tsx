@@ -7,8 +7,9 @@ import { collection, query, orderBy, getDocs, doc, updateDoc } from 'firebase/fi
 interface SMSPreviewModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (message: string, updatedPrice?: number) => Promise<void>;
+  onConfirm: (message: string, updatedPrice?: number, finalTargets?: any[]) => Promise<void>;
   applicant: any;
+  bulkTargets?: any[];
   session: any;
   defaultMessage: string;
   recipientLabel?: string;
@@ -62,7 +63,9 @@ function applyVariables(content: string, applicant: any, session: any, customPri
 
   const openChatLink = session?.openChatLink || '';
   let result = content
-    .replace(/{{이름}}/g, applicant?.name || applicant?.userName || '참가자')
+    .replace(/{{이름}}/g, applicant ? (applicant.name || applicant.userName || '참가자') : '{이름}')
+    .replace(/{{성별}}/g, applicant ? (applicant.gender === 'male' ? '남' : '녀') : '{성별}')
+    .replace(/{{호수}}/g, applicant && applicant.slotNumber != null ? String(applicant.slotNumber) : '{호수}')
     .replace(/{{날짜}}/g, `${getPart('month')}/${getPart('day')}`)
     .replace(/{{요일}}/g, getPart('weekday'))
     .replace(/{{시간}}/g, `${getPart('hour')}:${getPart('minute')}`)
@@ -97,6 +100,7 @@ const SMSPreviewModal: React.FC<SMSPreviewModalProps> = ({
   onClose,
   onConfirm,
   applicant,
+  bulkTargets,
   session,
   defaultMessage,
   recipientLabel,
@@ -108,6 +112,9 @@ const SMSPreviewModal: React.FC<SMSPreviewModalProps> = ({
   const [templates, setTemplates] = useState<Template[]>([]);
   const [templateOpen, setTemplateOpen] = useState(false);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
+  
+  // 단체 발송 시 타겟 체크박스 상태 관리
+  const [checkedTargetIds, setCheckedTargetIds] = useState<Set<string>>(new Set());
 
   // 가격 수정 상태
   const [currentPrice, setCurrentPrice] = useState<number>(0);
@@ -122,6 +129,9 @@ const SMSPreviewModal: React.FC<SMSPreviewModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
+      if (bulkTargets) {
+        setCheckedTargetIds(new Set(bulkTargets.map(t => t.appId)));
+      }
       if (applicant) {
         const gp = applicant.gender === 'male'
           ? (applicant.maleOption === 'safe' ? 60000 : (session?.malePrice || 49000))
@@ -275,9 +285,12 @@ const SMSPreviewModal: React.FC<SMSPreviewModalProps> = ({
   };
 
   const handleSend = async () => {
+    if (!message.trim()) return toast.error('메시지 내용을 입력해주세요.');
+    if (bulkTargets && checkedTargetIds.size === 0) return toast.error('발송할 대상을 1명 이상 선택해주세요.');
     setIsSending(true);
     try {
-      await onConfirm(message, currentPrice);
+      const finalTargets = bulkTargets ? bulkTargets.filter(t => checkedTargetIds.has(t.appId)) : undefined;
+      await onConfirm(message, currentPrice, finalTargets);
       onClose();
     } catch (error: any) {
       console.error(error);
@@ -421,20 +434,46 @@ const SMSPreviewModal: React.FC<SMSPreviewModalProps> = ({
               <div className="md:col-span-2 space-y-6">
                 <div className="space-y-3">
                   <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Receiver</h4>
-                  <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-[#FF7E7E]">
-                      <User size={20} />
+                  <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 flex flex-col gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-[#FF7E7E] shrink-0">
+                        <User size={20} />
+                      </div>
+                      <div className="truncate flex-1">
+                        {bulkTargets ? (
+                          <p className="text-sm font-black text-slate-800 truncate">총 {checkedTargetIds.size}명 (선택됨)</p>
+                        ) : recipientLabel ? (
+                          <p className="text-sm font-black text-slate-800 truncate">{recipientLabel}</p>
+                        ) : (
+                          <>
+                            <p className="text-sm font-black text-slate-800 truncate">{applicant?.name}님</p>
+                            <p className="text-[10px] font-bold text-slate-500 tracking-tight">{applicant?.phone || '번호 없음'}</p>
+                          </>
+                        )}
+                      </div>
                     </div>
-                    <div className="truncate">
-                      {recipientLabel ? (
-                        <p className="text-sm font-black text-slate-800 truncate">{recipientLabel}</p>
-                      ) : (
-                        <>
-                          <p className="text-sm font-black text-slate-800 truncate">{applicant?.name}님</p>
-                          <p className="text-[10px] font-bold text-slate-500 tracking-tight">{applicant?.phone || '번호 없음'}</p>
-                        </>
-                      )}
-                    </div>
+                    {bulkTargets && bulkTargets.length > 0 && (
+                      <div className="mt-2 pt-2 border-t border-slate-200 max-h-[140px] overflow-y-auto pr-1 flex flex-col gap-1">
+                        {bulkTargets.map(target => (
+                          <label key={target.appId} className="flex items-center gap-2 py-1.5 cursor-pointer hover:bg-slate-100/50 rounded-lg px-2 transition-colors">
+                            <input
+                              type="checkbox"
+                              checked={checkedTargetIds.has(target.appId)}
+                              onChange={(e) => {
+                                const newSet = new Set(checkedTargetIds);
+                                if (e.target.checked) newSet.add(target.appId);
+                                else newSet.delete(target.appId);
+                                setCheckedTargetIds(newSet);
+                              }}
+                              className="w-3.5 h-3.5 rounded border-slate-300 text-[#FF7E7E] focus:ring-[#FF7E7E] focus:ring-opacity-50"
+                            />
+                            <span className="text-xs font-bold text-slate-600 truncate flex-1">
+                              {target.name} ({target.gender === 'male' ? '남' : '여'} {target.slotNumber ?? '?'})
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
 
