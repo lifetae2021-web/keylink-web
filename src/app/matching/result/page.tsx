@@ -16,15 +16,8 @@ export default function ResultListPage() {
   
   // Cumulative counter animation
   useEffect(() => {
-    const controls = animate(0, 718, { // This could eventually be dynamic
-      duration: 3,
-      delay: 0.5,
-      ease: "easeOut",
-      onUpdate(value) {
-        setTotalCouples(Math.floor(value));
-      }
-    });
-    return () => controls.stop();
+    if (totalCouples > 0) return; // Prevent re-triggering if already set
+    // The target number will be calculated after sessions are fetched.
   }, []);
 
   useEffect(() => {
@@ -73,6 +66,33 @@ export default function ResultListPage() {
         // Filter out test sessions (isTest: true) from public matching reports
         const publicSessions = fetched.filter((s: any) => s && !s.isTest);
         setSessions(publicSessions);
+
+        // Calculate dynamic total
+        let sum = 0;
+        let recentSum = 0;
+        const baselineDate = new Date('2026-06-24T00:00:00Z');
+
+        publicSessions.forEach((s: any) => {
+          const mCount = s.matchedCount || 0;
+          sum += mCount;
+          if (s.createdAt && s.createdAt > baselineDate) {
+            recentSum += mCount;
+          }
+        });
+
+        // 718 was the historical hardcoded baseline as of June 24, 2026.
+        // If the DB contains all history, sum should naturally be >= 718.
+        // If the DB only contains recent history, we use 718 + couples added after June 24.
+        const finalTotal = sum >= 718 ? sum : 718 + recentSum;
+
+        animate(0, finalTotal, {
+          duration: 3,
+          delay: 0.5,
+          ease: "easeOut",
+          onUpdate(value) {
+            setTotalCouples(Math.floor(value));
+          }
+        });
       } catch (error) {
         console.error("Error fetching completed sessions:", error);
       } finally {
