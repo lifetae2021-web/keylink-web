@@ -56,18 +56,20 @@ export async function sendSMS({ to, text, scheduledDate }: SendSMSParams) {
   }
 
   try {
-    // 엔드포인트를 api.solapi.com으로 변경
-    const response = await fetch('https://api.solapi.com/messages/v4/send', {
+    const endpoint = scheduledDate ? 'https://api.solapi.com/messages/v4/send-many' : 'https://api.solapi.com/messages/v4/send';
+    const payload = scheduledDate
+      ? {
+          messages: [{ to: cleanTo, from: SENDER_NUMBER, text: text }],
+          scheduledDate
+        }
+      : {
+          message: { to: cleanTo, from: SENDER_NUMBER, text: text }
+        };
+
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: getHeaders(),
-      body: JSON.stringify({
-        message: {
-          to: cleanTo,
-          from: SENDER_NUMBER,
-          text: text
-        },
-        ...(scheduledDate && { scheduledDate })
-      })
+      body: JSON.stringify(payload)
     });
 
     const result = await response.json();
