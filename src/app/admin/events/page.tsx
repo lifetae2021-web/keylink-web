@@ -673,8 +673,9 @@ export default function EventsPage() {
   };
 
   // v8.12.8: 오직 참가 확정자만 명단 및 집계에 포함
+  // v12.1.0: 다크템플러(테스트 계정) 제외
   const participants = useMemo(
-    () => applicants.filter((a) => a.status === "confirmed"),
+    () => applicants.filter((a) => a.status === "confirmed" && !a.isDarkTemplar && a.name !== "태영훈기본"),
     [applicants],
   );
 
