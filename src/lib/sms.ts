@@ -56,28 +56,59 @@ export async function sendSMS({ to, text, scheduledDate }: SendSMSParams) {
   }
 
   try {
-    const endpoint = scheduledDate ? 'https://api.solapi.com/messages/v4/send-many' : 'https://api.solapi.com/messages/v4/send';
-    const payload = scheduledDate
-      ? {
-          messages: [{ to: cleanTo, from: SENDER_NUMBER, text: text }],
-          scheduledDate
-        }
-      : {
-          message: { to: cleanTo, from: SENDER_NUMBER, text: text }
-        };
+    if (scheduledDate) {
+      // ── 예약 발송: 그룹 기반 3단계 프로세스 ──
 
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: getHeaders(),
-      body: JSON.stringify(payload)
-    });
+      // 1단계: 그룹 생성
+      const groupRes = await fetch('https://api.solapi.com/messages/v4/groups', {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({}),
+      });
+      const groupData = await groupRes.json();
+      if (!groupRes.ok) throw new Error(groupData.errorMessage || '그룹 생성 실패');
+      const groupId = groupData.groupId;
 
-    const result = await response.json();
-    if (!response.ok) {
-      throw new Error(result.errorMessage || 'Solapi 발송 중 오류가 발생했습니다.');
+      // 2단계: 그룹에 메시지 추가
+      const addRes = await fetch(`https://api.solapi.com/messages/v4/groups/${groupId}/messages`, {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify({
+          messages: [{ to: cleanTo, from: SENDER_NUMBER, text }],
+        }),
+      });
+      const addData = await addRes.json();
+      if (!addRes.ok) throw new Error(addData.errorMessage || '그룹 메시지 추가 실패');
+
+      // scheduledDate를 KST ISO 8601 형식으로 변환 (예: 2026-07-04T10:00:00+09:00)
+      const kstDate = new Date(scheduledDate);
+      const kstOffset = '+09:00';
+      const pad = (n: number) => String(n).padStart(2, '0');
+      const kstStr = `${kstDate.getFullYear()}-${pad(kstDate.getMonth() + 1)}-${pad(kstDate.getDate())}T${pad(kstDate.getHours())}:${pad(kstDate.getMinutes())}:00${kstOffset}`;
+
+      // 3단계: 예약 스케줄 설정
+      const schedRes = await fetch(`https://api.solapi.com/messages/v4/groups/${groupId}/schedule`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ scheduledDate: kstStr }),
+      });
+      const schedData = await schedRes.json();
+      if (!schedRes.ok) throw new Error(schedData.errorMessage || '예약 설정 실패');
+
+      return { success: true, groupId, scheduledDate: kstStr };
+    } else {
+      // ── 즉시 발송 ──
+      const response = await fetch('https://api.solapi.com/messages/v4/send', {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({
+          message: { to: cleanTo, from: SENDER_NUMBER, text },
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.errorMessage || 'Solapi 발송 중 오류가 발생했습니다.');
+      return { success: true, ...result };
     }
-
-    return { success: true, ...result };
   } catch (error) {
     console.error('Solapi Send Error:', error);
     throw error;
