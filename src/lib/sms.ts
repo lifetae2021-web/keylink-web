@@ -80,22 +80,16 @@ export async function sendSMS({ to, text, scheduledDate }: SendSMSParams) {
       const addData = await addRes.json();
       if (!addRes.ok) throw new Error(addData.errorMessage || '그룹 메시지 추가 실패');
 
-      // scheduledDate를 KST ISO 8601 형식으로 변환 (예: 2026-07-04T10:00:00+09:00)
-      const kstDate = new Date(scheduledDate);
-      const kstOffset = '+09:00';
-      const pad = (n: number) => String(n).padStart(2, '0');
-      const kstStr = `${kstDate.getFullYear()}-${pad(kstDate.getMonth() + 1)}-${pad(kstDate.getDate())}T${pad(kstDate.getHours())}:${pad(kstDate.getMinutes())}:00${kstOffset}`;
-
       // 3단계: 예약 스케줄 설정
       const schedRes = await fetch(`https://api.solapi.com/messages/v4/groups/${groupId}/schedule`, {
         method: 'POST',
         headers: getHeaders(),
-        body: JSON.stringify({ scheduledDate: kstStr }),
+        body: JSON.stringify({ scheduledDate }),
       });
       const schedData = await schedRes.json();
       if (!schedRes.ok) throw new Error(schedData.errorMessage || '예약 설정 실패');
 
-      return { success: true, groupId, scheduledDate: kstStr };
+      return { success: true, groupId, scheduledDate };
     } else {
       // ── 즉시 발송 ──
       const response = await fetch('https://api.solapi.com/messages/v4/send', {
