@@ -111,7 +111,7 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
           isFilled: true,
           birthYear: `${year}년생`,
           job: u.admin_job || u.job || p.job || '검토 중',
-          height: u.height ? `${u.height}cm` : p.height ? `${p.height}cm` : '비공개',
+          height: u.height ? `${u.height}` : p.height ? `${p.height}` : '비공개',
           smoking: u.smoking || p.smoking || '비흡연',
           drinking: u.drinking || p.drinking || '안 마심',
           religion: u.religion || p.religion || '무교',
