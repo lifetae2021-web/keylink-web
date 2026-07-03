@@ -68,9 +68,10 @@ export async function POST(req: NextRequest) {
       const existingData = existingAppDoc.data();
       
       const isTargetSuperAdmin = userData.role === 'super_admin';
-      // 다크템플러 대상(super_admin)이 아니고 기존 신청서가 cancelled가 아니면 에러 반환
-      if (!isTargetSuperAdmin && existingData.status !== 'cancelled') {
-        return NextResponse.json({ error: '이미 해당 기수에 신청 내역이 있는 회원입니다.' }, { status: 400 });
+      // 이미 등록되어 있더라도 상태가 다른 경우 업데이트를 허용 (단, 이미 동일한 상태인 경우만 방지)
+      if (!isTargetSuperAdmin && existingData.status !== 'cancelled' && existingData.status === status) {
+        const statusLabel = status === 'confirmed' ? '참가 확정' : status === 'selected' ? '선발 대기' : '검토 중';
+        return NextResponse.json({ error: `이미 해당 기수에 '${statusLabel}' 상태로 등록되어 있습니다.` }, { status: 400 });
       }
     }
 

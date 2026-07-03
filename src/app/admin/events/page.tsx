@@ -3080,52 +3080,54 @@ ${chatLink}
                                                   )}
                                                 </>
                                               )}
-                                              <div className="flex items-center gap-2">
-                                                {(() => {
-                                                  let btnClass = "bg-white text-slate-400 border-slate-200";
-                                                  let btnText = "출석체크";
+                                              {!app.isDarkTemplar && (
+                                                <div className="flex items-center gap-2">
+                                                  {(() => {
+                                                    let btnClass = "bg-white text-slate-400 border-slate-200";
+                                                    let btnText = "출석체크";
 
-                                                  if (app.attendanceStatus === 'present') {
-                                                    btnClass = "bg-emerald-500 text-white border-emerald-500 shadow-sm";
-                                                    btnText = "출석완료";
-                                                  } else if (app.attendanceStatus === 'late') {
-                                                    btnClass = "bg-amber-500 text-white border-amber-500 shadow-sm";
-                                                    btnText = "지각";
-                                                  } else if (app.attendanceStatus === 'no-show') {
-                                                    btnClass = "bg-rose-500 text-white border-rose-500 shadow-sm";
-                                                    btnText = "노쇼";
-                                                  }
+                                                    if (app.attendanceStatus === 'present') {
+                                                      btnClass = "bg-emerald-500 text-white border-emerald-500 shadow-sm";
+                                                      btnText = "출석완료";
+                                                    } else if (app.attendanceStatus === 'late') {
+                                                      btnClass = "bg-amber-500 text-white border-amber-500 shadow-sm";
+                                                      btnText = "지각";
+                                                    } else if (app.attendanceStatus === 'no-show') {
+                                                      btnClass = "bg-rose-500 text-white border-rose-500 shadow-sm";
+                                                      btnText = "노쇼";
+                                                    }
 
-                                                  return (
-                                                    <button
-                                                      onClick={() => {
-                                                        const current = app.attendanceStatus;
-                                                        if (!current) handleSetAttendanceStatus(app, 'present');
-                                                        else if (current === 'present') handleSetAttendanceStatus(app, 'late');
-                                                        else if (current === 'late') handleSetAttendanceStatus(app, 'no-show');
-                                                        else handleSetAttendanceStatus(app, 'none');
-                                                      }}
-                                                      className={`px-2 py-1 rounded-lg text-[0.65rem] font-black border transition-all ${btnClass}`}
-                                                    >
-                                                      {btnText}
-                                                    </button>
-                                                  );
-                                                })()}
-                                                <button
-                                                  onClick={() => handleOpenMemo(app)}
-                                                  className={`px-2 py-1 rounded-lg text-[0.65rem] font-black border transition-all ${app.adminMemo ? "bg-amber-50 text-amber-600 border-amber-200" : "bg-white text-slate-400 border-slate-200"}`}
-                                                >
-                                                  메모
-                                                </button>
-                                                <button
-                                                  onClick={() =>
-                                                    handleCancelSelection(app)
-                                                  }
-                                                  className="shrink-0 px-2.5 py-1 rounded-lg text-[0.65rem] font-black bg-white border border-slate-200 text-slate-400 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all"
-                                                >
-                                                  선발 취소
-                                                </button>
-                                              </div>
+                                                    return (
+                                                      <button
+                                                        onClick={() => {
+                                                          const current = app.attendanceStatus;
+                                                          if (!current) handleSetAttendanceStatus(app, 'present');
+                                                          else if (current === 'present') handleSetAttendanceStatus(app, 'late');
+                                                          else if (current === 'late') handleSetAttendanceStatus(app, 'no-show');
+                                                          else handleSetAttendanceStatus(app, 'none');
+                                                        }}
+                                                        className={`px-2 py-1 rounded-lg text-[0.65rem] font-black border transition-all ${btnClass}`}
+                                                      >
+                                                        {btnText}
+                                                      </button>
+                                                    );
+                                                  })()}
+                                                  <button
+                                                    onClick={() => handleOpenMemo(app)}
+                                                    className={`px-2 py-1 rounded-lg text-[0.65rem] font-black border transition-all ${app.adminMemo ? "bg-amber-50 text-amber-600 border-amber-200" : "bg-white text-slate-400 border-slate-200"}`}
+                                                  >
+                                                    메모
+                                                  </button>
+                                                  <button
+                                                    onClick={() =>
+                                                      handleCancelSelection(app)
+                                                    }
+                                                    className="shrink-0 px-2.5 py-1 rounded-lg text-[0.65rem] font-black bg-white border border-slate-200 text-slate-400 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all"
+                                                  >
+                                                    선발 취소
+                                                  </button>
+                                                </div>
+                                              )}
                                             </div>
                                             {app.adminMemo && (
                                               <div className="mt-1 ml-11 flex items-start gap-1 bg-amber-50/50 px-2 py-1 rounded-lg border border-amber-100/50 max-w-fit">
