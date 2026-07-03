@@ -876,9 +876,17 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                 placeholder="이름, 직업, 거주지, 연락처로 검색..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-white border-2 border-slate-100 rounded-2xl pr-4 text-sm font-bold text-slate-800 outline-none focus:border-[#FF7E7E]/30 focus:bg-slate-50/30 transition-all shadow-sm"
+                className="w-full bg-white border-2 border-slate-100 rounded-2xl pr-10 text-sm font-bold text-slate-800 outline-none focus:border-[#FF7E7E]/30 focus:bg-slate-50/30 transition-all shadow-sm"
                 style={{ height: '40px', paddingLeft: '44px' }}
               />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500 transition-colors bg-slate-100 hover:bg-slate-200 rounded-full p-1"
+                >
+                  <X size={14} />
+                </button>
+              )}
             </div>
 
             {/* Right: Actions */}
