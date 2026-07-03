@@ -759,15 +759,15 @@ export default function UsersPage() {
         </div>
 
         {/* Search */}
-        <div className="relative ml-auto w-full sm:w-auto mt-4 sm:mt-0">
-          <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
+        <div className="relative ml-auto w-full sm:w-auto mt-4 sm:mt-0 group">
+          <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} className="group-focus-within:text-[#FF7E7E] transition-colors" />
           <input
             type="text"
             placeholder="이름, 직업, 연락처 검색..."
             value={search}
             onChange={e => setSearch(e.target.value)}
             style={{
-              padding: '9px 14px 9px 38px',
+              padding: '9px 34px 9px 38px',
               fontSize: '0.82rem',
               background: '#fff',
               border: '1px solid #E2E8F0',
@@ -779,6 +779,14 @@ export default function UsersPage() {
             }}
             className="sm:w-[260px] focus:border-[#FF7E7E]/50 transition-all"
           />
+          {search && (
+            <button
+              onClick={() => setSearch('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500 transition-colors bg-slate-100 hover:bg-slate-200 rounded-full p-1"
+            >
+              <X size={12} />
+            </button>
+          )}
         </div>
       </div>
 
