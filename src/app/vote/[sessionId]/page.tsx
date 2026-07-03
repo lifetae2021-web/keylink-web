@@ -392,7 +392,7 @@ export default function VotePage() {
   const publicModeDesc = session?.voteConfig?.publicModeDesc || '상대방에게 내 호수를 공개합니다';
   const anonymousModeDesc = session?.voteConfig?.anonymousModeDesc || '상대방에게 \'익명\'으로 보이며, 나를 선택한 상대방이 공개모드라도 나에게는 무조건 \'익명\'으로 표시됩니다.';
   const feedbackPlaceholder = session?.voteConfig?.feedbackPlaceholder || '작성해주신 소중한 후기는 키링크가 한 걸음 더 발전하는 데 정말 큰 힘이 됩니다! ❤️ (최소 5자 이상)';
-  const feedbackHelpText = session?.voteConfig?.feedbackHelpText || '* 보내주신 소중한 후기는 더 발전할 수 있는 밑거름이 됩니다 !';
+  const feedbackHelpText = session?.voteConfig?.feedbackHelpText || '* 작성해주신 후기는 익명으로 소중하게 보관됩니다.';
   const regionLabel = session?.region === 'busan' ? '부산' : '창원';
 
   // 커스텀 질문 (v11.4.0)
