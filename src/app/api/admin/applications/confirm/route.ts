@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb, adminAuth } from '@/lib/firebaseAdmin';
 import { sendSMS } from '@/lib/sms';
 import { FieldValue } from 'firebase-admin/firestore';
+import { checkOverlap } from '@/lib/admin/overlap';
 
 /**
  * 입금확정(confirmed) 처리 및 안내 문자 발송 API
@@ -10,7 +11,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 
 export async function POST(req: NextRequest) {
   try {
-    const { applicationId, customMessage, price } = await req.json();
+    const { applicationId, customMessage, price, bypassOverlapCheck } = await req.json();
 
     if (!applicationId) {
       return NextResponse.json({ error: '신청서 ID가 필요합니다.' }, { status: 400 });
@@ -42,13 +43,18 @@ export async function POST(req: NextRequest) {
     const userId = initialAppData.userId;
     const gender = initialAppData.gender;
 
-    // v8.12.9: 로컬 환경(development)에서는 상태 변경 및 실제 과금 방지를 위해 차단
+    // 🌑 다크템플러 및 더미 확인용 유저 정보 조회
+    const userDocForCheck = await adminDb.doc(`users/${userId}`).get();
+    const isDummyForCheck = applicationId.startsWith('dummy') || userId.startsWith('user_m_') || userId.startsWith('user_f_') || userDocForCheck.data()?.isDummy === true;
+    const isDarkTemplarForCheck = userDocForCheck.data()?.role === 'super_admin' || initialAppData.isDarkTemplar === true;
+
     const isDev = process.env.NODE_ENV === 'development';
-    if (isDev) {
-      return NextResponse.json({ 
-        error: '[로컬 환경] 로컬 테스트 중에는 실제 문자 발송 및 상태 변경이 제한됩니다.',
-        isMock: true 
-      }, { status: 403 });
+    // 중복 만남 체크 (다크템플러/더미가 아니며 bypass하지 않는 경우)
+    if (!isDev && !isDummyForCheck && !isDarkTemplarForCheck && !bypassOverlapCheck) {
+      const overlapMessage = await checkOverlap(userId, sessionId, gender);
+      if (overlapMessage) {
+        return NextResponse.json({ overlapWarning: true, message: overlapMessage }, { status: 200 });
+      }
     }
 
     let isWaitlisted = false;

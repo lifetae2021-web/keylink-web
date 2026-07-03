@@ -142,7 +142,7 @@ export default function UsersPage() {
     fetchSessions();
   }, [sessionRegistrationTarget]);
 
-  const handleManualRegister = async () => {
+  const handleManualRegister = async (bypassOverlap?: boolean) => {
     if (!sessionRegistrationTarget || !selectedSessionId || !registrationStatus) {
       return toast.error('모든 정보를 채워주세요.');
     }
@@ -158,10 +158,21 @@ export default function UsersPage() {
         body: JSON.stringify({
           userId: sessionRegistrationTarget.id,
           sessionId: selectedSessionId,
-          status: registrationStatus
+          status: registrationStatus,
+          bypassOverlapCheck: bypassOverlap
         })
       });
       const data = await res.json();
+      if (res.status === 200 && data.overlapWarning) {
+        const proceed = window.confirm(`⚠️ 중복 만남 경고\n\n${data.message}\n\n그래도 기수 참여 등록을 진행하시겠습니까?`);
+        if (proceed) {
+          setIsRegistering(false);
+          await handleManualRegister(true);
+        } else {
+          setIsRegistering(false);
+        }
+        return;
+      }
       if (!res.ok) throw new Error(data.error || '참여 등록에 실패했습니다.');
       toast.success('기수 참여 등록이 성공적으로 처리되었습니다.');
       setSessionRegistrationTarget(null);

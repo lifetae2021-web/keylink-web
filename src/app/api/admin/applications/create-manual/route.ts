@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb, adminAuth } from '@/lib/firebaseAdmin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { checkOverlap } from '@/lib/admin/overlap';
 
 /**
  * 관리자용 수동 기수 참여 등록 API
@@ -8,7 +9,7 @@ import { FieldValue } from 'firebase-admin/firestore';
  */
 export async function POST(req: NextRequest) {
   try {
-    const { userId, sessionId, status } = await req.json();
+    const { userId, sessionId, status, bypassOverlapCheck } = await req.json();
 
     if (!userId || !sessionId || !status) {
       return NextResponse.json({ error: '회원 ID, 기수 ID, 등록할 상태가 필요합니다.' }, { status: 400 });
@@ -77,6 +78,20 @@ export async function POST(req: NextRequest) {
 
     // 🌑 다크템플러: super_admin 계정은 시스템 전체에서 투명인간 처리
     const isDarkTemplar = userData.role === 'super_admin';
+
+    const isDev = process.env.NODE_ENV === 'development';
+    // 중복 만남 체크 (다크템플러/더미가 아니며 'confirmed' 혹은 'selected'인 경우에만 검사)
+    if (status === 'confirmed' || status === 'selected') {
+      const isDummyForCheck = userId.startsWith('user_m_') || userId.startsWith('user_f_') || userData.isDummy === true;
+      const isDarkTemplarForCheck = userData.role === 'super_admin' || isDarkTemplar;
+
+      if (!isDev && !isDummyForCheck && !isDarkTemplarForCheck && !bypassOverlapCheck) {
+        const overlapMessage = await checkOverlap(userId, sessionId, gender);
+        if (overlapMessage) {
+          return NextResponse.json({ overlapWarning: true, message: overlapMessage }, { status: 200 });
+        }
+      }
+    }
 
     // 나이 계산
     let age = userData.age;
