@@ -84,7 +84,7 @@ export default function MatchingDrawer({ session, onClose }: Props) {
       const map: Record<string, Application> = {};
       appsSnap.docs.forEach(d => {
         const data = d.data();
-        if (data.isDarkTemplar || data.name === '태영훈기본') return; // 다크템플러 제외
+        if (data.isDarkTemplar || data.name === '태영훈기본') return; // 닼템 제외
         map[data.userId] = {
           id: d.id, userId: data.userId, sessionId: data.sessionId,
           name: data.name, age: data.age, gender: data.gender, job: data.job,

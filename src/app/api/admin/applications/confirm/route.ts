@@ -43,13 +43,13 @@ export async function POST(req: NextRequest) {
     const userId = initialAppData.userId;
     const gender = initialAppData.gender;
 
-    // 🌑 다크템플러 및 더미 확인용 유저 정보 조회
+    // 🌑 닼템 및 더미 확인용 유저 정보 조회
     const userDocForCheck = await adminDb.doc(`users/${userId}`).get();
     const isDummyForCheck = applicationId.startsWith('dummy') || userId.startsWith('user_m_') || userId.startsWith('user_f_') || userDocForCheck.data()?.isDummy === true;
     const isDarkTemplarForCheck = userDocForCheck.data()?.role === 'super_admin' || initialAppData.isDarkTemplar === true;
 
     const isDev = process.env.NODE_ENV === 'development';
-    // 중복 만남 체크 (다크템플러/더미가 아니며 bypass하지 않는 경우)
+    // 중복 만남 체크 (닼템/더미가 아니며 bypass하지 않는 경우)
     if (!isDev && !isDummyForCheck && !isDarkTemplarForCheck && !bypassOverlapCheck) {
       const overlapMessage = await checkOverlap(userId, sessionId, gender);
       if (overlapMessage) {
@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
 
         const userSnapForApp = await transaction.get(adminDb.doc(`users/${appData.userId}`));
         const isDummy = appData.id?.startsWith('dummy') || appData.userId?.startsWith('user_m_') || appData.userId?.startsWith('user_f_') || userSnapForApp.data()?.isDummy === true;
-        // 🌑 다크템플러: super_admin은 슬롯 배정 & 정원 카운트 제외
+        // 🌑 닼템: super_admin은 슬롯 배정 & 정원 카운트 제외
         const isDarkTemplar = userSnapForApp.data()?.role === 'super_admin' || appData.isDarkTemplar === true;
 
         if (isDummy || isDarkTemplar) {

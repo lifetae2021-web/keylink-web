@@ -627,7 +627,7 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
       if (activeTab === '1on1' && app.sessionType !== '1on1') return false;
 
       const user = userMap[app.userId] || {};
-      // 1.5. 다크템플러 무조건 제외 (신청 관리 목록에서는 숨김 처리)
+      // 1.5. 닼템 무조건 제외 (신청 관리 목록에서는 숨김 처리)
       const isDarkTemplar = user.role === 'super_admin' || app.isDarkTemplar === true;
       if (isDarkTemplar) return false;
 

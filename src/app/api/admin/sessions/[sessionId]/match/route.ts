@@ -48,7 +48,7 @@ export async function POST(
         .get()
     ]);
 
-    // 🌑 다크템플러 제외: isDarkTemplar 플래그가 있는 참가자는 신청서 목록에서 시작부터 필터링
+    // 🌑 닼템 제외: isDarkTemplar 플래그가 있는 참가자는 신청서 목록에서 시작부터 필터링
     const darkTemplarUserIds = new Set(
       appsSnap.docs
         .filter(doc => doc.data().isDarkTemplar === true)
@@ -61,7 +61,7 @@ export async function POST(
       )
       .map((doc: FirebaseFirestore.QueryDocumentSnapshot) => ({ id: doc.data().userId, gender: doc.data().gender }));
     
-    // 다크템플러와 시스템(테스트) 계정의 투표 데이터 제외
+    // 닼템와 시스템(테스트) 계정의 투표 데이터 제외
     const votes: Vote[] = votesSnap.docs
       .filter(doc => !darkTemplarUserIds.has(doc.data().userId) && !doc.data().userId.startsWith('system_'))
       .map((doc: FirebaseFirestore.QueryDocumentSnapshot) => doc.data() as Vote);

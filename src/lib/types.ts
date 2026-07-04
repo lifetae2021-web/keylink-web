@@ -193,7 +193,7 @@ export interface Application {
   // v12.1.0: 수동 환불 여부
   isManualRefund?: boolean;
 
-  // 🌑 다크템플러 모드 (super_admin이 라이브 QA 목적으로 참가 시)
+  // 🌑 닼템 모드 (super_admin이 라이브 QA 목적으로 참가 시)
   isDarkTemplar?: boolean;
 }
 

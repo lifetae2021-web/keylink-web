@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '회원의 성별 정보가 올바르지 않습니다.' }, { status: 400 });
     }
 
-    // 3. 이미 신청 내역이 존재하는지 확인 (중복 등록 방지 및 다크템플러 전환 허용)
+    // 3. 이미 신청 내역이 존재하는지 확인 (중복 등록 방지 및 닼템 전환 허용)
     let existingAppDoc = null;
     if (!existingApps.empty) {
       existingAppDoc = existingApps.docs[0];
@@ -76,11 +76,11 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 🌑 다크템플러: super_admin 계정은 시스템 전체에서 투명인간 처리
+    // 🌑 닼템: super_admin 계정은 시스템 전체에서 투명인간 처리
     const isDarkTemplar = userData.role === 'super_admin';
 
     const isDev = process.env.NODE_ENV === 'development';
-    // 중복 만남 체크 (다크템플러/더미가 아니며 'confirmed' 혹은 'selected'인 경우에만 검사)
+    // 중복 만남 체크 (닼템/더미가 아니며 'confirmed' 혹은 'selected'인 경우에만 검사)
     if (status === 'confirmed' || status === 'selected') {
       const isDummyForCheck = userId.startsWith('user_m_') || userId.startsWith('user_f_') || userData.isDummy === true;
       const isDarkTemplarForCheck = userData.role === 'super_admin' || isDarkTemplar;
@@ -140,7 +140,7 @@ export async function POST(req: NextRequest) {
       let assignedSlot: number | null = null;
       
       if (status === 'confirmed') {
-        // 🌑 다크템플러는 슬롯 배정 & 정원 카운트 완전 제외
+        // 🌑 닼템는 슬롯 배정 & 정원 카운트 완전 제외
         if (isDummy || isDarkTemplar) {
           assignedSlot = null;
         } else {
@@ -190,7 +190,7 @@ export async function POST(req: NextRequest) {
         updatedAt: FieldValue.serverTimestamp(),
       };
 
-      // 🌑 다크템플러 플래그 부여
+      // 🌑 닼템 플래그 부여
       if (isDarkTemplar) {
         newAppData.isDarkTemplar = true;
       }
@@ -198,14 +198,14 @@ export async function POST(req: NextRequest) {
       // 신청서 등록/업데이트
       transaction.set(newAppRef, newAppData);
 
-      // 세션 정원 카운터 처리 (다크템플러 및 더미 제외)
+      // 세션 정원 카운터 처리 (닼템 및 더미 제외)
       const wasConfirmedNormal = prevStatus === 'confirmed' && !wasPrevDarkTemplar && !isDummy;
       const willBeConfirmedNormal = status === 'confirmed' && !isDarkTemplar && !isDummy;
       
       const counterField = gender === 'male' ? 'currentMale' : 'currentFemale';
 
       if (wasConfirmedNormal && !willBeConfirmedNormal) {
-        // 일반 확정 상태에서 다른 상태로 변경 또는 다크템플러로 전환 시 ➔ 정원 -1
+        // 일반 확정 상태에서 다른 상태로 변경 또는 닼템로 전환 시 ➔ 정원 -1
         transaction.update(sessionDocRef, {
           [counterField]: FieldValue.increment(-1),
           updatedAt: FieldValue.serverTimestamp(),
