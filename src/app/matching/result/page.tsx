@@ -67,16 +67,17 @@ export default function ResultListPage() {
         const publicSessions = fetched.filter((s: any) => s && !s.isTest);
         setSessions(publicSessions);
 
-        // Calculate dynamic total
-        let sum = 0;
+        // 718 was the historical matched people baseline up to episode 129.
+        let newPeopleCount = 0;
 
         publicSessions.forEach((s: any) => {
-          sum += (s.matchedCount || 0);
+          // Add dynamically only from episode 130 onwards
+          if (typeof s.episodeNumber === 'number' && s.episodeNumber >= 130) {
+            newPeopleCount += (s.matchedCount || 0) * 2;
+          }
         });
 
-        // The displayed number represents the total number of PEOPLE matched (couples * 2).
-        // e.g. 366 couples = 732 people.
-        const finalTotal = sum * 2;
+        const finalTotal = 718 + newPeopleCount;
 
         animate(0, finalTotal, {
           duration: 3,
