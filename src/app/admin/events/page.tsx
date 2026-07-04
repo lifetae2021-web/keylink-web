@@ -2759,7 +2759,7 @@ ${chatLink}
                             {(() => {
                               const drinkCounts = realParticipants.reduce((acc, p) => {
                                 if (p.attendanceStatus === 'no-show') return acc;
-                                const code = getDrinkCode(p.drink);
+                                const code = getDrinkCode(p.drink || userMap[p.userId]?.drink);
                                 if (code) {
                                   code.split(', ').forEach(c => {
                                     acc[c] = (acc[c] || 0) + 1;
@@ -2777,7 +2777,7 @@ ${chatLink}
                                   {codes.map(c => {
                                     const totalForDrink = realParticipants.filter(p => {
                                       if (p.attendanceStatus === 'no-show') return false;
-                                      const code = getDrinkCode(p.drink);
+                                      const code = getDrinkCode(p.drink || userMap[p.userId]?.drink);
                                       return code && code.split(', ').includes(c);
                                     });
                                     const servedCount = totalForDrink.filter(p => (p as any).drinkServed).length;
@@ -2944,9 +2944,9 @@ ${chatLink}
                                                   >
                                                     {isDummyApp(app) ? "-" : `${slotNum}호`}
                                                   </button>
-                                                  {getDrinkCode(app.drink) && (
+                                                  {getDrinkCode(app.drink || userMap[app.userId]?.drink) && (
                                                     <span className="text-[0.6rem] font-black text-blue-600 leading-none mt-0.5">
-                                                      {getDrinkCode(app.drink)}
+                                                      {getDrinkCode(app.drink || userMap[app.userId]?.drink)}
                                                     </span>
                                                   )}
                                                   {/* 빈 슬롯 선택 드롭다운 */}
@@ -3128,9 +3128,9 @@ ${chatLink}
                                                 <span className={`text-xs font-black ${app.isDarkTemplar ? 'text-violet-500' : 'text-amber-500'}`}>
                                                   {app.isDarkTemplar ? '🌑' : '미배정'}
                                                 </span>
-                                                {getDrinkCode(app.drink) && (
+                                                {getDrinkCode(app.drink || userMap[app.userId]?.drink) && (
                                                   <span className="text-[0.6rem] font-black text-blue-600 leading-none mt-0.5">
-                                                    {getDrinkCode(app.drink)}
+                                                    {getDrinkCode(app.drink || userMap[app.userId]?.drink)}
                                                   </span>
                                                 )}
                                               </div>
@@ -3861,7 +3861,7 @@ ${chatLink}
 
                 const targetParticipants = realParticipants.filter(p => {
                   if (p.attendanceStatus === 'no-show') return false;
-                  const code = getDrinkCode(p.drink);
+                  const code = getDrinkCode(p.drink || userMap[p.userId]?.drink);
                   return code && code.split(', ').includes(selectedDrinkCode);
                 });
                 
