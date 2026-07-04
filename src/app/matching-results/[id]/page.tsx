@@ -800,24 +800,12 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
               )}
 
               {/* Overall Stats Cards */}
-              <div className="grid grid-cols-2 gap-4 mb-8">
-                <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm text-center">
+              <div className="flex justify-center mb-8">
+                <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm text-center w-full max-w-sm">
                   <Heart className="mx-auto text-[#FF6F61] mb-2" size={24} fill="#FF6F61" />
                   <p className="text-slate-400 text-xs font-bold">매칭 성공 커플</p>
                   <p className="text-3xl font-black text-slate-800 mt-1">
                     {(summary?.matchedPairs || []).length}쌍
-                  </p>
-                </div>
-                <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm text-center">
-                  <Sparkles className="mx-auto text-amber-400 mb-2" size={24} />
-                  <p className="text-slate-400 text-xs font-bold">최종 매칭률</p>
-                  <p className="text-3xl font-black text-slate-800 mt-1">
-                    {(() => {
-                      const matchedCount = (summary?.matchedPairs || []).length;
-                      const unmatchedCount = (summary?.unmatchedUserIds || []).length;
-                      const total = matchedCount * 2 + unmatchedCount;
-                      return total > 0 ? Math.round((matchedCount * 2 / total) * 100) : 0;
-                    })()}%
                   </p>
                 </div>
               </div>
