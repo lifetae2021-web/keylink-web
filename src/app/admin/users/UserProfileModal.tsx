@@ -143,6 +143,7 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
   const [userApps, setUserApps] = useState<any[]>([]);
   const [appsLoading, setAppsLoading] = useState(false);
   const [sessionsMap, setSessionsMap] = useState<Record<string, any>>({});
+  const [summariesMap, setSummariesMap] = useState<Record<string, any>>({});
 
   // v11.2.0: user 로컬 상태 변화를 감지하여 부모 userMap도 실시간 갱신
   // 콜백 함수를 Ref로 관리하여 dependency 목록에서 제외함으로써 무한 렌더링 루프를 원천 방지합니다.
@@ -208,12 +209,21 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
     const fetchSessions = async () => {
       try {
         const { collection: col, getDocs: gd } = await import('firebase/firestore');
-        const snap = await gd(col(db, 'sessions'));
+        const [snap, summariesSnap] = await Promise.all([
+          gd(col(db, 'sessions')),
+          gd(col(db, 'matchingSummaries'))
+        ]);
         const mapping: Record<string, any> = {};
         snap.docs.forEach(d => {
           mapping[d.id] = d.data();
         });
         setSessionsMap(mapping);
+        
+        const sumMap: Record<string, any> = {};
+        summariesSnap.docs.forEach(d => {
+          sumMap[d.id] = d.data();
+        });
+        setSummariesMap(sumMap);
       } catch (e) {
         console.error('Error fetching sessions:', e);
       }
@@ -809,13 +819,20 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
                           >
                             {/* 기수/날짜 */}
                             <div className="flex-1 min-w-0">
-                              <p className="text-[0.78rem] font-black text-slate-700 truncate">
-                                {(() => {
-                                  const sessionInfo = sessionsMap[app.sessionId];
-                                  if (!sessionInfo) return app.sessionId || '기수 미상';
-                                  return sessionInfo.title || `${sessionInfo.region === 'busan' ? '부산' : '창원'} ${sessionInfo.episodeNumber ? sessionInfo.episodeNumber + '기' : ''}`;
-                                })()}
-                              </p>
+                              <div className="flex items-center gap-1.5">
+                                <p className="text-[0.78rem] font-black text-slate-700 truncate">
+                                  {(() => {
+                                    const sessionInfo = sessionsMap[app.sessionId];
+                                    if (!sessionInfo) return app.sessionId || '기수 미상';
+                                    return sessionInfo.title || `${sessionInfo.region === 'busan' ? '부산' : '창원'} ${sessionInfo.episodeNumber ? sessionInfo.episodeNumber + '기' : ''}`;
+                                  })()}
+                                </p>
+                                {summariesMap[app.sessionId] !== undefined && (
+                                  <span className="px-1.5 py-0.5 rounded-md bg-rose-100 text-rose-600 text-[0.6rem] font-black shrink-0">
+                                    ❤️ {summariesMap[app.sessionId].voteCountMap?.[user.uid || user.id] || 0}표
+                                  </span>
+                                )}
+                              </div>
                               {displayDate && (
                                 <p className="text-[0.65rem] text-slate-400 font-semibold">
                                   {eventDate ? '소개팅 일시: ' : '신청일: '}

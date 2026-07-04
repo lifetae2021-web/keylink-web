@@ -61,9 +61,9 @@ export async function POST(
       )
       .map((doc: FirebaseFirestore.QueryDocumentSnapshot) => ({ id: doc.data().userId, gender: doc.data().gender }));
     
-    // 다크템플러의 투표 데이터도 제외
+    // 다크템플러와 시스템(테스트) 계정의 투표 데이터 제외
     const votes: Vote[] = votesSnap.docs
-      .filter(doc => !darkTemplarUserIds.has(doc.data().userId))
+      .filter(doc => !darkTemplarUserIds.has(doc.data().userId) && !doc.data().userId.startsWith('system_'))
       .map((doc: FirebaseFirestore.QueryDocumentSnapshot) => doc.data() as Vote);
 
     if (participants.length === 0 || votes.length === 0) {

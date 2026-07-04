@@ -206,9 +206,13 @@ export default function AdminTimerPage() {
         }
       }
 
+      const lastSessionId = localStorage.getItem('lastAdminTimerSessionId');
+
       // 저장된 세션이 있으면 해당 세션을 자동 선택, 없으면 모집 중인 세션 선택
       if (savedSessionId && list.some(s => s.id === savedSessionId)) {
         handleSelectSession(savedSessionId, list);
+      } else if (lastSessionId && list.some(s => s.id === lastSessionId)) {
+        handleSelectSession(lastSessionId, list);
       } else {
         const openSession = list.find((s: any) => s.status === 'open');
         if (openSession) handleSelectSession(openSession.id, list);
@@ -219,6 +223,9 @@ export default function AdminTimerPage() {
 
   const handleSelectSession = (id: string, list = sessions) => {
     setSelectedSessionId(id);
+    if (id) {
+      localStorage.setItem('lastAdminTimerSessionId', id);
+    }
     const session = list.find(s => s.id === id);
     if (session?.timerConfig) {
       setTotalRounds(session.timerConfig.totalRounds || 8);
