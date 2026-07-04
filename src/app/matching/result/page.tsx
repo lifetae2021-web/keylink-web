@@ -43,10 +43,21 @@ export default function ResultListPage() {
                 const matchedPairs = summaryData.matchedPairs || [];
                 matchedCount = matchedPairs.length;
                 
+                // 다중 매칭(1명이 여러 명과 매칭)을 고려하여 실제 매칭된 고유 인원 수 계산
+                const matchedUserIds = new Set();
+                matchedPairs.forEach((p: any) => {
+                  if (p.maleId) matchedUserIds.add(p.maleId);
+                  if (p.femaleId) matchedUserIds.add(p.femaleId);
+                  if (p.userAId) matchedUserIds.add(p.userAId);
+                  if (p.userBId) matchedUserIds.add(p.userBId);
+                });
+                
+                const uniqueMatchedCount = matchedUserIds.size;
                 const unmatchedCount = (summaryData.unmatchedUserIds || []).length;
-                const total = matchedCount * 2 + unmatchedCount;
+                const total = uniqueMatchedCount + unmatchedCount;
+                
                 if (total > 0) {
-                  matchedRate = Math.round((matchedCount * 2 / total) * 100);
+                  matchedRate = Math.round((uniqueMatchedCount / total) * 100);
                 }
               }
             } catch (e) {
