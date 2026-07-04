@@ -180,6 +180,12 @@ export default function MatchingAdminPage() {
     toast.success(`${name}님의 전화번호가 복사되었습니다! (${phone})`);
   };
 
+  const handleCopyGreeting = (matchNum: number, maleSlot: number | undefined, femaleSlot: number | undefined) => {
+    const text = `키링크 ${matchNum}번째 매칭 축하드립니다.\n키링남 ${maleSlot || '?'}호 ❤️ 키링녀 ${femaleSlot || '?'}호\n\n소중한 인연 만드시길 키링크가 진심으로 응원하겠습니다!\n\n저는 이만 나가볼게요 :)\n편하게 대화 나눠주세요`;
+    navigator.clipboard.writeText(text);
+    toast.success('매칭 인사말이 복사되었습니다!');
+  };
+
   const receivedVotesMap = useMemo(() => {
     const map: Record<string, number> = {};
     Object.keys(participantMap).forEach(uid => { map[uid] = 0; });
@@ -531,10 +537,19 @@ export default function MatchingAdminPage() {
                             {a?.name || pair.userAId}
                           </button>
                         </div>
-                        <div className="flex flex-col items-center mx-4 shrink-0">
-                          <Heart size={16} className="text-[#FF6F61]" fill="currentColor" />
-                          <span className="text-[10px] font-black text-[#FF6F61]/80 mt-0.5 select-none">{prevMatchesCount + i + 1 + 338}번째</span>
-                        </div>
+                        <button 
+                          onClick={() => {
+                            const matchNum = prevMatchesCount + i + 1 + 338;
+                            const maleSlot = a?.gender === 'male' ? a?.slotNumber : b?.slotNumber;
+                            const femaleSlot = a?.gender === 'female' ? a?.slotNumber : b?.slotNumber;
+                            handleCopyGreeting(matchNum, maleSlot, femaleSlot);
+                          }}
+                          className="flex flex-col items-center mx-2 shrink-0 hover:bg-pink-50/80 p-2 rounded-xl transition-all cursor-pointer focus:outline-none"
+                          title="클릭하여 오픈채팅방 매칭 인사말 복사"
+                        >
+                          <Heart size={16} className="text-[#FF6F61] drop-shadow-sm" fill="currentColor" />
+                          <span className="text-[10px] font-black text-[#FF6F61]/80 mt-1 select-none">{prevMatchesCount + i + 1 + 338}번째</span>
+                        </button>
                         <div className="flex items-center gap-2">
                           <button 
                             onClick={() => handleCopyPhone(b?.name || '참여자', b?.phone)}
