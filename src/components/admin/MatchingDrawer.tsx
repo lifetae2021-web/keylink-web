@@ -172,7 +172,7 @@ export default function MatchingDrawer({ session, onClose }: Props) {
   };
 
   const handleCopyGreeting = (matchNum: number, maleSlot: number | undefined, femaleSlot: number | undefined) => {
-    const text = `키링크 ${matchNum}번째 매칭 축하드립니다.\n키링남 ${maleSlot || '?'}호 ❤️ 키링녀 ${femaleSlot || '?'}호\n\n소중한 인연 만드시길 키링크가 진심으로 응원하겠습니다!\n\n저는 이만 나가볼게요 :)\n편하게 대화 나눠주세요`;
+    const text = `키링크 ${matchNum}번째 매칭 축하드립니다.\n키링남 ${maleSlot || '?'}호 ❤️ 키링녀 ${femaleSlot || '?'}호\n\n소중한 인연 만드시길\n키링크가 진심으로 응원하겠습니다!\n\n저는 이만 나가볼게요 :)\n편하게 대화 나눠주세요`;
     navigator.clipboard.writeText(text);
     toast.success('매칭 인사말이 복사되었습니다!');
   };
