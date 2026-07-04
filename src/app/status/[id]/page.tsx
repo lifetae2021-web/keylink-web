@@ -75,8 +75,9 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
     return () => clearInterval(interval);
   }, [sessionId]);
 
-  const maleApplicants = applicants.filter(p => p.gender === 'male' && p.status === 'confirmed');
-  const femaleApplicants = applicants.filter(p => p.gender === 'female' && p.status === 'confirmed');
+  const isNotTestUser = (p: any) => !p.isDarkTemplar && !p.userId?.startsWith('user_m_') && !p.userId?.startsWith('user_f_') && !p.id?.startsWith('dummy');
+  const maleApplicants = applicants.filter(p => p.gender === 'male' && p.status === 'confirmed' && isNotTestUser(p));
+  const femaleApplicants = applicants.filter(p => p.gender === 'female' && p.status === 'confirmed' && isNotTestUser(p));
 
   // v8.4.8: 라인업 데이터 바인딩 (이름/연락처 완전 배제, 실시간 호수 슬롯 동기화)
   const confirmedRows = useMemo(() => {

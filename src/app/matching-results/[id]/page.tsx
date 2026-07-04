@@ -367,7 +367,8 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
   // 라인업 행 계산 (실시간 현황 status/[id] 로직 동일하게 적용)
   const lineupRows = useMemo(() => {
     if (!session) return [];
-    const currentList = lineupApps.filter(a => a.gender === lineupTab);
+    const isNotTestUser = (a: any) => !a.isDarkTemplar && !a.userId?.startsWith('user_m_') && !a.userId?.startsWith('user_f_') && !a.id?.startsWith('dummy');
+    const currentList = lineupApps.filter(a => a.gender === lineupTab && isNotTestUser(a));
     const maxSlots = lineupTab === 'male' ? (session.maxMale || 8) : (session.maxFemale || 8);
 
     const slots: any[] = Array.from({ length: maxSlots }, (_, i) => ({
