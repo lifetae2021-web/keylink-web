@@ -222,6 +222,9 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
               );
               const appSnap = await getDocs(appQuery);
               const appData = !appSnap.empty ? appSnap.docs[0].data() : {};
+              
+              if (appData.isDarkTemplar) return null;
+
               return { 
                 id: v.userId, 
                 voteData: v, 
@@ -230,9 +233,11 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
               };
             }));
 
+            const validReceived = resolvedReceived.filter(Boolean);
+
             const filteredVoters = visibility === 'mutual'
-              ? resolvedReceived.filter(v => myVote?.choices?.some((c: any) => c.targetUserId === v.id))
-              : resolvedReceived;
+              ? validReceived.filter((v: any) => myVote?.choices?.some((c: any) => c.targetUserId === v.id))
+              : validReceived;
 
             const displayedVoters = [...filteredVoters].sort((a, b) => {
               const aMutual = myVote?.choices?.some((c: any) => c.targetUserId === a.id) ? 0 : 1;
