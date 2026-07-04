@@ -800,12 +800,33 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
               )}
 
               {/* Overall Stats Cards */}
-              <div className="flex justify-center mb-8">
-                <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm text-center w-full max-w-sm">
+              <div className="grid grid-cols-2 gap-4 mb-8">
+                <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm text-center">
                   <Heart className="mx-auto text-[#FF6F61] mb-2" size={24} fill="#FF6F61" />
                   <p className="text-slate-400 text-xs font-bold">매칭 성공 커플</p>
                   <p className="text-3xl font-black text-slate-800 mt-1">
                     {(summary?.matchedPairs || []).length}쌍
+                  </p>
+                </div>
+                <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm text-center">
+                  <Sparkles className="mx-auto text-amber-400 mb-2" size={24} />
+                  <p className="text-slate-400 text-xs font-bold">최종 매칭률</p>
+                  <p className="text-3xl font-black text-slate-800 mt-1">
+                    {(() => {
+                      const matchedPairs = summary?.matchedPairs || [];
+                      const matchedUserIds = new Set();
+                      matchedPairs.forEach((p: any) => {
+                        if (p.maleId) matchedUserIds.add(p.maleId);
+                        if (p.femaleId) matchedUserIds.add(p.femaleId);
+                        if (p.userAId) matchedUserIds.add(p.userAId);
+                        if (p.userBId) matchedUserIds.add(p.userBId);
+                      });
+                      
+                      const uniqueMatchedCount = matchedUserIds.size;
+                      const unmatchedCount = (summary?.unmatchedUserIds || []).length;
+                      const total = uniqueMatchedCount + unmatchedCount;
+                      return total > 0 ? Math.round((uniqueMatchedCount / total) * 100) : 0;
+                    })()}%
                   </p>
                 </div>
               </div>
