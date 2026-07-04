@@ -69,21 +69,14 @@ export default function ResultListPage() {
 
         // Calculate dynamic total
         let sum = 0;
-        let recentSum = 0;
-        const baselineDate = new Date('2026-06-24T00:00:00Z');
 
         publicSessions.forEach((s: any) => {
-          const mCount = s.matchedCount || 0;
-          sum += mCount;
-          if (s.createdAt && s.createdAt > baselineDate) {
-            recentSum += mCount;
-          }
+          sum += (s.matchedCount || 0);
         });
 
-        // 718 was the historical hardcoded baseline as of June 24, 2026.
-        // If the DB contains all history, sum should naturally be >= 718.
-        // If the DB only contains recent history, we use 718 + couples added after June 24.
-        const finalTotal = sum >= 718 ? sum : 718 + recentSum;
+        // The displayed number represents the total number of PEOPLE matched (couples * 2).
+        // e.g. 366 couples = 732 people.
+        const finalTotal = sum * 2;
 
         animate(0, finalTotal, {
           duration: 3,
