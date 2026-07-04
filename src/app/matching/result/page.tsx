@@ -249,21 +249,7 @@ export default function ResultListPage() {
                       </div>
                     </div>
 
-                    {/* Stats Footer */}
-                    <div className="result-card-stats" style={{ 
-                      background: 'linear-gradient(135deg, #f8f9fa, #f1f3f5)',
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#111' }}>
-                        <BarChart3 size={20} />
-                        <span style={{ fontSize: '0.95rem', fontWeight: '800' }}>최종 매칭률</span>
-                      </div>
-                      <span style={{ fontSize: '1.5rem', fontWeight: '900', color: result.status === 'completed' ? '#FF6F61' : '#999', letterSpacing: '-0.02em' }}>
-                        {result.status === 'completed' 
-                          ? ((result as any).matchedRate !== null && (result as any).matchedRate !== undefined ? `${(result as any).matchedRate}%` : `${result.episodeNumber % 25 + 60}%`)
-                          : '-%'}
-                      </span>
-                    </div>
+
                   </div>
                 </Link>
               </motion.div>
