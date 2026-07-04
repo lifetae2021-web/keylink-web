@@ -657,7 +657,7 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
                     <p className="text-xl font-black text-blue-700">{user.participationCount || 0}</p>
                   </div>
                   <div className="flex-1 p-4 rounded-3xl bg-rose-50 border border-rose-100 text-center">
-                    <p className="text-[9px] font-black text-rose-400 uppercase tracking-widest mb-1">성공</p>
+                    <p className="text-[9px] font-black text-rose-400 uppercase tracking-widest mb-1">매칭</p>
                     <p className="text-xl font-black text-rose-700">{user.matchCount || 0}</p>
                   </div>
                   {/* 노쇼 카드 - hover 시 +/- 수동 조정 */}
