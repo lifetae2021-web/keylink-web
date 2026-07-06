@@ -153,7 +153,7 @@ export default function VotePage() {
         // v10.0.1: 생년월일로부터 '년생' 추출 로직
         const rawBirth = appData.birthDate || userData?.birthDate || '';
         const year = rawBirth.includes('-')
-          ? rawBirth.split('-')[0].slice(2, 4)
+          ? rawBirth.split('-')[0].slice(-2)
           : (rawBirth.length >= 2 ? rawBirth.slice(0, 2) : '??');
         const birthYear = year ? `${year}년생` : '??년생';
 

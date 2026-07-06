@@ -128,7 +128,7 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
         const u = userMap[p.userId] || {};
         const rawBirth = u.birthDate || p.birthDate || '';
         const year = rawBirth.includes('-')
-          ? rawBirth.split('-')[0].slice(2, 4)
+          ? rawBirth.split('-')[0].slice(-2)
           : (rawBirth.length >= 2 ? rawBirth.slice(0, 2) : '??');
 
         slots[slotIdx] = {

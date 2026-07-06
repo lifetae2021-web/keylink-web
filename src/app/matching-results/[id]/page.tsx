@@ -398,7 +398,7 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
         const u = lineupUserMap[p.userId] || {};
         const rawBirth = u.birthDate || p.birthDate || '';
         const year = rawBirth.includes('-')
-          ? rawBirth.split('-')[0].slice(2, 4)
+          ? rawBirth.split('-')[0].slice(-2)
           : rawBirth.length >= 2 ? rawBirth.slice(0, 2) : '??';
         slots[slotIdx] = {
           slotNumber: p.slotNumber || (slotIdx + 1),

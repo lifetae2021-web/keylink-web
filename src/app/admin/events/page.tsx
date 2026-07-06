@@ -5000,7 +5000,7 @@ ${chatLink}
 
                         const rawBirth = p.birthDate || '';
                         const year = rawBirth.includes('-')
-                          ? rawBirth.split('-')[0].slice(2, 4)
+                          ? rawBirth.split('-')[0].slice(-2)
                           : (rawBirth.length >= 2 ? rawBirth.slice(0, 2) : '??');
                         const birthYear = year && year !== '??' ? `${year}년생` : (p.age ? `${p.age}세` : '연령 미입력');
 

@@ -1229,7 +1229,7 @@ export default function UsersPage() {
                         </div>
                         <div className="flex flex-col gap-0.5 mt-1">
                           <span className="text-[0.75rem] font-bold text-slate-500">
-                            {u.birthDate ? `${u.birthDate.slice(2, 4)}년생` : '-'}
+                            {u.birthDate ? `${u.birthDate.includes('-') ? u.birthDate.split('-')[0].slice(-2) : (u.birthDate.length === 8 ? u.birthDate.slice(2, 4) : u.birthDate.slice(0, 2))}년생` : '-'}
                           </span>
                           <div className="flex items-center gap-2">
                             {editingJobId === u.id ? (
