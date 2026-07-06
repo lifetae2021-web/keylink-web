@@ -1066,7 +1066,7 @@ function FastApplyContent() {
       )}
 
       {/* ─── 최종 결제 금액 요약 ─── */}
-      {(form.gender === 'male' || (currentUser && selectedCoupon)) && (
+      {form.gender && (
         <div style={{ marginTop: '12px', padding: '18px 20px', background: '#FFF5F4', borderRadius: '14px', border: '1px solid rgba(255,111,97,0.2)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: '0.95rem', fontWeight: '800', color: '#111' }}>최종 결제 금액</span>
