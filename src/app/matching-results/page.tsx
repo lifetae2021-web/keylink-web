@@ -186,7 +186,11 @@ export default function MatchingResultsListPage() {
                 onClick={(e) => {
                   if (round.status !== 'published') {
                     e.preventDefault();
-                    toast('아직 매칭 결과가 발표되지 않았습니다.', { icon: '⏳', style: { borderRadius: '100px', background: '#333', color: '#fff' } });
+                    if (['cancelled', 'applied', 'waitlisted'].includes(round.status)) {
+                      toast('참여가 확정되지 않은 기수입니다.', { icon: 'ℹ️', style: { borderRadius: '100px', background: '#333', color: '#fff' } });
+                    } else {
+                      toast('아직 매칭 결과가 발표되지 않았습니다.', { icon: '⏳', style: { borderRadius: '100px', background: '#333', color: '#fff' } });
+                    }
                   }
                 }}
                 className="cursor-pointer block"
@@ -209,7 +213,11 @@ export default function MatchingResultsListPage() {
                     </div>
                   ) : (
                     <div className="flex flex-col items-end gap-2">
-                      <div className="text-xs text-gray-300 font-bold tracking-tight">집계 완료 시 안내 드립니다</div>
+                      {['cancelled', 'applied', 'waitlisted'].includes(round.status) ? (
+                        <div className="text-xs text-gray-300 font-bold tracking-tight">참여하지 않은 기수입니다</div>
+                      ) : (
+                        <div className="text-xs text-gray-300 font-bold tracking-tight">집계 완료 시 안내 드립니다</div>
+                      )}
                       
                       {/* 취소 가능 상태: 신청 완료, 선발 완료, 대기자 */}
                       {['applied', 'selected', 'waitlisted'].includes(round.status) && (

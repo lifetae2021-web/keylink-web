@@ -228,7 +228,7 @@ export default function ApplicationsPage() {
 
         const data = await res.json();
         if (data.isMock) {
-          toast('로컬 환경에서는 실제 처리가 제한됩니다.', { icon: '🚧', duration: 4000 });
+          toast('로컬 환경에서는 선발 처리가 제한됩니다.', { icon: '🚧', duration: 4000 });
           return;
         }
         if (!res.ok) throw new Error(data.error || '처리 중 오류가 발생했습니다.');
@@ -266,10 +266,6 @@ export default function ApplicationsPage() {
           });
 
           const data = await res.json();
-          if (data.isMock) {
-            toast('로컬 환경에서는 실제 처리가 제한됩니다.', { icon: '🚧', duration: 4000 });
-            return;
-          }
           if (!res.ok) throw new Error(data.error || '처리 중 오류가 발생했습니다.');
 
           if (data.warning) {
@@ -627,8 +623,8 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
       if (activeTab === '1on1' && app.sessionType !== '1on1') return false;
 
       const user = userMap[app.userId] || {};
-      // 1.5. 닼템 무조건 제외 (신청 관리 목록에서는 숨김 처리)
-      const isDarkTemplar = user.role === 'super_admin' || app.isDarkTemplar === true;
+      // 1.5. 닼템 제외 (신청 관리 목록에서는 명시적 닼템만 숨김, 관리자 테스트 용도로 super_admin은 노출)
+      const isDarkTemplar = app.isDarkTemplar === true;
       if (isDarkTemplar) return false;
 
       // 2. 더미 계정 필터링
@@ -1207,7 +1203,7 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                                     )}
                                   </div>
                                   <div className="flex items-center gap-2 mt-1">
-                                    {(() => { const bd = user.birthDate || app.birthDate; return bd ? <span className="text-[0.85rem] font-bold text-slate-600">{bd.includes('-') ? bd.slice(2, 4) : bd.slice(0, 2)}년생</span> : <span className="text-[0.85rem] text-slate-400">??</span>; })()}
+                                    {(() => { const bd = user.birthDate || app.birthDate; return bd ? <span className="text-[0.85rem] font-bold text-slate-600">{bd.includes('-') ? bd.split('-')[0].slice(-2) : (bd.length === 8 ? bd.slice(2, 4) : bd.slice(0, 2))}년생</span> : <span className="text-[0.85rem] text-slate-400">??</span>; })()}
                                   </div>
                                 </div>
                               </div>
@@ -1324,7 +1320,8 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                                       </button>
                                       
                                       {app.status === 'selected' && (
-                                        <button
+                                        <>
+                                          <button
                                           onClick={() => {
                                             if (app.isSmsSent) {
                                               if (!window.confirm('이미 문자를 보낸 유저입니다. 다시 보내시겠습니까?')) return;
@@ -1335,6 +1332,17 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                                         >
                                           재요청
                                         </button>
+                                        <button
+                                          onClick={() => {
+                                            if (window.confirm('선발(입금대기) 상태를 취소하고 다시 검토중 상태로 되돌리시겠습니까?')) {
+                                              updateAppStatus(app, 'applied');
+                                            }
+                                          }}
+                                          className="px-3 py-2 bg-slate-100 text-slate-600 rounded-xl text-[0.8rem] font-black hover:bg-slate-200 transition-all ml-1"
+                                        >
+                                          되돌리기
+                                        </button>
+                                        </>
                                       )}
                                       
                                       {app.status !== 'selected' && (
@@ -1479,7 +1487,7 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                                         )}
                                       </div>
                                       <div className="text-[0.75rem] text-slate-500 font-bold mt-0.5">
-                                        {(() => { const bd = user.birthDate || app.birthDate; return bd ? <span>{bd.includes('-') ? bd.slice(2, 4) : bd.slice(0, 2)}년생</span> : <span>??</span>; })()}
+                                        {(() => { const bd = user.birthDate || app.birthDate; return bd ? <span>{bd.includes('-') ? bd.split('-')[0].slice(-2) : (bd.length === 8 ? bd.slice(2, 4) : bd.slice(0, 2))}년생</span> : <span>??</span>; })()}
                                         {' · '}{regionName} {event?.episodeNumber}기
                                       </div>
                                     </div>
@@ -1585,7 +1593,8 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                                       </button>
 
                                       {app.status === 'selected' && (
-                                        <button
+                                        <>
+                                          <button
                                           onClick={() => {
                                             if (app.isSmsSent) {
                                               if (!window.confirm('이미 문자를 보낸 유저입니다. 다시 보내시겠습니까?')) return;
@@ -1596,6 +1605,17 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                                         >
                                           재요청
                                         </button>
+                                        <button
+                                          onClick={() => {
+                                            if (window.confirm('선발(입금대기) 상태를 취소하고 다시 검토중 상태로 되돌리시겠습니까?')) {
+                                              updateAppStatus(app, 'applied');
+                                            }
+                                          }}
+                                          className="flex-1 py-2.5 bg-slate-100 text-slate-600 rounded-xl font-black text-xs shadow-md active:scale-95 transition-all"
+                                        >
+                                          되돌리기
+                                        </button>
+                                        </>
                                       )}
 
                                       {app.status !== 'selected' && (
@@ -1782,7 +1802,7 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                             )}
                           </div>
                           <div className="text-[0.75rem] text-slate-500 font-bold mt-0.5">
-                            {(() => { const bd = user.birthDate || app.birthDate; return bd ? <span>{bd.includes('-') ? bd.slice(2, 4) : bd.slice(0, 2)}년생</span> : <span>??</span>; })()}
+                            {(() => { const bd = user.birthDate || app.birthDate; return bd ? <span>{bd.includes('-') ? bd.split('-')[0].slice(-2) : (bd.length === 8 ? bd.slice(2, 4) : bd.slice(0, 2))}년생</span> : <span>??</span>; })()}
                             {' · '}{regionName} {event?.episodeNumber}기
                           </div>
                         </div>
@@ -1865,17 +1885,29 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                           </button>
 
                           {app.status === 'selected' && (
-                            <button
-                              onClick={() => {
-                                if (app.isSmsSent) {
-                                  if (!window.confirm('이미 문자를 보낸 유저입니다. 다시 보내시겠습니까?')) return;
-                                }
-                                handleOpenPreview(app, 're-request');
-                              }}
-                              className="flex-1 py-2.5 bg-purple-500 text-white rounded-xl font-black text-xs shadow-md active:scale-95 transition-all"
-                            >
-                              재요청
-                            </button>
+                            <>
+                              <button
+                                onClick={() => {
+                                  if (app.isSmsSent) {
+                                    if (!window.confirm('이미 문자를 보낸 유저입니다. 다시 보내시겠습니까?')) return;
+                                  }
+                                  handleOpenPreview(app, 're-request');
+                                }}
+                                className="flex-1 py-2.5 bg-purple-500 text-white rounded-xl font-black text-xs shadow-md active:scale-95 transition-all"
+                              >
+                                재요청
+                              </button>
+                              <button
+                                onClick={() => {
+                                  if (window.confirm('선발(입금대기) 상태를 취소하고 다시 검토중 상태로 되돌리시겠습니까?')) {
+                                    updateAppStatus(app, 'applied');
+                                  }
+                                }}
+                                className="flex-1 py-2.5 bg-slate-100 text-slate-600 rounded-xl font-black text-xs shadow-md active:scale-95 transition-all"
+                              >
+                                되돌리기
+                              </button>
+                            </>
                           )}
 
                           {app.status !== 'selected' && (

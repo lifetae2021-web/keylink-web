@@ -74,10 +74,13 @@ function RegisterForm() {
   };
 
   const formatBirthDate = (val: string) => {
-    const digits = val.replace(/\D/g, '').slice(0, 8);
-    if (digits.length <= 4) return digits;
-    if (digits.length <= 6) return `${digits.slice(0, 4)}-${digits.slice(4)}`;
-    return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6)}`;
+    let digits = val.replace(/[^0-9]/g, '');
+    if (digits.length > 2 && digits.length <= 4) {
+      digits = digits.replace(/(\d{2})(\d{1,2})/, '$1-$2');
+    } else if (digits.length > 4) {
+      digits = digits.replace(/(\d{2})(\d{2})(\d{1,2})/, '$1-$2-$3');
+    }
+    return digits.substring(0, 8);
   };
 
   const update = (key: string, value: string) => {
@@ -380,7 +383,7 @@ function RegisterForm() {
               {/* Birthdate */}
               <div>
                 <label className="kl-label" style={{ fontWeight: '800', marginBottom: '10px' }}>생년월일</label>
-                <input className="kl-input" style={{ borderRadius: '12px', height: '54px' }} type="text" placeholder="ex. 1994-05-30" value={form.birthDate} onChange={e => update('birthDate', e.target.value)} />
+                <input className="kl-input" style={{ borderRadius: '12px', height: '54px' }} type="text" placeholder="ex. 940530" value={form.birthDate} onChange={e => update('birthDate', e.target.value)} />
               </div>
 
               {/* Phone Confirm (Re-verification) */}

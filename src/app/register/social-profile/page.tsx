@@ -6,7 +6,7 @@ import { Heart, CheckCircle, CheckSquare, Square, ArrowRight, AlertCircle } from
 import toast from 'react-hot-toast';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, User, updateEmail } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, getDoc, collection, addDoc } from 'firebase/firestore';
 import { getAuthErrorMessage } from '@/lib/auth-errors';
 
 export default function SocialProfilePage() {
@@ -42,7 +42,7 @@ export default function SocialProfilePage() {
     (isKakao ? true : form.email.includes('@')) && // 카카오는 이메일 선택
     form.name.length >= 2 &&
     form.gender &&
-    form.birthDate.length === 10 && // 1994-05-30 format (hyphened)
+    form.birthDate.length === 8 && // 94-05-30 format (hyphened)
     form.phone.length >= 12;
 
   useEffect(() => {
@@ -81,10 +81,13 @@ export default function SocialProfilePage() {
   };
 
   const formatBirthDate = (val: string) => {
-    const digits = val.replace(/\D/g, '').slice(0, 8);
-    if (digits.length <= 4) return digits;
-    if (digits.length <= 6) return `${digits.slice(0, 4)}-${digits.slice(4)}`;
-    return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6)}`;
+    let digits = val.replace(/[^0-9]/g, '');
+    if (digits.length > 2 && digits.length <= 4) {
+      digits = digits.replace(/(\d{2})(\d{1,2})/, '$1-$2');
+    } else if (digits.length > 4) {
+      digits = digits.replace(/(\d{2})(\d{2})(\d{1,2})/, '$1-$2-$3');
+    }
+    return digits.substring(0, 8);
   };
 
   const update = (key: string, value: string) => {
@@ -151,6 +154,17 @@ export default function SocialProfilePage() {
         updatedAt: serverTimestamp(),
         photoConsent: agreements.photoConsent,
         photoURL: user.photoURL || null,
+      });
+
+      // 5,000원 쿠폰 발급 (유효기간 3개월 = 90일)
+      const expiresAt = new Date();
+      expiresAt.setMonth(expiresAt.getMonth() + 3);
+      await addDoc(collection(db, 'users', user.uid, 'coupons'), {
+        name: '가입 축하 5,000원 할인쿠폰',
+        amount: 5000,
+        createdAt: serverTimestamp(),
+        expiresAt: expiresAt,
+        isUsed: false,
       });
 
       toast.success('가입이 완료되었습니다! 🎉');
@@ -252,7 +266,7 @@ export default function SocialProfilePage() {
             {/* 4. BirthDate */}
             <div>
               <label className="kl-label" style={{ fontWeight: '800', marginBottom: '10px' }}>생년월일</label>
-              <input className="kl-input" style={{ borderRadius: '12px', height: '54px' }} type="text" placeholder="ex. 1994-05-30" value={form.birthDate} onChange={e => update('birthDate', e.target.value)} />
+              <input className="kl-input" style={{ borderRadius: '12px', height: '54px' }} type="text" placeholder="ex. 940530" value={form.birthDate} onChange={e => update('birthDate', e.target.value)} />
             </div>
 
             {/* 5. Phone */}

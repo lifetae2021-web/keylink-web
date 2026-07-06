@@ -18,7 +18,7 @@ import { chosungIncludes } from '@/lib/utils';
 import UserProfileModal from './UserProfileModal';
 import SMSPreviewModal from '@/components/admin/SMSPreviewModal';
 
-type Status = 'all' | 'pending' | 'verified' | 'rejected' | 'dummy' | 'waitpool';
+type Status = 'all' | 'pending' | 'verified' | 'rejected' | 'dummy' | 'waitpool' | 'guest';
 
 const STATUS_CFG = {
   verified: { label: '인증완료', color: '#10B981', bg: '#ECFDF5' },
@@ -35,6 +35,7 @@ const TABS: { key: Status; label: string }[] = [
   { key: 'verified', label: '인증완료' },
   { key: 'rejected', label: '반려' },
   { key: 'waitpool', label: '⚡ 우선 대기' },
+  { key: 'guest', label: '비회원' },
   { key: 'dummy', label: '더미계정' },
 ];
 
@@ -316,13 +317,20 @@ export default function UsersPage() {
 
       if (usersNeedingPhotos.length > 0) {
         const appSnap = await getDocs(collection(db, 'private_applications'));
+        const publicAppSnap = await getDocs(collection(db, 'applications'));
         const photoMap: Record<string, string[]> = {};
-        appSnap.docs.forEach(d => {
-          const data = d.data();
-          if (data.userId && Array.isArray(data.photos) && data.photos.length > 0) {
-            photoMap[data.userId] = data.photos.filter(Boolean);
-          }
-        });
+
+        const processDocs = (docs: any[]) => {
+          docs.forEach(d => {
+            const data = d.data();
+            if (data.userId && Array.isArray(data.photos) && data.photos.length > 0) {
+              photoMap[data.userId] = data.photos.filter(Boolean);
+            }
+          });
+        };
+
+        processDocs(publicAppSnap.docs);
+        processDocs(appSnap.docs);
 
         const merged = fetchedUsers.map((u: any) => {
           const hasPhoto = u.photos?.[0] || u.profilePhotos?.[0] || u.facePhotos?.[0] || u.bodyPhotos?.[0] || u.photoUrl || u.photoURL;
@@ -360,26 +368,32 @@ export default function UsersPage() {
 
   const counts = useMemo(() => {
     const isDummy = (u: any) => u.isDummy === true || u.id?.startsWith('dummy') || u.id?.startsWith('user_m_') || u.id?.startsWith('user_f_');
+    const isGuest = (u: any) => u.isRegistered === false;
+    const isRegular = (u: any) => !isDummy(u) && !isGuest(u);
     return {
-      all: users.filter(u => !isDummy(u)).length,
-      pending: users.filter(u => !isDummy(u) && ((u.status || 'pending') === 'pending' || u.isJobReviewed === false)).length,
-      verified: users.filter(u => !isDummy(u) && (u.status || 'pending') === 'verified' && u.isJobReviewed !== false).length,
-      rejected: users.filter(u => !isDummy(u) && u.status === 'rejected').length,
+      all: users.filter(u => isRegular(u)).length,
+      pending: users.filter(u => isRegular(u) && ((u.status || 'pending') === 'pending' || u.isJobReviewed === false)).length,
+      verified: users.filter(u => isRegular(u) && (u.status || 'pending') === 'verified' && u.isJobReviewed !== false).length,
+      rejected: users.filter(u => isRegular(u) && u.status === 'rejected').length,
       dummy: users.filter(u => isDummy(u)).length,
-      waitpool: users.filter(u => !isDummy(u) && Array.isArray(u.cancelledSessionHistory) && u.cancelledSessionHistory.length > 0).length,
+      guest: users.filter(u => isGuest(u)).length,
+      waitpool: users.filter(u => isRegular(u) && Array.isArray(u.cancelledSessionHistory) && u.cancelledSessionHistory.length > 0).length,
     };
   }, [users]);
 
   const genderCounts = useMemo(() => {
     const isDummy = (u: any) => u.isDummy === true || u.id?.startsWith('dummy') || u.id?.startsWith('user_m_') || u.id?.startsWith('user_f_');
+    const isGuest = (u: any) => u.isRegistered === false;
+    const isRegular = (u: any) => !isDummy(u) && !isGuest(u);
+    
     const baseUsers = users.filter(u => {
-      const isD = isDummy(u);
-      if (filter === 'dummy') return isD;
-      if (filter === 'waitpool') return !isD && Array.isArray(u.cancelledSessionHistory) && u.cancelledSessionHistory.length > 0;
-      if (filter === 'all') return !isD;
-      if (filter === 'pending') return !isD && ((u.status || 'pending') === 'pending' || u.isJobReviewed === false);
-      if (filter === 'verified') return !isD && (u.status || 'pending') === 'verified' && u.isJobReviewed !== false;
-      return !isD && (u.status || 'pending') === filter;
+      if (filter === 'dummy') return isDummy(u);
+      if (filter === 'guest') return isGuest(u);
+      if (filter === 'waitpool') return isRegular(u) && Array.isArray(u.cancelledSessionHistory) && u.cancelledSessionHistory.length > 0;
+      if (filter === 'all') return isRegular(u);
+      if (filter === 'pending') return isRegular(u) && ((u.status || 'pending') === 'pending' || u.isJobReviewed === false);
+      if (filter === 'verified') return isRegular(u) && (u.status || 'pending') === 'verified' && u.isJobReviewed !== false;
+      return isRegular(u) && (u.status || 'pending') === filter;
     });
     return {
       all: baseUsers.length,
@@ -389,6 +403,10 @@ export default function UsersPage() {
   }, [users, filter]);
 
   const filtered = useMemo(() => {
+    const isDummy = (u: any) => u.isDummy === true || u.id?.startsWith('dummy') || u.id?.startsWith('user_m_') || u.id?.startsWith('user_f_');
+    const isGuest = (u: any) => u.isRegistered === false;
+    const isRegular = (u: any) => !isDummy(u) && !isGuest(u);
+
     return users.filter(u => {
       const q = search.trim();
       const qLower = q.toLowerCase();
@@ -399,21 +417,21 @@ export default function UsersPage() {
         (u.phone || '').toLowerCase().includes(qLower) ||
         (u.email || '').toLowerCase().includes(qLower);
       
-      const isDummy = u.isDummy === true || u.id?.startsWith('dummy') || u.id?.startsWith('user_m_') || u.id?.startsWith('user_f_');
-      
       let matchFilter = false;
       if (filter === 'dummy') {
-        matchFilter = isDummy;
+        matchFilter = isDummy(u);
+      } else if (filter === 'guest') {
+        matchFilter = isGuest(u);
       } else if (filter === 'waitpool') {
-        matchFilter = !isDummy && Array.isArray(u.cancelledSessionHistory) && u.cancelledSessionHistory.length > 0;
+        matchFilter = isRegular(u) && Array.isArray(u.cancelledSessionHistory) && u.cancelledSessionHistory.length > 0;
       } else if (filter === 'all') {
-        matchFilter = !isDummy;
+        matchFilter = isRegular(u);
       } else if (filter === 'pending') {
-        matchFilter = !isDummy && ((u.status || 'pending') === 'pending' || u.isJobReviewed === false);
+        matchFilter = isRegular(u) && ((u.status || 'pending') === 'pending' || u.isJobReviewed === false);
       } else if (filter === 'verified') {
-        matchFilter = !isDummy && (u.status || 'pending') === 'verified' && u.isJobReviewed !== false;
+        matchFilter = isRegular(u) && (u.status || 'pending') === 'verified' && u.isJobReviewed !== false;
       } else {
-        matchFilter = !isDummy && (u.status || 'pending') === filter;
+        matchFilter = isRegular(u) && (u.status || 'pending') === filter;
       }
 
       const matchGender = genderFilter === 'all' || u.gender === genderFilter;
@@ -644,7 +662,7 @@ export default function UsersPage() {
       u.email || '-',
       u.gender === 'male' ? '남성' : '여성',
       u.job || '-',
-      u.birthDate ? `${u.birthDate.includes('-') ? u.birthDate.slice(2, 4) : u.birthDate.slice(0, 2)}년생` : '-',
+      u.birthDate ? `${u.birthDate.includes('-') ? u.birthDate.split('-')[0].slice(-2) : (u.birthDate.length === 8 ? u.birthDate.slice(2, 4) : u.birthDate.slice(0, 2))}년생` : '-',
       STATUS_CFG[(u.status || 'pending') as keyof typeof STATUS_CFG].label,
       u.role || '일반회원',
       u.points || 0,
@@ -988,7 +1006,7 @@ export default function UsersPage() {
                         {/* 나이 */}
                         <td style={{ padding: '0 20px', verticalAlign: 'middle', textAlign: 'center' }}>
                           <p style={{ fontSize: '0.88rem', fontWeight: 800, color: u.birthDate ? '#1E293B' : '#94A3B8', textAlign: 'center' }}>
-                            {u.birthDate ? `${u.birthDate.includes('-') ? u.birthDate.slice(2, 4) : u.birthDate.slice(0, 2)}년생` : <span style={{ color: '#94A3B8' }}>-</span>}
+                            {u.birthDate ? `${u.birthDate.includes('-') ? u.birthDate.split('-')[0].slice(-2) : (u.birthDate.length === 8 ? u.birthDate.slice(2, 4) : u.birthDate.slice(0, 2))}년생` : <span style={{ color: '#94A3B8' }}>-</span>}
                           </p>
                         </td>
 

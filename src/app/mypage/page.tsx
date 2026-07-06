@@ -82,8 +82,9 @@ function MyPageContent() {
   const [hasVoted, setHasVoted] = useState(false);
   const [privateApp, setPrivateApp] = useState<any>(null); // v8.15.8: 1:1 매칭 신청 정보
   
-  const [sessionsMap, setSessionsMap] = useState<Record<string, Session>>({});
+  const [sessionsMap, setSessionsMap] = useState<Record<string, Session | null>>({});
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isGuestUser, setIsGuestUser] = useState(false);
 
   // Edit Form State
   const [editForm, setEditForm] = useState<any>({
@@ -162,6 +163,8 @@ function MyPageContent() {
           // 관리자 여부 확인
           const role = d?.role;
           setIsAdmin(role === 'admin' || role === 'super_admin');
+          // 비회원 여부 확인
+          setIsGuestUser(d?.isRegistered === false);
           
           const initialForm = {
             name: d.name || '',
@@ -215,9 +218,9 @@ function MyPageContent() {
       const unsubApps = subscribeMyApplications(currentUser.uid, (apps) => {
         setApplications(apps);
         apps.forEach(async (app) => {
-          if (!sessionsMap[app.sessionId]) {
+          if (sessionsMap[app.sessionId] === undefined) {
             subscribeSession(app.sessionId, (s) => {
-              if (s) setSessionsMap(prev => ({ ...prev, [app.sessionId]: s }));
+              setSessionsMap(prev => ({ ...prev, [app.sessionId]: s || null }));
             });
           }
           if (app.status === 'confirmed') {
@@ -462,6 +465,16 @@ function MyPageContent() {
     return `${d.slice(0,3)}-${d.slice(3,7)}-${d.slice(7)}`;
   };
 
+  const formatBirthDate = (val: string) => {
+    let digits = val.replace(/[^0-9]/g, '');
+    if (digits.length > 2 && digits.length <= 4) {
+      digits = digits.replace(/(\d{2})(\d{1,2})/, '$1-$2');
+    } else if (digits.length > 4) {
+      digits = digits.replace(/(\d{2})(\d{2})(\d{1,2})/, '$1-$2-$3');
+    }
+    return digits.substring(0, 8);
+  };
+
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
     const files = Array.from(e.target.files);
@@ -516,6 +529,104 @@ function MyPageContent() {
   const physique = userData?.height || userData?.weight
     ? `${userData?.height ? userData.height + 'cm' : '-'} / ${userData?.weight ? userData.weight + 'kg' : '-'}`
     : null;
+
+  /* ── 비회원 전용 간소 마이페이지 ── */
+  const renderGuestView = () => (
+    <div style={{ maxWidth: '480px', margin: '0 auto', padding: '0 16px' }}>
+
+          {/* 비회원 안내 배너 */}
+          <div style={{ background: 'linear-gradient(135deg, #FF6F61, #ff8a7a)', borderRadius: '20px', padding: '24px', marginBottom: '20px', textAlign: 'center', color: '#fff' }}>
+            <p style={{ fontSize: '0.78rem', fontWeight: '700', opacity: 0.85, marginBottom: '6px' }}>비회원으로 신청하셨어요</p>
+            <h2 style={{ fontSize: '1.2rem', fontWeight: '900', marginBottom: '4px' }}>안녕하세요, {userData?.name || '회원'}님 👋</h2>
+            <p style={{ fontSize: '0.82rem', opacity: 0.8 }}>매칭 결과만 확인 가능합니다</p>
+          </div>
+
+          {/* 매칭 결과 (성공/실패만) */}
+          <div style={{ background: '#fff', borderRadius: '20px', padding: '24px', marginBottom: '16px', boxShadow: '0 2px 12px rgba(0,0,0,0.04)', border: '1px solid #f1f5f9' }}>
+            <h3 style={{ fontWeight: '900', color: '#111', marginBottom: '16px', fontSize: '1rem' }}>📋 내 신청 현황</h3>
+            {applications.length === 0 ? (
+              <p style={{ color: '#aaa', fontSize: '0.85rem', textAlign: 'center', padding: '20px 0' }}>신청 내역이 없습니다.</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {applications.map(app => {
+                  const session = sessionsMap[app.sessionId];
+                  return (
+                    <div key={app.id} style={{ padding: '14px 16px', background: '#f8fafc', borderRadius: '14px', border: '1px solid #e8ecf0' }}>
+                      <p style={{ fontWeight: '800', color: '#111', fontSize: '0.9rem', marginBottom: '4px' }}>{session?.title || app.sessionId}</p>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{
+                          display: 'inline-block', padding: '3px 10px', borderRadius: '100px', fontSize: '0.72rem', fontWeight: '800',
+                          background: app.status === 'confirmed' ? '#DCFCE7' : app.status === 'applied' || app.status === 'selected' ? '#FEF9C3' : '#f1f5f9',
+                          color: app.status === 'confirmed' ? '#166534' : app.status === 'applied' || app.status === 'selected' ? '#92400e' : '#64748b',
+                        }}>
+                          {app.status === 'confirmed' ? '✅ 신청확정' : app.status === 'applied' ? '⏳ 검토중' : app.status === 'selected' ? '⏳ 입금대기' : '취소됨'}
+                        </span>
+                        {app.status === 'confirmed' && (
+                          <Link href={`/vote/${app.sessionId}`} style={{ display: 'inline-block', padding: '3px 12px', borderRadius: '100px', fontSize: '0.72rem', fontWeight: '800', background: '#FF6F61', color: '#fff', textDecoration: 'none' }}>
+                            투표하기 →
+                          </Link>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* 득표수 블러 처리 카드 */}
+          <div style={{ background: '#fff', borderRadius: '20px', padding: '24px', marginBottom: '16px', boxShadow: '0 2px 12px rgba(0,0,0,0.04)', border: '1px solid #f1f5f9', position: 'relative', overflow: 'hidden' }}>
+            <h3 style={{ fontWeight: '900', color: '#111', marginBottom: '16px', fontSize: '1rem' }}>💕 호감 득표 현황</h3>
+            {/* Fake content behind blur */}
+            <div style={{ filter: 'blur(8px)', userSelect: 'none', pointerEvents: 'none' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 0', borderBottom: '1px solid #f1f5f9' }}>
+                <div style={{ width: '40px', height: '40px', background: '#FFF0EE', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>❤️</div>
+                <div><p style={{ fontWeight: '800', color: '#111', fontSize: '0.9rem' }}>받은 하트</p><p style={{ color: '#FF6F61', fontWeight: '900', fontSize: '1.4rem' }}>7표</p></div>
+              </div>
+            </div>
+            {/* Lock overlay */}
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(2px)' }}>
+              <span style={{ fontSize: '1.5rem', marginBottom: '6px' }}>🔒</span>
+              <p style={{ fontSize: '0.82rem', fontWeight: '800', color: '#555' }}>정식 가입 시 확인 가능</p>
+            </div>
+          </div>
+
+          {/* 프로필 수정 (비회원) */}
+          <div style={{ marginBottom: '20px' }}>
+            <button
+              onClick={() => setIsEditing(true)}
+              style={{ width: '100%', padding: '16px', background: '#fff', borderRadius: '20px', border: '1px solid #f1f5f9', fontWeight: '800', color: '#333', fontSize: '0.95rem', cursor: 'pointer', boxShadow: '0 2px 12px rgba(0,0,0,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FF6F61" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> 내 프로필 수정하기
+            </button>
+          </div>
+
+          {/* 회원가입 유도 CTA */}
+          <div style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', borderRadius: '20px', padding: '28px 24px', textAlign: 'center', color: '#fff' }}>
+            <p style={{ fontSize: '1.1rem', fontWeight: '900', marginBottom: '8px' }}>정식 가입하고 혜택 받기</p>
+            <p style={{ fontSize: '0.82rem', opacity: 0.85, marginBottom: '20px', lineHeight: 1.6 }}>
+              득표수 확인 + 5,000원 할인 쿠폰 즉시 발급!
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <button
+                onClick={() => {
+                  const clientId = process.env.NEXT_PUBLIC_KAKAO_CLIENT_ID;
+                  if (!clientId) return;
+                  window.location.href = `https://kauth.kakao.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(window.location.origin + '/api/auth/kakao')}&response_type=code&state=upgrade_guest`;
+                }}
+                style={{ padding: '14px', background: '#FEE500', border: 'none', borderRadius: '12px', fontWeight: '800', color: '#3c1e1e', cursor: 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="#3c1e1e"><path d="M12 2C6.48 2 2 5.92 2 10.8c0 3.12 1.75 5.87 4.38 7.53L5.44 22l4.35-2.3c.72.2 1.45.3 2.21.3 5.52 0 10-3.93 10-8.8S17.52 2 12 2z" /></svg>
+                카카오로 1초 만에 가입하기
+              </button>
+              <Link href="/register" style={{ padding: '12px', background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: '12px', fontWeight: '700', color: '#fff', fontSize: '0.85rem', textDecoration: 'none', textAlign: 'center' }}>
+                일반 회원가입
+              </Link>
+            </div>
+          </div>
+
+        </div>
+  );
 
   return (
     <div style={{ minHeight: '100vh', background: '#FFF9F8', paddingTop: '80px', paddingBottom: '60px' }}>
@@ -596,7 +707,7 @@ function MyPageContent() {
             </div>
 
             <EditRow label="생년월일" required>
-              <input style={inputStyle} value={editForm.birthDate} onChange={e => setEditForm((p: any) => ({ ...p, birthDate: e.target.value }))} placeholder="ex. 1994-05-30" />
+              <input style={inputStyle} value={editForm.birthDate} onChange={e => setEditForm((p: any) => ({ ...p, birthDate: formatBirthDate(e.target.value) }))} placeholder="ex. 940530" />
             </EditRow>
 
             <EditRow label="연락처" required>
@@ -867,7 +978,8 @@ function MyPageContent() {
         </div>
       )}
 
-      <div style={{ maxWidth: '460px', margin: '0 auto', padding: '0 16px' }}>
+      {isGuestUser ? renderGuestView() : (
+        <div style={{ maxWidth: '460px', margin: '0 auto', padding: '0 16px' }}>
 
         {/* ─── PROFILE CARD ─── */}
         <div style={{ background: '#FFFFFF', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 10px 40px rgba(255,111,97,0.08)', border: '1px solid #FFE8E5', marginBottom: '16px' }}>
@@ -1192,6 +1304,7 @@ function MyPageContent() {
           매칭을 위한 모든 정보는 암호화되어 보호됩니다.
         </div>
       </div>
+      )}
 
       <style>{`
         .kl-scrollbar::-webkit-scrollbar { height: 4px; width: 4px; }
@@ -1263,22 +1376,34 @@ interface StatusBlockProps {
   submittedAt?: Date | null; // 투표 제출 시각 추가
 }
 
-function ApplicationStatusSection({ applications, sessionsMap, userId, isAdmin = false }: { applications: Application[], sessionsMap: Record<string, Session>, userId: string, isAdmin?: boolean }) {
+function ApplicationStatusSection({ applications, sessionsMap, userId, isAdmin = false }: { applications: Application[], sessionsMap: Record<string, Session | null>, userId: string, isAdmin?: boolean }) {
   const [votedMap, setVotedMap] = useState<Record<string, { voted: boolean; submittedAt?: Date | null }>>({});
 
   // 테스트 기수 신청서 필터링 (isTest: true 인 세션은 관리자가 아닌 경우에만 제외)
   // + confirmed 상태이고 행사일 기준 7일이 지난 앱은 메인에서 숨김 처리
   const visibleApps = applications.filter(app => {
     const s = sessionsMap[app.sessionId];
+    
+    // 세션 정보가 존재하지 않음 (삭제된 기수)
+    if (s === null) return false;
+
     if (isAdmin) return true; // 관리자는 테스트 기수 신청서도 표시
     if (s?.isTest) return false;
 
     // confirmed 앱은 행사일 기준 7일 이후 메인에서 숨김
     if (app.status === 'confirmed' && s?.eventDate) {
       const ed = s.eventDate;
-      const eventDate = ed instanceof Date ? ed : (ed as any)?.toDate?.() || new Date(0);
+      const eventDate = ed instanceof Date ? ed : (ed as any)?.toDate?.() || new Date(ed);
       const isSevenDaysOver = Date.now() > eventDate.getTime() + 7 * 24 * 60 * 60 * 1000;
       if (isSevenDaysOver) return false;
+    }
+
+    // 선발이 안 된(취소/검토중) 상태인데 행사가 이미 지나버렸다면(24시간) 숨김 처리
+    if (app.status !== 'confirmed' && s?.eventDate) {
+      const ed = s.eventDate;
+      const eventDate = ed instanceof Date ? ed : (ed as any)?.toDate?.() || new Date(ed);
+      const isOver = Date.now() > eventDate.getTime() + 24 * 60 * 60 * 1000;
+      if (isOver) return false;
     }
 
     return true;
@@ -1330,7 +1455,7 @@ function ApplicationStatusSection({ applications, sessionsMap, userId, isAdmin =
       const ed = session.eventDate;
       if (!ed) return true;
       
-      const eventDate = ed instanceof Date ? ed : (ed as any)?.toDate?.() || new Date(0);
+      const eventDate = ed instanceof Date ? ed : (ed as any)?.toDate?.() || new Date(ed);
       // 행사가 시작된 지 24시간이 지났는지 확인 (완전히 종료된 행사)
       const isCompletelyOver = Date.now() > eventDate.getTime() + 24 * 60 * 60 * 1000;
       
@@ -1352,16 +1477,47 @@ function ApplicationStatusSection({ applications, sessionsMap, userId, isAdmin =
     .sort((a, b) => {
       const edA = sessionsMap[a.sessionId]?.eventDate;
       const edB = sessionsMap[b.sessionId]?.eventDate;
-      const dateA = edA instanceof Date ? edA.getTime() : (edA as any)?.toMillis?.() || 0;
-      const dateB = edB instanceof Date ? edB.getTime() : (edB as any)?.toMillis?.() || 0;
+      const dateA = edA instanceof Date ? edA.getTime() : (edA as any)?.toMillis?.() || (edA ? new Date(edA).getTime() : 0);
+      const dateB = edB instanceof Date ? edB.getTime() : (edB as any)?.toMillis?.() || (edB ? new Date(edB).getTime() : 0);
       return dateA - dateB;
     });
 
-  // 2. 만약 확정된 항목이 있다면 확정 카드를 전부 출력
-  if (confirmedApps.length > 0) {
+  const inProgressApps = visibleApps
+    .filter(a => {
+      if (a.status !== 'applied' && a.status !== 'selected') return false;
+      
+      const ed = sessionsMap[a.sessionId]?.eventDate;
+      if (!ed) return true;
+      
+      const eventDate = ed instanceof Date ? ed : (ed as any)?.toDate?.() || new Date(ed);
+      
+      // 이미 시작되었거나 종료된 행사인데 아직도 확정(confirmed)이 아니라면 미선발로 간주하고 숨김 처리
+      if (Date.now() > eventDate.getTime()) {
+        return false;
+      }
+      
+      return true;
+    })
+    .sort((a, b) => {
+      // 1. 상태 기준 정렬 (selected가 먼저 오도록)
+      if (a.status === 'selected' && b.status !== 'selected') return -1;
+      if (a.status !== 'selected' && b.status === 'selected') return 1;
+
+      // 2. 같은 상태라면 행사일 기준 오름차순 (가까운 행사일 먼저)
+      const edA = sessionsMap[a.sessionId]?.eventDate;
+      const edB = sessionsMap[b.sessionId]?.eventDate;
+      const dateA = edA instanceof Date ? edA.getTime() : (edA as any)?.toMillis?.() || (edA ? new Date(edA).getTime() : 0);
+      const dateB = edB instanceof Date ? edB.getTime() : (edB as any)?.toMillis?.() || (edB ? new Date(edB).getTime() : 0);
+      return dateA - dateB;
+    });
+
+  const appsToDisplay = [...confirmedApps, ...inProgressApps];
+
+  // 2. 확정되거나 진행 중인 항목이 있다면 모두 출력
+  if (appsToDisplay.length > 0) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', marginBottom: '32px' }}>
-        {confirmedApps.map(app => (
+        {appsToDisplay.map(app => (
           <ApplicationStatusBlock
             key={app.id}
             application={app}
@@ -1375,8 +1531,8 @@ function ApplicationStatusSection({ applications, sessionsMap, userId, isAdmin =
     );
   }
 
-  // 3. 확정 항목이 없다면 가장 최근 상태(applied, selected 등) 하나를 출력
-  const latestApp = visibleApps[0]; // subscribeMyApplications에서 updatedAt 기준 내림차순 정렬됨
+  // 4. 진행 중인 것도 없다면 취소된 가장 최근 항목 하나 출력
+  const latestApp = visibleApps[0];
   return (
     <ApplicationStatusBlock
       application={latestApp}
@@ -1454,7 +1610,7 @@ function ApplicationStatusBlock({ application, session, userId, hasVoted, submit
   // v7.2.0: ID 대신 실제 기수 명칭 표시
   const sessionTitle = session
     ? `${session.region === 'busan' ? '부산' : '창원'} ${session.episodeNumber}기`
-    : application.sessionId || '해당 기수';
+    : '삭제된 기수';
   
   const sessionDateStr = session ? (() => {
     const d = session.eventDate instanceof Date ? session.eventDate : (session.eventDate as any).toDate();
@@ -1463,7 +1619,7 @@ function ApplicationStatusBlock({ application, session, userId, hasVoted, submit
 
   const sessionVenue = session?.venue || null;
 
-  // ── 검토 중 (applied) ──
+  // 2) 검토중 (applied)
   if (application.status === 'applied') {
     return card(
       <>

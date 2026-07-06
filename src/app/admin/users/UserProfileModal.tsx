@@ -421,7 +421,7 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
                     src={currentPhoto}
                     alt={user.name}
                     onError={() => setBrokenPhotos(prev => ({ ...prev, [photoIndex]: true }))}
-                    className="w-full h-full object-contain"
+                    className="w-full h-full object-contain hover:scale-[1.4] transition-transform duration-500 cursor-zoom-in"
                   />
                 ) : (
                   <div className="w-full h-full flex flex-col items-center justify-center bg-slate-50 p-6 text-center break-all">
@@ -485,7 +485,7 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
                     {user.gender === 'male' ? '남성' : '여성'}
                   </span>
                   <span className="text-slate-400">/</span>
-                  <span className="text-slate-700">{user.birthDate ? `${user.birthDate.includes('-') ? user.birthDate.slice(2, 4) : user.birthDate.slice(0, 2)}년생` : '??'}</span>
+                  <span className="text-slate-700">{user.birthDate ? `${user.birthDate.includes('-') ? user.birthDate.split('-')[0].slice(-2) : (user.birthDate.length === 8 ? user.birthDate.slice(2, 4) : user.birthDate.slice(0, 2))}년생` : '??'}</span>
                 </div>
                 <DetailRow label="거주지" value={user.residence || user.location} icon={MapPin} />
               </div>
@@ -582,7 +582,7 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
                     <DetailRow label="몸무게" value={user.weight ? `${user.weight}kg` : null} icon={Weight} />
                   </div>
                   <DetailRow label="회사명/직무" value={user.workplace || user.jobRole || user.job} icon={Briefcase} />
-                  <DetailRow label="출생" value={user.birthDate ? `${user.birthDate.includes('-') ? user.birthDate.slice(2, 4) : user.birthDate.slice(0, 2)}년생` : null} icon={Calendar} />
+                  <DetailRow label="출생" value={user.birthDate ? `${user.birthDate.includes('-') ? user.birthDate.split('-')[0].slice(-2) : (user.birthDate.length === 8 ? user.birthDate.slice(2, 4) : user.birthDate.slice(0, 2))}년생` : null} icon={Calendar} />
 
                   {/* v7.8.0 재직 증명 확인 섹션 */}
                   <div className="flex items-center justify-between py-4 border-b border-slate-50">
@@ -756,12 +756,13 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
                           const uid = user.uid || user.id;
                           if (!uid) return;
                           try {
-                            const { doc: docRef, updateDoc: upd, increment } = await import('firebase/firestore');
+                            const { doc: docRef, writeBatch, increment } = await import('firebase/firestore');
+                            const batch = writeBatch(db);
                             const prev = app.attendanceStatus;
 
                             // applications 업데이트
                             const nextStatus = prev === newStatus ? null : newStatus;
-                            await upd(docRef(db, 'applications', app.id), {
+                            batch.update(docRef(db, 'applications', app.id), {
                               attendanceStatus: nextStatus,
                               attended: nextStatus === 'present' || nextStatus === 'late',
                               updatedAt: new Date(),
@@ -773,36 +774,50 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
                             const wasParticipating = isParticipating(prev);
                             const willParticipate = isParticipating(nextStatus);
 
+                            let updateData: any = {};
+                            let userStateUpdate: any = {};
+
                             if (willParticipate && !wasParticipating) {
-                              await upd(userRef, { participationCount: increment(1) });
-                              setUser((u: any) => ({ ...u, participationCount: (u.participationCount || 0) + 1 }));
+                              updateData.participationCount = increment(1);
+                              userStateUpdate.participationCount = (user.participationCount || 0) + 1;
                             } else if (!willParticipate && wasParticipating) {
-                              await upd(userRef, { participationCount: increment(-1) });
-                              setUser((u: any) => ({ ...u, participationCount: Math.max(0, (u.participationCount || 0) - 1) }));
+                              updateData.participationCount = increment(-1);
+                              userStateUpdate.participationCount = Math.max(0, (user.participationCount || 0) - 1);
                             }
 
                             if (newStatus === 'no-show' && prev !== 'no-show') {
-                              await upd(userRef, { noShowCount: increment(1) });
-                              setUser((u: any) => ({ ...u, noShowCount: (u.noShowCount || 0) + 1 }));
+                              updateData.noShowCount = increment(1);
+                              userStateUpdate.noShowCount = (user.noShowCount || 0) + 1;
                             } else if (newStatus !== 'no-show' && prev === 'no-show') {
-                              await upd(userRef, { noShowCount: increment(-1) });
-                              setUser((u: any) => ({ ...u, noShowCount: Math.max(0, (u.noShowCount || 0) - 1) }));
+                              updateData.noShowCount = increment(-1);
+                              userStateUpdate.noShowCount = Math.max(0, (user.noShowCount || 0) - 1);
                             }
                             
                             if (newStatus === 'late' && prev !== 'late') {
-                              await upd(userRef, { tardyCount: increment(1) });
-                              setUser((u: any) => ({ ...u, tardyCount: (u.tardyCount || 0) + 1 }));
+                              updateData.tardyCount = increment(1);
+                              userStateUpdate.tardyCount = (user.tardyCount || 0) + 1;
                             } else if (newStatus !== 'late' && prev === 'late') {
-                              await upd(userRef, { tardyCount: increment(-1) });
-                              setUser((u: any) => ({ ...u, tardyCount: Math.max(0, (u.tardyCount || 0) - 1) }));
+                              updateData.tardyCount = increment(-1);
+                              userStateUpdate.tardyCount = Math.max(0, (user.tardyCount || 0) - 1);
+                            }
+
+                            if (Object.keys(updateData).length > 0) {
+                              batch.update(userRef, updateData);
+                            }
+
+                            await batch.commit();
+
+                            if (Object.keys(userStateUpdate).length > 0) {
+                              setUser((u: any) => ({ ...u, ...userStateUpdate }));
                             }
 
                             // 로컬 상태 업데이트
-                            setUserApps(prev => prev.map(a =>
+                            setUserApps(prevApps => prevApps.map(a =>
                               a.id === app.id ? { ...a, attendanceStatus: nextStatus, attended: nextStatus === 'present' || nextStatus === 'late' } : a
                             ));
                             toast.success(nextStatus ? `${nextStatus === 'present' ? '출석' : nextStatus === 'late' ? '지각' : '노쇼'} 처리됨` : '출석 상태 초기화');
                           } catch (e) {
+                            console.error('Failed to update status', e);
                             toast.error('변경에 실패했습니다.');
                           }
                         };
@@ -938,7 +953,7 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
                           src={docUrl}
                           alt="재직 인증 서류"
                           onError={() => setImgError(true)}
-                          className="max-w-full max-h-[70vh] object-contain rounded-2xl shadow-sm bg-slate-50"
+                          className="max-w-full max-h-[70vh] object-contain rounded-2xl shadow-sm bg-slate-50 hover:scale-[1.4] transition-transform duration-500 cursor-zoom-in"
                         />
                       );
                     })()}

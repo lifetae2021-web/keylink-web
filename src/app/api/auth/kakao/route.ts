@@ -5,19 +5,32 @@ const KAKAO_TOKEN_URL = 'https://kauth.kakao.com/oauth/token';
 const KAKAO_USER_PROFILE_URL = 'https://kapi.kakao.com/v2/user/me';
 
 async function getKakaoProfile(code: string, redirectUri: string) {
+  const params = new URLSearchParams({
+    grant_type: 'authorization_code',
+    client_id: process.env.NEXT_PUBLIC_KAKAO_CLIENT_ID || '',
+    redirect_uri: redirectUri,
+    code,
+  });
+
+  if (process.env.KAKAO_CLIENT_SECRET) {
+    params.append('client_secret', process.env.KAKAO_CLIENT_SECRET);
+  }
+
+  console.log('--- KAKAO TOKEN EXCHANGE DEBUG ---');
+  console.log('client_id:', process.env.NEXT_PUBLIC_KAKAO_CLIENT_ID);
+  console.log('redirect_uri:', redirectUri);
+  console.log('client_secret exists:', !!process.env.KAKAO_CLIENT_SECRET);
+
   const tokenRes = await fetch(KAKAO_TOKEN_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8' },
-    body: new URLSearchParams({
-      grant_type: 'authorization_code',
-      client_id: process.env.NEXT_PUBLIC_KAKAO_CLIENT_ID || '',
-      client_secret: process.env.KAKAO_CLIENT_SECRET || '',
-      redirect_uri: redirectUri,
-      code,
-    }),
+    body: params,
   });
   const tokenData = await tokenRes.json();
-  if (tokenData.error) throw new Error(tokenData.error_description);
+  if (tokenData.error) {
+    console.error('Kakao Token Error:', tokenData);
+    throw new Error(tokenData.error_description || 'Bad credentials');
+  }
 
   const profileRes = await fetch(KAKAO_USER_PROFILE_URL, {
     headers: { Authorization: `Bearer ${tokenData.access_token}` },

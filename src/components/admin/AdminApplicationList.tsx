@@ -230,7 +230,7 @@ export default function AdminApplicationList({ isSuperAdmin, isAdmin }: { isSupe
                                 </span>
                               </div>
                               <span className="text-[0.75rem] font-bold text-slate-400 mt-0.5">
-                                {app.birthDate ? (app.birthDate.includes('-') ? app.birthDate.slice(2, 4) : app.birthDate.slice(0, 2)) : '--'}년생
+                                {app.birthDate ? (app.birthDate.includes('-') ? app.birthDate.split('-')[0].slice(-2) : (app.birthDate.length === 8 ? app.birthDate.slice(2, 4) : app.birthDate.slice(0, 2))) : '--'}년생
                               </span>
                             </div>
                           </div>
@@ -306,7 +306,7 @@ export default function AdminApplicationList({ isSuperAdmin, isAdmin }: { isSupe
                                     </span>
                                   </div>
                                   <div className="text-[0.75rem] text-slate-500 font-bold mt-0.5">
-                                    {app.birthDate ? (app.birthDate.includes('-') ? app.birthDate.slice(2, 4) : app.birthDate.slice(0, 2)) : '--'}년생
+                                    {app.birthDate ? (app.birthDate.includes('-') ? app.birthDate.split('-')[0].slice(-2) : (app.birthDate.length === 8 ? app.birthDate.slice(2, 4) : app.birthDate.slice(0, 2))) : '--'}년생
                                   </div>
                                 </div>
                               </div>

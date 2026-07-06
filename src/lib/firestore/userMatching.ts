@@ -10,14 +10,14 @@ import { db } from '@/lib/firebase';
 import { Session, Application, Vote } from '@/lib/types';
 
 async function getSummary(sessionId: string) {
-  const q = query(
-    collection(db, 'matchingSummaries'),
-    where('__name__', '==', sessionId),
-    where('status', '==', 'approved')
-  );
-  const snap = await getDocs(q);
-  if (snap.empty) return null;
-  return snap.docs[0].data() as {
+  const snap = await getDoc(doc(db, 'matchingSummaries', sessionId));
+  if (!snap.exists()) return null;
+  
+  const data = snap.data();
+  // For older sessions, if status field is missing, we assume it's approved
+  if (data.status && data.status !== 'approved') return null;
+  
+  return data as {
     sessionId: string;
     matchedPairs: { userAId: string; userBId: string }[];
     unmatchedUserIds: string[];
@@ -64,8 +64,9 @@ export async function getUserParticipations(userId: string, isAdmin: boolean = f
     } as Session;
 
     const inResults = summary && (
-      summary.unmatchedUserIds.includes(userId) ||
-      summary.matchedPairs.some(p => p.userAId === userId || p.userBId === userId)
+      (summary.unmatchedUserIds || []).includes(userId) ||
+      (summary.matchedPairs || []).some(p => p.userAId === userId || p.userBId === userId) ||
+      summary.unmatchedUserIds === undefined // For older sessions without this field
     );
     const hasPublishedResult = !!(summary && summary.status === 'approved' && inResults);
 
@@ -97,7 +98,7 @@ export async function getUserMatchResult(userId: string, sessionId: string): Pro
 
   const partnerIds = getPartnerIds(summary, userId);
   const isMatched = partnerIds.length > 0;
-  const inResults = isMatched || summary.unmatchedUserIds.includes(userId);
+  const inResults = isMatched || (summary.unmatchedUserIds || []).includes(userId) || summary.unmatchedUserIds === undefined;
   if (!inResults) return null;
 
   let partnerProfile: any = undefined;

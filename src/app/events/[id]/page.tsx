@@ -637,9 +637,14 @@ export default function EventDetailPage() {
                 </div>
               </div>
 
+              <div style={{ marginBottom: '4px' }}>
+                <p style={{ fontSize: '0.85rem', fontWeight: '800', color: 'var(--color-text-primary)', marginBottom: '6px' }}>제4조 (법적 미혼 및 신원 보증)</p>
+                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>본 서비스는 진정성 있는 만남을 목적으로 합니다. <strong style={{ color: '#C86A6A' }}>본인은 현재 법적 미혼이며 교제 중인 이성이 없음을 보증합니다.</strong> 이를 위반하거나 허위 정보를 기재하여 타인 및 서비스에 피해를 줄 경우, 서비스 이용이 즉각 영구 정지되며 기결제된 금액은 전액 환불 불가합니다. 또한 이로 인해 발생하는 법적 책임 및 민/형사상의 손해배상을 전적으로 부담할 것에 동의합니다.</p>
+              </div>
+
               <div>
-                <p style={{ fontSize: '0.85rem', fontWeight: '800', color: 'var(--color-text-primary)', marginBottom: '6px' }}>제4조 (유의 사항)</p>
-                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>본인은 위 환불 및 취소 규정을 충분히 확인하였으며, 이에 동의합니다.</p>
+                <p style={{ fontSize: '0.85rem', fontWeight: '800', color: 'var(--color-text-primary)', marginBottom: '6px' }}>제5조 (유의 사항)</p>
+                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>본인은 위 환불 및 취소, 이용 규정을 충분히 확인하였으며, 이에 동의합니다.</p>
               </div>
             </div>
 

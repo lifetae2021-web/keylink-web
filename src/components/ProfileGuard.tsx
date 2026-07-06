@@ -34,9 +34,10 @@ export default function ProfileGuard() {
         const data = userSnap.data();
         const isIncomplete = data && (!data.gender || !data.birthDate || !data.phone);
 
+        // 사용자가 "프로필 입력 없이 카카오 인증만으로 가입/이용"을 원하므로 강제 리다이렉트 해제
         if (isNewUser || isIncomplete) {
-          console.log('New User Detected');
-          router.replace('/register/social-profile');
+          console.log('New User Detected, but skipping forced profile redirect per user request.');
+          // router.replace('/register/social-profile');
         }
       } catch (error) {
         console.error('Profile guard error:', error);

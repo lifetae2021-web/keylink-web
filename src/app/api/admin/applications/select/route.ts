@@ -17,6 +17,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '신청서 ID가 필요합니다.' }, { status: 400 });
     }
 
+    if (process.env.NODE_ENV === 'development') {
+      return NextResponse.json({ 
+        error: '[로컬 환경] 로컬 테스트 중에는 실제 선발 처리가 제한됩니다.',
+        isMock: true
+      }, { status: 403 });
+    }
+
     // 1. 관리자 권한 확인 (Authorization 헤더 검증)
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
@@ -48,7 +55,7 @@ export async function POST(req: NextRequest) {
     const isDummyForCheck = applicationId.startsWith('dummy') || userId.startsWith('user_m_') || userId.startsWith('user_f_') || userDocForCheck.data()?.isDummy === true;
     const isDarkTemplarForCheck = userDocForCheck.data()?.role === 'super_admin' || initialAppData.isDarkTemplar === true;
 
-    const isDev = process.env.NODE_ENV === 'development';
+    const isDev = (process.env.NODE_ENV as string) === 'development';
     // 중복 만남 체크 (닼템/더미가 아니며 bypass하지 않는 경우)
     if (!isDev && !isDummyForCheck && !isDarkTemplarForCheck && !bypassOverlapCheck) {
       const overlapMessage = await checkOverlap(userId, sessionId, gender);

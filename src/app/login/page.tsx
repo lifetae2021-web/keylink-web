@@ -8,6 +8,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { auth, db } from '@/lib/firebase';
 import { 
   signInWithEmailAndPassword, 
+  signInWithCustomToken,
   onAuthStateChanged, 
   setPersistence, 
   browserLocalPersistence, 
@@ -20,9 +21,17 @@ import { getAuthErrorMessage } from '@/lib/auth-errors';
 function LoginContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  
+  // Member States
   const [userId, setUserId] = useState('');
   const [password, setPassword] = useState('');
   const [rememberId, setRememberId] = useState(true); // v7.1.3: 기본값 true로 설정
+  
+  // Guest States
+  const [loginMode, setLoginMode] = useState<'member' | 'guest'>('member');
+  const [guestId, setGuestId] = useState('');
+  const [guestPw, setGuestPw] = useState('');
+
   const [autoLogin, setAutoLogin] = useState(true); // Default to true
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -91,11 +100,47 @@ function LoginContent() {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         // v6.7.0: Single redirect point - prevents duplicate toast + navigation
-        router.replace('/');
+        const redirectParam = searchParams.get('redirect');
+        router.replace(redirectParam || '/');
       }
     });
     return () => unsubscribe();
   }, [router]);
+
+  const handleGuestLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!guestId || !guestPw) {
+      toast.error('생년월일과 비밀번호를 입력해 주세요.');
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const res = await fetch('/api/auth/guest-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ guestId, guestPw }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || '비회원 로그인에 실패했습니다.');
+        setIsLoading(false);
+        return;
+      }
+      
+      const persistence = autoLogin ? browserLocalPersistence : browserSessionPersistence;
+      await setPersistence(auth, persistence);
+      
+      await signInWithCustomToken(auth, data.token);
+      
+      // Save last login method
+      localStorage.setItem('keylink_last_login_method', 'guest');
+      toast.success('비회원 로그인에 성공했습니다!');
+    } catch (error: any) {
+      console.error('Guest Login Error:', error);
+      toast.error('서버 통신 중 오류가 발생했습니다.');
+      setIsLoading(false);
+    }
+  };
 
   const handleNormalLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -191,8 +236,24 @@ function LoginContent() {
         }}>
           <h1 style={{ fontSize: '1.6rem', fontWeight: '900', marginBottom: '32px', color: '#111', textAlign: 'center' }}>로그인</h1>
 
-          {/* Normal Login Form */}
-          <form onSubmit={handleNormalLogin} style={{ marginBottom: '24px' }}>
+          {/* Member / Guest Tabs */}
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
+            <button
+              onClick={() => setLoginMode('member')}
+              style={{ flex: 1, padding: '12px', borderRadius: '12px', border: 'none', fontWeight: '800', cursor: 'pointer', transition: 'all 0.2s', background: loginMode === 'member' ? '#FF6F61' : '#f1f5f9', color: loginMode === 'member' ? '#fff' : '#64748b' }}
+            >
+              회원
+            </button>
+            <button
+              onClick={() => setLoginMode('guest')}
+              style={{ flex: 1, padding: '12px', borderRadius: '12px', border: 'none', fontWeight: '800', cursor: 'pointer', transition: 'all 0.2s', background: loginMode === 'guest' ? '#FF6F61' : '#f1f5f9', color: loginMode === 'guest' ? '#fff' : '#64748b' }}
+            >
+              비회원
+            </button>
+          </div>
+
+          {loginMode === 'member' ? (
+            <form onSubmit={handleNormalLogin} style={{ marginBottom: '24px' }}>
 
             <div style={{ marginBottom: '16px' }}>
               <label style={{ fontSize: '0.85rem', fontWeight: '700', color: '#333', display: 'block', marginBottom: '8px' }}>아이디</label>
@@ -264,6 +325,56 @@ function LoginContent() {
               </button>
             </div>
           </form>
+          ) : (
+            <form onSubmit={handleGuestLogin} style={{ marginBottom: '24px' }}>
+
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ fontSize: '0.85rem', fontWeight: '700', color: '#333', display: 'block', marginBottom: '8px' }}>생년월일 (6자리)</label>
+                <input
+                  type="text"
+                  maxLength={6}
+                  className="kl-input"
+                  placeholder="ex)940530"
+                  value={guestId}
+                  onChange={(e) => handleInputChange(setGuestId, e.target.value.replace(/\\D/g, ''))}
+                  style={{ borderRadius: '12px', padding: '14px' }}
+                />
+              </div>
+              <div style={{ marginBottom: '24px' }}>
+                <label style={{ fontSize: '0.85rem', fontWeight: '700', color: '#333', display: 'block', marginBottom: '8px' }}>비밀번호 (4자리)</label>
+                <input
+                  type="password"
+                  maxLength={4}
+                  className="kl-input"
+                  placeholder="설정한 비밀번호 또는 휴대폰 뒷자리"
+                  value={guestPw}
+                  onChange={(e) => handleInputChange(setGuestPw, e.target.value.replace(/\\D/g, ''))}
+                  style={{ borderRadius: '12px', padding: '14px' }}
+                />
+              </div>
+              
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginBottom: '24px', padding: '0 4px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.85rem', color: '#666' }}>
+                  <input
+                    type="checkbox"
+                    checked={autoLogin}
+                    onChange={(e) => setAutoLogin(e.target.checked)}
+                    style={{ width: '16px', height: '16px', accentColor: '#FF6F61' }}
+                  />
+                  자동 로그인
+                </label>
+              </div>
+
+              <button
+                type="submit"
+                className="kl-btn-primary"
+                disabled={isLoading}
+                style={{ width: '100%', padding: '16px', borderRadius: '100px', fontWeight: '800', fontSize: '1rem' }}
+              >
+                {isLoading ? '로그인 중...' : '비회원 로그인'}
+              </button>
+            </form>
+          )}
 
           {/* Sub Links */}
           <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', marginBottom: '32px' }}>
@@ -287,8 +398,13 @@ function LoginContent() {
             <div style={{ flex: 1, height: '1px', background: '#eee' }} />
           </div>
 
-          {/* Social Buttons Container */}
-          <SocialAuth isLoading={isLoading} setIsLoading={setIsLoading} lastMethod={lastMethod} />
+          {/* Social Auth Buttons */}
+          <SocialAuth 
+            isLoading={isLoading} 
+            setIsLoading={setIsLoading} 
+            lastMethod={lastMethod} 
+            redirectUrl={searchParams.get('redirect')} 
+          />
         </div>
 
 

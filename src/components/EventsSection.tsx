@@ -43,7 +43,7 @@ function sessionToEvent(session: Session): KeylinkEvent {
   };
 }
 
-export function EventsSection({ standalone = false }: { standalone?: boolean }) {
+export function EventsSection({ standalone = false, calendarOnly = false }: { standalone?: boolean; calendarOnly?: boolean }) {
   const searchParams = useSearchParams();
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedRegion, setSelectedRegion] = useState<'busan' | 'changwon'>('busan');
@@ -135,10 +135,13 @@ export function EventsSection({ standalone = false }: { standalone?: boolean }) 
     .filter((e) => e.region === selectedRegion)
     .sort((a, b) => a.date.getTime() - b.date.getTime());
 
-  const handleDateSelect = (date: Date | null) => {
-    setSelectedDate(date);
-    if (date) {
-      // 선택한 날짜의 첫 번째 이벤트 찾기
+  const handleDateSelect = (date: Date) => {
+    if (selectedDate && isSameDay(selectedDate, date)) {
+      setSelectedDate(null);
+    } else {
+      setSelectedDate(date);
+      if (date) {
+        // 선택한 날짜의 첫 번째 이벤트 찾기
       const targetEvent = filtered.find(e => isSameDay(e.date, date));
       if (targetEvent) {
         // DOM 업데이트(필요 시) 반영을 위해 약간의 딜레이
@@ -149,6 +152,7 @@ export function EventsSection({ standalone = false }: { standalone?: boolean }) 
             window.scrollTo({ top: y, behavior: 'smooth' });
           }
         }, 50);
+      }
       }
     }
   };
@@ -201,37 +205,51 @@ export function EventsSection({ standalone = false }: { standalone?: boolean }) 
       </section>
 
       {/* Events Grid */}
-      <section className="kl-section" style={{ paddingTop: '20px' }}>
-        {isLoading ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '24px' }}>
-            {[1, 2].map((i) => (
-              <div key={i} style={{ height: '380px', borderRadius: '20px', background: 'var(--color-surface-2)', animation: 'pulse 1.5s ease-in-out infinite' }} />
-            ))}
-          </div>
-        ) : filtered.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '100px 20px', color: 'var(--color-text-muted)', gridColumn: '1 / -1' }}>
-            <div style={{ fontSize: '3.5rem', marginBottom: '24px', opacity: 0.8 }}>🌸</div>
-            <p style={{ fontSize: '1.1rem', fontWeight: '700', color: 'var(--color-text-primary)', marginBottom: '8px' }}>현재 준비 중인 기수가 없습니다.</p>
-            <p style={{ fontSize: '0.9rem' }}>곧 새로운 기수로 찾아뵐게요!</p>
-          </div>
-        ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '24px' }}>
-            {filtered.map((event, idx) => {
-              const isSelected = selectedDate ? isSameDay(event.date, selectedDate) : false;
-              return (
-                <div key={event.id} id={`event-${event.id}`} className="animate-fadeInUp" style={{ animationDelay: `${idx * 0.1}s` }}>
-                  <EventCard event={event} isSelected={isSelected} userApp={userApps[event.id]} />
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </section>
+      {!calendarOnly && (
+        <section className="kl-section" style={{ paddingTop: '20px' }}>
+          {isLoading ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '24px' }}>
+              {[1, 2].map((i) => (
+                <div key={i} style={{ height: '380px', borderRadius: '20px', background: 'var(--color-surface-2)', animation: 'pulse 1.5s ease-in-out infinite' }} />
+              ))}
+            </div>
+          ) : filtered.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '100px 20px', color: 'var(--color-text-muted)', gridColumn: '1 / -1' }}>
+              <div style={{ fontSize: '3.5rem', marginBottom: '24px', opacity: 0.8 }}>🌸</div>
+              <p style={{ fontSize: '1.1rem', fontWeight: '700', color: 'var(--color-text-primary)', marginBottom: '8px' }}>현재 준비 중인 기수가 없습니다.</p>
+              <p style={{ fontSize: '0.9rem' }}>곧 새로운 기수로 찾아뵐게요!</p>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '24px' }}>
+              {filtered.map((event, idx) => {
+                const isSelected = selectedDate ? isSameDay(event.date, selectedDate) : false;
+                return (
+                  <div key={event.id} id={`event-${event.id}`} className="animate-fadeInUp" style={{ animationDelay: `${idx * 0.1}s` }}>
+                    <EventCard event={event} isSelected={isSelected} userApp={userApps[event.id]} />
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      )}
     </div>
   );
 }
 
-function EventCalendar({ events, onDateSelect, selectedDate }: { events: KeylinkEvent[], onDateSelect: (d: Date | null) => void, selectedDate: Date | null }) {
+export function EventCalendar({ 
+  events, 
+  onDateSelect, 
+  selectedDate,
+  isSelectedDate,
+  className
+}: { 
+  events: KeylinkEvent[], 
+  onDateSelect: (d: Date) => void, 
+  selectedDate?: Date | null,
+  isSelectedDate?: (d: Date) => boolean,
+  className?: string
+}) {
   const [currentDate, setCurrentDate] = useState(startOfMonth(new Date()));
   const [autoMoved, setAutoMoved] = useState(false);
 
@@ -258,7 +276,7 @@ function EventCalendar({ events, onDateSelect, selectedDate }: { events: Keylink
   const prevMonth = () => setCurrentDate(subMonths(currentDate, 1));
 
   return (
-    <div className="kl-calendar-container">
+    <div className={className !== undefined ? className : "kl-calendar-container"}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
         <button onClick={prevMonth} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '8px' }}>
@@ -276,7 +294,7 @@ function EventCalendar({ events, onDateSelect, selectedDate }: { events: Keylink
           ✨ 여성분들은 남성 연령대를 참고하여 신청해주세요!
         </p>
         <p style={{ fontSize: '0.7rem', fontWeight: '500', color: 'var(--color-text-muted)', letterSpacing: '-0.01em' }}>
-          선발 시 남녀간의 이상형과 나이대를 세밀하게 참고하여 최종 선정합니다.
+          선발 시 남녀간의 이상형과 나이대를<br/>세밀하게 참고하여 최종 선정합니다.
         </p>
       </div>
 
@@ -291,14 +309,16 @@ function EventCalendar({ events, onDateSelect, selectedDate }: { events: Keylink
       <div className="kl-calendar-grid">
         {days.map((day, idx) => {
           const eventsOnDay = events.filter(e => isSameDay(e.date, day));
-          const isSelected = selectedDate && isSameDay(selectedDate, day);
+          const isSelected = isSelectedDate 
+            ? isSelectedDate(day) 
+            : (selectedDate && isSameDay(selectedDate, day));
 
           return (
             <div 
               key={day.toString()} 
               onClick={() => {
                   if (eventsOnDay.length > 0) {
-                      onDateSelect(isSelected ? null : day);
+                      onDateSelect(day);
                   }
               }}
               className="kl-calendar-cell"
@@ -321,7 +341,7 @@ function EventCalendar({ events, onDateSelect, selectedDate }: { events: Keylink
                 {eventsOnDay.map((e, i) => (
                   <div key={i} className="kl-event-tag">
                     <p className="kl-event-tag-age">
-                      남성 {e.targetMaleAge}
+                      남성 {e.targetMaleAge ? e.targetMaleAge.replace(/년생/g, '') : ''}
                     </p>
                     <p className="kl-event-tag-time">
                       {format(e.date, 'HH:mm')}
@@ -426,7 +446,8 @@ function EventCard({ event, isSelected = false, userApp }: { event: KeylinkEvent
                 • 여성분들은 남성 연령대 참고 후 신청해주세요.
               </p>
               <p style={{ fontSize: '0.68rem', fontWeight: '500', color: '#94a3b8', lineHeight: 1.4 }}>
-                • 선발 시 남녀간 이상형과 나이대를 참고하여 선발합니다.
+                • 선발 시 남녀간의 이상형과 나이대를<br/>
+                <span style={{ paddingLeft: '8px' }}>세밀하게 참고하여 최종 선정합니다.</span>
               </p>
             </div>
           </div>

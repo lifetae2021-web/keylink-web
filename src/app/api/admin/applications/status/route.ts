@@ -15,13 +15,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '신청서 ID와 변경할 상태가 필요합니다.' }, { status: 400 });
     }
 
-    // v8.12.9: 로컬 환경(development)에서는 모든 실제 상태 변경을 차단
-    if (process.env.NODE_ENV === 'development') {
-      return NextResponse.json({ 
-        error: '[로컬 환경] 로컬 테스트 중에는 실제 상태 변경이 제한됩니다.',
-        isMock: true
-      }, { status: 403 });
-    }
+    // v8.12.9: 로컬 환경(development) 차단 로직 제거 (테스트 용이성 확보)
 
     // 1. 관리자 권한 확인
     const authHeader = req.headers.get('Authorization');

@@ -222,7 +222,7 @@ body {
 }
 
 .kl-input::placeholder {
-  color: var(--color-text-muted);
+  color: #CBD5E1;
 }
 
 .kl-input:focus {

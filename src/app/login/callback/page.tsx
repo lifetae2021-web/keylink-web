@@ -44,20 +44,31 @@ function KakaoCallbackContent() {
         const userCredential = await signInWithCustomToken(auth, token);
         const user = userCredential.user;
         
-        if (state === 'admin') {
+        // Parse state for redirectUrl
+        let targetState = state;
+        let redirectUrl = '/';
+        if (state.startsWith('user|')) {
+          targetState = 'user';
+          redirectUrl = state.split('|')[1] || '/';
+        }
+
+        if (targetState === 'admin') {
           toast.success('관리자 로그인 성공!');
           router.replace('/admin');
+        } else if (targetState === 'fast_apply') {
+          // Fast apply flow: restore saved application data and redirect back
+          router.replace('/apply/fast?kakao_done=1');
         } else if (isNew) {
-          toast.success('환영합니다! 필수 정보를 입력해 주세요.');
-          router.replace('/register/social-profile');
+          toast.success('카카오 로그인으로 가입이 완료되었습니다!');
+          router.replace(redirectUrl);
         } else {
           const userSnap = await getDoc(doc(db, 'users', user.uid));
           if (userSnap.exists()) {
             toast.success('로그인에 성공했습니다!');
-            router.replace('/');
+            router.replace(redirectUrl);
           } else {
-            toast.success('환영합니다! 필수 정보를 입력해 주세요.');
-            router.replace('/register/social-profile');
+            toast.success('카카오 로그인으로 가입이 완료되었습니다!');
+            router.replace(redirectUrl);
           }
         }
       } catch (err: any) {

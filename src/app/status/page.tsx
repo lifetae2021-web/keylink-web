@@ -167,7 +167,8 @@ export default function StatusListPage() {
                     • 여성분들은 남성 연령대 참고 후 신청해주세요.
                   </p>
                   <p style={{ fontSize: '0.68rem', fontWeight: '500', color: '#94a3b8', lineHeight: 1.4 }}>
-                    • 선발 시 남녀간 이상형과 나이대를 참고하여 선발합니다.
+                    • 선발 시 남녀간의 이상형과 나이대를<br/>
+                    <span style={{ paddingLeft: '8px' }}>세밀하게 참고하여 최종 선정합니다.</span>
                   </p>
                 </div>
               </div>

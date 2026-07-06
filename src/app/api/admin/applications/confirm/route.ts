@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
     const isDummyForCheck = applicationId.startsWith('dummy') || userId.startsWith('user_m_') || userId.startsWith('user_f_') || userDocForCheck.data()?.isDummy === true;
     const isDarkTemplarForCheck = userDocForCheck.data()?.role === 'super_admin' || initialAppData.isDarkTemplar === true;
 
-    const isDev = process.env.NODE_ENV === 'development';
+    const isDev = (process.env.NODE_ENV as string) === 'development';
     // 중복 만남 체크 (닼템/더미가 아니며 bypass하지 않는 경우)
     if (!isDev && !isDummyForCheck && !isDarkTemplarForCheck && !bypassOverlapCheck) {
       const overlapMessage = await checkOverlap(userId, sessionId, gender);

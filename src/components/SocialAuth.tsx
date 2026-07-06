@@ -19,9 +19,10 @@ interface SocialAuthProps {
   isLoading: boolean;
   setIsLoading: (loading: boolean) => void;
   lastMethod?: string | null;
+  redirectUrl?: string | null;
 }
 
-export default function SocialAuth({ isAdmin, isLoading, setIsLoading, lastMethod }: SocialAuthProps) {
+export default function SocialAuth({ isAdmin, isLoading, setIsLoading, lastMethod, redirectUrl }: SocialAuthProps) {
   const router = useRouter();
 
   // 계정 연동 모달 상태
@@ -60,7 +61,7 @@ export default function SocialAuth({ isAdmin, isLoading, setIsLoading, lastMetho
           router.push('/register/social-profile');
         } else {
           toast.success('로그인에 성공했습니다!');
-          router.push('/');
+          router.push(redirectUrl || '/');
         }
       }
     } catch (error: any) {
@@ -107,7 +108,7 @@ export default function SocialAuth({ isAdmin, isLoading, setIsLoading, lastMetho
       localStorage.setItem('keylink_last_login_method', 'google');
       toast.success('구글 계정 연동이 완료되었습니다! 이제 두 방법 모두 로그인 가능합니다.');
       setLinkModal(null);
-      router.push('/');
+      router.push(redirectUrl || '/');
     } catch (error: any) {
       if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
         setLinkError('비밀번호가 올바르지 않습니다.');
@@ -124,7 +125,7 @@ export default function SocialAuth({ isAdmin, isLoading, setIsLoading, lastMetho
   const handleKakaoLogin = () => {
     const clientId = process.env.NEXT_PUBLIC_KAKAO_CLIENT_ID;
     const redirectUri = `${window.location.origin}/api/auth/kakao`;
-    const state = isAdmin ? 'admin' : 'user';
+    const state = isAdmin ? 'admin' : (redirectUrl ? `user|${redirectUrl}` : 'user');
 
     if (!clientId) {
       toast.error('카카오 클라이언트 ID가 설정되지 않았습니다.');

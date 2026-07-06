@@ -10,6 +10,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { getSession, getAllSessions } from '@/lib/firestore/sessions';
 import { getApplicationsBySession } from '@/lib/firestore/applications';
 import { Session, Application } from '@/lib/types';
+import { auth } from '@/lib/firebase';
+import { onAuthStateChanged, User } from 'firebase/auth';
 
 export default function StatusPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: sessionId } = use(params);
@@ -22,6 +24,17 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
 
   const [userMap, setUserMap] = useState<Record<string, any>>({});
   const [selectedRow, setSelectedRow] = useState<any | null>(null);
+
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isAuthLoaded, setIsAuthLoaded] = useState(false);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user);
+      setIsAuthLoaded(true);
+    });
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     async function fetchData() {
@@ -78,6 +91,17 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
   const isNotTestUser = (p: any) => !p.isDarkTemplar && !p.userId?.startsWith('user_m_') && !p.userId?.startsWith('user_f_') && !p.id?.startsWith('dummy');
   const maleApplicants = applicants.filter(p => p.gender === 'male' && p.status === 'confirmed' && isNotTestUser(p));
   const femaleApplicants = applicants.filter(p => p.gender === 'female' && p.status === 'confirmed' && isNotTestUser(p));
+
+  const myApp = useMemo(() => {
+    if (!currentUser) return null;
+    return applicants.find(a => a.userId === currentUser.uid && a.status === 'confirmed') || null;
+  }, [currentUser, applicants]);
+
+  useEffect(() => {
+    if (myApp) {
+      setActiveTab(myApp.gender === 'male' ? 'female' : 'male');
+    }
+  }, [myApp]);
 
   // v8.4.8: 라인업 데이터 바인딩 (이름/연락처 완전 배제, 실시간 호수 슬롯 동기화)
   const confirmedRows = useMemo(() => {
@@ -177,7 +201,7 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
   const openTime = session ? new Date(session.eventDate.getTime() - 2 * 24 * 60 * 60 * 1000) : null;
   const isOpen = openTime ? now.getTime() >= openTime.getTime() : false;
 
-  if (isLoading) {
+  if (isLoading || !isAuthLoaded) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <Loader2 className="animate-spin text-pink-500" size={40} />
@@ -318,48 +342,34 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
         </section>
 
         <section style={{ marginBottom: '80px' }}>
-          <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-            <h3 style={{ fontSize: '1.8rem', fontWeight: '900', color: '#111', marginBottom: '12px' }}>
-              참가 확정 라인업
-            </h3>
-            <p style={{ color: 'var(--color-text-secondary)', fontWeight: '500', maxWidth: '600px', margin: '0 auto' }}>
-              개인정보 보호를 위해 성함과 연락처를 제외한 <br />
-              나이, 직업, 키 정보만 투명하게 공개합니다.
-            </p>
-          </div>
+          {!myApp ? (
+            <div style={{ textAlign: 'center', padding: '60px 20px', background: '#f8fafc', borderRadius: '32px', border: '1px dashed #cbd5e1' }}>
+              <ShieldCheck size={48} color="#94a3b8" style={{ margin: '0 auto 16px' }} />
+              <h3 style={{ fontSize: '1.4rem', fontWeight: '900', color: '#334155', marginBottom: '8px' }}>
+                참가 확정자 전용 시크릿 라인업
+              </h3>
+              <p style={{ color: '#64748b', fontWeight: '500', fontSize: '0.95rem', lineHeight: '1.6' }}>
+                개인정보 보호 및 매칭의 몰입도를 위해<br />
+                행사 전 라인업은 <strong>참가가 확정된 분들</strong>에게만 투명하게 공개됩니다.<br />
+                <span style={{ fontSize: '0.85rem', color: '#94a3b8', display: 'inline-block', marginTop: '6px' }}>
+                  (전체 라인업은 행사가 끝난 후 매칭 결과 페이지에서 보실 수 있습니다)
+                </span>
+              </p>
+            </div>
+          ) : (
+            <>
+              <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: activeTab === 'male' ? '#EBF5FF' : '#FFF5F4', color: activeTab === 'male' ? '#007AFF' : '#FF6F61', padding: '8px 20px', borderRadius: '100px', fontWeight: '900', fontSize: '1rem', marginBottom: '16px' }}>
+                  {activeTab === 'male' ? '키링남' : '키링녀'}
+                </div>
+                <h3 style={{ fontSize: '1.8rem', fontWeight: '900', color: '#111', marginBottom: '12px' }}>
+                  참가 확정 라인업
+                </h3>
+              </div>
 
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', marginBottom: '40px' }}>
-            <button
-              onClick={() => setActiveTab('male')}
-              style={{
-                padding: '16px 36px', borderRadius: '100px', border: 'none',
-                fontWeight: '900', fontSize: '1.05rem', cursor: 'pointer',
-                transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-                background: activeTab === 'male' ? 'linear-gradient(135deg, #007AFF, #0056B3)' : '#f5f5f5',
-                color: activeTab === 'male' ? '#fff' : '#888',
-                boxShadow: activeTab === 'male' ? '0 10px 20px rgba(0,122,255,0.3)' : 'none',
-                transform: activeTab === 'male' ? 'scale(1.05)' : 'scale(1)'
-              }}
-            >
-              키링남
-            </button>
-            <button
-              onClick={() => setActiveTab('female')}
-              style={{
-                padding: '16px 36px', borderRadius: '100px', border: 'none',
-                fontWeight: '900', fontSize: '1.05rem', cursor: 'pointer',
-                transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-                background: activeTab === 'female' ? 'linear-gradient(135deg, #FF6F61, #FF8A71)' : '#f5f5f5',
-                color: activeTab === 'female' ? '#fff' : '#888',
-                boxShadow: activeTab === 'female' ? '0 10px 20px rgba(255,111,97,0.3)' : 'none',
-                transform: activeTab === 'female' ? 'scale(1.05)' : 'scale(1)'
-              }}
-            >
-              키링녀
-            </button>
-          </div>
+              {/* 탭 버튼이 삭제되었습니다. (자동으로 반대 성별의 탭이 고정 표시됨) */}
 
-          <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+              <div style={{ maxWidth: '900px', margin: '0 auto' }}>
             <div className="lineup-header" style={{
               display: 'grid', gridTemplateColumns: 'minmax(60px, 80px) 120px 1fr 120px', gap: '15px',
               padding: '15px 40px', background: 'rgba(0,0,0,0.02)', borderRadius: '16px',
@@ -435,8 +445,10 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
                   );
                 })}
               </motion.div>
-            </AnimatePresence>
-          </div>
+              </AnimatePresence>
+            </div>
+          </>
+        )}
         </section>
 
         {/* Assurance Banner v3.5.3 */}
