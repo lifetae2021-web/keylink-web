@@ -1940,7 +1940,7 @@ export default function UsersPage() {
                         </div>
                         <div className="flex items-center flex-nowrap gap-3 text-[11px] font-bold mt-2 whitespace-nowrap overflow-x-auto kl-scrollbar pb-1">
                           <span className="text-blue-600 shrink-0">
-                            {coupon.type === 'percent' ? `${coupon.value}% 할인` : `₩${coupon.value.toLocaleString()} 할인`}
+                            {coupon.type === 'percent' ? `${coupon.value || coupon.amount}% 할인` : `₩${(coupon.value || coupon.amount || 0).toLocaleString()} 할인`}
                           </span>
                           <span className="text-slate-300 shrink-0">|</span>
                           <span className="text-slate-500 shrink-0">
