@@ -85,6 +85,7 @@ function MyPageContent() {
   const [sessionsMap, setSessionsMap] = useState<Record<string, Session | null>>({});
   const [isAdmin, setIsAdmin] = useState(false);
   const [isGuestUser, setIsGuestUser] = useState(false);
+  const [userCoupons, setUserCoupons] = useState<any[]>([]);
 
   // Edit Form State
   const [editForm, setEditForm] = useState<any>({
@@ -236,6 +237,32 @@ function MyPageContent() {
         if (!snap.empty) {
           setPrivateApp(snap.docs[0].data());
         }
+      });
+
+      // v8.18.0: 보유 쿠폰 현황 조회
+      const couponsQ = query(collection(db, 'users', currentUser.uid, 'coupons'), where('isUsed', '==', false));
+      getDocs(couponsQ).then(snap => {
+        const now = new Date();
+        const coupons = snap.docs.map(cd => {
+          const data = cd.data();
+          let expireAt = data.expireAt || data.expiresAt;
+          if (!expireAt && data.validityMonths && data.validityMonths !== 'unlimited' && data.createdAt) {
+            const created = data.createdAt.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
+            const exp = new Date(created);
+            exp.setMonth(exp.getMonth() + Number(data.validityMonths));
+            expireAt = exp;
+          }
+          let title = data.title || data.name || '할인 쿠폰';
+          if (title === '가입 축하 5,000원 할인쿠폰') title = '웰컴 가입 축하 쿠폰';
+          return { id: cd.id, ...data, expireAt, title };
+        }).filter(c => {
+          if (c.expireAt) {
+            const exp = c.expireAt.toDate ? c.expireAt.toDate() : new Date(c.expireAt);
+            return exp > now;
+          }
+          return true;
+        });
+        setUserCoupons(coupons);
       });
 
       return () => { unsubApps(); };
@@ -980,6 +1007,46 @@ function MyPageContent() {
 
       {isGuestUser ? renderGuestView() : (
         <div style={{ maxWidth: '460px', margin: '0 auto', padding: '0 16px' }}>
+
+        {/* ─── COUPON BOX ─── */}
+        <div style={{ background: '#FFFFFF', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 10px 40px rgba(255,111,97,0.08)', border: '1px solid #FFE8E5', marginBottom: '16px', padding: '24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+            <span style={{ fontSize: '1.2rem' }}>🎟️</span>
+            <h2 style={{ fontSize: '1.1rem', fontWeight: '900', color: '#111' }}>내 보유 쿠폰 <span style={{ color: '#FF6F61', marginLeft: '4px' }}>{userCoupons.length}장</span></h2>
+          </div>
+          
+          {userCoupons.length === 0 ? (
+            <div style={{ background: '#F8FAFC', borderRadius: '16px', padding: '20px', textAlign: 'center' }}>
+              <p style={{ color: '#94A3B8', fontSize: '0.88rem', fontWeight: '600' }}>현재 사용 가능한 쿠폰이 없습니다.</p>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {userCoupons.map(coupon => {
+                const expDate = coupon.expireAt?.toDate ? coupon.expireAt.toDate() : (coupon.expireAt ? new Date(coupon.expireAt) : null);
+                const expString = expDate ? `${expDate.getFullYear()}.${String(expDate.getMonth()+1).padStart(2, '0')}.${String(expDate.getDate()).padStart(2, '0')} 까지` : '기한 없음';
+                
+                return (
+                  <div key={coupon.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', borderRadius: '16px', background: '#FFFDFD', border: '1.5px dashed #FFDBE9', position: 'relative', overflow: 'hidden' }}>
+                    <div style={{ position: 'absolute', left: '-8px', top: '50%', transform: 'translateY(-50%)', width: '16px', height: '16px', background: '#fff', borderRadius: '50%', borderRight: '1.5px dashed #FFDBE9', zIndex: 1 }} />
+                    <div style={{ position: 'absolute', right: '-8px', top: '50%', transform: 'translateY(-50%)', width: '16px', height: '16px', background: '#fff', borderRadius: '50%', borderLeft: '1.5px dashed #FFDBE9', zIndex: 1 }} />
+                    
+                    <div style={{ paddingLeft: '12px', zIndex: 2 }}>
+                      <p style={{ fontSize: '0.9rem', fontWeight: '800', color: '#111', marginBottom: '4px' }}>{coupon.title}</p>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <p style={{ fontSize: '0.8rem', color: '#FF6F61', fontWeight: '800' }}>
+                          {coupon.type === 'percent' ? `${coupon.value || coupon.amount}% 할인` :
+                           coupon.type === 'free' ? '100% 무료' :
+                           `${(coupon.value || coupon.amount || 0).toLocaleString()}원 할인`}
+                        </p>
+                        <p style={{ fontSize: '0.7rem', color: '#9CA3B8', fontWeight: '500' }}>| {expString}</p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
         {/* ─── PROFILE CARD ─── */}
         <div style={{ background: '#FFFFFF', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 10px 40px rgba(255,111,97,0.08)', border: '1px solid #FFE8E5', marginBottom: '16px' }}>
