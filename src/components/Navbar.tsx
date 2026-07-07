@@ -255,16 +255,49 @@ export default function Navbar() {
                   </button>
                 </div>
               ) : (
-                <button
-                  onClick={async () => {
-                    if (pathname === '/register/social-profile') await auth.signOut();
-                    router.push('/login');
-                  }}
-                  className="kl-btn-primary kl-mypage-btn"
-                  style={{ padding: '10px 20px', fontSize: '0.85rem', border: 'none', cursor: 'pointer' }}
-                >
-                  로그인/회원가입
-                </button>
+                <div style={{ position: 'relative' }}>
+                  <button
+                    onClick={async () => {
+                      if (pathname === '/register/social-profile') await auth.signOut();
+                      router.push('/login');
+                    }}
+                    className="kl-btn-primary kl-mypage-btn"
+                    style={{ padding: '10px 20px', fontSize: '0.85rem', border: 'none', cursor: 'pointer' }}
+                  >
+                    로그인/회원가입
+                  </button>
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 'calc(100% + 8px)',
+                      right: '0',
+                      background: '#111',
+                      color: '#fff',
+                      fontSize: '0.75rem',
+                      fontWeight: '700',
+                      padding: '6px 10px',
+                      borderRadius: '8px',
+                      whiteSpace: 'nowrap',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                      animation: 'kl-bounce 2s infinite ease-in-out',
+                      pointerEvents: 'none',
+                    }}
+                  >
+                    첫 가입 5,000원 쿠폰 🎁
+                    <div
+                      style={{
+                        position: 'absolute',
+                        bottom: '100%',
+                        right: '30px',
+                        width: '0',
+                        height: '0',
+                        borderLeft: '5px solid transparent',
+                        borderRight: '5px solid transparent',
+                        borderBottom: '5px solid #111',
+                      }}
+                    />
+                  </div>
+                </div>
               )}
               <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -418,6 +451,10 @@ export default function Navbar() {
       )}
 
       <style>{`
+        @keyframes kl-bounce {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-4px); }
+        }
         @media (max-width: 1024px) {
           .desktop-nav { display: none !important; }
           .desktop-only-btn { display: none !important; }
