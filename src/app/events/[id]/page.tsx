@@ -189,7 +189,7 @@ export default function EventDetailPage() {
           // v8.15.9: 사용 가능한 쿠폰 가져오기
           const couponsData = couponsSnap.docs.map(doc => {
             const data = doc.data();
-            let expireAt = data.expireAt;
+            let expireAt = data.expireAt || data.expiresAt;
             // v8.16.5: validityMonths 처리 (일부 쿠폰은 기간제로 저장됨)
             if (!expireAt && data.validityMonths && data.validityMonths !== 'unlimited' && data.createdAt) {
               const createdDate = data.createdAt.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
@@ -200,7 +200,8 @@ export default function EventDetailPage() {
             return {
               id: doc.id,
               ...data,
-              expireAt
+              expireAt,
+              title: data.title || data.name || '할인 쿠폰'
             };
           }).filter(c => {
             // 만료일 체크 (있는 경우에만)

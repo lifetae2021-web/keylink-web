@@ -326,14 +326,14 @@ function FastApplyContent() {
           const now = new Date();
           const coupons = couponsSnap.docs.map(cd => {
             const data = cd.data();
-            let expireAt = data.expireAt;
+            let expireAt = data.expireAt || data.expiresAt;
             if (!expireAt && data.validityMonths && data.validityMonths !== 'unlimited' && data.createdAt) {
               const created = data.createdAt.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
               const exp = new Date(created);
               exp.setMonth(exp.getMonth() + Number(data.validityMonths));
               expireAt = exp;
             }
-            return { id: cd.id, ...data, expireAt };
+            return { id: cd.id, ...data, expireAt, title: data.title || data.name || '할인 쿠폰' };
           }).filter(c => {
             if (c.expireAt) {
               const exp = c.expireAt.toDate ? c.expireAt.toDate() : new Date(c.expireAt);
