@@ -1901,9 +1901,12 @@ export default function UsersPage() {
 
                 return coupons.map(coupon => {
                   const createdDate = coupon.createdAt?.toDate ? coupon.createdAt.toDate() : new Date(coupon.createdAt);
-                  const expiryDate = new Date(createdDate);
-                  if (coupon.validityMonths !== 'unlimited') {
-                    expiryDate.setMonth(expiryDate.getMonth() + coupon.validityMonths);
+                  let expiryDate = new Date(createdDate);
+                  if (coupon.expireAt || coupon.expiresAt) {
+                    const exp = coupon.expireAt || coupon.expiresAt;
+                    expiryDate = exp.toDate ? exp.toDate() : new Date(exp);
+                  } else if (coupon.validityMonths !== 'unlimited') {
+                    expiryDate.setMonth(expiryDate.getMonth() + Number(coupon.validityMonths));
                   }
                   
                   const isExpired = coupon.validityMonths !== 'unlimited' && new Date() > expiryDate;
