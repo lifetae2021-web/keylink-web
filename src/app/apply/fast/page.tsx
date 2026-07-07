@@ -224,6 +224,7 @@ function FastApplyContent() {
             photos: photos || [],
             isRegistered: true,
             loginMethod: 'kakao',
+            provider: 'kakao',
             role: 'user',
             createdAt: Timestamp.now(),
           });
@@ -891,6 +892,7 @@ function FastApplyContent() {
           residence: backup.formData.residence || '',
           isRegistered: true,
           loginMethod: 'google',
+          provider: 'google',
           photoURL: result.user.photoURL || '',
           photos: backup.photos || [],
           role: 'user',
