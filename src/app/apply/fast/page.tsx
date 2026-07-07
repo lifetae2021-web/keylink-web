@@ -227,6 +227,18 @@ function FastApplyContent() {
             role: 'user',
             createdAt: Timestamp.now(),
           });
+
+          // 웰컴 가입 축하 쿠폰 발급
+          const expireAt = new Date();
+          expireAt.setMonth(expireAt.getMonth() + 3);
+          await addDoc(collection(db, 'users', uid, 'coupons'), {
+            title: '웰컴 가입 축하 쿠폰',
+            type: 'amount',
+            value: 5000,
+            createdAt: Timestamp.now(),
+            expireAt: Timestamp.fromDate(expireAt),
+            isUsed: false,
+          });
         } else {
           // 기존 유저인 경우 새로 입력/업로드한 사진 및 정보로 업데이트
           await updateDoc(doc(db, 'users', uid), {
@@ -883,6 +895,19 @@ function FastApplyContent() {
           photos: backup.photos || [],
           role: 'user',
           createdAt: Timestamp.now(),
+        });
+
+        // 웰컴 가입 축하 쿠폰 발급
+        const expireAt = new Date();
+        expireAt.setMonth(expireAt.getMonth() + 3);
+        const couponRef = doc(collection(db, 'users', uid, 'coupons'));
+        batch.set(couponRef, {
+          title: '웰컴 가입 축하 쿠폰',
+          type: 'amount',
+          value: 5000,
+          createdAt: Timestamp.now(),
+          expireAt: Timestamp.fromDate(expireAt),
+          isUsed: false,
         });
       } else {
         batch.update(doc(db, 'users', uid), {

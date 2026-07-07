@@ -7,7 +7,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
 import { auth, db } from '@/lib/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
 
 function RegisterForm() {
   const router = useRouter();
@@ -213,6 +213,18 @@ function RegisterForm() {
         provider: 'email',
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
+      });
+
+      // 3. 5,000원 웰컴 가입 축하 쿠폰 발급 (유효기간 3개월 = 90일)
+      const expireAt = new Date();
+      expireAt.setMonth(expireAt.getMonth() + 3);
+      await addDoc(collection(db, 'users', user.uid, 'coupons'), {
+        title: '웰컴 가입 축하 쿠폰',
+        type: 'amount',
+        value: 5000,
+        createdAt: serverTimestamp(),
+        expireAt: expireAt,
+        isUsed: false,
       });
 
       toast.success('회원가입이 완료되었습니다!');
