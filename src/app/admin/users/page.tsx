@@ -1102,9 +1102,13 @@ export default function UsersPage() {
                               const activeCoupons = userCoupons.filter(c => {
                                 if (c.isUsed) return false;
                                 if (c.validityMonths === 'unlimited') return true;
+                                if (c.expireAt) {
+                                  const expiryDate = c.expireAt?.toDate ? c.expireAt.toDate() : new Date(c.expireAt);
+                                  return new Date() < expiryDate;
+                                }
                                 const createdDate = c.createdAt?.toDate ? c.createdAt.toDate() : new Date(c.createdAt);
                                 const expiryDate = new Date(createdDate);
-                                expiryDate.setMonth(expiryDate.getMonth() + c.validityMonths);
+                                expiryDate.setMonth(expiryDate.getMonth() + (c.validityMonths || 3));
                                 return new Date() < expiryDate;
                               });
                               if (activeCoupons.length > 0) {
@@ -1358,9 +1362,13 @@ export default function UsersPage() {
                           const activeCoupons = userCoupons.filter(c => {
                             if (c.isUsed) return false;
                             if (c.validityMonths === 'unlimited') return true;
+                            if (c.expireAt) {
+                              const expiryDate = c.expireAt?.toDate ? c.expireAt.toDate() : new Date(c.expireAt);
+                              return new Date() < expiryDate;
+                            }
                             const createdDate = c.createdAt?.toDate ? c.createdAt.toDate() : new Date(c.createdAt);
                             const expiryDate = new Date(createdDate);
-                            expiryDate.setMonth(expiryDate.getMonth() + c.validityMonths);
+                            expiryDate.setMonth(expiryDate.getMonth() + (c.validityMonths || 3));
                             return new Date() < expiryDate;
                           });
                           if (activeCoupons.length > 0) {
