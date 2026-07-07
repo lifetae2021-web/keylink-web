@@ -273,14 +273,14 @@ export default function Navbar() {
                           position: 'absolute',
                           top: 'calc(100% + 8px)',
                           right: '0',
-                          background: '#FF6F61',
+                          background: '#111',
                           color: '#fff',
                           fontSize: '0.75rem',
                           fontWeight: '800',
                           padding: '6px 10px',
                           borderRadius: '8px',
                           whiteSpace: 'nowrap',
-                          boxShadow: '0 4px 12px rgba(255,111,97,0.3)',
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
                           animation: 'kl-bounce 2s infinite ease-in-out',
                           pointerEvents: 'none',
                           zIndex: 10,
@@ -296,7 +296,7 @@ export default function Navbar() {
                             height: '0',
                             borderLeft: '5px solid transparent',
                             borderRight: '5px solid transparent',
-                            borderBottom: '5px solid #FF6F61',
+                            borderBottom: '5px solid #111',
                           }}
                         />
                       </div>
