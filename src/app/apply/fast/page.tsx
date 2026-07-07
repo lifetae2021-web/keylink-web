@@ -333,7 +333,9 @@ function FastApplyContent() {
               exp.setMonth(exp.getMonth() + Number(data.validityMonths));
               expireAt = exp;
             }
-            return { id: cd.id, ...data, expireAt, title: data.title || data.name || '할인 쿠폰' };
+            let title = data.title || data.name || '할인 쿠폰';
+            if (title === '가입 축하 5,000원 할인쿠폰') title = '웰컴 가입 축하 쿠폰';
+            return { id: cd.id, ...data, expireAt, title };
           }).filter(c => {
             if (c.expireAt) {
               const exp = c.expireAt.toDate ? c.expireAt.toDate() : new Date(c.expireAt);

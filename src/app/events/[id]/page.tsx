@@ -197,11 +197,14 @@ export default function EventDetailPage() {
               expiry.setMonth(expiry.getMonth() + Number(data.validityMonths));
               expireAt = expiry;
             }
+            let title = data.title || data.name || '할인 쿠폰';
+            if (title === '가입 축하 5,000원 할인쿠폰') title = '웰컴 가입 축하 쿠폰';
+            
             return {
               id: doc.id,
               ...data,
               expireAt,
-              title: data.title || data.name || '할인 쿠폰'
+              title
             };
           }).filter(c => {
             // 만료일 체크 (있는 경우에만)

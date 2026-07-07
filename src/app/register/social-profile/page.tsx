@@ -160,7 +160,7 @@ export default function SocialProfilePage() {
       const expireAt = new Date();
       expireAt.setMonth(expireAt.getMonth() + 3);
       await addDoc(collection(db, 'users', user.uid, 'coupons'), {
-        title: '가입 축하 5,000원 할인쿠폰',
+        title: '웰컴 가입 축하 쿠폰',
         type: 'amount',
         value: 5000,
         createdAt: serverTimestamp(),
