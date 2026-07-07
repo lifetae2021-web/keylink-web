@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Menu, X, LogOut, User as UserIcon } from 'lucide-react';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, collection, query, where, getDocs } from 'firebase/firestore';
 import toast from 'react-hot-toast';
 import { APP_VERSION } from '@/lib/constants';
 const version = APP_VERSION;
@@ -27,6 +27,7 @@ export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [unusedCouponsCount, setUnusedCouponsCount] = useState(0);
   const [activeAnchor, setActiveAnchor] = useState<string | null>(null);
   const isManualScrolling = useRef(false);
   const pathname = usePathname();
@@ -114,8 +115,34 @@ export default function Navbar() {
           const role = snap.exists() ? snap.data()?.role : '';
           setIsAdmin(snap.exists() && (role === 'admin' || role === 'super_admin'));
         });
+
+        // v8.18.0: 미사용 쿠폰 개수 조회 (네비게이션 알림용)
+        const couponsQ = query(collection(db, 'users', currentUser.uid, 'coupons'), where('isUsed', '==', false));
+        getDocs(couponsQ).then(snap => {
+          const now = new Date();
+          const validCoupons = snap.docs.map(cd => {
+            const data = cd.data();
+            let expireAt = data.expireAt || data.expiresAt;
+            if (!expireAt && data.validityMonths && data.validityMonths !== 'unlimited' && data.createdAt) {
+              const created = data.createdAt.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
+              const exp = new Date(created);
+              exp.setMonth(exp.getMonth() + Number(data.validityMonths));
+              expireAt = exp;
+            }
+            return { expireAt };
+          }).filter(c => {
+            if (c.expireAt) {
+              const exp = c.expireAt.toDate ? c.expireAt.toDate() : new Date(c.expireAt);
+              return exp > now;
+            }
+            return true;
+          });
+          setUnusedCouponsCount(validCoupons.length);
+        });
+
       } else {
         setIsAdmin(false);
+        setUnusedCouponsCount(0);
       }
     });
 
@@ -236,9 +263,45 @@ export default function Navbar() {
                       관리자페이지
                     </Link>
                   )}
-                  <Link href="/mypage" className="kl-btn-outline kl-mypage-btn" style={{ padding: '10px 18px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '100px' }}>
-                    <UserIcon size={16} className="kl-btn-icon" /> 마이페이지
-                  </Link>
+                  <div style={{ position: 'relative' }}>
+                    <Link href="/mypage" className="kl-btn-outline kl-mypage-btn" style={{ padding: '10px 18px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '100px' }}>
+                      <UserIcon size={16} className="kl-btn-icon" /> 마이페이지
+                    </Link>
+                    {unusedCouponsCount > 0 && (
+                      <div
+                        style={{
+                          position: 'absolute',
+                          top: 'calc(100% + 8px)',
+                          right: '0',
+                          background: '#FF6F61',
+                          color: '#fff',
+                          fontSize: '0.75rem',
+                          fontWeight: '800',
+                          padding: '6px 10px',
+                          borderRadius: '8px',
+                          whiteSpace: 'nowrap',
+                          boxShadow: '0 4px 12px rgba(255,111,97,0.3)',
+                          animation: 'kl-bounce 2s infinite ease-in-out',
+                          pointerEvents: 'none',
+                          zIndex: 10,
+                        }}
+                      >
+                        미사용 쿠폰 {unusedCouponsCount}장 🎁
+                        <div
+                          style={{
+                            position: 'absolute',
+                            bottom: '100%',
+                            right: '30px',
+                            width: '0',
+                            height: '0',
+                            borderLeft: '5px solid transparent',
+                            borderRight: '5px solid transparent',
+                            borderBottom: '5px solid #FF6F61',
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
                   {/* PC 전용 로그아웃 버튼 (v3.5.3) */}
                   <button
                     onClick={handleLogout}
