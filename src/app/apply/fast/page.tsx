@@ -104,8 +104,11 @@ function FastApplyContent() {
   const [submitted, setSubmitted] = useState(false);
   const [savedData, setSavedData] = useState<{ formData: FormData; sessionIds: string[] } | null>(null);
 
-  // ── Male matching option ──
+  // ── Male & Female matching option ──
   const [maleOption, setMaleOption] = useState<'normal' | 'safe'>('normal');
+  const [femaleOption, setFemaleOption] = useState<'normal' | 'group'>('normal');
+  const [groupPartnerName, setGroupPartnerName] = useState('');
+  const [groupPartnerBirthYear, setGroupPartnerBirthYear] = useState('');
 
   // ── Coupon state ──
   const [userCoupons, setUserCoupons] = useState<any[]>([]);
@@ -349,7 +352,7 @@ function FastApplyContent() {
 
   // ── 가격 계산 헬퍼 ──
   const getBasePrice = () => {
-    if (form.gender === 'female') return 19000;
+    if (form.gender === 'female') return femaleOption === 'group' ? 19000 : 29000;
     return maleOption === 'safe' ? 60000 : 49000;
   };
 
@@ -585,6 +588,9 @@ function FastApplyContent() {
             formData: form,
             sessionIds: Array.from(selectedSessionIds),
             maleOption,
+            femaleOption,
+            groupPartnerName,
+            groupPartnerBirthYear,
             selectedCouponId: selectedCoupon?.id || null,
             selectedCouponTitle: selectedCoupon?.title || null,
             couponDiscount: getCouponDiscount(),
@@ -598,6 +604,9 @@ function FastApplyContent() {
           formData: form,
           sessionIds: Array.from(selectedSessionIds),
           maleOption,
+          femaleOption,
+          groupPartnerName,
+          groupPartnerBirthYear,
           selectedCouponId: selectedCoupon?.id || null,
           selectedCouponTitle: selectedCoupon?.title || null,
           couponDiscount: getCouponDiscount(),
@@ -681,6 +690,9 @@ function FastApplyContent() {
             employmentProof: form.employmentProof || '',
             photos: photos,
             maleOption: form.gender === 'male' ? maleOption : null,
+            femaleOption: form.gender === 'female' ? femaleOption : null,
+            groupPartnerName: form.gender === 'female' && femaleOption === 'group' ? groupPartnerName : null,
+            groupPartnerBirthYear: form.gender === 'female' && femaleOption === 'group' ? groupPartnerBirthYear : null,
             couponId: selectedCoupon?.id || null,
             couponTitle: selectedCoupon?.title || null,
             couponDiscount,
@@ -810,6 +822,9 @@ function FastApplyContent() {
           employmentProof: formData.employmentProof || '',
           photos: photos,
           maleOption: formData.gender === 'male' ? (backup.maleOption || maleOption) : null,
+          femaleOption: formData.gender === 'female' ? (backup.femaleOption || femaleOption) : null,
+          groupPartnerName: formData.gender === 'female' && (backup.femaleOption || femaleOption) === 'group' ? (backup.groupPartnerName || groupPartnerName) : null,
+          groupPartnerBirthYear: formData.gender === 'female' && (backup.femaleOption || femaleOption) === 'group' ? (backup.groupPartnerBirthYear || groupPartnerBirthYear) : null,
           couponId: backup.selectedCouponId || null,
           couponTitle: backup.selectedCouponTitle || null,
           couponDiscount,
@@ -1005,6 +1020,69 @@ function FastApplyContent() {
               <p style={{ fontSize: '0.68rem', color: '#94A3B8', lineHeight: 1.4 }}>매칭 실패 시 30% 환불</p>
             </button>
           </div>
+        </div>
+      )}
+
+      {/* ─── 여성 매칭 옵션 ─── */}
+      {form.gender === 'female' && (
+        <div style={{ marginTop: '20px', padding: '24px', background: '#fff', borderRadius: '16px', border: '1px solid #E2E8F0', boxShadow: '0 4px 12px rgba(0,0,0,0.02)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+            <ShieldCheck size={18} color="#FF6F61" />
+            <span style={{ fontWeight: '800', fontSize: '1rem', color: '#111' }}>매칭 옵션 선택</span>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            {/* 1인 참석 */}
+            <button
+              type="button"
+              onClick={() => setFemaleOption('normal')}
+              style={{
+                padding: '16px', borderRadius: '14px', border: 'none', cursor: 'pointer', textAlign: 'left',
+                background: femaleOption === 'normal' ? '#FFF0EE' : '#F8FAFC',
+                outline: femaleOption === 'normal' ? '2px solid #FF6F61' : '2px solid transparent',
+                transition: 'all 0.15s',
+              }}
+            >
+              <p style={{ fontSize: '0.7rem', fontWeight: '700', color: femaleOption === 'normal' ? '#FF6F61' : '#94A3B8', marginBottom: '6px' }}>1인 참석</p>
+              <p style={{ fontSize: '1.15rem', fontWeight: '900', color: '#111', marginBottom: '4px' }}>29,000원</p>
+              <p style={{ fontSize: '0.68rem', color: '#94A3B8', lineHeight: 1.4 }}>일반 신청</p>
+            </button>
+            {/* 지인과 동반 참석 */}
+            <button
+              type="button"
+              onClick={() => setFemaleOption('group')}
+              style={{
+                padding: '16px', borderRadius: '14px', border: 'none', cursor: 'pointer', textAlign: 'left',
+                background: femaleOption === 'group' ? '#F3EFFF' : '#F8FAFC',
+                outline: femaleOption === 'group' ? '2px solid #A98FD5' : '2px solid transparent',
+                transition: 'all 0.15s',
+              }}
+            >
+              <p style={{ fontSize: '0.7rem', fontWeight: '700', color: femaleOption === 'group' ? '#A98FD5' : '#94A3B8', marginBottom: '6px' }}>지인과 동반 참석</p>
+              <p style={{ fontSize: '1.15rem', fontWeight: '900', color: '#111', marginBottom: '4px' }}>19,000원</p>
+              <p style={{ fontSize: '0.68rem', color: '#94A3B8', lineHeight: 1.4 }}>동반 할인 적용</p>
+            </button>
+          </div>
+          {femaleOption === 'group' && (
+            <div style={{ marginTop: '16px', padding: '16px', borderRadius: '12px', background: '#F8FAFC', border: '1px solid #E2E8F0' }}>
+              <p style={{ fontSize: '0.8rem', fontWeight: '700', color: '#475569', marginBottom: '12px' }}>동반 참여자 정보</p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                <input
+                  className="kl-input"
+                  style={{ background: '#fff', fontSize: '0.85rem' }}
+                  placeholder="이름"
+                  value={groupPartnerName}
+                  onChange={(e) => setGroupPartnerName(e.target.value)}
+                />
+                <input
+                  className="kl-input"
+                  style={{ background: '#fff', fontSize: '0.85rem' }}
+                  placeholder="년생 (ex. 98)"
+                  value={groupPartnerBirthYear}
+                  onChange={(e) => setGroupPartnerBirthYear(e.target.value)}
+                />
+              </div>
+            </div>
+          )}
         </div>
       )}
 
