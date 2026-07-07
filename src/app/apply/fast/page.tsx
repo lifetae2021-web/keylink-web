@@ -270,7 +270,7 @@ function FastApplyContent() {
             etc: formData.etc || '',
             employmentProof: formData.employmentProof || '',
             photos: photos || [],
-            status: 'pending',
+            status: 'applied',
             appliedAt: Timestamp.now(),
             updatedAt: Timestamp.now(),
           });
@@ -952,7 +952,7 @@ function FastApplyContent() {
           etc: backup.formData.etc || '',
           employmentProof: backup.formData.employmentProof || '',
           photos: backup.photos || [],
-          status: 'pending',
+          status: 'applied',
           appliedAt: Timestamp.now(),
           updatedAt: Timestamp.now(),
         });
