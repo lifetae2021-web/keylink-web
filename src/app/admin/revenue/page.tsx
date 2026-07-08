@@ -4,11 +4,11 @@ import { useState, useEffect, useMemo } from 'react';
 import {
   TrendingUp, Users, CreditCard, Calendar,
   ArrowUpRight, ArrowDownRight, DollarSign,
-  Download, Filter, Loader2, X, ChevronRight
+  Download, Filter, Loader2, X, ChevronRight, Search
 } from 'lucide-react';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import { collection, query, onSnapshot, orderBy, doc, getDoc, updateDoc } from 'firebase/firestore';
+import { collection, query, onSnapshot, orderBy, doc, getDoc, updateDoc, deleteField } from 'firebase/firestore';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 import {
@@ -17,6 +17,23 @@ import {
 } from 'recharts';
 import { format, startOfMonth, endOfMonth, isWithinInterval, subMonths } from 'date-fns';
 import { ko } from 'date-fns/locale';
+
+const CHOSUNGS = ["ㄱ","ㄲ","ㄴ","ㄷ","ㄸ","ㄹ","ㅁ","ㅂ","ㅃ","ㅅ","ㅆ","ㅇ","ㅈ","ㅉ","ㅊ","ㅋ","ㅌ","ㅍ","ㅎ"];
+function getChosungRegex(query: string) {
+  let regexStr = "";
+  for (let i = 0; i < query.length; i++) {
+    const char = query[i];
+    const chosungIndex = CHOSUNGS.indexOf(char);
+    if (chosungIndex !== -1) {
+      const baseCode = 0xAC00 + (chosungIndex * 21 * 28);
+      const endCode = baseCode + (21 * 28) - 1;
+      regexStr += `[${char}\\u${baseCode.toString(16).padStart(4, '0').toUpperCase()}-\\u${endCode.toString(16).padStart(4, '0').toUpperCase()}]`;
+    } else {
+      regexStr += char.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+  }
+  return new RegExp(regexStr, 'i');
+}
 
 const panel = {
   background: '#ffffff',
@@ -43,6 +60,9 @@ function DetailModal({
 }) {
   const [partialRefundApp, setPartialRefundApp] = useState<any | null>(null);
   const [partialRefundInput, setPartialRefundInput] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [editingPriceAppId, setEditingPriceAppId] = useState<string | null>(null);
+  const [editingPriceValue, setEditingPriceValue] = useState<string>('');
 
   const sessionMap = useMemo(() => {
     const m: Record<string, any> = {};
@@ -108,11 +128,17 @@ function DetailModal({
   const handleToggleFree = async (app: any, makeFree: boolean) => {
     try {
       const appRef = doc(db, 'applications', app.id);
-      await updateDoc(appRef, {
-        amountPaid: makeFree ? 0 : null,
-        updatedAt: new Date(),
-      });
-      toast.success(makeFree ? `${app.name}님이 🎁 무료 참여로 설정되었습니다.` : `${app.name}님이 ✅ 일반 결제로 복원되었습니다.`);
+      
+      const updates: any = { updatedAt: new Date() };
+      if (makeFree) {
+        updates.amountPaid = 0;
+      } else {
+        updates.amountPaid = deleteField();
+        updates.price = deleteField();
+      }
+      
+      await updateDoc(appRef, updates);
+      toast.success(makeFree ? `${app.name}님이 무료 참여로 설정되었습니다.` : `${app.name}님이 일반 결제로 복원되었습니다.`);
     } catch (e) {
       console.error('Error toggling free status:', e);
       toast.error('오류가 발생했습니다.');
@@ -152,9 +178,28 @@ function DetailModal({
     }
   };
 
+  const handleSavePrice = async (app: any) => {
+    if (!editingPriceAppId) return;
+    try {
+      const numValue = Number(editingPriceValue.replace(/,/g, ''));
+      const appRef = doc(db, 'applications', app.id);
+      await updateDoc(appRef, {
+        amountPaid: isNaN(numValue) ? null : numValue,
+        price: isNaN(numValue) ? null : numValue,
+        updatedAt: new Date(),
+      });
+      toast.success('결제 금액이 변경되었습니다.');
+    } catch (e) {
+      console.error(e);
+      toast.error('오류가 발생했습니다.');
+    } finally {
+      setEditingPriceAppId(null);
+    }
+  };
+
   const rows = useMemo(() => {
     const confirmed = applications.filter(app =>
-      app.status === 'confirmed' || app.paymentConfirmed === true
+      app.status === 'confirmed' || (app.paymentConfirmed === true && !['applied', 'canceled', 'rejected'].includes(app.status))
     );
 
     const now = new Date();
@@ -169,6 +214,11 @@ function DetailModal({
 
     if (filterSessionId) {
       filtered = filtered.filter(app => app.sessionId === filterSessionId);
+    }
+
+    if (searchQuery.trim() !== '') {
+      const regex = getChosungRegex(searchQuery.trim());
+      filtered = filtered.filter(app => regex.test(app.name || ''));
     }
 
     return filtered
@@ -223,7 +273,7 @@ function DetailModal({
         const nameB = b.app.name || '';
         return nameA.localeCompare(nameB, 'ko');
       });
-  }, [applications, sessions, sessionMap, filterMonth]);
+  }, [applications, sessions, sessionMap, filterMonth, filterSessionId, searchQuery]);
 
   const total = rows.reduce((s, r) => s + r.amount, 0);
 
@@ -241,12 +291,24 @@ function DetailModal({
               총 {rows.length}건 · 합계 ₩{total.toLocaleString()}
             </p>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition-colors"
-          >
-            <X size={20} />
-          </button>
+          <div className="flex items-center gap-4">
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="참여자 이름 검색..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="w-48 pl-9 pr-3 py-2 text-sm font-medium bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-[#FF7E7E] focus:ring-2 focus:ring-[#FF7E7E]/20 transition-all placeholder:text-slate-300"
+              />
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            </div>
+            <button
+              onClick={onClose}
+              className="p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition-colors"
+            >
+              <X size={20} />
+            </button>
+          </div>
         </div>
 
         {/* 테이블 */}
@@ -268,7 +330,7 @@ function DetailModal({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {rows.map(({ app, amount, sessionName, confirmedAt, optionLabel, isRefunded, isRefundPending, isFree, isNoShow }, i) => (
+                {rows.map(({ app, amount, baseAmount, sessionName, confirmedAt, optionLabel, isRefunded, isRefundPending, isFree, isNoShow }, i) => (
                   <tr key={i} className={`hover:bg-slate-50/60 transition-colors ${
                     isRefunded ? 'bg-sky-50/30' : isRefundPending ? 'bg-amber-50/20' : isFree ? 'bg-purple-50/20' : isNoShow ? 'bg-rose-50/10' : ''
                   }`}>
@@ -297,8 +359,30 @@ function DetailModal({
                         <span className="text-base font-black text-amber-500">₩0 <span className="text-xs text-slate-400 font-medium">(환급 예정)</span></span>
                       ) : isFree ? (
                         <span className="text-base font-black text-purple-500">₩0 <span className="text-xs text-slate-400 font-medium">(무료)</span></span>
+                      ) : editingPriceAppId === app.id ? (
+                        <input
+                          type="text"
+                          autoFocus
+                          value={editingPriceValue}
+                          onChange={e => {
+                            const val = e.target.value.replace(/[^0-9]/g, '');
+                            setEditingPriceValue(val);
+                          }}
+                          onBlur={() => handleSavePrice(app)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') handleSavePrice(app);
+                            if (e.key === 'Escape') setEditingPriceAppId(null);
+                          }}
+                          className="w-24 px-2 py-1 text-sm font-black text-slate-800 bg-white border border-[#FF7E7E] rounded-md focus:outline-none focus:ring-2 focus:ring-[#FF7E7E]/20"
+                        />
                       ) : (
-                        <span className="text-base font-black text-slate-800">
+                        <span 
+                          className="text-base font-black text-slate-800 cursor-pointer hover:text-[#FF7E7E] transition-colors"
+                          onClick={() => {
+                            setEditingPriceAppId(app.id);
+                            setEditingPriceValue(String(baseAmount));
+                          }}
+                        >
                           ₩{amount.toLocaleString()}
                           {app.refundedAmount > 0 && (
                             <span className="text-xs text-rose-500 font-extrabold block mt-0.5 animate-pulse">
@@ -613,7 +697,7 @@ export default function RevenueStatsPage() {
     const eventRevenues = activeNonTestSessions.map(session => {
       const confirmedApps = realApps.filter(app =>
         app.sessionId === session.id &&
-        (app.status === 'confirmed' || app.paymentConfirmed === true)
+        (app.status === 'confirmed' || (app.paymentConfirmed === true && !['applied', 'canceled', 'rejected'].includes(app.status)))
       );
 
       let paidCount = 0;

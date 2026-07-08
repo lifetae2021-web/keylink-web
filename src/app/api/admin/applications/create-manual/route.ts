@@ -9,7 +9,7 @@ import { checkOverlap } from '@/lib/admin/overlap';
  */
 export async function POST(req: NextRequest) {
   try {
-    const { userId, sessionId, status, bypassOverlapCheck } = await req.json();
+    const { userId, sessionId, status, bypassOverlapCheck, selectedOption, inheritedAmountPaid } = await req.json();
 
     if (!userId || !sessionId || !status) {
       return NextResponse.json({ error: '회원 ID, 기수 ID, 등록할 상태가 필요합니다.' }, { status: 400 });
@@ -189,6 +189,19 @@ export async function POST(req: NextRequest) {
         appliedAt: originalAppliedAt || FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
       };
+
+      // v12.5.0: 옵션 및 금액 승계 적용
+      if (selectedOption) {
+        if (gender === 'male') {
+          newAppData.maleOption = selectedOption;
+        } else {
+          newAppData.femaleOption = selectedOption;
+        }
+      }
+      if (inheritedAmountPaid !== undefined && inheritedAmountPaid !== null) {
+        newAppData.amountPaid = Number(inheritedAmountPaid);
+        newAppData.price = Number(inheritedAmountPaid);
+      }
 
       // 🌑 닼템 플래그 부여
       if (isDarkTemplar) {

@@ -118,6 +118,8 @@ export default function UsersPage() {
   const [selectedSessionId, setSelectedSessionId] = useState('');
   const [registrationStatus, setRegistrationStatus] = useState<'applied' | 'selected' | 'confirmed'>('selected');
   const [isRegistering, setIsRegistering] = useState(false);
+  const [inheritedOption, setInheritedOption] = useState<any | null>(null);
+  const [selectedOption, setSelectedOption] = useState<string>('basic');
 
   useEffect(() => {
     if (!sessionRegistrationTarget) return;
@@ -133,6 +135,19 @@ export default function UsersPage() {
         setSessions(list);
         if (list.length > 0) {
           setSelectedSessionId(list[0].id);
+        }
+
+        // Fetch latest application to inherit options
+        const appQ = query(collection(db, 'applications'), where('userId', '==', sessionRegistrationTarget.id), orderBy('createdAt', 'desc'), limit(1));
+        const appSnap = await getDocs(appQ);
+        if (!appSnap.empty) {
+          const latestApp = appSnap.docs[0].data();
+          const option = sessionRegistrationTarget.gender === 'male' ? (latestApp.maleOption || 'basic') : (latestApp.femaleOption || 'basic');
+          setInheritedOption(latestApp);
+          setSelectedOption(option);
+        } else {
+          setInheritedOption(null);
+          setSelectedOption('basic');
         }
       } catch (e) {
         toast.error('기수 목록을 불러오지 못했습니다.');
@@ -160,7 +175,9 @@ export default function UsersPage() {
           userId: sessionRegistrationTarget.id,
           sessionId: selectedSessionId,
           status: registrationStatus,
-          bypassOverlapCheck: bypassOverlap
+          bypassOverlapCheck: bypassOverlap,
+          selectedOption: selectedOption,
+          inheritedAmountPaid: inheritedOption?.amountPaid || inheritedOption?.price || null
         })
       });
       const data = await res.json();
@@ -177,6 +194,8 @@ export default function UsersPage() {
       if (!res.ok) throw new Error(data.error || '참여 등록에 실패했습니다.');
       toast.success('기수 참여 등록이 성공적으로 처리되었습니다.');
       setSessionRegistrationTarget(null);
+      setInheritedOption(null);
+      setSelectedOption('basic');
     } catch (e: any) {
       toast.error(e.message || '오류가 발생했습니다.');
     } finally {
@@ -1814,6 +1833,37 @@ export default function UsersPage() {
                       );
                     })}
                   </select>
+                )}
+              </div>
+
+              {/* 참가 옵션 선택 (v12.5.0: 승계 기능 포함) */}
+              <div>
+                <label className="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2">
+                  참가 옵션
+                  {inheritedOption && <span className="ml-2 text-[10px] text-blue-500 font-bold tracking-normal">(이전 결제 내역 감지됨)</span>}
+                </label>
+                <select
+                  value={selectedOption}
+                  onChange={(e) => setSelectedOption(e.target.value)}
+                  className={`w-full px-4 py-3 rounded-2xl border outline-none transition-colors text-sm font-semibold cursor-pointer shadow-sm ${
+                    inheritedOption && selectedOption !== 'basic'
+                      ? 'border-blue-400 bg-blue-50/30 text-blue-700'
+                      : 'border-slate-200 focus:border-emerald-400 bg-white text-slate-700'
+                  }`}
+                >
+                  <option value="basic">기본 (일반 참가)</option>
+                  {sessionRegistrationTarget.gender === 'male' && (
+                    <option value="safe">안심보험 (선택됨)</option>
+                  )}
+                  {sessionRegistrationTarget.gender === 'female' && (
+                    <option value="group">지인동반 (선택됨)</option>
+                  )}
+                </select>
+                {inheritedOption && selectedOption !== 'basic' && (
+                  <p className="text-[11px] font-bold text-blue-500 mt-1.5 flex items-center gap-1">
+                    <span className="w-1 h-1 rounded-full bg-blue-400"></span>
+                    이전 기수 결제액(₩{Number(inheritedOption.amountPaid || inheritedOption.price || 0).toLocaleString()})이 승계됩니다.
+                  </p>
                 )}
               </div>
 
