@@ -31,6 +31,7 @@ function LoginContent() {
   const [loginMode, setLoginMode] = useState<'member' | 'guest'>('member');
   const [guestId, setGuestId] = useState('');
   const [guestPw, setGuestPw] = useState('');
+  const [rememberGuestId, setRememberGuestId] = useState(true);
 
   const [autoLogin, setAutoLogin] = useState(true); // Default to true
   const router = useRouter();
@@ -93,6 +94,10 @@ function LoginContent() {
     if (savedId) {
       setUserId(savedId);
     }
+    const savedGuestId = localStorage.getItem('keylink_saved_guest_id');
+    if (savedGuestId) {
+      setGuestId(savedGuestId);
+    }
   }, []);
 
   // Redirect if already logged in
@@ -134,6 +139,14 @@ function LoginContent() {
       
       // Save last login method
       localStorage.setItem('keylink_last_login_method', 'guest');
+      
+      // Handle Remember Guest ID
+      if (rememberGuestId) {
+        localStorage.setItem('keylink_saved_guest_id', guestId);
+      } else {
+        localStorage.removeItem('keylink_saved_guest_id');
+      }
+      
       toast.success('비회원 로그인에 성공했습니다!');
     } catch (error: any) {
       console.error('Guest Login Error:', error);
@@ -353,7 +366,16 @@ function LoginContent() {
                 />
               </div>
               
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginBottom: '24px', padding: '0 4px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px', padding: '0 4px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.85rem', color: '#666' }}>
+                  <input
+                    type="checkbox"
+                    checked={rememberGuestId}
+                    onChange={(e) => setRememberGuestId(e.target.checked)}
+                    style={{ width: '16px', height: '16px', accentColor: '#FF6F61' }}
+                  />
+                  생년월일 기억하기
+                </label>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.85rem', color: '#666' }}>
                   <input
                     type="checkbox"
