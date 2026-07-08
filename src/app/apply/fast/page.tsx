@@ -127,7 +127,7 @@ function FastApplyContent() {
     terms: false,
     privacy: false,
     thirdParty: false,
-    refund: true,
+    refund: false,
     marketing: false,
   });
   // ── Auth state ──
