@@ -29,6 +29,7 @@ function LoginContent() {
   
   // Guest States
   const [loginMode, setLoginMode] = useState<'member' | 'guest'>('member');
+  const [guestName, setGuestName] = useState('');
   const [guestId, setGuestId] = useState('');
   const [guestPw, setGuestPw] = useState('');
   const [rememberGuestId, setRememberGuestId] = useState(true);
@@ -94,6 +95,10 @@ function LoginContent() {
     if (savedId) {
       setUserId(savedId);
     }
+    const savedGuestName = localStorage.getItem('keylink_saved_guest_name');
+    if (savedGuestName) {
+      setGuestName(savedGuestName);
+    }
     const savedGuestId = localStorage.getItem('keylink_saved_guest_id');
     if (savedGuestId) {
       setGuestId(savedGuestId);
@@ -114,8 +119,8 @@ function LoginContent() {
 
   const handleGuestLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!guestId || !guestPw) {
-      toast.error('생년월일과 비밀번호를 입력해 주세요.');
+    if (!guestName || !guestId || !guestPw) {
+      toast.error('이름, 생년월일, 비밀번호를 모두 입력해 주세요.');
       return;
     }
     setIsLoading(true);
@@ -123,7 +128,7 @@ function LoginContent() {
       const res = await fetch('/api/auth/guest-login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ guestId, guestPw }),
+        body: JSON.stringify({ guestName, guestId, guestPw }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -142,8 +147,10 @@ function LoginContent() {
       
       // Handle Remember Guest ID
       if (rememberGuestId) {
+        localStorage.setItem('keylink_saved_guest_name', guestName);
         localStorage.setItem('keylink_saved_guest_id', guestId);
       } else {
+        localStorage.removeItem('keylink_saved_guest_name');
         localStorage.removeItem('keylink_saved_guest_id');
       }
       
@@ -342,6 +349,17 @@ function LoginContent() {
             <form onSubmit={handleGuestLogin} style={{ marginBottom: '24px' }}>
 
               <div style={{ marginBottom: '16px' }}>
+                <label style={{ fontSize: '0.85rem', fontWeight: '700', color: '#333', display: 'block', marginBottom: '8px' }}>이름 (실명)</label>
+                <input
+                  type="text"
+                  className="kl-input"
+                  placeholder="ex) 홍길동"
+                  value={guestName}
+                  onChange={(e) => handleInputChange(setGuestName, e.target.value)}
+                  style={{ borderRadius: '12px', padding: '14px' }}
+                />
+              </div>
+              <div style={{ marginBottom: '16px' }}>
                 <label style={{ fontSize: '0.85rem', fontWeight: '700', color: '#333', display: 'block', marginBottom: '8px' }}>생년월일 (6자리)</label>
                 <input
                   type="text"
@@ -374,7 +392,7 @@ function LoginContent() {
                     onChange={(e) => setRememberGuestId(e.target.checked)}
                     style={{ width: '16px', height: '16px', accentColor: '#FF6F61' }}
                   />
-                  생년월일 기억하기
+                  정보 기억하기
                 </label>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.85rem', color: '#666' }}>
                   <input

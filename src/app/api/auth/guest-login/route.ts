@@ -3,16 +3,17 @@ import { adminDb, adminAuth } from '@/lib/firebaseAdmin';
 
 export async function POST(request: Request) {
   try {
-    const { guestId, guestPw } = await request.json();
+    const { guestName, guestId, guestPw } = await request.json();
 
-    if (!guestId || !guestPw) {
-      return NextResponse.json({ error: '생년월일과 비밀번호를 입력해주세요.' }, { status: 400 });
+    if (!guestName || !guestId || !guestPw) {
+      return NextResponse.json({ error: '이름, 생년월일, 비밀번호를 입력해주세요.' }, { status: 400 });
     }
 
     // Query Firestore for the non-member user
     const usersRef = adminDb.collection('users');
     const snapshot = await usersRef
       .where('isRegistered', '==', false)
+      .where('name', '==', String(guestName))
       .where('guestId', '==', String(guestId))
       .where('guestPw', '==', String(guestPw))
       .limit(1)
@@ -20,7 +21,7 @@ export async function POST(request: Request) {
 
     if (snapshot.empty) {
       return NextResponse.json(
-        { error: '일치하는 비회원 정보가 없습니다. 생년월일과 비밀번호를 확인해주세요.' },
+        { error: '일치하는 비회원 정보가 없습니다. 이름, 생년월일, 비밀번호를 확인해주세요.' },
         { status: 401 }
       );
     }
