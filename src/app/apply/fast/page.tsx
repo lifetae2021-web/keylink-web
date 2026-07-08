@@ -755,7 +755,7 @@ function FastApplyContent() {
       const batch = writeBatch(db);
 
       // Create temp user doc
-      const birthStr = formData.birthDate.replace(/-/g, '').slice(2, 8);
+      const birthStr = formData.birthDate.replace(/-/g, ''); // '971121'
       const phoneLast4 = formData.phone.replace(/\D/g, '').slice(-4);
 
       batch.set(doc(db, 'users', uid), {
