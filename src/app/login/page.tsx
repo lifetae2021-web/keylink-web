@@ -154,7 +154,6 @@ function LoginContent() {
         localStorage.removeItem('keylink_saved_guest_id');
       }
       
-      toast.success('비회원 로그인에 성공했습니다!');
     } catch (error: any) {
       console.error('Guest Login Error:', error);
       toast.error('서버 통신 중 오류가 발생했습니다.');
@@ -204,8 +203,6 @@ function LoginContent() {
         localStorage.removeItem('keylink_saved_id');
       }
 
-      // v6.7.0: Single success toast here. onAuthStateChanged handles the redirect.
-      toast.success('로그인에 성공했습니다!');
     } catch (error: any) {
       console.error('Firebase Auth Error (Login):', error.code, error.message);
       const msg = getAuthErrorMessage(error.code);
