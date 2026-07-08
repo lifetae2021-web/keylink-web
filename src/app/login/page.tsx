@@ -374,7 +374,7 @@ function LoginContent() {
                     onChange={(e) => setRememberGuestId(e.target.checked)}
                     style={{ width: '16px', height: '16px', accentColor: '#FF6F61' }}
                   />
-                  아이디 기억하기
+                  생년월일 기억하기
                 </label>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.85rem', color: '#666' }}>
                   <input
