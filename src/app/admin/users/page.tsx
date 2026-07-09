@@ -10,7 +10,7 @@ import {
 import toast from 'react-hot-toast';
 import { auth, db } from '@/lib/firebase';
 import {
-  collection, onSnapshot, doc, updateDoc, deleteDoc, query, orderBy, Timestamp, serverTimestamp, getDocs, where, getDoc
+  collection, onSnapshot, doc, updateDoc, deleteDoc, query, orderBy, Timestamp, serverTimestamp, getDocs, where, getDoc, limit
 } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { format } from 'date-fns';
