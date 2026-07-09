@@ -2526,6 +2526,14 @@ ${chatLink}
                         <span className={`text-[0.65rem] font-black px-2 py-0.5 rounded-full ${activeBadgeCls}`}>
                           {activeBadgeLabel}
                         </span>
+                        <button
+                          onClick={() => openEditModal(active)}
+                          className="flex items-center gap-1 px-2.5 py-1 ml-auto sm:ml-2 rounded-lg bg-white border border-slate-200 text-[0.7rem] font-bold text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-all shadow-sm"
+                          title="기수 정보 수정"
+                        >
+                          <Edit2 size={12} />
+                          수정
+                        </button>
                       </div>
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.75rem] font-bold text-slate-500">
                         <span className="flex items-center gap-1">
@@ -2607,12 +2615,6 @@ ${chatLink}
                       );
                     })()}
 
-                    <button
-                      onClick={() => openEditModal(active)}
-                      className="flex items-center gap-1.5 rounded-xl transition-all px-4 py-2 bg-slate-50 border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-100 hover:border-slate-300 shrink-0"
-                    >
-                      <Edit2 size={13} /> 수정
-                    </button>
                     {/* 기수 취소 — super_admin 전용, 이미 취소된 기수는 버튼 숨김 */}
                     {isSuperAdmin && active.status !== 'cancelled' && (
                       <button
