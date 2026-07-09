@@ -2833,7 +2833,7 @@ ${chatLink}
                                   <span
                                     className={`text-[0.85rem] font-extrabold ${isMaleSection ? "text-blue-700" : "text-pink-700"}`}
                                   >
-                                    {isMaleSection ? "👨 남성" : "👩 여성"}{" "}
+                                    {isMaleSection ? "남성" : "여성"}{" "}
                                     참가자
                                   </span>
                                   <span
@@ -3338,7 +3338,7 @@ ${chatLink}
                                 <span
                                   className={`text-[0.85rem] font-extrabold text-orange-700`}
                                 >
-                                  {isMaleSection ? "👨 남성" : "👩 여성"} 대기자
+                                  {isMaleSection ? "남성" : "여성"} 대기자
                                 </span>
                                 <span
                                   className={`text-[0.72rem] font-bold px-2 py-0.5 rounded-full bg-orange-100 text-orange-700`}
