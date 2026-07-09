@@ -18,6 +18,27 @@ const panel = {
   boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
 };
 
+const PATH_MAP: Record<string, string> = {
+  '/': '🏠 메인 페이지',
+  '/apply/fast': '⚡️ 간편 신청',
+  '/mypage': '👤 마이페이지',
+  '/login': '🔑 로그인',
+  '/status': '📋 진행 현황',
+  '/events': '📅 행사 안내',
+  '/matching-results': '💘 매칭 결과',
+  '/matching/result': '💘 매칭 결과 (구)',
+  '/notices': '📢 공지사항',
+  '/admin': '⚙️ 관리자 메인',
+  '/private-matching/apply': '💎 프라이빗 신청',
+};
+
+function formatPathName(path: string) {
+  if (PATH_MAP[path]) return PATH_MAP[path];
+  if (path.startsWith('/admin')) return '⚙️ 관리자 (' + path.replace('/admin', '') + ')';
+  if (path.length > 20) return path.slice(0, 20) + '...';
+  return path;
+}
+
 export default function AnalyticsDetailsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [data, setData] = useState<any>(null);
@@ -43,7 +64,13 @@ export default function AnalyticsDetailsPage() {
           }
         }
         setUserMap(newMap);
-        setData(json);
+
+        const mappedTopPages = (json.topPages || []).map((p: any) => ({
+          ...p,
+          pathName: formatPathName(p.path)
+        }));
+
+        setData({ ...json, topPages: mappedTopPages });
       } catch (error) {
         console.error('Failed to fetch analytics details', error);
       } finally {
@@ -88,7 +115,7 @@ export default function AnalyticsDetailsPage() {
                 <BarChart data={data.topPages} layout="vertical" margin={{ top: 0, right: 30, left: 20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f0f0f0" />
                   <XAxis type="number" hide />
-                  <YAxis dataKey="path" type="category" axisLine={false} tickLine={false} width={120} tick={{ fontSize: 11, fill: '#666' }} />
+                  <YAxis dataKey="pathName" type="category" axisLine={false} tickLine={false} width={130} tick={{ fontSize: 11, fill: '#666' }} />
                   <RechartsTooltip 
                     cursor={{ fill: 'rgba(0,0,0,0.02)' }}
                     contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
@@ -148,8 +175,8 @@ export default function AnalyticsDetailsPage() {
                         <td className="px-5 py-3">
                           <div className="flex flex-col gap-1">
                             {v.paths.map((p: string, idx: number) => (
-                              <span key={idx} className="text-xs text-gray-600 bg-gray-100 px-2 py-0.5 rounded inline-block max-w-[200px] truncate">
-                                {p}
+                              <span key={idx} className="text-xs text-gray-600 bg-gray-100 px-2 py-0.5 rounded inline-block max-w-[200px] truncate" title={p}>
+                                {formatPathName(p)}
                               </span>
                             ))}
                             {v.hitCount > 5 && (
