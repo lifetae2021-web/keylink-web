@@ -33,6 +33,26 @@ export async function POST(request: Request) {
       });
     }
 
+    // 3. (CRM) 유저별 방문 횟수 업데이트 (1시간에 1번 제한)
+    if (userId) {
+      const userRef = adminDb.collection('users').doc(userId);
+      const userSnap = await userRef.get();
+      
+      if (userSnap.exists) {
+        const userData = userSnap.data();
+        const now = new Date();
+        const lastVisit = userData?.lastVisitAt?.toDate?.() || new Date(0);
+        
+        // 마지막 방문으로부터 1시간(3600000ms)이 지났을 때만 카운트 증가
+        if (now.getTime() - lastVisit.getTime() > 60 * 60 * 1000) {
+          await userRef.update({
+            visitCount: FieldValue.increment(1),
+            lastVisitAt: FieldValue.serverTimestamp()
+          });
+        }
+      }
+    }
+
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error('[Analytics API] Error tracking visit:', error);

@@ -662,11 +662,15 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
 
                 {/* 6. 활동 지표 */}
                 <div className="flex gap-3 pt-4">
-                  <div className="flex-1 p-4 rounded-3xl bg-blue-50 border border-blue-100 text-center">
+                  <div className="flex-1 p-3 rounded-3xl bg-slate-50 border border-slate-100 text-center">
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">🔥 방문</p>
+                    <p className="text-xl font-black text-slate-700">{user.visitCount || 0}</p>
+                  </div>
+                  <div className="flex-1 p-3 rounded-3xl bg-blue-50 border border-blue-100 text-center">
                     <p className="text-[9px] font-black text-blue-400 uppercase tracking-widest mb-1">참여</p>
                     <p className="text-xl font-black text-blue-700">{user.participationCount || 0}</p>
                   </div>
-                  <div className="flex-1 p-4 rounded-3xl bg-rose-50 border border-rose-100 text-center">
+                  <div className="flex-1 p-3 rounded-3xl bg-rose-50 border border-rose-100 text-center">
                     <p className="text-[9px] font-black text-rose-400 uppercase tracking-widest mb-1">매칭</p>
                     <p className="text-xl font-black text-rose-700">{user.matchCount || 0}</p>
                   </div>
