@@ -294,7 +294,7 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
                   <MapPin size={18} /> <span style={{ fontWeight: '600' }}>{session.region === 'busan' ? '부산' : '창원'} {session.location}</span>
                 </div>
-                <h2 style={{ fontSize: '1.8rem', fontWeight: '900', letterSpacing: '-0.02em' }}>{session.title}</h2>
+                <h2 style={{ fontSize: '1.8rem', fontWeight: '900', letterSpacing: '-0.02em' }}>{session.title.replace(/^(부산|창원)\s+/, '')}</h2>
               </div>
             </div>
 
