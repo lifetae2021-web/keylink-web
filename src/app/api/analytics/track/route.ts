@@ -43,9 +43,35 @@ export async function POST(request: Request) {
         const now = new Date();
         const lastVisit = userData?.lastVisitAt?.toDate?.() || new Date(0);
         
+        const updatePayload: any = {};
+        
+        if (visitorId && (!userData.knownVisitorIds || !userData.knownVisitorIds.includes(visitorId))) {
+          updatePayload.knownVisitorIds = FieldValue.arrayUnion(visitorId);
+        }
+        
         // 마지막 방문으로부터 1시간(3600000ms)이 지났을 때만 카운트 증가
         if (now.getTime() - lastVisit.getTime() > 60 * 60 * 1000) {
-          await userRef.update({
+          updatePayload.visitCount = FieldValue.increment(1);
+          updatePayload.lastVisitAt = FieldValue.serverTimestamp();
+        }
+        
+        if (Object.keys(updatePayload).length > 0) {
+          await userRef.update(updatePayload);
+        }
+      }
+    } else if (visitorId) {
+      // 4. (CRM) 로그아웃 유저 방문 추적 (알려진 기기 식별자 기반)
+      const querySnap = await adminDb.collection('users').where('knownVisitorIds', 'array-contains', visitorId).limit(2).get();
+      
+      // 기기를 여러 명이 공유하는 경우(검색 결과 2명 이상)를 방지하기 위해 정확히 1명일 때만 처리
+      if (querySnap.size === 1) {
+        const userDoc = querySnap.docs[0];
+        const userData = userDoc.data();
+        const now = new Date();
+        const lastVisit = userData?.lastVisitAt?.toDate?.() || new Date(0);
+        
+        if (now.getTime() - lastVisit.getTime() > 60 * 60 * 1000) {
+          await userDoc.ref.update({
             visitCount: FieldValue.increment(1),
             lastVisitAt: FieldValue.serverTimestamp()
           });
