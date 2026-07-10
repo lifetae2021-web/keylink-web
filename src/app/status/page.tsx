@@ -227,15 +227,7 @@ export default function StatusListPage() {
             );
           })()}
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: 'auto' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ fontSize: '0.85rem', color: '#999', textDecoration: 'line-through' }}>40,000원</span>
-              <span style={{ fontSize: '0.75rem', fontWeight: '800', color: '#FF6F61', background: 'rgba(255,111,97,0.1)', padding: '1px 6px', borderRadius: '4px' }}>53% OFF</span>
-            </div>
-            <span style={{ fontSize: '1.3rem', fontWeight: '900', color: '#FF6F61' }}>
-              19,000원~
-            </span>
-          </div>
+
         </div>
       </div>
     );
