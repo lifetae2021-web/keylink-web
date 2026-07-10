@@ -39,7 +39,7 @@ export async function POST(request: Request) {
       const userSnap = await userRef.get();
       
       if (userSnap.exists) {
-        const userData = userSnap.data();
+        const userData = userSnap.data() || {};
         const now = new Date();
         const lastVisit = userData?.lastVisitAt?.toDate?.() || new Date(0);
         
@@ -66,7 +66,7 @@ export async function POST(request: Request) {
       // 기기를 여러 명이 공유하는 경우(검색 결과 2명 이상)를 방지하기 위해 정확히 1명일 때만 처리
       if (querySnap.size === 1) {
         const userDoc = querySnap.docs[0];
-        const userData = userDoc.data();
+        const userData = userDoc.data() || {};
         const now = new Date();
         const lastVisit = userData?.lastVisitAt?.toDate?.() || new Date(0);
         
