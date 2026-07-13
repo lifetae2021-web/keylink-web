@@ -750,13 +750,13 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
                   ) : (
                     <div className="space-y-2">
                       {userApps.map((app: any) => {
-                        const status = app.attendanceStatus as 'present' | 'late' | 'no-show' | null;
+                        const status = app.attendanceStatus as 'present' | 'late' | 'no-show' | 'excused' | null;
                         const sessionInfo = sessionsMap[app.sessionId];
                         const eventDate = sessionInfo?.eventDate?.toDate?.() || (sessionInfo?.eventDate ? new Date(sessionInfo.eventDate) : null);
                         const appliedDate = app.appliedAt?.toDate?.() || (app.appliedAt ? new Date(app.appliedAt) : null);
                         const displayDate = eventDate || appliedDate;
 
-                        const handleToggleStatus = async (newStatus: 'present' | 'late' | 'no-show' | null) => {
+                        const handleToggleStatus = async (newStatus: 'present' | 'late' | 'no-show' | 'excused' | null) => {
                           const uid = user.uid || user.id;
                           if (!uid) return;
                           try {
@@ -819,7 +819,7 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
                             setUserApps(prevApps => prevApps.map(a =>
                               a.id === app.id ? { ...a, attendanceStatus: nextStatus, attended: nextStatus === 'present' || nextStatus === 'late' } : a
                             ));
-                            toast.success(nextStatus ? `${nextStatus === 'present' ? '출석' : nextStatus === 'late' ? '지각' : '노쇼'} 처리됨` : '출석 상태 초기화');
+                            toast.success(nextStatus ? `${nextStatus === 'present' ? '출석' : nextStatus === 'late' ? '지각' : nextStatus === 'no-show' ? '노쇼' : '불참'} 처리됨` : '출석 상태 초기화');
                           } catch (e) {
                             console.error('Failed to update status', e);
                             toast.error('변경에 실패했습니다.');
@@ -833,6 +833,7 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
                               status === 'present' ? 'bg-emerald-50 border-emerald-200' :
                               status === 'late'    ? 'bg-amber-50 border-amber-200' :
                               status === 'no-show' ? 'bg-rose-50 border-rose-200' :
+                              status === 'excused' ? 'bg-slate-100 border-slate-300' :
                               'bg-slate-50 border-slate-100'
                             }`}
                           >
@@ -880,6 +881,12 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
                                   status === 'no-show' ? 'bg-rose-500 text-white border-rose-500' : 'bg-white text-slate-400 border-slate-200 hover:border-rose-300 hover:text-rose-600'
                                 }`}
                               >노쇼</button>
+                              <button
+                                onClick={() => handleToggleStatus('excused')}
+                                className={`px-2 py-1 rounded-lg text-[0.6rem] font-black border transition-all ${
+                                  status === 'excused' ? 'bg-slate-500 text-white border-slate-500' : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300 hover:text-slate-600'
+                                }`}
+                              >불참</button>
                             </div>
                           </div>
                         );

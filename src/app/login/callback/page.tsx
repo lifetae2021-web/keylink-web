@@ -58,6 +58,9 @@ function KakaoCallbackContent() {
         } else if (targetState === 'fast_apply') {
           // Fast apply flow: restore saved application data and redirect back
           router.replace('/apply/fast?kakao_done=1');
+        } else if (targetState === 'upgrade_guest_done') {
+          toast.success('기존 비회원 정보가 성공적으로 연동되었습니다!');
+          router.replace('/mypage');
         } else if (isNew) {
           toast.success('카카오 로그인으로 가입이 완료되었습니다!');
           router.replace(redirectUrl);

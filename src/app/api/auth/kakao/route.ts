@@ -58,10 +58,23 @@ async function getOrCreateFirebaseUser(kakaoId: string, nickname: string) {
   }
 
   // Firestore에 유저 문서 확인
-  const userDoc = await adminDb.collection('users').doc(firebaseUid).get();
+  const userRef = adminDb.collection('users').doc(firebaseUid);
+  const userDoc = await userRef.get();
   const isNewUser = !userDoc.exists;
 
-  return { firebaseUid, isNewUser, existingData: userDoc.data() };
+  if (isNewUser) {
+    await userRef.set({
+      uid: firebaseUid,
+      name: nickname,
+      isRegistered: true,
+      loginMethod: 'kakao',
+      provider: 'kakao',
+      role: 'user',
+      createdAt: new Date(),
+    });
+  }
+
+  return { firebaseUid, isNewUser, existingData: isNewUser ? null : userDoc.data() };
 }
 
 // GET: 리다이렉트 방식 (카카오에서 콜백)
@@ -85,9 +98,41 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    // 비회원 -> 카카오 연동 처리
+    let finalState = state;
+    if (state.startsWith('upgrade_guest|')) {
+      const oldUid = state.split('|')[1];
+      if (oldUid) {
+        // 기존 비회원 문서 가져오기
+        const oldDoc = await adminDb.collection('users').doc(oldUid).get();
+        if (oldDoc.exists && oldDoc.data()?.isRegistered === false) {
+          const oldData = oldDoc.data()!;
+          const batch = adminDb.batch();
+          
+          // 기존 신청 내역의 userId 업데이트
+          const appsSnap = await adminDb.collection('applications').where('userId', '==', oldUid).get();
+          appsSnap.forEach(appDoc => {
+            batch.update(appDoc.ref, { userId: firebaseUid });
+          });
+          
+          // 기존 비회원 정보를 새 카카오 계정에 병합
+          const mergedData = { ...oldData, uid: firebaseUid, isRegistered: true, loginMethod: 'kakao', provider: 'kakao', role: 'user', updatedAt: new Date() };
+          // 기존 Kakao name 유지 (또는 oldData.name)
+          if (oldData.name) mergedData.name = oldData.name;
+          
+          batch.set(adminDb.collection('users').doc(firebaseUid), mergedData, { merge: true });
+          
+          // 이전 문서는 병합됨 표시
+          batch.update(adminDb.collection('users').doc(oldUid), { mergedTo: firebaseUid });
+          await batch.commit();
+        }
+      }
+      finalState = 'upgrade_guest_done';
+    }
+
     const customToken = await adminAuth.createCustomToken(firebaseUid);
     const targetPath = isAdmin ? '/admin/callback' : '/login/callback';
-    return NextResponse.redirect(`${origin}${targetPath}?token=${customToken}&state=${state}&isNew=${isNewUser}`);
+    return NextResponse.redirect(`${origin}${targetPath}?token=${customToken}&state=${finalState}&isNew=${isNewUser}`);
 
   } catch (error: any) {
     console.error('Kakao GET Auth Error:', error);

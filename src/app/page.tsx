@@ -12,6 +12,8 @@ import { getReviews, ReviewItem } from '@/lib/firestore/cms';
 import { EventsSection } from '@/components/EventsSection';
 import { Suspense } from 'react';
 import { useRouter } from 'next/navigation';
+import { db } from '@/lib/firebase';
+import { collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
 
 const steps = [
   { num: '01', title: '신청하기', desc: '원하는 날짜 선택 후 신청' },
@@ -92,9 +94,22 @@ export default function HomePage() {
   const router = useRouter();
   const [currentReview, setCurrentReview] = useState(0);
   const [reviews, setReviews] = useState<ReviewItem[]>([]);
+  const [completedBase, setCompletedBase] = useState(130);
 
   useEffect(() => { getReviews().then(setReviews); }, []);
   const [heroVisible, setHeroVisible] = useState(false);
+
+  useEffect(() => {
+    const q = query(collection(db, 'sessions'), where('status', '==', 'completed'), orderBy('episodeNumber', 'desc'), limit(1));
+    getDocs(q).then(snap => {
+      if (!snap.empty) {
+        const maxEp = snap.docs[0].data().episodeNumber || 0;
+        if (maxEp >= 130) {
+          setCompletedBase(Math.floor(maxEp / 10) * 10);
+        }
+      }
+    }).catch(console.error);
+  }, []);
 
   useEffect(() => {
     const t = setTimeout(() => setHeroVisible(true), 100);
@@ -175,7 +190,7 @@ export default function HomePage() {
           }}>
             <Sparkles size={14} color="var(--color-accent)" />
             <span style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--color-accent)', letterSpacing: '0.08em' }}>
-              2025년 론칭 · 120기 돌파 🎉
+              2025년 론칭 · {completedBase}기 돌파 🎉
             </span>
           </div>
 
@@ -200,8 +215,7 @@ export default function HomePage() {
             marginTop: '40px', flexWrap: 'wrap',
           }}>
             {[
-              { num: '120기+', label: '누적 진행' },
-              { num: '부산 & 창원', label: '운영 지역' },
+              { num: `${completedBase}기+`, label: '누적 진행' },
               { num: '6:6~8:8', label: '소규모 진행' },
             ].map((s) => (
               <div key={s.label} style={{ textAlign: 'center' }}>

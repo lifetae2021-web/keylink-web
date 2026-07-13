@@ -14,13 +14,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '수신자와 메시지가 필요합니다.' }, { status: 400 });
     }
 
-    // v8.12.9: 로컬 환경(development)에서는 실제 발송을 차단하고 경고 반환
-    const isDev = process.env.NODE_ENV === 'development';
-    if (isDev) {
-      return NextResponse.json({ 
-        error: '[로컬 환경] 로컬 테스트 중에는 실제 문자 발송이 제한됩니다.' 
-      }, { status: 403 });
-    }
+    // 로컬 발송 차단 코드 제거됨 (실발송 모드 적용)
 
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
@@ -68,8 +62,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const isMock = process.env.NODE_ENV === 'development';
-    return NextResponse.json({ success: true, successCount, failCount, isMock, lastError });
+    return NextResponse.json({ success: true, successCount, failCount, isMock: false, lastError });
   } catch (error) {
     console.error('SMS 발송 오류:', error);
     return NextResponse.json({ error: '문자 발송 중 오류가 발생했습니다.' }, { status: 500 });

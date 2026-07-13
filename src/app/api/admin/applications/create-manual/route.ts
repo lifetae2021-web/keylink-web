@@ -79,13 +79,12 @@ export async function POST(req: NextRequest) {
     // 🌑 닼템: super_admin 계정은 시스템 전체에서 투명인간 처리
     const isDarkTemplar = userData.role === 'super_admin';
 
-    const isDev = process.env.NODE_ENV === 'development';
     // 중복 만남 체크 (닼템/더미가 아니며 'confirmed' 혹은 'selected'인 경우에만 검사)
     if (status === 'confirmed' || status === 'selected') {
       const isDummyForCheck = userId.startsWith('user_m_') || userId.startsWith('user_f_') || userData.isDummy === true;
       const isDarkTemplarForCheck = userData.role === 'super_admin' || isDarkTemplar;
 
-      if (!isDev && !isDummyForCheck && !isDarkTemplarForCheck && !bypassOverlapCheck) {
+      if (!isDummyForCheck && !isDarkTemplarForCheck && !bypassOverlapCheck) {
         const overlapMessage = await checkOverlap(userId, sessionId, gender);
         if (overlapMessage) {
           return NextResponse.json({ overlapWarning: true, message: overlapMessage }, { status: 200 });

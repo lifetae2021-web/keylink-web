@@ -141,9 +141,9 @@ export default function VotePage() {
       const candidateListRaw = await Promise.all(snap.docs.map(async (d) => {
         const appData = d.data();
         
-        // v11.1.0: 노쇼(No-Show)로 등록된 참가자는 후보 리스트에서 원천적으로 필터링하여 노출 제외
+        // v11.1.0: 노쇼(No-Show) 및 불참(excused) 참가자는 후보 리스트에서 원천적으로 필터링하여 노출 제외
         // 닼템(isDarkTemplar) 모드로 참여한 투명인간 참가자도 투표 대상에서 제외
-        if (appData.attendanceStatus === 'no-show' || appData.isDarkTemplar === true) {
+        if (appData.attendanceStatus === 'no-show' || appData.attendanceStatus === 'excused' || appData.isDarkTemplar === true) {
           return null;
         }
 

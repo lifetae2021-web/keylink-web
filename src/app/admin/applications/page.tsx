@@ -1312,7 +1312,7 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                                           }
                                         }}
                                         disabled={!user.isJobReviewed && !app.id.startsWith('dummy')}
-                                        className={`px-3 py-2 rounded-xl text-[0.8rem] font-black transition-all ${
+                                        className={`px-3 py-2 rounded-xl text-[0.8rem] font-black transition-all whitespace-nowrap ${
                                           isOverQuota ? 'bg-rose-500 text-white hover:bg-rose-600' : 'bg-[#FF6F61] text-white hover:bg-[#ff5a4a]'
                                         } shadow-md shadow-rose-100 disabled:opacity-50`}
                                       >
@@ -1328,7 +1328,7 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                                             }
                                             handleOpenPreview(app, 're-request');
                                           }}
-                                          className="px-3 py-2 bg-purple-500 text-white rounded-xl text-[0.8rem] font-black hover:bg-purple-600 shadow-md shadow-purple-100 transition-all"
+                                          className="px-3 py-2 bg-purple-500 text-white rounded-xl text-[0.8rem] font-black hover:bg-purple-600 shadow-md shadow-purple-100 transition-all whitespace-nowrap"
                                         >
                                           재요청
                                         </button>
@@ -1338,7 +1338,7 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                                               updateAppStatus(app, 'applied');
                                             }
                                           }}
-                                          className="px-3 py-2 bg-slate-100 text-slate-600 rounded-xl text-[0.8rem] font-black hover:bg-slate-200 transition-all ml-1"
+                                          className="px-3 py-2 bg-slate-100 text-slate-600 rounded-xl text-[0.8rem] font-black hover:bg-slate-200 transition-all ml-1 whitespace-nowrap"
                                         >
                                           되돌리기
                                         </button>

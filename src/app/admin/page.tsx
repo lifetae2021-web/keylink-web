@@ -421,7 +421,15 @@ export default function AdminDashboard() {
                       <tr key={m.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }} className="hover:bg-white/[0.02] transition-colors">
                         <td style={{ padding: '12px 24px', fontSize: '0.85rem', fontWeight: 600 }}>{m.name || '미입력'}</td>
                         <td style={{ padding: '12px 24px', fontSize: '0.83rem', color: '#666' }}>
-                          {m.gender === 'male' ? '남' : m.gender === 'female' ? '여' : '-'} / {m.birthDate ? `${new Date().getFullYear() - parseInt(m.birthDate.length === 6 ? (parseInt(m.birthDate.substring(0, 2)) > 40 ? '19' : '20') + m.birthDate.substring(0, 2) : m.birthDate.substring(0, 4)) + 1}세` : '-'}
+                          {m.gender === 'male' ? '남' : m.gender === 'female' ? '여' : '-'} / {(() => {
+                            const bd = m.birthDate;
+                            if (!bd) return '-';
+                            const digits = bd.replace(/\D/g, '');
+                            if (digits.length === 8) return `${digits.slice(2, 4)}년생`;
+                            if (digits.length === 6) return `${digits.slice(0, 2)}년생`;
+                            if (digits.length === 4) return `${digits.slice(2, 4)}년생`;
+                            return '-';
+                          })()}
                         </td>
                         <td style={{ padding: '12px 24px' }}>
                           <span style={{ fontSize: '0.72rem', fontWeight: 600, padding: '4px 10px', borderRadius: 20, color: s.color, background: s.bg }}>

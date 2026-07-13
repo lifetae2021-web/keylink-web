@@ -153,11 +153,56 @@ function FastApplyContent() {
     }
   };
   const [pinModalOpen, setPinModalOpen] = useState(false);
-  const [guestPin, setGuestPin] = useState('');
   const [showGuestPin, setShowGuestPin] = useState(false);
+  const [guestPin, setGuestPin] = useState('');
+
+  // 뒤로가기 발생 시 자동 비회원 신청 처리
+  useEffect(() => {
+    if (funnelModal) {
+      window.history.pushState({ funnelOpen: true }, '');
+      
+      const handlePopState = (e: PopStateEvent) => {
+        setFunnelModal(false);
+        saveNonMemberApplication(undefined); 
+      };
+      
+      window.addEventListener('popstate', handlePopState);
+      return () => window.removeEventListener('popstate', handlePopState);
+    }
+  }, [funnelModal]);
 
   // ── Form Lock State ──
   const [isGenderLocked, setIsGenderLocked] = useState(false);
+
+  // 테스트 자동입력 (이름에 tset 또는 test 포함 시 랜덤 데이터)
+  useEffect(() => {
+    const nameLower = form.name.toLowerCase();
+    if ((nameLower.includes('test') || nameLower.includes('tset')) && form.gender) {
+      if (!form.birthDate) {
+        const rYear = Math.floor(Math.random() * 10) + 90; // 90~99
+        const rMonth = String(Math.floor(Math.random() * 12) + 1).padStart(2, '0');
+        const rDay = String(Math.floor(Math.random() * 28) + 1).padStart(2, '0');
+        setForm(prev => ({
+          ...prev,
+          birthDate: `${rYear}${rMonth}${rDay}`,
+          phone: `010-9999-${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`,
+          height: form.gender === 'male' ? String(Math.floor(Math.random() * 15) + 170) : String(Math.floor(Math.random() * 15) + 155),
+          weight: form.gender === 'male' ? String(Math.floor(Math.random() * 15) + 65) : String(Math.floor(Math.random() * 10) + 45),
+          residence: '서울 강남구',
+          workplace: '테스트 컴퍼니 / 개발자',
+          jobRole: '개발자',
+          smoking: '비흡연',
+          drinking: '월 1~2회',
+          religion: '무교',
+          idealType: '테스트 이상형',
+          nonIdealType: '테스트 기피형',
+          avoidList: [],
+          drink: ['아메리카노'],
+          guestPw: '1234',
+        }));
+      }
+    }
+  }, [form.name, form.gender, form.birthDate]);
 
   // ── Social login loading ──
   const [socialLoading, setSocialLoading] = useState(false);
@@ -1547,7 +1592,34 @@ function FastApplyContent() {
                 <button
                   key={g}
                   type="button"
-                  onClick={() => !isGenderLocked && setField('gender', g)}
+                  onClick={() => {
+                    if (isGenderLocked) return;
+                    setField('gender', g);
+                    
+                    if (form.name.toLowerCase().includes('tset') || form.name.toLowerCase().includes('test')) {
+                      setForm(prev => ({
+                        ...prev,
+                        gender: g,
+                        birthDate: '950101',
+                        phone: '010-9999-9999',
+                        height: g === 'male' ? '180' : '165',
+                        weight: g === 'male' ? '75' : '50',
+                        residence: '테스트시 테스트구',
+                        workplace: '테스트회사 / 테스트직무',
+                        smoking: '비흡연',
+                        drinking: '안 마심',
+                        religion: '무교',
+                        idealType: '테스트 이상형입니다.',
+                        nonIdealType: '테스트 비선호형입니다.',
+                        drink: ['아메리카노'],
+                      }));
+                      if (photos.length === 0) {
+                        setPhotos(['https://dummyimage.com/600x400/FF6F61/fff&text=TEST']);
+                      }
+                      setAgreements({ terms: true, privacy: true, thirdParty: true, refund: true, marketing: true });
+                      toast.success('테스트용 데이터가 자동 입력되었습니다!');
+                    }
+                  }}
                   style={{
                     flex: 1, padding: '12px', borderRadius: '12px', border: 'none', cursor: 'pointer', fontWeight: '700', fontSize: '0.9rem',
                     background: form.gender === g ? '#FF6F61' : '#f8fafc',
@@ -1974,8 +2046,18 @@ function FastApplyContent() {
 
       {/* ─── Signup Funnel Modal ─── */}
       {funnelModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 9999, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', backdropFilter: 'blur(6px)' }}>
-          <div style={{ background: '#fff', borderRadius: '28px 28px 0 0', width: '100%', maxWidth: '600px', padding: '32px 24px 40px', boxShadow: '0 -20px 60px rgba(0,0,0,0.12)' }}>
+        <div 
+          onClick={() => {
+            setFunnelModal(false);
+            if (window.history.state?.funnelOpen) window.history.back(); // popstate 트리거로 일원화
+            else saveNonMemberApplication(undefined);
+          }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 9999, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', backdropFilter: 'blur(6px)' }}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            style={{ background: '#fff', borderRadius: '28px 28px 0 0', width: '100%', maxWidth: '600px', padding: '32px 24px 40px', boxShadow: '0 -20px 60px rgba(0,0,0,0.12)' }}
+          >
             <div style={{ width: '40px', height: '4px', background: '#e2e8f0', borderRadius: '100px', margin: '0 auto 24px' }} />
 
             {!nonMemberWarning ? (
@@ -2071,8 +2153,19 @@ function FastApplyContent() {
 
       {/* ─── Non-Member PIN Setup Modal ─── */}
       {pinModalOpen && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(6px)', padding: '20px' }}>
-          <div style={{ background: '#fff', borderRadius: '24px', width: '100%', maxWidth: '360px', padding: '32px 24px', boxShadow: '0 20px 40px rgba(0,0,0,0.15)', textAlign: 'center' }}>
+        <div 
+          onClick={() => {
+            setPinModalOpen(false);
+            setFunnelModal(false);
+            if (window.history.state?.funnelOpen) window.history.back();
+            else saveNonMemberApplication(undefined);
+          }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(6px)', padding: '20px' }}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            style={{ background: '#fff', borderRadius: '24px', width: '100%', maxWidth: '360px', padding: '32px 24px', boxShadow: '0 20px 40px rgba(0,0,0,0.15)', textAlign: 'center' }}
+          >
             <h2 style={{ fontSize: '1.2rem', fontWeight: '900', color: '#111', marginBottom: '8px' }}>비회원 로그인 비밀번호 설정</h2>
             <p style={{ color: '#777', fontSize: '0.85rem', lineHeight: 1.6, marginBottom: '24px', wordBreak: 'keep-all' }}>
               <span style={{ fontSize: '0.78rem', opacity: 0.8 }}>(설정하지 않으시면 휴대폰 번호 뒷자리 4개로 자동 설정됩니다.)</span>

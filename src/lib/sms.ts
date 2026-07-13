@@ -39,14 +39,6 @@ export async function sendSMS({ to, text, scheduledDate }: SendSMSParams) {
   // 번호 형식 정리 (하이픈 제거)
   const cleanTo = to.replace(/[^0-9]/g, '');
 
-  const isDev = process.env.NODE_ENV === 'development';
-
-  if (isDev) {
-    console.warn(`SMS 발송 차단(로컬 환경): Mock 모드 작동 중`);
-    console.log(`[Mock SMS] TO: ${cleanTo}, TEXT: ${text}${scheduledDate ? `, SCHEDULED: ${scheduledDate}` : ''}`);
-    return { success: true, mock: true };
-  }
-
   if (!API_KEY || !API_SECRET || !SENDER_NUMBER) {
     const missing = [];
     if (!API_KEY) missing.push('SOLAPI_API_KEY');

@@ -1285,6 +1285,10 @@ ${user.name || app.name || "참가자"}님은 ${fDate} ${fDay} ${fTime} 소개�
         updateData.attended = false;
         updateData.attendanceStatus = 'no-show';
         toastMsg = "노쇼 처리되었습니다.";
+      } else if (status === 'excused') {
+        updateData.attended = false;
+        updateData.attendanceStatus = 'excused';
+        toastMsg = "불참(페널티 없음) 처리되었습니다.";
       } else {
         updateData.attended = deleteField();
         updateData.attendanceStatus = deleteField();
@@ -2760,7 +2764,7 @@ ${chatLink}
                             </div>
                             {(() => {
                               const drinkCounts = realParticipants.reduce((acc, p) => {
-                                if (p.attendanceStatus === 'no-show') return acc;
+                                if (p.attendanceStatus === 'no-show' || p.attendanceStatus === 'excused') return acc;
                                 const code = getDrinkCode(p.drink || userMap[p.userId]?.drink);
                                 if (code) {
                                   code.split(', ').forEach(c => {
@@ -2778,7 +2782,7 @@ ${chatLink}
                                   <span className="text-[0.7rem] font-bold text-blue-700 mr-1">음료 요약</span>
                                   {codes.map(c => {
                                     const totalForDrink = realParticipants.filter(p => {
-                                      if (p.attendanceStatus === 'no-show') return false;
+                                      if (p.attendanceStatus === 'no-show' || p.attendanceStatus === 'excused') return false;
                                       const code = getDrinkCode(p.drink || userMap[p.userId]?.drink);
                                       return code && code.split(', ').includes(c);
                                     });
@@ -2933,7 +2937,7 @@ ${chatLink}
                                         return (
                                           <div
                                             key={app.id}
-                                            className={`flex flex-col gap-1 px-5 py-3 transition-all duration-200 border-b border-slate-100/60 ${app.isDarkTemplar ? "bg-violet-50/60 hover:bg-violet-50 border-l-4 border-l-violet-400" : isOverQuota ? "bg-red-50/50 animate-pulse" : app.attendanceStatus === 'present' ? "bg-emerald-50/15 hover:bg-emerald-50/30 border-l-4 border-l-emerald-500 shadow-sm shadow-emerald-100/50" : app.attendanceStatus === 'late' ? "bg-amber-50/15 hover:bg-amber-50/30 border-l-4 border-l-amber-500 shadow-sm shadow-amber-100/50" : app.attendanceStatus === 'no-show' ? "bg-rose-50/15 hover:bg-rose-50/30 border-l-4 border-l-rose-500 shadow-sm shadow-rose-100/50" : (userMap[app.userId]?.noShowCount > 0 ? "bg-rose-50/30 hover:bg-rose-50/50 border-l-4 border-l-rose-300" : "bg-white hover:bg-slate-50/80 border-l-4 border-l-transparent")}`}
+                                            className={`flex flex-col gap-1 px-5 py-3 transition-all duration-200 border-b border-slate-100/60 ${app.isDarkTemplar ? "bg-violet-50/60 hover:bg-violet-50 border-l-4 border-l-violet-400" : isOverQuota ? "bg-red-50/50 animate-pulse" : app.attendanceStatus === 'present' ? "bg-emerald-50/15 hover:bg-emerald-50/30 border-l-4 border-l-emerald-500 shadow-sm shadow-emerald-100/50" : app.attendanceStatus === 'late' ? "bg-amber-50/15 hover:bg-amber-50/30 border-l-4 border-l-amber-500 shadow-sm shadow-amber-100/50" : app.attendanceStatus === 'no-show' ? "bg-rose-50/15 hover:bg-rose-50/30 border-l-4 border-l-rose-500 shadow-sm shadow-rose-100/50" : app.attendanceStatus === 'excused' ? "bg-slate-50/50 hover:bg-slate-50/80 border-l-4 border-l-slate-400 shadow-sm shadow-slate-100/50" : (userMap[app.userId]?.noShowCount > 0 ? "bg-rose-50/30 hover:bg-rose-50/50 border-l-4 border-l-rose-300" : "bg-white hover:bg-slate-50/80 border-l-4 border-l-transparent")}`}
                                           >
                                             {/* Row 1: 슬롯+이름+뱃지 (왼쪽) | 출석/지각/노쇼/💸환불 칩 (오른쪽 끝) */}
                                             <div className="flex items-center justify-between gap-2">
@@ -3022,6 +3026,10 @@ ${chatLink}
                                                   onClick={() => handleSetAttendanceStatus(app, app.attendanceStatus === 'no-show' ? 'none' : 'no-show')}
                                                   className={`px-2 py-0.5 rounded-lg text-[0.6rem] font-bold transition-all ${app.attendanceStatus === 'no-show' ? "bg-rose-500 text-white shadow-sm" : "text-slate-400 hover:text-slate-600 hover:bg-white"}`}
                                                 >노쇼</button>
+                                                <button
+                                                  onClick={() => handleSetAttendanceStatus(app, app.attendanceStatus === 'excused' ? 'none' : 'excused')}
+                                                  className={`px-2 py-0.5 rounded-lg text-[0.6rem] font-bold transition-all ${app.attendanceStatus === 'excused' ? "bg-slate-500 text-white shadow-sm" : "text-slate-400 hover:text-slate-600 hover:bg-white"}`}
+                                                >불참</button>
                                                 <button
                                                   onClick={() => handleToggleRefundDeposit(app)}
                                                   title={(app.isRefundDeposit || app.isManualRefund) ? '환불 대상 해제' : '환불 대상으로 설정'}
@@ -3360,7 +3368,7 @@ ${chatLink}
                                   return (
                                     <div
                                       key={app.id}
-                                      className={`flex flex-col gap-2.5 px-4 sm:px-6 py-4 transition-all duration-200 border-b border-slate-100/60 ${app.attendanceStatus === 'present' ? "bg-emerald-50/15 hover:bg-emerald-50/30 border-l-4 border-l-emerald-500 shadow-sm shadow-emerald-100/50" : app.attendanceStatus === 'late' ? "bg-amber-50/15 hover:bg-amber-50/30 border-l-4 border-l-amber-500 shadow-sm shadow-amber-100/50" : app.attendanceStatus === 'no-show' ? "bg-rose-50/15 hover:bg-rose-50/30 border-l-4 border-l-rose-500 shadow-sm shadow-rose-100/50" : (userMap[app.userId]?.noShowCount > 0 ? "bg-rose-50/30 hover:bg-rose-50/50 border-l-4 border-l-rose-300" : "bg-white hover:bg-slate-50/80 border-l-4 border-l-transparent")}`}
+                                      className={`flex flex-col gap-2.5 px-4 sm:px-6 py-4 transition-all duration-200 border-b border-slate-100/60 ${app.attendanceStatus === 'present' ? "bg-emerald-50/15 hover:bg-emerald-50/30 border-l-4 border-l-emerald-500 shadow-sm shadow-emerald-100/50" : app.attendanceStatus === 'late' ? "bg-amber-50/15 hover:bg-amber-50/30 border-l-4 border-l-amber-500 shadow-sm shadow-amber-100/50" : app.attendanceStatus === 'no-show' ? "bg-rose-50/15 hover:bg-rose-50/30 border-l-4 border-l-rose-500 shadow-sm shadow-rose-100/50" : app.attendanceStatus === 'excused' ? "bg-slate-50/50 hover:bg-slate-50/80 border-l-4 border-l-slate-400 shadow-sm shadow-slate-100/50" : (userMap[app.userId]?.noShowCount > 0 ? "bg-rose-50/30 hover:bg-rose-50/50 border-l-4 border-l-rose-300" : "bg-white hover:bg-slate-50/80 border-l-4 border-l-transparent")}`}
                                     >
                                       {/* Top Row: 번호 + 이름/뱃지 | 메모 + 삭제 (항상 가로) */}
                                       <div className="flex items-center justify-between gap-2">
@@ -3862,7 +3870,7 @@ ${chatLink}
                 });
 
                 const targetParticipants = realParticipants.filter(p => {
-                  if (p.attendanceStatus === 'no-show') return false;
+                  if (p.attendanceStatus === 'no-show' || p.attendanceStatus === 'excused') return false;
                   const code = getDrinkCode(p.drink || userMap[p.userId]?.drink);
                   return code && code.split(', ').includes(selectedDrinkCode);
                 });

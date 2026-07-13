@@ -3,11 +3,8 @@ import { adminDb, adminAuth } from '@/lib/firebaseAdmin';
 
 export async function POST(req: NextRequest) {
   try {
-    const isDev = process.env.NODE_ENV === 'development';
-    
     // In production, verify authorization token and role.
-    if (!isDev) {
-      const authHeader = req.headers.get('Authorization');
+    const authHeader = req.headers.get('Authorization');
       if (!authHeader?.startsWith('Bearer ')) {
         return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 });
       }
@@ -17,7 +14,6 @@ export async function POST(req: NextRequest) {
       const callerRole = userSnap.data()?.role;
       if (!userSnap.exists || (callerRole !== 'admin' && callerRole !== 'super_admin')) {
         return NextResponse.json({ error: '관리자 권한이 없습니다.' }, { status: 403 });
-      }
     }
 
     const { userId, couponData } = await req.json();

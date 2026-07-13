@@ -639,7 +639,8 @@ function MyPageContent() {
                 onClick={() => {
                   const clientId = process.env.NEXT_PUBLIC_KAKAO_CLIENT_ID;
                   if (!clientId) return;
-                  window.location.href = `https://kauth.kakao.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(window.location.origin + '/api/auth/kakao')}&response_type=code&state=upgrade_guest`;
+                  const stateParam = user?.uid ? `upgrade_guest|${user.uid}` : 'upgrade_guest';
+                  window.location.href = `https://kauth.kakao.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(window.location.origin + '/api/auth/kakao')}&response_type=code&state=${stateParam}`;
                 }}
                 style={{ padding: '14px', background: '#FEE500', border: 'none', borderRadius: '12px', fontWeight: '800', color: '#3c1e1e', cursor: 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
               >
