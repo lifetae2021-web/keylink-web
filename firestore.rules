@@ -183,5 +183,12 @@ service cloud.firestore {
         && request.resource.data.status == 'negotiating';
     }
 
+    // ─────────────────────────────────────
+    // visitor_logs (방문 기록) 컬렉션
+    // ─────────────────────────────────────
+    match /visitor_logs/{logId} {
+      allow read: if isAdmin();
+    }
+
   }
 }
