@@ -9,25 +9,29 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: '이름, 생년월일, 비밀번호를 입력해주세요.' }, { status: 400 });
     }
 
-    // Query Firestore for the non-member user
+    // Query Firestore for the non-member user by guestId and guestPw only
     const usersRef = adminDb.collection('users');
     const snapshot = await usersRef
       .where('isRegistered', '==', false)
-      .where('name', '==', String(guestName))
       .where('guestId', '==', String(guestId))
       .where('guestPw', '==', String(guestPw))
-      .limit(1)
       .get();
 
-    if (snapshot.empty) {
+    // 대소문자 무시하고 이름 비교
+    const matchedDoc = snapshot.docs.find(doc => {
+      const dbName = String(doc.data().name || '').toLowerCase();
+      const inputName = String(guestName).toLowerCase();
+      return dbName === inputName;
+    });
+
+    if (!matchedDoc) {
       return NextResponse.json(
         { error: '일치하는 비회원 정보가 없습니다. 이름, 생년월일, 비밀번호를 확인해주세요.' },
         { status: 401 }
       );
     }
 
-    const userDoc = snapshot.docs[0];
-    const uid = userDoc.id;
+    const uid = matchedDoc.id;
 
     // Mint custom token
     const customToken = await adminAuth.createCustomToken(uid);

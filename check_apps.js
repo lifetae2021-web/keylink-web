@@ -1,66 +1,38 @@
-const { initializeApp, cert } = require('firebase-admin/app');
-const { getFirestore } = require('firebase-admin/firestore');
-const path = require('path');
+const admin = require('firebase-admin');
 
-// Initialize Firebase Admin
-const serviceAccount = require(path.join(__dirname, 'serviceAccountKey.json'));
-initializeApp({
-  credential: cert(serviceAccount)
-});
-
-const db = getFirestore();
-
-async function checkApps() {
-  // Get active sessions
-  const sessionsSnap = await db.collection('sessions').get();
-  const sessions = {};
-  sessionsSnap.forEach(doc => {
-    sessions[doc.id] = doc.data();
+// Ensure we don't initialize multiple times if script is run repeatedly in same process
+if (!admin.apps.length) {
+  admin.initializeApp({
+    projectId: 'keylink-web-2caf2'
   });
-
-  const targetSessions = Object.entries(sessions).filter(([id, data]) => 
-    (data.region === 'busan' && (data.episodeNumber === 128 || data.episodeNumber === 129)) ||
-    (data.region === 'changwon' && data.episodeNumber === 1)
-  );
-
-  const targetSessionIds = targetSessions.map(([id]) => id);
-  console.log('Target Sessions:', targetSessions.map(([id, data]) => `${data.region} ${data.episodeNumber}기 (${id})`));
-
-  // Get applications for these sessions
-  const appsSnap = await db.collection('applications')
-    .where('sessionId', 'in', targetSessionIds)
-    .get();
-  
-  let stats = {
-    total: 0,
-    byStatus: {},
-    dummies: 0,
-    real: 0,
-    realPending: 0
-  };
-
-  appsSnap.forEach(doc => {
-    const data = doc.data();
-    stats.total++;
-    stats.byStatus[data.status] = (stats.byStatus[data.status] || 0) + 1;
-    
-    const isDummy = doc.id.startsWith('dummy') || data.userId?.startsWith('user_m_') || data.userId?.startsWith('user_f_') || data.isDummy === true;
-    if (isDummy) {
-      stats.dummies++;
-    } else {
-      stats.real++;
-      if (['applied', 'selected'].includes(data.status)) {
-        stats.realPending++;
-      }
-    }
-  });
-
-  console.log('\n--- Applications Stats ---');
-  console.log('Total applications for these 3 sessions:', stats.total);
-  console.log('Status breakdown:', stats.byStatus);
-  console.log('Dummies:', stats.dummies);
-  console.log('Real members:', stats.real);
-  console.log('Real pending (badge count):', stats.realPending);
 }
 
-checkApps().catch(console.error);
+const db = admin.firestore();
+
+async function checkRecentApplications() {
+  try {
+    const appsRef = db.collection('applications');
+    const snapshot = await appsRef.orderBy('appliedAt', 'desc').limit(5).get();
+    
+    if (snapshot.empty) {
+      console.log('No applications found.');
+      return;
+    }
+
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      console.log(`\n--- Application ID: ${doc.id} ---`);
+      console.log(`User ID: ${data.userId}`);
+      console.log(`Name: ${data.name}`);
+      console.log(`Session ID: ${data.sessionId}`);
+      console.log(`Status: ${data.status}`);
+      console.log(`Applied At: ${data.appliedAt ? data.appliedAt.toDate().toISOString() : 'N/A'}`);
+      console.log(`Photos Length: ${data.photos ? data.photos.length : 0}`);
+      console.log(`Photos Type: ${data.photos && data.photos.length > 0 ? (data.photos[0].startsWith('http') ? 'URL' : (data.photos[0].startsWith('data:image') ? 'Base64' : 'Unknown')) : 'N/A'}`);
+    });
+  } catch (error) {
+    console.error('Error fetching applications:', error);
+  }
+}
+
+checkRecentApplications();

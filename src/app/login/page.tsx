@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
-import { Eye, EyeOff, Loader2, X } from 'lucide-react';
+import { Eye, EyeOff, Loader2, X, ArrowRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -364,21 +364,33 @@ function LoginContent() {
                   className="kl-input"
                   placeholder="ex)940530"
                   value={guestId}
-                  onChange={(e) => handleInputChange(setGuestId, e.target.value.replace(/\\D/g, ''))}
+                  onChange={(e) => handleInputChange(setGuestId, e.target.value.replace(/[^0-9]/g, ''))}
                   style={{ borderRadius: '12px', padding: '14px' }}
                 />
               </div>
               <div style={{ marginBottom: '24px' }}>
                 <label style={{ fontSize: '0.85rem', fontWeight: '700', color: '#333', display: 'block', marginBottom: '8px' }}>비밀번호 (4자리)</label>
-                <input
-                  type="password"
-                  maxLength={4}
-                  className="kl-input"
-                  placeholder="설정한 비밀번호 또는 휴대폰 뒷자리"
-                  value={guestPw}
-                  onChange={(e) => handleInputChange(setGuestPw, e.target.value.replace(/\\D/g, ''))}
-                  style={{ borderRadius: '12px', padding: '14px' }}
-                />
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    maxLength={4}
+                    className="kl-input"
+                    placeholder="설정한 비밀번호 또는 휴대폰 뒷자리"
+                    value={guestPw}
+                    onChange={(e) => handleInputChange(setGuestPw, e.target.value.replace(/[^0-9]/g, ''))}
+                    style={{ borderRadius: '12px', padding: '14px', paddingRight: '46px', width: '100%' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    style={{
+                      position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)',
+                      background: 'none', border: 'none', cursor: 'pointer', color: '#999', display: 'flex', alignItems: 'center'
+                    }}
+                  >
+                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                </div>
               </div>
               
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px', padding: '0 4px' }}>
@@ -536,8 +548,51 @@ function LoginContent() {
         </div>
       )}
 
+      {/* ── FLOATING CTA ── */}
+      <div style={{
+        position: 'fixed',
+        bottom: '32px',
+        right: '32px',
+        zIndex: 200,
+        animation: 'floatButton 2.5s ease-in-out infinite'
+      }}>
+        <button
+          onClick={() => router.push('/apply/fast')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            background: '#FF6F61',
+            color: '#fff',
+            fontWeight: '900',
+            fontSize: '1rem',
+            padding: '16px 28px',
+            borderRadius: '100px',
+            border: 'none',
+            cursor: 'pointer',
+            textDecoration: 'none',
+            boxShadow: '0 8px 24px rgba(255,111,97,0.4)',
+            transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.transform = 'scale(1.05)';
+            e.currentTarget.style.boxShadow = '0 12px 32px rgba(255,111,97,0.5)';
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.transform = 'scale(1)';
+            e.currentTarget.style.boxShadow = '0 8px 24px rgba(255,111,97,0.4)';
+          }}
+        >
+          지금 바로 신청하기 <ArrowRight size={18} />
+        </button>
+      </div>
+
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes floatButton {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-10px); }
+        }
       `}</style>
     </div>
   );

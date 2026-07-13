@@ -27,13 +27,13 @@ const EMPTY = '미입력';
 // Calculate age from birthDate string e.g. "1994-05-30" or "940530"
 function calcAge(birthDate: string): string {
   if (!birthDate) return '-';
-  let year: string;
-  if (birthDate.includes('-')) {
-    year = birthDate.slice(2, 4);
-  } else if (birthDate.length >= 6) {
-    year = birthDate.slice(0, 2);
-  } else return '-';
-  return `${year}년생`;
+  const digits = String(birthDate).replace(/[^0-9]/g, '');
+  if (digits.length === 6) {
+    return `${digits.slice(0, 2)}년생`;
+  } else if (digits.length === 8) {
+    return `${digits.slice(2, 4)}년생`;
+  }
+  return '-';
 }
 
 // Simple label-value row used in both summary and detail

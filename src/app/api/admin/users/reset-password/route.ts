@@ -29,10 +29,24 @@ export async function POST(req: NextRequest) {
     const { uid } = await req.json();
     if (!uid) return NextResponse.json({ error: 'uid가 필요합니다.' }, { status: 400 });
 
-    const tempPassword = generateTempPassword();
+    const targetUserDoc = await adminDb.collection('users').doc(uid).get();
+    if (!targetUserDoc.exists) {
+      return NextResponse.json({ error: '사용자를 찾을 수 없습니다.' }, { status: 404 });
+    }
+    const targetData = targetUserDoc.data() || {};
+    const isGuest = targetData.isRegistered === false || targetData.loginMethod === 'anonymous';
 
-    // Firebase Auth 비밀번호 설정 (소셜 계정 포함, 어떤 계정이든 가능)
-    await adminAuth.updateUser(uid, { password: tempPassword });
+    let tempPassword = '';
+    if (isGuest) {
+      const phoneDigits = (targetData.phone || '').replace(/[^0-9]/g, '');
+      tempPassword = phoneDigits.slice(-4) || '0000';
+      // 비회원은 Firestore guestPw 업데이트
+      await adminDb.collection('users').doc(uid).update({ guestPw: tempPassword });
+    } else {
+      tempPassword = generateTempPassword();
+      // 정규 회원의 경우 Firebase Auth 비밀번호 설정 (소셜 계정 포함, 어떤 계정이든 가능)
+      await adminAuth.updateUser(uid, { password: tempPassword });
+    }
 
     return NextResponse.json({ success: true, tempPassword });
   } catch (error: any) {

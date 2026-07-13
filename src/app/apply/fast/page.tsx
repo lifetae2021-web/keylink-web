@@ -229,7 +229,7 @@ function FastApplyContent() {
       // CLEAR IMMEDIATELY to prevent React Strict Mode duplicate execution
       sessionStorage.removeItem('kl_fast_apply_backup');
 
-      let backup: { formData: FormData; sessionIds: string[]; photos?: string[] };
+      let backup: { formData: FormData; sessionIds: string[]; photos?: string[]; maleOption?: string; femaleOption?: string; groupPartnerName?: string; groupPartnerBirthYear?: string; couponDiscount?: number; selectedCouponId?: string; selectedCouponTitle?: string; };
       try { backup = JSON.parse(raw); } catch { return; }
       if (!backup?.formData || !backup?.sessionIds?.length) return;
 
@@ -239,14 +239,19 @@ function FastApplyContent() {
       });
       if (!user) return;
 
+      const uid = user.uid;
+      const { formData, sessionIds, photos } = backup;
+      
       try {
-        const uid = user.uid;
-        const { formData, sessionIds, photos } = backup;
+        const batch = writeBatch(db);
+
+        // Upload images to Firebase Storage under the new Kakao user UID
+        const { uploadedPhotos, uploadedProof } = await uploadBase64Photos(uid, photos || [], formData.employmentProof);
 
         // Create or update user doc with form data
         const userDoc = await getDoc(doc(db, 'users', uid));
         if (!userDoc.exists()) {
-          await setDoc(doc(db, 'users', uid), {
+          batch.set(doc(db, 'users', uid), {
             uid,
             name: formData.name || '',
             gender: formData.gender || '',
@@ -265,8 +270,8 @@ function FastApplyContent() {
             religion: formData.religion || '',
             drink: formData.drink || [],
             etc: formData.etc || '',
-            employmentProof: formData.employmentProof || '',
-            photos: photos || [],
+            employmentProof: uploadedProof,
+            photos: uploadedPhotos,
             isRegistered: true,
             loginMethod: 'kakao',
             provider: 'kakao',
@@ -274,10 +279,12 @@ function FastApplyContent() {
             createdAt: Timestamp.now(),
           });
 
-          // 웰컴 가입 축하 쿠폰 발급
+          // 웰컴 가입 축하 쿠폰 발급 (batch로 추가 불가능하므로 직접 추가, 단 batch 외부에 위치해야함)
           const expireAt = new Date();
           expireAt.setMonth(expireAt.getMonth() + 3);
-          await addDoc(collection(db, 'users', uid, 'coupons'), {
+          // Wait, addDoc creates a new auto-id doc, we can use doc() with batch
+          const couponRef = doc(collection(db, 'users', uid, 'coupons'));
+          batch.set(couponRef, {
             title: '웰컴 가입 축하 쿠폰',
             type: 'amount',
             value: 5000,
@@ -287,9 +294,9 @@ function FastApplyContent() {
           });
         } else {
           // 기존 유저인 경우 새로 입력/업로드한 사진 및 정보로 업데이트
-          await updateDoc(doc(db, 'users', uid), {
-            ...(photos && photos.length > 0 ? { photos } : {}),
-            ...(formData.employmentProof ? { employmentProof: formData.employmentProof } : {}),
+          batch.update(doc(db, 'users', uid), {
+            ...(uploadedPhotos.length > 0 ? { photos: uploadedPhotos } : {}),
+            ...(uploadedProof ? { employmentProof: uploadedProof } : {}),
             updatedAt: Timestamp.now(),
           });
         }
@@ -305,10 +312,24 @@ function FastApplyContent() {
           ));
           if (!existingSnap.empty) continue;
 
-          await addDoc(collection(db, 'applications'), {
+          const basePrice = formData.gender === 'female' ? 19000 : (backup.maleOption === 'safe' ? 60000 : 49000);
+          const couponDiscount = backup.couponDiscount || 0;
+
+          const birthYear = formData.birthDate
+            ? (() => {
+              if (formData.birthDate.includes('-')) return parseInt(formData.birthDate.slice(0, 4));
+              const yy = parseInt(formData.birthDate.slice(0, 2));
+              return yy > 30 ? 1900 + yy : 2000 + yy;
+            })()
+            : new Date().getFullYear();
+          const age = new Date().getFullYear() - birthYear;
+
+          const appRef = doc(collection(db, 'applications'));
+          batch.set(appRef, {
             userId: uid,
             sessionId,
             name: formData.name,
+            age,
             gender: formData.gender,
             birthDate: formData.birthDate,
             phone: formData.phone,
@@ -323,13 +344,24 @@ function FastApplyContent() {
             nonIdealType: formData.nonIdealType || '',
             avoidList: formData.avoidList || [],
             etc: formData.etc || '',
-            employmentProof: formData.employmentProof || '',
-            photos: photos || [],
+            employmentProof: uploadedProof,
+            photos: uploadedPhotos,
+            maleOption: formData.gender === 'male' ? backup.maleOption || null : null,
+            femaleOption: formData.gender === 'female' ? backup.femaleOption || null : null,
+            groupPartnerName: formData.gender === 'female' && backup.femaleOption === 'group' ? backup.groupPartnerName || null : null,
+            groupPartnerBirthYear: formData.gender === 'female' && backup.femaleOption === 'group' ? backup.groupPartnerBirthYear || null : null,
+            couponId: backup.selectedCouponId || null,
+            couponTitle: backup.selectedCouponTitle || null,
+            couponDiscount,
+            price: Math.max(0, basePrice - couponDiscount),
             status: 'applied',
+            sessionType: 'group',
             appliedAt: Timestamp.now(),
             updatedAt: Timestamp.now(),
           });
         }
+
+        await batch.commit();
 
         setSubmitted(true);
         toast.success('카카오 로그인으로 신청이 완료되었습니다!');
@@ -447,21 +479,28 @@ function FastApplyContent() {
       setLoadingSessions(true);
       try {
         const snap = await getDocs(query(collection(db, 'sessions'), where('status', '==', 'open')));
+        const now = new Date();
         const list: RecruitingSession[] = snap.docs
           .map(d => {
             const data = d.data();
-          return {
-            id: d.id,
-            title: data.title || '',
-            isTest: data.isTest || false,
-            eventDate: data.eventDate?.toDate() || new Date(),
-            location: data.location || '',
-            ageRange: data.ageRange || '',
-            maxParticipants: data.maxParticipants,
-            price: data.price,
-            targetMaleAge: data.targetMaleAge || '',
-          };
-        }).sort((a, b) => a.eventDate.getTime() - b.eventDate.getTime());
+            return {
+              id: d.id,
+              title: data.title || '',
+              isTest: data.isTest || false,
+              eventDate: data.eventDate?.toDate() || new Date(),
+              location: data.location || '',
+              ageRange: data.ageRange || '',
+              maxParticipants: data.maxParticipants,
+              price: data.price,
+              targetMaleAge: data.targetMaleAge || '',
+            };
+          })
+          .filter(s => {
+            // 행사일 기준 24시간이 지나면 달력에서 자동으로 숨김
+            const isEnded = now.getTime() >= s.eventDate.getTime() + 24 * 60 * 60 * 1000;
+            return !isEnded;
+          })
+          .sort((a, b) => a.eventDate.getTime() - b.eventDate.getTime());
         setSessions(list);
 
         // Auto-navigate calendar to first session month
@@ -684,10 +723,10 @@ function FastApplyContent() {
           }
         }
 
-        // 2. Save to sessionStorage before showing funnel modal
         const backup = {
           formData: form,
           sessionIds: Array.from(selectedSessionIds),
+          photos,
           maleOption,
           femaleOption,
           groupPartnerName,
@@ -915,7 +954,7 @@ function FastApplyContent() {
           smoking: formData.smoking || '',
           drinking: formData.drinking || '',
           religion: formData.religion || '',
-          drink: formData.drink.length > 0 ? formData.drink.join(', ') : '',
+          drink: formData.drink?.length > 0 ? formData.drink.join(', ') : '',
           idealType: formData.idealType || '',
           nonIdealType: formData.nonIdealType || '',
           avoidList: formData.avoidList || [],
