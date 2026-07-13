@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { db, auth } from '@/lib/firebase';
+import { db, auth, storage } from '@/lib/firebase';
+import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import {
   collection, getDocs, query, where, addDoc, doc, setDoc, Timestamp, getDoc, updateDoc, writeBatch
 } from 'firebase/firestore';
@@ -82,6 +83,33 @@ function FastApplyContent() {
   const [selectedSessionIds, setSelectedSessionIds] = useState<Set<string>>(new Set());
   const [loadingSessions, setLoadingSessions] = useState(true);
   const sessionListRef = useRef<HTMLDivElement>(null);
+
+  // ── Helper: Upload Base64 to Storage ──
+  const uploadBase64Photos = async (uid: string, photosBase64: string[], proofBase64?: string) => {
+    let newPhotos = [...photosBase64];
+    let newProof = proofBase64 || '';
+    
+    const promises = newPhotos.map(async (photo, i) => {
+      if (photo.startsWith('data:image')) {
+        const path = `applications/${uid}/photo_${Date.now()}_${i}.jpg`;
+        const storageRef = ref(storage, path);
+        await uploadString(storageRef, photo, 'data_url');
+        newPhotos[i] = await getDownloadURL(storageRef);
+      }
+    });
+    
+    if (newProof && newProof.startsWith('data:image')) {
+      promises.push((async () => {
+        const path = `applications/${uid}/proof_${Date.now()}.jpg`;
+        const storageRef = ref(storage, path);
+        await uploadString(storageRef, newProof, 'data_url');
+        newProof = await getDownloadURL(storageRef);
+      })());
+    }
+    
+    await Promise.all(promises);
+    return { uploadedPhotos: newPhotos, uploadedProof: newProof };
+  };
 
   // ── Form state ──
   const [form, setForm] = useState<FormData>({
@@ -678,6 +706,10 @@ function FastApplyContent() {
       } else {
         // 3. Current user is logged in, submit immediately
         const uid = currentUser.uid;
+        
+        // Upload images to Firebase Storage
+        const { uploadedPhotos, uploadedProof } = await uploadBase64Photos(uid, photos, form.employmentProof);
+
         const batch = writeBatch(db);
         
         // Update user profile with latest form info
@@ -697,8 +729,8 @@ function FastApplyContent() {
           nonIdealType: form.nonIdealType || '',
           avoidList: form.avoidList || [],
           etc: form.etc || '',
-          ...(photos.length > 0 ? { photos } : {}),
-          ...(form.employmentProof ? { employmentProof: form.employmentProof } : {}),
+          ...(uploadedPhotos.length > 0 ? { photos: uploadedPhotos } : {}),
+          ...(uploadedProof ? { employmentProof: uploadedProof } : {}),
           updatedAt: Timestamp.now(),
         }, { merge: true });
 
@@ -748,8 +780,8 @@ function FastApplyContent() {
             nonIdealType: form.nonIdealType || '',
             avoidList: form.avoidList || [],
             etc: form.etc || '',
-            employmentProof: form.employmentProof || '',
-            photos: photos,
+            employmentProof: uploadedProof,
+            photos: uploadedPhotos,
             maleOption: form.gender === 'male' ? maleOption : null,
             femaleOption: form.gender === 'female' ? femaleOption : null,
             groupPartnerName: form.gender === 'female' && femaleOption === 'group' ? groupPartnerName : null,
@@ -803,6 +835,9 @@ function FastApplyContent() {
       }
       const { formData, sessionIds } = backup;
 
+      // Upload images to Firebase Storage
+      const { uploadedPhotos, uploadedProof } = await uploadBase64Photos(uid, photos, formData.employmentProof);
+
       const batch = writeBatch(db);
 
       // Create temp user doc
@@ -829,8 +864,8 @@ function FastApplyContent() {
         religion: formData.religion || '',
         drink: formData.drink || [],
         etc: formData.etc || '',
-        employmentProof: formData.employmentProof || '',
-        photos: photos,
+        employmentProof: uploadedProof,
+        photos: uploadedPhotos,
         isRegistered: false,          // 비회원 플래그
         loginMethod: 'anonymous',
         role: 'user',                 // Firestore 규칙을 통과하기 위해 필수
@@ -885,8 +920,8 @@ function FastApplyContent() {
           nonIdealType: formData.nonIdealType || '',
           avoidList: formData.avoidList || [],
           etc: formData.etc || '',
-          employmentProof: formData.employmentProof || '',
-          photos: photos,
+          employmentProof: uploadedProof,
+          photos: uploadedPhotos,
           maleOption: formData.gender === 'male' ? (backup.maleOption || maleOption) : null,
           femaleOption: formData.gender === 'female' ? (backup.femaleOption || femaleOption) : null,
           groupPartnerName: formData.gender === 'female' && (backup.femaleOption || femaleOption) === 'group' ? (backup.groupPartnerName || groupPartnerName) : null,
@@ -923,8 +958,12 @@ function FastApplyContent() {
   const handleGoogleLoginFunnel = async () => {
     setSocialLoading(true);
     try {
+      const currentUid = auth.currentUser?.uid || 'temp_' + Date.now();
+      const { uploadedPhotos, uploadedProof } = await uploadBase64Photos(currentUid, photos, form.employmentProof);
+      
       // Backup current form before popup
-      const backup = { formData: form, sessionIds: Array.from(selectedSessionIds), photos };
+      const backupForm = { ...form, employmentProof: uploadedProof };
+      const backup = { formData: backupForm, sessionIds: Array.from(selectedSessionIds), photos: uploadedPhotos };
       sessionStorage.setItem('kl_fast_apply_backup', JSON.stringify(backup));
 
       const provider = new GoogleAuthProvider();
@@ -1030,9 +1069,14 @@ function FastApplyContent() {
     }
   };
 
-  const handleKakaoLoginFunnel = () => {
+  const handleKakaoLoginFunnel = async () => {
+    setSocialLoading(true);
+    const currentUid = auth.currentUser?.uid || 'temp_' + Date.now();
+    const { uploadedPhotos, uploadedProof } = await uploadBase64Photos(currentUid, photos, form.employmentProof);
+    
     // Backup form before redirect
-    const backup = { formData: form, sessionIds: Array.from(selectedSessionIds), photos };
+    const backupForm = { ...form, employmentProof: uploadedProof };
+    const backup = { formData: backupForm, sessionIds: Array.from(selectedSessionIds), photos: uploadedPhotos };
     sessionStorage.setItem('kl_fast_apply_backup', JSON.stringify(backup));
 
     const clientId = process.env.NEXT_PUBLIC_KAKAO_CLIENT_ID;
