@@ -36,6 +36,7 @@ export default function RootLayout({
     <html lang="ko">
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+        <meta name="naver-site-verification" content="9b970ee721188c8302fcc57b81e05845687da65b" />
       </head>
       <body className="antialiased">
         <PublicLayout>{children}</PublicLayout>
