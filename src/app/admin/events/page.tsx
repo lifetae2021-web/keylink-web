@@ -2554,8 +2554,34 @@ ${chatLink}
                   </div>
                   {/* v10.3.0: 모바일/태블릿 가로 스크롤 대응 및 통합 액션 헤더 패치 */}
                   <div className="flex items-center gap-1.5 overflow-x-auto max-w-full no-scrollbar pb-1.5 sm:pb-0 scroll-smooth shrink-0 w-full sm:w-auto sm:overflow-x-visible">
+                    {/* 모집 열기/닫기 토글 버튼 */}
+                    {active.status !== 'cancelled' && active.status !== 'voting' && active.status !== 'completed' && (
+                      <button
+                        onClick={async () => {
+                          const nextStatus = active.status === 'open' ? 'closed' : 'open';
+                          const label = nextStatus === 'open' ? '모집 열기' : '모집 마감';
+                          if (!confirm(`${active.episodeNumber}기를 "${label}" 상태로 변경하시겠습니까?`)) return;
+                          try {
+                            const { updateDoc, doc } = await import('firebase/firestore');
+                            await updateDoc(doc(db, 'sessions', active.id), { status: nextStatus, updatedAt: new Date() });
+                            toast.success(`${active.episodeNumber}기가 "${label}" 상태로 변경되었습니다.`);
+                          } catch (err: any) {
+                            toast.error('상태 변경 실패: ' + err.message);
+                          }
+                        }}
+                        className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                          active.status === 'open'
+                            ? 'bg-emerald-600 text-white shadow-md shadow-emerald-100'
+                            : 'bg-white border border-emerald-200 text-emerald-600 hover:bg-emerald-50'
+                        }`}
+                        title="신청 폼에서 모집 열기/닫기"
+                      >
+                        {active.status === 'open' ? '✅ 모집 중' : '🔒 모집 열기'}
+                      </button>
+                    )}
                     <button
                       onClick={() => toggleVotingForm(active.status === "voting" ? "closed" : "voting")}
+
                       className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${active.status === "voting" ? "bg-indigo-600 text-white shadow-md shadow-indigo-100" : "bg-white border border-indigo-200 text-indigo-600 hover:bg-indigo-50"}`}
                       title="투표 열기/닫기"
                     >
