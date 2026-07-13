@@ -189,9 +189,10 @@ export default function AdminDashboard() {
           if (!eventDate) return;
 
           // 해당 기수의 확정된 신청자 목록 필터링 (더미 회원 제외)
+          // v12.1.1: paymentConfirmed 조건을 매출통계 페이지와 완전 동일하게 통일
           const confirmedApps = allApps.filter(
-            (a: any) => a.sessionId === doc.id && 
-              (a.status === 'confirmed' || a.paymentConfirmed === true) &&
+            (a: any) => a.sessionId === doc.id &&
+              (a.status === 'confirmed' || (a.paymentConfirmed === true && !['applied', 'canceled', 'rejected'].includes(a.status))) &&
               !(a.userId?.startsWith('dummy') || a.userId?.startsWith('user_m_') || a.userId?.startsWith('user_f_') || a.id?.startsWith('dummy') || a.isDummy === true || dummyUserIds.has(a.userId))
           );
 
