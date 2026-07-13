@@ -296,6 +296,18 @@ function FastApplyContent() {
 
         // Create applications
         for (const sessionId of sessionIds) {
+          // 중복 신청 방지 로직 추가 (테스트 계정 예외)
+          const phoneClean = formData.phone?.replace(/\s/g, '') || '';
+          if (phoneClean !== '01099999999' && phoneClean !== '010-9999-9999') {
+            const existingSnap = await getDocs(query(
+              collection(db, 'applications'),
+              where('userId', '==', uid),
+              where('sessionId', '==', sessionId),
+              where('status', 'in', ['pending', 'applied', 'selected', 'confirmed'])
+            ));
+            if (!existingSnap.empty) continue;
+          }
+
           await addDoc(collection(db, 'applications'), {
             userId: uid,
             sessionId,
@@ -636,8 +648,10 @@ function FastApplyContent() {
       if (!currentUser) {
         // 1. Check phone duplicate in users collection for non-members
         const phone = form.phone.replace(/\s/g, '');
-        const usersSnap = await getDocs(query(collection(db, 'users'), where('phone', '==', phone)));
-        if (!usersSnap.empty) {
+        // 테스트 계정(010-9999-9999)은 중복 검사 패스
+        if (phone !== '01099999999' && phone !== '010-9999-9999') {
+          const usersSnap = await getDocs(query(collection(db, 'users'), where('phone', '==', phone)));
+          if (!usersSnap.empty) {
           const existingUser = usersSnap.docs[0].data();
           const provider: ProviderType =
             existingUser.loginMethod === 'kakao' ? 'kakao' :
@@ -658,8 +672,9 @@ function FastApplyContent() {
           setSubmitting(false);
           return;
         }
+      }
 
-        // 2. Save to sessionStorage before showing funnel modal
+      // 2. Save to sessionStorage before showing funnel modal
         const backup = {
           formData: form,
           sessionIds: Array.from(selectedSessionIds),
@@ -851,16 +866,19 @@ function FastApplyContent() {
           : new Date().getFullYear();
         const age = new Date().getFullYear() - birthYear;
 
-        // 중복 신청 방지 로직 추가
-        const existingSnap = await getDocs(query(
-          collection(db, 'applications'),
-          where('userId', '==', uid),
-          where('sessionId', '==', sessionId),
-          where('status', 'in', ['pending', 'applied', 'selected', 'confirmed'])
-        ));
-        
-        if (!existingSnap.empty) {
-          continue; // 이미 동일 기수에 신청한 내역이 있으면 중복 생성 건너뜀
+        // 중복 신청 방지 로직 추가 (테스트 번호는 예외)
+        const phoneClean = formData.phone.replace(/\s/g, '');
+        if (phoneClean !== '01099999999' && phoneClean !== '010-9999-9999') {
+          const existingSnap = await getDocs(query(
+            collection(db, 'applications'),
+            where('userId', '==', uid),
+            where('sessionId', '==', sessionId),
+            where('status', 'in', ['pending', 'applied', 'selected', 'confirmed'])
+          ));
+          
+          if (!existingSnap.empty) {
+            continue; // 이미 동일 기수에 신청한 내역이 있으면 중복 생성 건너뜀
+          }
         }
 
         const appRef = doc(collection(db, 'applications'));
