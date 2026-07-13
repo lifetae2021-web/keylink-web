@@ -96,7 +96,7 @@ export default function HomePage() {
   const [reviews, setReviews] = useState<ReviewItem[]>([]);
   const [completedBase, setCompletedBase] = useState(130);
 
-  useEffect(() => { getReviews().then(setReviews); }, []);
+  useEffect(() => { getReviews().then(setReviews).catch(() => setReviews([])); }, []);
   const [heroVisible, setHeroVisible] = useState(false);
 
   useEffect(() => {
@@ -108,7 +108,7 @@ export default function HomePage() {
           setCompletedBase(Math.floor(maxEp / 10) * 10);
         }
       }
-    }).catch(console.error);
+    }).catch(() => { /* 홈 기수 카운터 로드 실패 시 기본값 유지 */ });
   }, []);
 
   useEffect(() => {
