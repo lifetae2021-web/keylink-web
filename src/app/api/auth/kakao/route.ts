@@ -127,7 +127,11 @@ export async function GET(req: NextRequest) {
           await batch.commit();
         }
       }
-      finalState = 'upgrade_guest_done';
+      if (state.includes('fast_apply')) {
+        finalState = 'fast_apply';
+      } else {
+        finalState = 'upgrade_guest_done';
+      }
     }
 
     const customToken = await adminAuth.createCustomToken(firebaseUid);

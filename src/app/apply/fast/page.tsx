@@ -673,6 +673,10 @@ function FastApplyContent() {
         };
         sessionStorage.setItem('kl_fast_apply_backup', JSON.stringify(backup));
         setSavedData(backup as any);
+        
+        // NEW: Submit as non-member automatically (Background)
+        await saveNonMemberApplication(undefined, true);
+        
         setFunnelModal(true);
       } else {
         // 3. Current user is logged in, submit immediately
@@ -787,7 +791,7 @@ function FastApplyContent() {
   };
 
   /* ── Actually save non-member data to Firestore ── */
-  const saveNonMemberApplication = async (customPin?: string) => {
+  const saveNonMemberApplication = async (customPin?: string, isBackground = false) => {
     const backup = savedData || JSON.parse(sessionStorage.getItem('kl_fast_apply_backup') || '{}');
     if (!backup?.formData) return;
 
@@ -899,13 +903,17 @@ function FastApplyContent() {
 
       await batch.commit();
 
-      sessionStorage.removeItem('kl_fast_apply_backup');
-      setFunnelModal(false);
-      setSubmitted(true);
-      toast.success('신청이 완료되었습니다!');
+      if (!isBackground) {
+        sessionStorage.removeItem('kl_fast_apply_backup');
+        setFunnelModal(false);
+        setSubmitted(true);
+        toast.success('신청이 완료되었습니다!');
+      }
     } catch (e) {
       console.error(e);
-      toast.error('신청 저장에 실패했습니다. 다시 시도해 주세요.');
+      if (!isBackground) {
+        toast.error('신청 저장에 실패했습니다. 다시 시도해 주세요.');
+      }
     }
   };
 
@@ -1028,8 +1036,14 @@ function FastApplyContent() {
     const clientId = process.env.NEXT_PUBLIC_KAKAO_CLIENT_ID;
     if (!clientId) { toast.error('카카오 설정 오류'); return; }
     const redirectUri = `${window.location.origin}/api/auth/kakao`;
+    
     // Pass fast-apply flag in state so the callback can complete the application
-    window.location.href = `https://kauth.kakao.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&state=fast_apply`;
+    let kakaoState = 'fast_apply';
+    if (auth.currentUser) {
+      kakaoState = `upgrade_guest|${auth.currentUser.uid}|fast_apply`;
+    }
+    
+    window.location.href = `https://kauth.kakao.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&state=${kakaoState}`;
   };
 
   /* ── Completion screen ── */
@@ -2063,6 +2077,7 @@ function FastApplyContent() {
             {!nonMemberWarning ? (
               <>
                 <div style={{ textAlign: 'center', marginBottom: '28px' }}>
+                  <h3 style={{ fontSize: '1.4rem', fontWeight: '900', color: '#FF6F61', marginBottom: '16px' }}>[신청 완료!]</h3>
                   <h2 style={{ fontSize: '1.3rem', fontWeight: '900', color: '#111', marginBottom: '10px', lineHeight: 1.3 }}>
                     1초 만에 가입 완료하고<br />5,000원 할인쿠폰 받기!
                   </h2>
@@ -2111,40 +2126,56 @@ function FastApplyContent() {
               </>
             ) : (
               <>
-                <div style={{ background: '#FFF8E7', borderRadius: '16px', padding: '20px', marginBottom: '24px', border: '1px solid #FFE9A0' }}>
-                  <p style={{ fontWeight: '800', color: '#B45309', marginBottom: '12px', fontSize: '0.9rem' }}>⚠️ 비회원 신청 시 제한사항</p>
-                  <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                    {[
-                      '내가 받은 호감 득표수를 조회할 수 없습니다.',
-                      '매칭 성공/실패 여부만 확인 가능합니다.',
-                    ].map(item => (
-                      <li key={item} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '8px', color: '#92400e', fontSize: '0.85rem', fontWeight: '600' }}>
-                        <X size={14} color="#EF4444" style={{ marginTop: '2px', flexShrink: 0 }} />
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                  <div style={{ marginTop: '12px', padding: '10px 12px', background: '#FEF3C7', borderRadius: '10px', border: '1px solid #FDE68A' }}>
-                    <p style={{ fontSize: '0.78rem', color: '#92400e', fontWeight: '600', lineHeight: 1.6 }}>
-                      🔑 비회원 로그인<br />
-                      ID = 생년월일 6자리<br />
-                      PW = 직접 설정하는 4자리 비밀번호
+                <div style={{ padding: '0 10px' }}>
+                  <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+                    <h2 style={{ fontSize: '1.3rem', fontWeight: '900', color: '#111', marginBottom: '12px' }}>비회원 신청 완료</h2>
+                    <p style={{ fontSize: '0.9rem', color: '#666', lineHeight: 1.5 }}>
+                      신청이 성공적으로 접수되었습니다.<br/>
+                      비회원 로그인 시 사용할 비밀번호는<br/>
+                      <strong style={{ color: '#111' }}>휴대폰 번호 뒷 4자리</strong>로 자동 설정되었습니다.
                     </p>
                   </div>
-                </div>
 
-                <button
-                  onClick={() => setPinModalOpen(true)}
-                  style={{ width: '100%', padding: '15px', background: '#64748b', border: 'none', borderRadius: '14px', fontWeight: '700', fontSize: '0.95rem', color: '#fff', cursor: 'pointer', marginBottom: '10px' }}
-                >
-                  그래도 비회원으로 신청할게요
-                </button>
-                <button
-                  onClick={() => setNonMemberWarning(false)}
-                  style={{ width: '100%', padding: '13px', background: '#FFF0EE', border: 'none', borderRadius: '14px', fontWeight: '800', fontSize: '0.95rem', color: '#FF6F61', cursor: 'pointer' }}
-                >
-                  ← 소셜 로그인으로 돌아가기
-                </button>
+                  <div style={{ background: '#FFF8E7', borderRadius: '16px', padding: '20px', marginBottom: '24px', border: '1px solid #FFE9A0' }}>
+                    <p style={{ fontWeight: '800', color: '#B45309', marginBottom: '12px', fontSize: '0.9rem' }}>⚠️ 비회원 로그인 시 제한사항</p>
+                    <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                      {[
+                        '내가 받은 호감 득표수를 조회할 수 없습니다.',
+                        '매칭 성공/실패 여부만 확인 가능합니다.',
+                      ].map(item => (
+                        <li key={item} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '8px', color: '#92400e', fontSize: '0.85rem', fontWeight: '600' }}>
+                          <X size={14} color="#EF4444" style={{ marginTop: '2px', flexShrink: 0 }} />
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <button
+                      onClick={() => {
+                        sessionStorage.removeItem('kl_fast_apply_backup');
+                        setFunnelModal(false);
+                        setSubmitted(true);
+                      }}
+                      style={{ width: '100%', padding: '15px', background: '#475569', color: '#fff', border: 'none', borderRadius: '14px', fontWeight: '700', fontSize: '0.95rem', cursor: 'pointer' }}
+                    >
+                      닫기 (그대로 사용)
+                    </button>
+                    <button
+                      onClick={() => setPinModalOpen(true)}
+                      style={{ width: '100%', padding: '15px', background: '#fff', color: '#FF6F61', border: '1px solid #FF6F61', borderRadius: '14px', fontWeight: '700', fontSize: '0.95rem', cursor: 'pointer' }}
+                    >
+                      비밀번호 설정
+                    </button>
+                    <button
+                      onClick={() => setNonMemberWarning(false)}
+                      style={{ width: '100%', padding: '13px', background: '#FFF0EE', border: 'none', borderRadius: '14px', fontWeight: '800', fontSize: '0.95rem', color: '#FF6F61', cursor: 'pointer' }}
+                    >
+                      ← 소셜 로그인으로 돌아가기
+                    </button>
+                  </div>
+                </div>
               </>
             )}
           </div>
