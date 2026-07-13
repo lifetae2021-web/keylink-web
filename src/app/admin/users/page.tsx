@@ -17,6 +17,7 @@ import { format } from 'date-fns';
 import { chosungIncludes } from '@/lib/utils';
 import UserProfileModal from './UserProfileModal';
 import SMSPreviewModal from '@/components/admin/SMSPreviewModal';
+import VisitLogModal from './VisitLogModal';
 
 type Status = 'all' | 'pending' | 'verified' | 'rejected' | 'dummy' | 'waitpool' | 'guest';
 
@@ -58,6 +59,7 @@ const TableSkeleton = () => (
 
 export default function UsersPage() {
   const [users, setUsers] = useState<any[]>([]);
+  const [selectedVisitUser, setSelectedVisitUser] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<Status>('all');
@@ -1129,7 +1131,11 @@ export default function UsersPage() {
                                 <span className={`${u.noShowCount > 0 ? 'text-rose-600' : 'text-slate-300'} text-[10px] font-black`}>N</span>
                                 <span className={`${u.noShowCount > 0 ? 'text-rose-700' : 'text-slate-300'} text-[11px] font-black`}>{u.noShowCount || 0}</span>
                               </div>
-                              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 border border-indigo-100 shadow-sm" title="방문 횟수">
+                              <div 
+                                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 border border-indigo-100 shadow-sm cursor-pointer hover:bg-indigo-100 transition-colors" 
+                                title="방문 기록 보기"
+                                onClick={(e) => { e.stopPropagation(); setSelectedVisitUser(u); }}
+                              >
                                 <span className="text-indigo-600 text-[10px] font-black">V</span>
                                 <span className="text-indigo-700 text-[11px] font-black">{u.visitCount || 0}</span>
                               </div>
@@ -1401,7 +1407,11 @@ export default function UsersPage() {
                           <span className={`${u.noShowCount > 0 ? 'text-rose-600' : 'text-slate-300'} text-[9px] font-black`}>N</span>
                           <span className={`${u.noShowCount > 0 ? 'text-rose-700' : 'text-slate-400'} text-[0.8rem] font-extrabold`}>{u.noShowCount || 0}</span>
                         </div>
-                        <div className="flex items-center gap-1" title="방문 횟수">
+                        <div 
+                          className="flex items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity" 
+                          title="방문 기록 보기"
+                          onClick={(e) => { e.stopPropagation(); setSelectedVisitUser(u); }}
+                        >
                           <span className="text-indigo-600 text-[9px] font-black">V</span>
                           <span className="text-slate-700 text-[0.8rem] font-extrabold">{u.visitCount || 0}</span>
                         </div>
@@ -1543,6 +1553,12 @@ export default function UsersPage() {
         user={selectedUserForProfile}
         isOpen={!!selectedUserForProfile}
         onClose={() => setSelectedUserForProfile(null)}
+      />
+
+      <VisitLogModal
+        user={selectedVisitUser}
+        isOpen={!!selectedVisitUser}
+        onClose={() => setSelectedVisitUser(null)}
       />
 
       {/* SMS 발송 모달 (프로필 작성 요청용) */}
