@@ -181,8 +181,8 @@ export interface Application {
   // v9.2.0: 행사 당일 출석 여부
   attended?: boolean;
 
-  // v10.4.0: 출석 상태 세분화 (출석, 지각, 노쇼)
-  attendanceStatus?: 'present' | 'late' | 'no-show' | null;
+  // v10.4.0: 출석 상태 세분화 (출석, 지각, 노쇼, 불참)
+  attendanceStatus?: 'present' | 'late' | 'no-show' | 'excused' | null;
 
   // v12.0.0: 보증금 환불 대상 여부 (정상 출석 시 매출 0원 처리, 지각/노쇼 시 보증금 몰수)
   isRefundDeposit?: boolean;

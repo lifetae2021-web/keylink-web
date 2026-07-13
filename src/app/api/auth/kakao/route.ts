@@ -116,7 +116,7 @@ export async function GET(req: NextRequest) {
           });
           
           // 기존 비회원 정보를 새 카카오 계정에 병합
-          const mergedData = { ...oldData, uid: firebaseUid, isRegistered: true, loginMethod: 'kakao', provider: 'kakao', role: 'user', updatedAt: new Date() };
+          const mergedData: any = { ...oldData, uid: firebaseUid, isRegistered: true, loginMethod: 'kakao', provider: 'kakao', role: 'user', updatedAt: new Date() };
           // 기존 Kakao name 유지 (또는 oldData.name)
           if (oldData.name) mergedData.name = oldData.name;
           
