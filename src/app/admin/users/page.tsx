@@ -1129,6 +1129,10 @@ export default function UsersPage() {
                                 <span className={`${u.noShowCount > 0 ? 'text-rose-600' : 'text-slate-300'} text-[10px] font-black`}>N</span>
                                 <span className={`${u.noShowCount > 0 ? 'text-rose-700' : 'text-slate-300'} text-[11px] font-black`}>{u.noShowCount || 0}</span>
                               </div>
+                              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 border border-indigo-100 shadow-sm" title="방문 횟수">
+                                <span className="text-indigo-600 text-[10px] font-black">V</span>
+                                <span className="text-indigo-700 text-[11px] font-black">{u.visitCount || 0}</span>
+                              </div>
                             </div>
                             {(() => {
                               const userCoupons = couponMap[u.id] || [];
@@ -1396,6 +1400,10 @@ export default function UsersPage() {
                         <div className="flex items-center gap-1">
                           <span className={`${u.noShowCount > 0 ? 'text-rose-600' : 'text-slate-300'} text-[9px] font-black`}>N</span>
                           <span className={`${u.noShowCount > 0 ? 'text-rose-700' : 'text-slate-400'} text-[0.8rem] font-extrabold`}>{u.noShowCount || 0}</span>
+                        </div>
+                        <div className="flex items-center gap-1" title="방문 횟수">
+                          <span className="text-indigo-600 text-[9px] font-black">V</span>
+                          <span className="text-slate-700 text-[0.8rem] font-extrabold">{u.visitCount || 0}</span>
                         </div>
                         {(() => {
                           const userCoupons = couponMap[u.id] || [];
