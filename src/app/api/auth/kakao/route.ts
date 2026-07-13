@@ -119,6 +119,8 @@ export async function GET(req: NextRequest) {
           const mergedData: any = { ...oldData, uid: firebaseUid, isRegistered: true, loginMethod: 'kakao', provider: 'kakao', role: 'user', updatedAt: new Date() };
           // 기존 Kakao name 유지 (또는 oldData.name)
           if (oldData.name) mergedData.name = oldData.name;
+          // 실수로 병합된 문서가 스스로를 숨기는 것을 방지
+          delete mergedData.mergedTo;
           
           batch.set(adminDb.collection('users').doc(firebaseUid), mergedData, { merge: true });
           

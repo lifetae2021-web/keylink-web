@@ -387,8 +387,9 @@ export default function UsersPage() {
 
   const counts = useMemo(() => {
     const isDummy = (u: any) => u.isDummy === true || u.id?.startsWith('dummy') || u.id?.startsWith('user_m_') || u.id?.startsWith('user_f_');
-    const isGuest = (u: any) => u.isRegistered === false;
-    const isRegular = (u: any) => !isDummy(u) && !isGuest(u);
+    const isMerged = (u: any) => !!u.mergedTo && u.mergedTo !== u.id;
+    const isGuest = (u: any) => u.isRegistered === false && !isMerged(u);
+    const isRegular = (u: any) => !isDummy(u) && !isGuest(u) && !isMerged(u);
     return {
       all: users.filter(u => isRegular(u)).length,
       pending: users.filter(u => isRegular(u) && ((u.status || 'pending') === 'pending' || u.isJobReviewed === false)).length,
@@ -402,10 +403,12 @@ export default function UsersPage() {
 
   const genderCounts = useMemo(() => {
     const isDummy = (u: any) => u.isDummy === true || u.id?.startsWith('dummy') || u.id?.startsWith('user_m_') || u.id?.startsWith('user_f_');
-    const isGuest = (u: any) => u.isRegistered === false;
-    const isRegular = (u: any) => !isDummy(u) && !isGuest(u);
+    const isMerged = (u: any) => !!u.mergedTo && u.mergedTo !== u.id;
+    const isGuest = (u: any) => u.isRegistered === false && !isMerged(u);
+    const isRegular = (u: any) => !isDummy(u) && !isGuest(u) && !isMerged(u);
     
     const baseUsers = users.filter(u => {
+      if (isMerged(u)) return false;
       if (filter === 'dummy') return isDummy(u);
       if (filter === 'guest') return isGuest(u);
       if (filter === 'waitpool') return isRegular(u) && Array.isArray(u.cancelledSessionHistory) && u.cancelledSessionHistory.length > 0;
@@ -423,10 +426,14 @@ export default function UsersPage() {
 
   const filtered = useMemo(() => {
     const isDummy = (u: any) => u.isDummy === true || u.id?.startsWith('dummy') || u.id?.startsWith('user_m_') || u.id?.startsWith('user_f_');
-    const isGuest = (u: any) => u.isRegistered === false;
-    const isRegular = (u: any) => !isDummy(u) && !isGuest(u);
+    const isMerged = (u: any) => !!u.mergedTo && u.mergedTo !== u.id;
+    const isGuest = (u: any) => u.isRegistered === false && !isMerged(u);
+    const isRegular = (u: any) => !isDummy(u) && !isGuest(u) && !isMerged(u);
 
     return users.filter(u => {
+      // 병합된 이전 비회원 문서는 관리자 목록에서 완전히 숨김
+      if (isMerged(u)) return false;
+
       const q = search.trim();
       const qLower = q.toLowerCase();
       const matchSearch =
@@ -929,11 +936,12 @@ export default function UsersPage() {
                             <div className="flex items-center gap-1.5">
                               <span className="text-[0.88rem] font-bold text-slate-800 hover:text-[#FF7E7E] transition-colors">{u.name || '미입력'}</span>
                               {(() => {
-                                const p = providerMap[u.id];
+                                const p = u.loginMethod || providerMap[u.id];
                                 if (!p) return null;
                                 const cfg: Record<string, { label: string; bg: string; color: string }> = {
                                   'email': { label: '기본회원', bg: '#F1F5F9', color: '#64748B' },
                                   'password': { label: '기본회원', bg: '#F1F5F9', color: '#64748B' },
+                                  'anonymous': { label: '비회원', bg: '#FEF2F2', color: '#EF4444' },
                                   'google': { label: 'Google', bg: '#FEF2F2', color: '#EF4444' },
                                   'google.com': { label: 'Google', bg: '#FEF2F2', color: '#EF4444' },
                                   'kakao': { label: 'Kakao', bg: '#FEF9C3', color: '#CA8A04' },
@@ -1032,15 +1040,21 @@ export default function UsersPage() {
                         {/* 상태 / 권한 */}
                         <td style={{ padding: '0 20px', verticalAlign: 'middle' }}>
                           <div className="flex flex-col gap-2">
-                            <span
-                              onClick={() => currentStatus === 'pending' && setSmsTargetUser(u)}
-                              className={`inline-flex items-center gap-1.5 ${currentStatus === 'pending' ? 'cursor-pointer hover:scale-105 active:scale-95 transition-all' : ''}`}
-                              style={{ width: 'fit-content', fontSize: '0.72rem', fontWeight: 600, padding: '4px 10px', borderRadius: 20, color: sc.color, background: sc.bg, whiteSpace: 'nowrap' }}
-                              title={currentStatus === 'pending' ? '프로필 작성 요청 문자 보내기' : ''}
-                            >
-                              <span style={{ width: 5, height: 5, borderRadius: '50%', background: sc.color, display: 'inline-block' }} />
-                              {sc.label}
-                            </span>
+                            {u.isRegistered === false ? (
+                              <span style={{ width: 'fit-content', fontSize: '0.72rem', fontWeight: 600, padding: '4px 10px', borderRadius: 20, color: '#EF4444', background: '#FEF2F2', whiteSpace: 'nowrap' }}>
+                                비회원 (대기)
+                              </span>
+                            ) : (
+                              <span
+                                onClick={() => currentStatus === 'pending' && setSmsTargetUser(u)}
+                                className={`inline-flex items-center gap-1.5 ${currentStatus === 'pending' ? 'cursor-pointer hover:scale-105 active:scale-95 transition-all' : ''}`}
+                                style={{ width: 'fit-content', fontSize: '0.72rem', fontWeight: 600, padding: '4px 10px', borderRadius: 20, color: sc.color, background: sc.bg, whiteSpace: 'nowrap' }}
+                                title={currentStatus === 'pending' ? '프로필 작성 요청 문자 보내기' : ''}
+                              >
+                                <span style={{ width: 5, height: 5, borderRadius: '50%', background: sc.color, display: 'inline-block' }} />
+                                {sc.label}
+                              </span>
+                            )}
 
                             {currentStatus === 'pending' && u.profileRequestSent && (
                               <span style={{ fontSize: '9px', fontWeight: 800, color: '#FF7E7E', display: 'flex', alignItems: 'center', gap: '4px', marginLeft: '4px' }}>

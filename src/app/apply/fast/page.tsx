@@ -174,35 +174,7 @@ function FastApplyContent() {
   // ── Form Lock State ──
   const [isGenderLocked, setIsGenderLocked] = useState(false);
 
-  // 테스트 자동입력 (이름에 tset 또는 test 포함 시 랜덤 데이터)
-  useEffect(() => {
-    const nameLower = form.name.toLowerCase();
-    if ((nameLower.includes('test') || nameLower.includes('tset')) && form.gender) {
-      if (!form.birthDate) {
-        const rYear = Math.floor(Math.random() * 10) + 90; // 90~99
-        const rMonth = String(Math.floor(Math.random() * 12) + 1).padStart(2, '0');
-        const rDay = String(Math.floor(Math.random() * 28) + 1).padStart(2, '0');
-        setForm(prev => ({
-          ...prev,
-          birthDate: `${rYear}${rMonth}${rDay}`,
-          phone: `010-9999-${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`,
-          height: form.gender === 'male' ? String(Math.floor(Math.random() * 15) + 170) : String(Math.floor(Math.random() * 15) + 155),
-          weight: form.gender === 'male' ? String(Math.floor(Math.random() * 15) + 65) : String(Math.floor(Math.random() * 10) + 45),
-          residence: '서울 강남구',
-          workplace: '테스트 컴퍼니 / 개발자',
-          jobRole: '개발자',
-          smoking: '비흡연',
-          drinking: '월 1~2회',
-          religion: '무교',
-          idealType: '테스트 이상형',
-          nonIdealType: '테스트 기피형',
-          avoidList: [],
-          drink: ['아메리카노'],
-          guestPw: '1234',
-        }));
-      }
-    }
-  }, [form.name, form.gender, form.birthDate]);
+  // (이전 테스트 자동입력 useEffect는 제거됨 - onClick 핸들러로 통합)
 
   // ── Social login loading ──
   const [socialLoading, setSocialLoading] = useState(false);
@@ -564,9 +536,7 @@ function FastApplyContent() {
       }
     };
 
-    addError(isAllAgreed, currentUser ? '환불 및 취소 규정에 동의해 주세요.' : '모든 필수 약관에 동의해 주세요.', 'field-agreements');
     addError(selectedSessionIds.size > 0, '신청할 날짜를 선택해 주세요.', 'field-sessions');
-    addError(photos.length > 0, '본인 사진을 최소 1장 이상 등록해 주세요.', 'field-photos');
     addError(!!form.name.trim(), '이름을 입력해 주세요.', 'field-name');
     addError(!!form.gender, '성별을 선택해 주세요.', 'field-gender');
     addError(!!form.birthDate.trim(), '생년월일을 입력해 주세요.', 'field-birthDate');
@@ -578,6 +548,9 @@ function FastApplyContent() {
     addError(!!form.smoking, '흡연 유무를 선택해 주세요.', 'field-smoking');
     addError(!!form.drinking, '음주 빈도를 선택해 주세요.', 'field-drinking');
     addError(!!form.religion, '종교를 선택해 주세요.', 'field-religion');
+    addError(form.drink.length > 0, '희망 음료를 선택해 주세요.', 'field-drink');
+    addError(photos.length > 0, '본인 사진을 최소 1장 이상 등록해 주세요.', 'field-photos');
+    addError(isAllAgreed, currentUser ? '환불 및 취소 규정에 동의해 주세요.' : '모든 필수 약관에 동의해 주세요.', 'field-agreements');
 
     setErrorFields(errors);
 
@@ -642,30 +615,45 @@ function FastApplyContent() {
     if (!validateForm()) return;
     setSubmitting(true);
     try {
-      if (!currentUser) {
+      let isGuest = false;
+      if (currentUser) {
+        if (currentUser.isAnonymous) {
+          isGuest = true;
+        } else {
+          const userDocSnap = await getDoc(doc(db, 'users', currentUser.uid));
+          if (userDocSnap.exists() && userDocSnap.data().loginMethod === 'anonymous') {
+            isGuest = true;
+          }
+        }
+      }
+
+      if (!currentUser || isGuest) {
         // 1. Check phone duplicate in users collection for non-members
         const phone = form.phone.replace(/\s/g, '');
         const usersSnap = await getDocs(query(collection(db, 'users'), where('phone', '==', phone)));
         if (!usersSnap.empty) {
           const existingUser = usersSnap.docs[0].data();
-          const provider: ProviderType =
-            existingUser.loginMethod === 'kakao' ? 'kakao' :
-            existingUser.loginMethod === 'google' ? 'google' : 'email';
-          setDupModal({ provider, phone });
-          // Save form data to sessionStorage for post-login recovery
-          sessionStorage.setItem('kl_fast_apply_backup', JSON.stringify({
-            formData: form,
-            sessionIds: Array.from(selectedSessionIds),
-            maleOption,
-            femaleOption,
-            groupPartnerName,
-            groupPartnerBirthYear,
-            selectedCouponId: selectedCoupon?.id || null,
-            selectedCouponTitle: selectedCoupon?.title || null,
-            couponDiscount: getCouponDiscount(),
-          }));
-          setSubmitting(false);
-          return;
+          // If the found user is NOT the currently logged-in user, show duplicate warning
+          if (!currentUser || currentUser.uid !== existingUser.uid) {
+            const provider: ProviderType =
+              existingUser.loginMethod === 'kakao' ? 'kakao' :
+              existingUser.loginMethod === 'google' ? 'google' : 'email';
+            setDupModal({ provider, phone });
+            // Save form data to sessionStorage for post-login recovery
+            sessionStorage.setItem('kl_fast_apply_backup', JSON.stringify({
+              formData: form,
+              sessionIds: Array.from(selectedSessionIds),
+              maleOption,
+              femaleOption,
+              groupPartnerName,
+              groupPartnerBirthYear,
+              selectedCouponId: selectedCoupon?.id || null,
+              selectedCouponTitle: selectedCoupon?.title || null,
+              couponDiscount: getCouponDiscount(),
+            }));
+            setSubmitting(false);
+            return;
+          }
         }
 
         // 2. Save to sessionStorage before showing funnel modal
@@ -791,9 +779,10 @@ function FastApplyContent() {
         setSubmitted(true);
         toast.success('신청이 완료되었습니다!');
       }
-    } catch (e) {
-      toast.error('오류가 발생했습니다. 잠시 후 다시 시도해 주세요.');
-      console.error(e);
+    } catch (e: any) {
+      console.error('[handleSubmit error]', e);
+      const msg = e?.code ? `저장 오류: ${e.code}\n${e.message}` : (e?.message || '알 수 없는 오류');
+      toast.error(`오류: ${msg}`);
     } finally {
       setSubmitting(false);
     }
@@ -805,9 +794,13 @@ function FastApplyContent() {
     if (!backup?.formData) return;
 
     try {
-      // Anonymous sign-in
-      const anonResult = await signInAnonymously(auth);
-      const uid = anonResult.user.uid;
+      let uid = '';
+      if (auth.currentUser) {
+        uid = auth.currentUser.uid;
+      } else {
+        const anonResult = await signInAnonymously(auth);
+        uid = anonResult.user.uid;
+      }
       const { formData, sessionIds } = backup;
 
       const batch = writeBatch(db);
@@ -1620,11 +1613,17 @@ function FastApplyContent() {
                     setField('gender', g);
                     
                     if (form.name.toLowerCase().includes('tset') || form.name.toLowerCase().includes('test')) {
+                      const counterStr = localStorage.getItem('kl_test_phone_counter') || '0';
+                      const counter = parseInt(counterStr, 10);
+                      localStorage.setItem('kl_test_phone_counter', (counter + 1).toString());
+                      const padNum = counter.toString().padStart(8, '0');
+                      const testPhone = `011-${padNum.slice(0,4)}-${padNum.slice(4)}`;
+
                       setForm(prev => ({
                         ...prev,
                         gender: g,
                         birthDate: '950101',
-                        phone: '010-9999-9999',
+                        phone: testPhone,
                         height: g === 'male' ? '180' : '165',
                         weight: g === 'male' ? '75' : '50',
                         residence: '테스트시 테스트구',
@@ -1634,7 +1633,7 @@ function FastApplyContent() {
                         religion: '무교',
                         idealType: '테스트 이상형입니다.',
                         nonIdealType: '테스트 비선호형입니다.',
-                        drink: ['아메리카노'],
+                        drink: ['아이스 아메리카노'],
                       }));
                       if (photos.length === 0) {
                         setPhotos(['https://dummyimage.com/600x400/FF6F61/fff&text=TEST']);
@@ -1738,7 +1737,7 @@ function FastApplyContent() {
                       ...p,
                       avoidList: p.avoidList.map((v, i) => i === idx ? { ...v, name: e.target.value } : v)
                     }))}
-                    placeholder="이름 (ex) 김민수)"
+                    placeholder="이름"
                   />
                   <input
                     style={{ ...inputStyle, padding: '12px', flex: '1', minWidth: 0, fontSize: '0.85rem' }}
@@ -1747,7 +1746,7 @@ function FastApplyContent() {
                       ...p,
                       avoidList: p.avoidList.map((v, i) => i === idx ? { ...v, birthYear: e.target.value } : v)
                     }))}
-                    placeholder="97 (년생)"
+                    placeholder="년생"
                   />
                   <input
                     style={{ ...inputStyle, padding: '12px', flex: '2', minWidth: 0, fontSize: '0.85rem' }}
@@ -1756,7 +1755,7 @@ function FastApplyContent() {
                       ...p,
                       avoidList: p.avoidList.map((v, i) => i === idx ? { ...v, workplace: e.target.value } : v)
                     }))}
-                    placeholder="직장 (ex) 토스)"
+                    placeholder="직장"
                   />
                   <button
                     type="button"
@@ -1860,7 +1859,7 @@ function FastApplyContent() {
             </div>
           </FormField>
 
-          <FormField errorFields={errorFields} label="희망 음료 (중복 선택 가능)">
+          <FormField errorFields={errorFields} id="field-drink" label="희망 음료" required>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
               {['아이스 아메리카노', '복숭아 아이스티', '얼그레이', '페퍼민트', '카라멜 블랙티', '물', '따뜻한 음료'].map(d => {
                 const currentDrinks = form.drink || [];
@@ -1904,7 +1903,7 @@ function FastApplyContent() {
                       border: selected ? '1.5px solid #FF6F61' : '1.5px solid #E2E8F0',
                     }}
                   >
-                    {d}
+                    {d === '따뜻한 음료' ? '따뜻한 음료 (중복 선택 가능)' : d}
                   </button>
                 );
               })}
