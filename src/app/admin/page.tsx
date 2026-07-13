@@ -197,17 +197,22 @@ export default function AdminDashboard() {
 
           // v10.2.0: 성별 단가 차등, 개별 옵션 및 customized amountPaid 연동하여 정밀 합산
           // v12.0.0: 정상 출석 + 환불 대상 = 0원, 지각/노쇼 + 환불 대상 = 보증금 몰수 정상 매출
+          // v12.1.0: 일부 환불(refundedAmount) 차감 반영 — 매출통계 페이지와 동일 로직으로 통일
           const sessionRevenue = confirmedApps.reduce((sum, app: any) => {
             const isRefunded = app.isManualRefund === true || app.status === 'refunded' || (app.isRefundDeposit === true && app.attendanceStatus === 'present');
             const isRefundPending = app.status !== 'refunded' && app.isManualRefund !== true && app.isRefundDeposit === true && (app.attendanceStatus === undefined || app.attendanceStatus === null || app.attendanceStatus === 'none' || !app.attendanceStatus);
             if (isRefunded || isRefundPending) return sum;
-            if (app.amountPaid !== undefined && app.amountPaid !== null && app.amountPaid !== '') return sum + Number(app.amountPaid);
-            if (app.price !== undefined && app.price !== null && app.price !== '') return sum + Number(app.price);
             const malePrice = app.maleOption === 'safe' ? 60000 : (s.malePrice || 49000);
             const femalePrice = app.femaleOption === 'group' ? 24000 : (s.femalePrice || 29000);
-            const price = app.gender === 'male' ? malePrice : femalePrice;
-            return sum + price;
+            const basePrice = (app.amountPaid !== undefined && app.amountPaid !== null && app.amountPaid !== '')
+              ? Number(app.amountPaid)
+              : (app.price !== undefined && app.price !== null && app.price !== '')
+                ? Number(app.price)
+                : (app.gender === 'male' ? malePrice : femalePrice);
+            const refunded = Number(app.refundedAmount || 0);
+            return sum + Math.max(0, basePrice - refunded);
           }, 0);
+
 
           if (eventDate >= monthStart && eventDate < nextMonthStart) {
             monthlyRevenue += sessionRevenue;
