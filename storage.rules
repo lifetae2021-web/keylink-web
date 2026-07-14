@@ -1,49 +1,81 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    
+
     // ─────────────────────────────────────
     // 헬퍼 함수
     // ─────────────────────────────────────
     function isSignedIn() {
       return request.auth != null;
     }
-    
+
     function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
-    
-    function isAdmin() {
-      return true;
+      return request.auth != null && request.auth.uid == userId;
     }
 
-    match /{allPaths=**} {
-      // 기존/기타 경로는 기본적으로 쓰기 차단 (필요시 추가)
-      allow read, write: if false;
+    function isValidImage() {
+      // 20MB 제한 (이미지 크기 제한)
+      return request.resource.size < 20 * 1024 * 1024;
     }
 
-    // users/{userId}/... 하위 경로는 본인만 업로드 가능
-    match /users/{userId}/{allPaths=**} {
-      allow read: if true;
-      allow write: if isOwner(userId) && request.resource.size < 20 * 1024 * 1024; // 20MB 제한
-    }
-    
-    // applications/{userId}/... 
-    match /applications/{userId}/{allPaths=**} {
-      allow read: if true;
-      allow write: if isOwner(userId) && request.resource.size < 20 * 1024 * 1024;
-    }
-
-    // profile_images/{userId}/... (마이페이지, 이벤트 페이지에서 사용)
+    // ─────────────────────────────────────
+    // 사용자 프로필 사진: profile_images/{uid}/...
+    // ─────────────────────────────────────
     match /profile_images/{userId}/{allPaths=**} {
-      allow read: if true;
-      allow write: if isOwner(userId) && request.resource.size < 20 * 1024 * 1024;
+      allow read: if true; // URL을 아는 경우 누구나 읽기 가능
+      allow write: if isOwner(userId) && isValidImage();
     }
 
-    // verification_proofs/{userId}/... (재직 증명 서류)
+    // ─────────────────────────────────────
+    // 재직/신분 증명 사진: verification_proofs/{uid}/...
+    // ─────────────────────────────────────
     match /verification_proofs/{userId}/{allPaths=**} {
       allow read: if true;
-      allow write: if isOwner(userId) && request.resource.size < 20 * 1024 * 1024;
+      allow write: if isOwner(userId) && isValidImage();
+    }
+
+    // ─────────────────────────────────────
+    // 프라이빗 매칭 첨부: private_matching/{uid}/...
+    // ─────────────────────────────────────
+    match /private_matching/{userId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if isOwner(userId) && isValidImage();
+    }
+
+    // ─────────────────────────────────────
+    // 신청서 첨부 사진: applications/{uid}/...
+    // ─────────────────────────────────────
+    match /applications/{userId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if isOwner(userId) && isValidImage();
+    }
+
+    // ─────────────────────────────────────
+    // 레거시 경로 호환: users/{uid}/...
+    // ─────────────────────────────────────
+    match /users/{userId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if isOwner(userId) && isValidImage();
+    }
+
+    // ─────────────────────────────────────
+    // CMS 관리자 업로드: cms_reviews/..., cms_partners/...
+    // (경로에 uid가 없으므로 로그인 사용자로 제한. 관리자 페이지는 클라이언트에서 인증 필요)
+    // ─────────────────────────────────────
+    match /cms_reviews/{allPaths=**} {
+      allow read: if true;
+      allow write: if isSignedIn() && isValidImage();
+    }
+    match /cms_partners/{allPaths=**} {
+      allow read: if true;
+      allow write: if isSignedIn() && isValidImage();
+    }
+
+    // ─────────────────────────────────────
+    // 그 외 모든 경로: 기본 차단
+    // ─────────────────────────────────────
+    match /{allPaths=**} {
+      allow read, write: if false;
     }
   }
 }
