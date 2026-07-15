@@ -307,6 +307,11 @@ function MyPageContent() {
     if (!editForm.drinking) return toast.error('음주 빈도를 선택해주세요.');
     if (!editForm.religion) return toast.error('종교를 선택해주세요.');
 
+    // 본인 사진 1장 이상 필수 검사
+    if (photos.length === 0) {
+      return toast.error('본인 사진을 최소 1장 이상 등록해주세요.');
+    }
+
     setIsSaving(true);
     try {
       // Photo Upload logic: Upload new base64 images to Storage (v3.5.1)
