@@ -1,7 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { Save, Bell, Shield, Globe, Database, Key } from 'lucide-react';
+import { Save, Bell, Shield, Globe, Database, Key, Gift, Loader2 } from 'lucide-react';
+import { auth } from '@/lib/firebase';
+import { getIdToken } from 'firebase/auth';
 import toast from 'react-hot-toast';
 
 const panel = { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12 };
@@ -56,6 +58,31 @@ function Toggle({ label, desc, defaultOn = false }: { label: string; desc: strin
 
 export default function SettingsPage() {
   const [activeSection, setActiveSection] = useState('general');
+  const [backfilling, setBackfilling] = useState(false);
+  const [backfillResult, setBackfillResult] = useState<{ issuedCount: number; skippedCount: number; issuedTo: string[] } | null>(null);
+
+  const handleBackfillCoupons = async () => {
+    if (!confirm('쿠폰이 없는 전체 회원에게 웰컴 쿠폰(5,000원)을 일괄 발급합니다. 계속하시겠습니까?')) return;
+    setBackfilling(true);
+    setBackfillResult(null);
+    try {
+      const user = auth.currentUser;
+      if (!user) { toast.error('로그인이 필요합니다.'); return; }
+      const token = await getIdToken(user);
+      const res = await fetch('/api/admin/coupons/backfill-welcome', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '오류가 발생했습니다.');
+      setBackfillResult(data);
+      toast.success(`✅ ${data.issuedCount}명에게 쿠폰 발급 완료!`);
+    } catch (e: any) {
+      toast.error(e.message || '오류가 발생했습니다.');
+    } finally {
+      setBackfilling(false);
+    }
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-400">
@@ -182,37 +209,76 @@ export default function SettingsPage() {
           )}
 
           {activeSection === 'system' && (
-            <div style={{ ...panel, padding: '24px' }}>
-              <h3 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: 20 }}>시스템 정보</h3>
-              <div className="space-y-0">
-                {[
-                  { label: '프레임워크',   value: 'Next.js 14 (App Router)' },
-                  { label: '데이터베이스', value: 'Firebase Firestore' },
-                  { label: '인증',         value: 'Firebase Authentication' },
-                  { label: '배포',         value: 'Vercel + keylink.kr' },
-                  { label: '빌드 환경',    value: 'Node.js 20 LTS' },
-                ].map(info => (
-                  <div
-                    key={info.label}
-                    className="flex items-center justify-between py-3.5"
-                    style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}
-                  >
-                    <span style={{ fontSize: '0.83rem', color: '#666' }}>{info.label}</span>
-                    <span style={{ fontSize: '0.83rem', fontWeight: 600, color: '#ddd' }}>{info.value}</span>
+            <>
+              <div style={{ ...panel, padding: '24px' }}>
+                <h3 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: 20 }}>시스템 정보</h3>
+                <div className="space-y-0">
+                  {[
+                    { label: '프레임워크',   value: 'Next.js 16 (App Router)' },
+                    { label: '데이터베이스', value: 'Firebase Firestore' },
+                    { label: '인증',         value: 'Firebase Authentication' },
+                    { label: '배포',         value: 'Vercel + keylink.kr' },
+                    { label: '빌드 환경',    value: 'Node.js 20 LTS' },
+                  ].map(info => (
+                    <div
+                      key={info.label}
+                      className="flex items-center justify-between py-3.5"
+                      style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}
+                    >
+                      <span style={{ fontSize: '0.83rem', color: '#666' }}>{info.label}</span>
+                      <span style={{ fontSize: '0.83rem', fontWeight: 600, color: '#ddd' }}>{info.value}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-6 p-4 rounded-xl" style={{ background: 'rgba(255,111,97,0.05)', border: '1px solid rgba(255,111,97,0.12)' }}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Key size={13} style={{ color: '#FF6F61' }} />
+                    <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#FF6F61' }}>Firebase 연결 상태</span>
                   </div>
-                ))}
-              </div>
-              <div className="mt-6 p-4 rounded-xl" style={{ background: 'rgba(255,111,97,0.05)', border: '1px solid rgba(255,111,97,0.12)' }}>
-                <div className="flex items-center gap-2 mb-1">
-                  <Key size={13} style={{ color: '#FF6F61' }} />
-                  <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#FF6F61' }}>Firebase 연결 상태</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: '#4ade80' }} />
-                  <span style={{ fontSize: '0.8rem', color: '#4ade80' }}>정상 연결됨</span>
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: '#4ade80' }} />
+                    <span style={{ fontSize: '0.8rem', color: '#4ade80' }}>정상 연결됨</span>
+                  </div>
                 </div>
               </div>
-            </div>
+
+              {/* 웰컴 쿠폰 일괄 발급 */}
+              <div style={{ ...panel, padding: '24px' }}>
+                <div className="flex items-center gap-2 mb-2">
+                  <Gift size={16} style={{ color: '#FF6F61' }} />
+                  <h3 style={{ fontSize: '0.9rem', fontWeight: 700 }}>웰컴 쿠폰 누락 회원 일괄 발급</h3>
+                </div>
+                <p style={{ fontSize: '0.78rem', color: '#666', marginBottom: 16, lineHeight: 1.6 }}>
+                  쿠폰이 한 개도 없는 기존 회원에게 웰컴 가입 축하 쿠폰(5,000원, 유효기간 3개월)을 일괄 지급합니다.<br />
+                  이미 쿠폰이 있는 회원은 건너뜁니다.
+                </p>
+                <button
+                  onClick={handleBackfillCoupons}
+                  disabled={backfilling}
+                  className="flex items-center gap-2 rounded-lg transition-colors"
+                  style={{
+                    padding: '10px 20px', fontSize: '0.85rem', fontWeight: 600,
+                    background: backfilling ? '#555' : '#FF6F61', color: '#fff',
+                    cursor: backfilling ? 'not-allowed' : 'pointer', border: 'none',
+                  }}
+                >
+                  {backfilling ? <Loader2 size={14} className="animate-spin" /> : <Gift size={14} />}
+                  {backfilling ? '발급 중...' : '쿠폰 없는 회원 일괄 발급'}
+                </button>
+                {backfillResult && (
+                  <div className="mt-4 p-4 rounded-xl" style={{ background: 'rgba(74,222,128,0.06)', border: '1px solid rgba(74,222,128,0.2)' }}>
+                    <p style={{ fontSize: '0.83rem', fontWeight: 700, color: '#4ade80', marginBottom: 6 }}>
+                      ✅ 발급 완료: {backfillResult.issuedCount}명 / 건너뜀: {backfillResult.skippedCount}명
+                    </p>
+                    {backfillResult.issuedTo.length > 0 && (
+                      <p style={{ fontSize: '0.75rem', color: '#666', lineHeight: 1.7 }}>
+                        발급 대상: {backfillResult.issuedTo.join(', ')}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </>
           )}
 
         </div>

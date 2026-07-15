@@ -63,15 +63,34 @@ async function getOrCreateFirebaseUser(kakaoId: string, nickname: string) {
   const isNewUser = !userDoc.exists;
 
   if (isNewUser) {
-    await userRef.set({
+    const now = new Date();
+    const expireAt = new Date(now);
+    expireAt.setMonth(expireAt.getMonth() + 3);
+
+    const batch = adminDb.batch();
+
+    batch.set(adminDb.collection('users').doc(firebaseUid), {
       uid: firebaseUid,
       name: nickname,
       isRegistered: true,
       loginMethod: 'kakao',
       provider: 'kakao',
       role: 'user',
-      createdAt: new Date(),
+      createdAt: now,
     });
+
+    // 신규 카카오 가입 시 웰컴 쿠폰 자동 발급
+    const couponRef = adminDb.collection('users').doc(firebaseUid).collection('coupons').doc();
+    batch.set(couponRef, {
+      title: '웰컴 가입 축하 쿠폰',
+      type: 'amount',
+      value: 5000,
+      isUsed: false,
+      createdAt: now,
+      expireAt,
+    });
+
+    await batch.commit();
   }
 
   return { firebaseUid, isNewUser, existingData: isNewUser ? null : userDoc.data() };
