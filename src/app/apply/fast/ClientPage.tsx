@@ -865,7 +865,13 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
     } catch (e: any) {
       console.error('[handleSubmit error]', e);
       const msg = e?.code ? `저장 오류: ${e.code}\n${e.message}` : (e?.message || '알 수 없는 오류');
-      toast.error(`오류: ${msg}`);
+      toast.error(
+        <span>
+          앗, 시스템에 문제가 생겼나요? 현재 화면을 캡처해서 <b>인스타 DM</b>으로 보내주시면, 죄송하고 감사한 마음을 담아 <b>10,000원 할인 쿠폰</b>을 드립니다!<br /><br />
+          <span style={{ fontSize: '0.8rem', color: '#EF4444' }}>[오류: {msg}]</span>
+        </span>,
+        { duration: 8000 }
+      );
     } finally {
       setSubmitting(false);
     }
@@ -1000,7 +1006,13 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
     } catch (e) {
       console.error(e);
       if (!isBackground) {
-        toast.error('신청 저장에 실패했습니다. 다시 시도해 주세요.');
+        toast.error(
+          <span>
+            앗, 시스템에 문제가 생겼나요? 현재 화면을 캡처해서 <b>인스타 DM</b>으로 보내주시면, 죄송하고 감사한 마음을 담아 <b>10,000원 할인 쿠폰</b>을 드립니다!<br /><br />
+            <span style={{ fontSize: '0.8rem', color: '#EF4444' }}>[오류: {(e as any)?.message || '알 수 없는 오류'}]</span>
+          </span>,
+          { duration: 8000 }
+        );
       }
     }
   };

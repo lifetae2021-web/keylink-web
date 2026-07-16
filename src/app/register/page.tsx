@@ -235,7 +235,13 @@ function RegisterForm() {
       if (error.code === 'auth/email-already-in-use') {
         toast.error('이미 사용 중인 아이디입니다. 다른 아이디를 사용해 주세요.');
       } else {
-        toast.error('회원가입 중 오류가 발생했습니다. 다시 시도해 주세요.');
+        toast.error(
+          <span>
+            앗, 시스템에 문제가 생겼나요? 현재 화면을 캡처해서 <b>인스타 DM</b>으로 보내주시면, 죄송하고 감사한 마음을 담아 <b>10,000원 할인 쿠폰</b>을 드립니다!<br /><br />
+            <span style={{ fontSize: '0.8rem', color: '#EF4444' }}>[오류: {error.message}]</span>
+          </span>,
+          { duration: 8000 }
+        );
       }
     } finally {
       setIsSubmitting(false);

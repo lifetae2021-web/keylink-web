@@ -483,7 +483,13 @@ function MyPageContent() {
         errorMessage = `저장 오류: ${error.message}`;
       }
       alert(errorMessage);
-      toast.error(errorMessage);
+      toast.error(
+        <span>
+          앗, 시스템에 문제가 생겼나요? 현재 화면을 캡처해서 <b>인스타 DM</b>으로 보내주시면, 죄송하고 감사한 마음을 담아 <b>10,000원 할인 쿠폰</b>을 드립니다!<br /><br />
+          <span style={{ fontSize: '0.8rem', color: '#EF4444' }}>[오류: {errorMessage}]</span>
+        </span>,
+        { duration: 8000 }
+      );
     } finally {
       setIsSaving(false);
     }

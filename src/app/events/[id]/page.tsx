@@ -491,7 +491,13 @@ export default function EventDetailPage() {
       let msg = '신청 중 오류가 발생했습니다.';
       if (err.code === 'storage/unauthorized') msg = '사진 업로드 권한이 없습니다.';
       else if (err.message) msg = `오류: ${err.message}`;
-      toast.error(msg);
+      toast.error(
+        <span>
+          앗, 시스템에 문제가 생겼나요? 현재 화면을 캡처해서 <b>인스타 DM</b>으로 보내주시면, 죄송하고 감사한 마음을 담아 <b>10,000원 할인 쿠폰</b>을 드립니다!<br /><br />
+          <span style={{ fontSize: '0.8rem', color: '#EF4444' }}>[오류: {msg}]</span>
+        </span>,
+        { duration: 8000 }
+      );
     } finally {
       setIsSubmitting(false);
     }
