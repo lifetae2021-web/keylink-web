@@ -27,7 +27,16 @@ interface Template {
 
 // 변수 치환 함수
 function applyVariables(content: string, applicant: any, session: any, customPrice?: number): string {
-  const eventTime = session?.eventDate?.toDate?.() ?? new Date();
+  let eventTime = new Date();
+  if (session?.eventDate) {
+    if (typeof session.eventDate.toDate === 'function') {
+      eventTime = session.eventDate.toDate();
+    } else if (session.eventDate instanceof Date) {
+      eventTime = session.eventDate;
+    } else {
+      eventTime = new Date(session.eventDate);
+    }
+  }
   const formatter = new Intl.DateTimeFormat('ko-KR', {
     timeZone: 'Asia/Seoul',
     month: 'numeric', day: 'numeric', weekday: 'short',
