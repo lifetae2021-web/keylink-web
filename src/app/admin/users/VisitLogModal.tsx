@@ -13,13 +13,37 @@ interface VisitLogModalProps {
   onClose: () => void;
 }
 
+const getPathName = (path: string) => {
+  if (!path || path === '/') return '메인 홈';
+  if (path.startsWith('/apply/fast')) return '빠른 매칭 신청';
+  if (path.startsWith('/apply')) return '매칭 신청';
+  if (path.startsWith('/events')) {
+    if (path === '/events') return '소개팅 행사 모아보기';
+    return '소개팅 행사 상세 보기';
+  }
+  if (path.startsWith('/mypage')) return '마이페이지';
+  if (path.startsWith('/login')) return '로그인';
+  if (path.startsWith('/register')) return '회원가입';
+  if (path.startsWith('/matching-results')) return '매칭 결과';
+  if (path.startsWith('/matching')) return '매칭 안내';
+  if (path.startsWith('/notices')) return '공지사항';
+  if (path.startsWith('/live')) return '라이브 이벤트';
+  if (path.startsWith('/private-matching')) return '프라이빗 매칭';
+  if (path.startsWith('/status')) return '신청 현황';
+  if (path.startsWith('/vote')) return '투표하기';
+  if (path.startsWith('/admin')) return '관리자 페이지';
+  return path;
+};
+
 export default function VisitLogModal({ user, isOpen, onClose }: VisitLogModalProps) {
   const [logs, setLogs] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isOpen || !user) return;
 
+    setFetchError(null);
     const fetchLogs = async () => {
       setIsLoading(true);
       try {
@@ -33,7 +57,12 @@ export default function VisitLogModal({ user, isOpen, onClose }: VisitLogModalPr
         const snap = await getDocs(q);
         const fetchedLogs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         setLogs(fetchedLogs);
-      } catch (error) {
+      } catch (error: any) {
+        if (error?.message?.includes('index')) {
+          setFetchError('인덱스 준비 중입니다. 잠시 후 다시 시도해 주세요. (1~3분 소요)');
+        } else {
+          setFetchError('방문 기록을 불러오지 못했습니다.');
+        }
         console.error('Error fetching visit logs:', error);
       } finally {
         setIsLoading(false);
@@ -93,6 +122,13 @@ export default function VisitLogModal({ user, isOpen, onClose }: VisitLogModalPr
                   <div className="w-6 h-6 border-2 border-indigo-300 border-t-transparent rounded-full animate-spin" />
                   <p className="text-xs font-bold text-slate-400 mt-3">기록을 불러오는 중...</p>
                 </div>
+              ) : fetchError ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center px-4">
+                  <div className="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center mb-3">
+                    <span className="text-2xl">⏳</span>
+                  </div>
+                  <p className="text-sm font-bold text-slate-500">{fetchError}</p>
+                </div>
               ) : logs.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <MonitorSmartphone size={32} strokeWidth={1.5} className="text-slate-300 mb-3" />
@@ -119,9 +155,14 @@ export default function VisitLogModal({ user, isOpen, onClose }: VisitLogModalPr
                         
                         <div className="flex items-start gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-100/50">
                           <MapPin size={12} className="text-indigo-400 mt-0.5 shrink-0" />
-                          <span className="text-xs font-bold text-slate-600 break-all leading-tight">
-                            {log.path || '/'}
-                          </span>
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-sm font-black text-slate-700 leading-tight">
+                              {getPathName(log.path)}
+                            </span>
+                            <span className="text-[10px] font-medium text-slate-400 font-mono break-all leading-tight">
+                              {log.path || '/'}
+                            </span>
+                          </div>
                         </div>
                         
                         {log.referrer && log.referrer !== '' && !log.referrer.includes(window?.location?.host) && (

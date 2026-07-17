@@ -3014,7 +3014,11 @@ ${chatLink}
                                                       setSelectedUser(user);
                                                       setIsProfileModalOpen(true);
                                                     }}
-                                                    className="text-sm font-bold text-slate-800 whitespace-nowrap shrink-0 cursor-pointer hover:text-[#FF7E7E] transition-colors"
+                                                    className={`text-sm font-bold whitespace-nowrap shrink-0 cursor-pointer hover:text-[#FF7E7E] transition-colors ${
+                                                      ((userMap[app.userId]?.participationCount || 0) === 0 && !app.id?.startsWith("dummy_") && !app.userId?.startsWith("user_") && !app.isDarkTemplar)
+                                                        ? 'text-emerald-600'
+                                                        : 'text-slate-800'
+                                                    }`}
                                                   >
                                                     {app.name || "-"}
                                                   </span>
@@ -3181,6 +3185,8 @@ ${chatLink}
                                                     className={`text-sm font-bold cursor-pointer transition-colors ${
                                                       app.isDarkTemplar
                                                         ? 'text-violet-800 hover:text-violet-600'
+                                                        : ((userMap[app.userId]?.participationCount || 0) === 0 && !app.id?.startsWith("dummy_") && !app.userId?.startsWith("user_"))
+                                                        ? 'text-emerald-600 hover:text-[#FF7E7E]'
                                                         : 'text-slate-800 hover:text-[#FF7E7E]'
                                                     }`}
                                                   >
@@ -3410,7 +3416,11 @@ ${chatLink}
                                                 setSelectedUser(user);
                                                 setIsProfileModalOpen(true);
                                               }}
-                                              className="text-sm font-bold text-slate-800 cursor-pointer hover:text-[#FF7E7E] transition-colors truncate"
+                                              className={`text-sm font-bold cursor-pointer hover:text-[#FF7E7E] transition-colors truncate ${
+                                                ((userMap[app.userId]?.participationCount || 0) === 0 && !app.id?.startsWith("dummy_") && !app.userId?.startsWith("user_") && !app.isDarkTemplar)
+                                                  ? 'text-emerald-600'
+                                                  : 'text-slate-800'
+                                              }`}
                                             >
                                               {app.name || "-"}
                                             </span>

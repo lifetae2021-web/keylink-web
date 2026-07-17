@@ -21,9 +21,6 @@ export default function AnalyticsTracker() {
       localStorage.setItem('kl_visitor_id', visitorId);
     }
 
-    // 1. 이미 로컬스토리지에 관리자 태그가 있으면 즉시 종료 (가장 빠름)
-    if (localStorage.getItem('kl_is_admin') === 'true') return;
-
     const referrer = document.referrer || '';
     const userAgent = navigator.userAgent;
 
@@ -63,26 +60,9 @@ export default function AnalyticsTracker() {
       if (isHandled) return;
 
       if (user) {
-        // 사용자가 있는 경우: 관리자 여부 확인 후 결정
-        try {
-          const userSnap = await getDoc(doc(db, 'users', user.uid));
-          const role = userSnap.exists() ? userSnap.data()?.role : '';
-          const isAdmin = role === 'admin' || role === 'super_admin';
-          
-          if (isAdmin) {
-            localStorage.setItem('kl_is_admin', 'true');
-            isHandled = true;
-            return; // 관리자는 트래킹 안 함
-          } else {
-            localStorage.removeItem('kl_is_admin');
-            isHandled = true;
-            trackVisit(user.uid);
-          }
-        } catch (e) {
-          console.error('Error checking role:', e);
-          isHandled = true;
-          trackVisit(user.uid);
-        }
+        // 사용자가 있는 경우 트래킹 진행 (관리자도 방문 기록 수집)
+        isHandled = true;
+        trackVisit(user.uid);
       } else {
         // 사용자가 없는 경우 (비회원): 
         // 찰나의 시간 동안 관리자 로그인이 풀렸다가 다시 잡히는 경우 대비 500ms 대기
