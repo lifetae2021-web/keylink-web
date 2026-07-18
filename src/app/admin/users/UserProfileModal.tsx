@@ -192,7 +192,7 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
         const snap = await gd(q(col(db, 'applications'), wh('userId', '==', userId)));
         const apps = snap.docs
           .map(d => ({ id: d.id, ...d.data() } as any))
-          .filter((a: any) => a.status === 'confirmed' || a.status === 'selected')
+          .filter((a: any) => a.status === 'confirmed' || a.status === 'selected' || a.status === 'cancelled' || !!a.attendanceStatus)
           .sort((a: any, b: any) => {
             const ta = a.appliedAt?.toDate?.() || new Date(0);
             const tb = b.appliedAt?.toDate?.() || new Date(0);
@@ -848,12 +848,17 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
                                     return title.replace('로테이션 소개팅 ', '').replace('로테이션 소개팅', '');
                                   })()}
                                 </p>
-                                {summariesMap[app.sessionId] !== undefined && (
-                                  <span className="px-1.5 py-0.5 rounded-md bg-rose-100 text-rose-600 text-[0.6rem] font-black shrink-0">
-                                    ❤️ {summariesMap[app.sessionId].voteCountMap?.[user.uid || user.id] || 0}표
-                                  </span>
-                                )}
-                              </div>
+                                  {summariesMap[app.sessionId] !== undefined && (
+                                    <span className="px-1.5 py-0.5 rounded-md bg-rose-100 text-rose-600 text-[0.6rem] font-black shrink-0">
+                                      ❤️ {summariesMap[app.sessionId].voteCountMap?.[user.uid || user.id] || 0}표
+                                    </span>
+                                  )}
+                                  {app.status !== 'confirmed' && app.status !== 'selected' && (
+                                    <span className="px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-500 text-[0.6rem] font-black shrink-0 border border-slate-200">
+                                      선발취소
+                                    </span>
+                                  )}
+                                </div>
                               {displayDate && (
                                 <p className="text-[0.65rem] text-slate-400 font-semibold">
                                   {eventDate ? '소개팅 일시: ' : '신청일: '}
