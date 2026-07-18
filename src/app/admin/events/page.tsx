@@ -390,14 +390,15 @@ export default function EventsPage() {
   // 평균 매칭률 계산 (matchingSummaries 기반, 테스트 및 삭제된 기수 제외)
   useEffect(() => {
     const fetchMatchingRate = async () => {
-      const { getDocs } = await import('firebase/firestore');
-      // v10.1.0: sessions와 matchingSummaries를 조회하여 존재하지 않는(삭제된) 기수 및 테스트기수 원천 배제
-      const [snap, sessionsSnap] = await Promise.all([
-        getDocs(collection(db, 'matchingSummaries')),
-        getDocs(collection(db, 'sessions'))
-      ]);
+      try {
+        const { getDocs } = await import('firebase/firestore');
+        // v10.1.0: sessions와 matchingSummaries를 조회하여 존재하지 않는(삭제된) 기수 및 테스트기수 원천 배제
+        const [snap, sessionsSnap] = await Promise.all([
+          getDocs(collection(db, 'matchingSummaries')),
+          getDocs(collection(db, 'sessions'))
+        ]);
 
-      const activeNonTestSessionIds = new Set<string>();
+        const activeNonTestSessionIds = new Set<string>();
       sessionsSnap.docs.forEach(sDoc => {
         const sData = sDoc.data();
         if (!sData.isTest) {
@@ -421,7 +422,10 @@ export default function EventsPage() {
           count++;
         }
       });
-      setAvgMatchingRate(count > 0 ? Math.round(totalRate / count) : 0);
+      } catch (err) {
+        console.error("fetchMatchingRate error:", err);
+        setAvgMatchingRate(0);
+      }
     };
     fetchMatchingRate();
   }, []);
@@ -631,10 +635,12 @@ export default function EventsPage() {
   // SMS 템플릿 로드
   useEffect(() => {
     import('firebase/firestore').then(({ getDocs, collection }) => {
-      getDocs(collection(db, 'smsTemplates')).then(snap => {
-        setSmsTemplates(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-      });
-    });
+      getDocs(collection(db, 'smsTemplates'))
+        .then(snap => {
+          setSmsTemplates(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+        })
+        .catch(err => console.error("Error fetching SMS templates:", err));
+    }).catch(err => console.error("Error importing firestore:", err));
   }, []);
 
   const active = useMemo(
