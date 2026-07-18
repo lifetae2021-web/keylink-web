@@ -844,7 +844,8 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
                                   {(() => {
                                     const sessionInfo = sessionsMap[app.sessionId];
                                     if (!sessionInfo) return app.sessionId || '기수 미상';
-                                    return sessionInfo.title || `${sessionInfo.region === 'busan' ? '부산' : '창원'} ${sessionInfo.episodeNumber ? sessionInfo.episodeNumber + '기' : ''}`;
+                                    const title = sessionInfo.title || `${sessionInfo.region === 'busan' ? '부산' : '창원'} ${sessionInfo.episodeNumber ? sessionInfo.episodeNumber + '기' : ''}`;
+                                    return title.replace('로테이션 소개팅 ', '').replace('로테이션 소개팅', '');
                                   })()}
                                 </p>
                                 {summariesMap[app.sessionId] !== undefined && (
