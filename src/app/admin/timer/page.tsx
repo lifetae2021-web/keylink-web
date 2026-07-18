@@ -185,7 +185,9 @@ export default function AdminTimerPage() {
               if (config.cakeRound) setCakeRound(config.cakeRound);
               if (config.totalTables) setTotalTables(config.totalTables);
               if (config.customDurations) setCustomDurations(config.customDurations);
-            } catch (e) {}
+            } catch (e) {
+              console.error('[Timer] localStorage 상태 복원 중 파싱 오류:', e);
+            }
           }
           
           if (savedSessionId && list.some(s => s.id === savedSessionId)) {

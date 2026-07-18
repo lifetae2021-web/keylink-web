@@ -470,17 +470,47 @@ export default function UsersPage() {
       let valA: any, valB: any;
 
       if (sortConfig.key === 'age') {
-        const getAge = (birth?: string) => birth ? new Date().getFullYear() - parseInt(birth.split('-')[0]) + 1 : 0;
-        valA = getAge(a.birthDate);
-        valB = getAge(b.birthDate);
+        // 다양한 생년월일 포맷 처리: 'YYMMDD'(6자리), 'YYYYMMDD'(8자리), 'YYYY-MM-DD'
+        const getBirthYear = (birth?: string): number => {
+          if (!birth) return 0;
+          let yy: number;
+          if (birth.includes('-')) {
+            yy = parseInt(birth.split('-')[0], 10);
+            // 4자리 연도면 그대로, 2자리면 변환
+            if (yy < 100) yy = yy > 30 ? 1900 + yy : 2000 + yy;
+          } else if (birth.length >= 8) {
+            // YYYYMMDD 형식 (예: 19940530)
+            yy = parseInt(birth.slice(0, 4), 10);
+          } else if (birth.length >= 6) {
+            // YYMMDD 형식 (예: 940530)
+            const shortYY = parseInt(birth.slice(0, 2), 10);
+            yy = shortYY > 30 ? 1900 + shortYY : 2000 + shortYY;
+          } else {
+            yy = parseInt(birth.slice(0, 2), 10);
+            if (isNaN(yy)) return 0;
+            yy = yy > 30 ? 1900 + yy : 2000 + yy;
+          }
+          return isNaN(yy) ? 0 : yy;
+        };
+        // 출생연도가 낮을수록 나이가 많음
+        // asc = 나이 오름차순 = 어린 순 (출생연도 내림차순)
+        // desc = 나이 내림차순 = 나이 많은 순 (출생연도 오름차순)
+        valA = getBirthYear(a.birthDate);
+        valB = getBirthYear(b.birthDate);
+        if (valA === 0 && valB === 0) return 0;
+        if (valA === 0) return 1;
+        if (valB === 0) return -1;
+        // asc = 어린 순 = 출생연도 큰 것(최근)이 먼저
+        if (valA < valB) return sortConfig.direction === 'asc' ? 1 : -1;
+        if (valA > valB) return sortConfig.direction === 'asc' ? -1 : 1;
+        return 0;
       } else {
         valA = a[sortConfig.key]?.seconds || 0;
         valB = b[sortConfig.key]?.seconds || 0;
+        if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
       }
-
-      if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
-      if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
-      return 0;
     });
   }, [users, search, filter, genderFilter, sortConfig]);
 

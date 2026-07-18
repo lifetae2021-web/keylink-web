@@ -141,7 +141,18 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
   // ── Submission state ──
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [savedData, setSavedData] = useState<{ formData: FormData; sessionIds: string[] } | null>(null);
+  const [savedData, setSavedData] = useState<{
+    formData: FormData;
+    sessionIds: string[];
+    photos?: string[];
+    maleOption?: string;
+    femaleOption?: string;
+    groupPartnerName?: string;
+    groupPartnerBirthYear?: string;
+    selectedCouponId?: string | null;
+    selectedCouponTitle?: string | null;
+    couponDiscount?: number;
+  } | null>(null);
 
   // ── Male & Female matching option ──
   const [maleOption, setMaleOption] = useState<'normal' | 'safe'>('normal');
@@ -328,8 +339,12 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
 
           const birthYear = formData.birthDate
             ? (() => {
-              if (formData.birthDate.includes('-')) return parseInt(formData.birthDate.slice(0, 4));
-              const yy = parseInt(formData.birthDate.slice(0, 2));
+              if (formData.birthDate.includes('-')) {
+                const y = parseInt(formData.birthDate.slice(0, 4), 10);
+                return isNaN(y) ? new Date().getFullYear() : y;
+              }
+              const yy = parseInt(formData.birthDate.slice(0, 2), 10);
+              if (isNaN(yy)) return new Date().getFullYear();
               return yy > 30 ? 1900 + yy : 2000 + yy;
             })()
             : new Date().getFullYear();
@@ -585,7 +600,7 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
     );
 
   /* ── Form helpers ── */
-  const setField = (key: keyof FormData, val: string) => setForm(prev => ({ ...prev, [key]: val }));
+  const setField = (key: keyof FormData, val: string | string[]) => setForm(prev => ({ ...prev, [key]: val }));
 
   const handleBirthDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let val = e.target.value.replace(/[^0-9]/g, '');
@@ -764,7 +779,7 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
           couponDiscount: getCouponDiscount(),
         };
         sessionStorage.setItem('kl_fast_apply_backup', JSON.stringify(backup));
-        setSavedData(backup as any);
+        setSavedData(backup);
         
         // NEW: Submit as non-member automatically (Background)
         await saveNonMemberApplication(undefined, true);
@@ -954,8 +969,12 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
         
         const birthYear = formData.birthDate
           ? (() => {
-            if (formData.birthDate.includes('-')) return parseInt(formData.birthDate.slice(0, 4));
-            const yy = parseInt(formData.birthDate.slice(0, 2));
+            if (formData.birthDate.includes('-')) {
+              const y = parseInt(formData.birthDate.slice(0, 4), 10);
+              return isNaN(y) ? new Date().getFullYear() : y;
+            }
+            const yy = parseInt(formData.birthDate.slice(0, 2), 10);
+            if (isNaN(yy)) return new Date().getFullYear();
             return yy > 30 ? 1900 + yy : 2000 + yy;
           })()
           : new Date().getFullYear();
@@ -1025,7 +1044,7 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
         toast.error(
           <span>
             앗, 시스템에 문제가 생겼나요? 현재 화면을 캡처해서 <b>인스타 DM</b>으로 보내주시면, 죄송하고 감사한 마음을 담아 <b>10,000원 할인 쿠폰</b>을 드립니다!<br /><br />
-            <span style={{ fontSize: '0.8rem', color: '#EF4444' }}>[오류: {(e as any)?.message || '알 수 없는 오류'}]</span>
+            <span style={{ fontSize: '0.8rem', color: '#EF4444' }}>[오류: {(e instanceof Error ? e.message : String(e)) || '알 수 없는 오류'}]</span>
           </span>,
           { duration: 8000 }
         );
@@ -1662,14 +1681,14 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
                       {session.ageRange && (
                         <p style={{ color: '#FF6F61', fontSize: '0.65rem', fontWeight: '800', margin: '0' }}>👤 {session.ageRange}</p>
                       )}
-                      {(session as any).isCustomCuration ? (
+                      {session.isCustomCuration ? (
                         <p style={{ background: '#FFF5F4', color: '#FF6F61', fontSize: '0.65rem', fontWeight: '800', margin: '0', padding: '2px 6px', borderRadius: '4px', border: '1px solid rgba(255,111,97,0.2)' }}>
-                          ❤️ 여성 맞춤선발
+                          여성 우선 선발
                         </p>
                       ) : (
-                        (session as any).targetMaleAge && (
+                        session.targetMaleAge && (
                           <p style={{ background: '#FFF5F4', color: '#FF6F61', fontSize: '0.65rem', fontWeight: '800', margin: '0', padding: '2px 6px', borderRadius: '4px', border: '1px solid rgba(255,111,97,0.2)' }}>
-                            남성 {(session as any).targetMaleAge}
+                            남성 {session.targetMaleAge}
                           </p>
                         )
                       )}
@@ -2023,7 +2042,7 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
                           next = [...currentDrinks, d];
                         }
                       }
-                      setField('drink', next as any);
+                      setField('drink', next);
                     }}
                     style={{
                       padding: '10px 16px', borderRadius: '12px', fontSize: '0.82rem', fontWeight: '700',

@@ -1164,7 +1164,7 @@ function VoteConfigTab() {
                       {[0, 1, 2, 3].map(index => {
                         const options = form.customQuestionOptions || [];
                         return (
-                          <div key={index} className="flex gap-2">
+                          <div key={`option-${index}`} className="flex gap-2">
                             <span className="text-xs text-slate-400 font-bold mt-2">{index + 1}.</span>
                             <input
                               value={options[index] || ''}

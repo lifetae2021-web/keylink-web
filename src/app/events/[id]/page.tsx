@@ -160,14 +160,18 @@ export default function EventDetailPage() {
                 phone: uDraft.phone || mergedForm.phone,
                 gender: uDraft.gender || mergedForm.gender
               };
-            } catch (e) {}
+            } catch (e) {
+              console.error('[Draft] 통합 프로필 임시저장 파싱 오류:', e);
+            }
           }
 
           if (sessionDraftStr) {
             try {
               const sDraft = JSON.parse(sessionDraftStr);
               mergedForm = { ...mergedForm, ...sDraft };
-            } catch (e) {}
+            } catch (e) {
+              console.error('[Draft] 세션별 임시저장 파싱 오류:', e);
+            }
           }
 
           setForm(mergedForm);

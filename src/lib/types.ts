@@ -108,6 +108,8 @@ export interface Session {
   description?: string;
   openChatLink?: string;           // v9.1.0: 오픈채팅방 링크 (SMS 발송용)
   isCustomCuration?: boolean;      // v14.0.0: 여성 맞춤 큐레이션 (나이 미지정) 여부
+  theme?: string;                  // 특집 테마
+
 
   createdAt: Date;
   updatedAt?: Date;
@@ -196,6 +198,9 @@ export interface Application {
 
   // 🌑 닼템 모드 (super_admin이 라이브 QA 목적으로 참가 시)
   isDarkTemplar?: boolean;
+
+  // v12.2.0: 음료 제공 여부 (행사 당일 관리용)
+  drinkServed?: boolean;
 }
 
 // ─────────────────────────────────────────────

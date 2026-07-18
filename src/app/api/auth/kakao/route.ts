@@ -16,10 +16,6 @@ async function getKakaoProfile(code: string, redirectUri: string) {
     params.append('client_secret', process.env.KAKAO_CLIENT_SECRET);
   }
 
-  console.log('--- KAKAO TOKEN EXCHANGE DEBUG ---');
-  console.log('client_id:', process.env.NEXT_PUBLIC_KAKAO_CLIENT_ID);
-  console.log('redirect_uri:', redirectUri);
-  console.log('client_secret exists:', !!process.env.KAKAO_CLIENT_SECRET);
 
   const tokenRes = await fetch(KAKAO_TOKEN_URL, {
     method: 'POST',
