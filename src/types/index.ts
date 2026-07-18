@@ -46,6 +46,7 @@ export interface KeylinkEvent {
   episode: number; // 몇 기
   targetMaleAge?: string; // e.g. "94~98"
   targetFemaleAge?: string; // e.g. "94~98"
+  isCustomCuration?: boolean;
   createdAt: Date;
 }
 

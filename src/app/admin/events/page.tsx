@@ -290,6 +290,7 @@ export default function EventsPage() {
     status: "open" as SessionStatus,
     openChatLink: "", // v9.1.0: 오픈채팅방 링크
     isTest: false, // v10.0.0: 테스트 기수 여부
+    isCustomCuration: false, // v14.0.0: 여성 맞춤 큐레이션 (연령대 미지정)
   };
 
   const [formData, setFormData] = useState(initialFormData);
@@ -1852,6 +1853,7 @@ ${chatLink}
       status: session.status,
       openChatLink: session.openChatLink || "",
       isTest: !!session.isTest, // v10.0.0: 테스트 기수 여부
+      isCustomCuration: !!session.isCustomCuration, // v14.0.0: 여성 맞춤 큐레이션 여부
     });
     setIsModalOpen(true);
   };
@@ -2141,7 +2143,7 @@ ${chatLink}
     const numericPrice = Number(formData.price.replace(/,/g, ""));
     const numericGroupPrice = Number(formData.femaleGroupPrice.replace(/,/g, ""));
     // v8.2.3: 연령대 결합
-    const combinedAge = `${formData.ageStart}~${formData.ageEnd}년생`;
+    const combinedAge = formData.isCustomCuration ? "❤️ 여성 맞춤선발" : `${formData.ageStart}~${formData.ageEnd}년생`;
 
     setIsSubmitting(true);
     try {
@@ -2165,6 +2167,7 @@ ${chatLink}
         status: formData.status,
         openChatLink: formData.openChatLink,
         isTest: !!formData.isTest, // v10.0.0: 테스트 기수 여부
+        isCustomCuration: !!formData.isCustomCuration, // v14.0.0: 여성 맞춤 큐레이션 여부
         updatedAt: serverTimestamp(),
       };
 
@@ -4748,41 +4751,63 @@ ${chatLink}
                       <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">
                         남성 연령대
                       </label>
+                      <label className="flex items-center gap-1.5 text-[11px] font-bold text-[#FF6F61] cursor-pointer hover:bg-rose-50 px-2 py-1 rounded-md transition-colors border border-transparent hover:border-rose-100">
+                        <input
+                          type="checkbox"
+                          checked={formData.isCustomCuration}
+                          onChange={(e) => {
+                            setFormData({
+                              ...formData,
+                              isCustomCuration: e.target.checked,
+                              ageStart: e.target.checked ? "" : formData.ageStart,
+                              ageEnd: e.target.checked ? "" : formData.ageEnd,
+                            });
+                          }}
+                          className="w-3.5 h-3.5 text-[#FF6F61] border-rose-300 rounded focus:ring-[#FF6F61]"
+                        />
+                        ❤️ 맞춤 큐레이션 (나이 미지정)
+                      </label>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        required
-                        maxLength={2}
-                        placeholder="94"
-                        value={formData.ageStart}
-                        onChange={(e) => {
-                          const val = e.target.value.replace(/[^0-9]/g, "");
-                          setFormData({ ...formData, ageStart: val });
-                          if (val.length === 2 && ageEndRef.current) {
-                            ageEndRef.current.focus();
-                          }
-                        }}
-                        className="w-16 h-11 text-center rounded-xl border border-slate-200 bg-white text-slate-800 font-bold focus:ring-2 focus:ring-[#FF6F61]/20 focus:border-[#FF6F61] outline-none transition-all"
-                      />
-                      <span className="text-slate-300 font-bold">~</span>
-                      <input
-                        type="text"
-                        required
-                        maxLength={2}
-                        ref={ageEndRef}
-                        placeholder="01"
-                        value={formData.ageEnd}
-                        onChange={(e) => {
-                          const val = e.target.value.replace(/[^0-9]/g, "");
-                          setFormData({ ...formData, ageEnd: val });
-                        }}
-                        className="w-16 h-11 text-center rounded-xl border border-slate-200 bg-white text-slate-800 font-bold focus:ring-2 focus:ring-[#FF6F61]/20 focus:border-[#FF6F61] outline-none transition-all"
-                      />
-                      <span className="text-slate-400 text-sm font-bold ml-1">
-                        년생
-                      </span>
-                    </div>
+                    {!formData.isCustomCuration ? (
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          required={!formData.isCustomCuration}
+                          maxLength={2}
+                          placeholder="94"
+                          value={formData.ageStart}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/[^0-9]/g, "");
+                            setFormData({ ...formData, ageStart: val });
+                            if (val.length === 2 && ageEndRef.current) {
+                              ageEndRef.current.focus();
+                            }
+                          }}
+                          className="w-16 h-11 text-center rounded-xl border border-slate-200 bg-white text-slate-800 font-bold focus:ring-2 focus:ring-[#FF6F61]/20 focus:border-[#FF6F61] outline-none transition-all"
+                        />
+                        <span className="text-slate-300 font-bold">~</span>
+                        <input
+                          type="text"
+                          required={!formData.isCustomCuration}
+                          maxLength={2}
+                          ref={ageEndRef}
+                          placeholder="01"
+                          value={formData.ageEnd}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/[^0-9]/g, "");
+                            setFormData({ ...formData, ageEnd: val });
+                          }}
+                          className="w-16 h-11 text-center rounded-xl border border-slate-200 bg-white text-slate-800 font-bold focus:ring-2 focus:ring-[#FF6F61]/20 focus:border-[#FF6F61] outline-none transition-all"
+                        />
+                        <span className="text-slate-400 text-sm font-bold ml-1">
+                          년생
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center w-full h-11 rounded-xl bg-rose-50 border border-rose-100 text-rose-500 font-bold text-sm">
+                        여성 맞춤형 큐레이션
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

@@ -39,6 +39,7 @@ function sessionToEvent(session: Session): KeylinkEvent {
     episode: session.episodeNumber,
     targetMaleAge: (session as any).targetMaleAge ?? '',
     targetFemaleAge: (session as any).targetFemaleAge ?? '',
+    isCustomCuration: (session as any).isCustomCuration ?? false,
     createdAt: session.createdAt,
   };
 }
@@ -341,7 +342,7 @@ export function EventCalendar({
                 {eventsOnDay.map((e, i) => (
                   <div key={i} className="kl-event-tag">
                     <p className="kl-event-tag-age">
-                      남성 {e.targetMaleAge ? e.targetMaleAge.replace(/년생/g, '') : ''}
+                      {e.isCustomCuration ? '❤️ 여성 맞춤선발' : `남성 ${e.targetMaleAge ? e.targetMaleAge.replace(/년생/g, '') : ''}`}
                     </p>
                     <p className="kl-event-tag-time">
                       {format(e.date, 'HH:mm')}
@@ -436,7 +437,22 @@ function EventCard({ event, isSelected = false, userApp }: { event: KeylinkEvent
 
       {/* 남성 연령 + 날짜/장소 */}
       <div>
-        {event.targetMaleAge && (
+        {event.isCustomCuration ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '14px' }}>
+            <div style={{ display: 'inline-flex', alignSelf: 'flex-start', background: '#FFF5F4', border: '1px solid rgba(255,111,97,0.2)', padding: '4px 10px', borderRadius: '8px' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: '800', color: '#FF6F61' }}>❤️ 여성 우선 맞춤선발</span>
+            </div>
+            <div style={{ paddingLeft: '4px' }}>
+              <p style={{ fontSize: '0.72rem', fontWeight: '700', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+                • 본 기수는 남성 연령대를 사전에 지정하지 않습니다.
+              </p>
+              <p style={{ fontSize: '0.68rem', fontWeight: '500', color: '#94a3b8', lineHeight: 1.4 }}>
+                • 여성 참가자 우선 선발 후, 이상형과 나이대를<br/>
+                <span style={{ paddingLeft: '8px' }}>세밀하게 맞추어 남성 참가자를 큐레이션합니다.</span>
+              </p>
+            </div>
+          </div>
+        ) : event.targetMaleAge && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '14px' }}>
             <div style={{ display: 'inline-flex', alignSelf: 'flex-start', background: '#FFF5F4', border: '1px solid rgba(255,111,97,0.2)', padding: '4px 10px', borderRadius: '8px' }}>
               <span style={{ fontSize: '0.75rem', fontWeight: '800', color: '#FF6F61' }}>남성 연령 : {event.targetMaleAge}</span>

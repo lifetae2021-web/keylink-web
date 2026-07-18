@@ -107,6 +107,7 @@ export interface Session {
   targetFemaleAge?: string;        // 94년생~01년생
   description?: string;
   openChatLink?: string;           // v9.1.0: 오픈채팅방 링크 (SMS 발송용)
+  isCustomCuration?: boolean;      // v14.0.0: 여성 맞춤 큐레이션 (나이 미지정) 여부
 
   createdAt: Date;
   updatedAt?: Date;

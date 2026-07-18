@@ -32,6 +32,11 @@ interface RecruitingSession {
   price?: number;
   targetMaleAge?: string;
   isTest?: boolean;
+  malePrice?: number;
+  femalePrice?: number;
+  femaleGroupPrice?: number;
+  maleSafePrice?: number;
+  isCustomCuration?: boolean;
 }
 
 interface FormData {
@@ -318,7 +323,7 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
           ));
           if (!existingSnap.empty) continue;
 
-          const basePrice = formData.gender === 'female' ? 19000 : (backup.maleOption === 'safe' ? 60000 : 49000);
+          const basePrice = getBasePrice(sessionId);
           const couponDiscount = backup.couponDiscount || 0;
 
           const birthYear = formData.birthDate
@@ -458,9 +463,15 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
   }, [currentUser]);
 
   // ── 가격 계산 헬퍼 ──
-  const getBasePrice = () => {
-    if (form.gender === 'female') return femaleOption === 'group' ? 19000 : 29000;
-    return maleOption === 'safe' ? 60000 : 49000;
+  const getBasePrice = (explicitSessionId?: string) => {
+    const sid = explicitSessionId || Array.from(selectedSessionIds)[0];
+    const sessionObj = sessions.find(s => s.id === sid);
+    if (form.gender === 'female') {
+      if (femaleOption === 'group') return sessionObj?.femaleGroupPrice || 19000;
+      return sessionObj?.femalePrice || sessionObj?.price || 29000;
+    }
+    if (maleOption === 'safe') return sessionObj?.maleSafePrice || 60000;
+    return sessionObj?.malePrice || sessionObj?.price || 49000;
   };
 
   const getCouponDiscount = () => {
@@ -504,7 +515,12 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
               ageRange: data.ageRange || '',
               maxParticipants: data.maxParticipants,
               price: data.price,
+              malePrice: data.malePrice,
+              femalePrice: data.femalePrice,
+              femaleGroupPrice: data.femaleGroupPrice,
+              maleSafePrice: data.maleSafePrice,
               targetMaleAge: data.targetMaleAge || '',
+              isCustomCuration: data.isCustomCuration || false,
             };
           })
           .filter(s => {
@@ -787,7 +803,7 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
 
         // Create applications
         for (const sessionId of Array.from(selectedSessionIds)) {
-          const basePrice = form.gender === 'female' ? 19000 : (maleOption === 'safe' ? 60000 : 49000);
+          const basePrice = getBasePrice(sessionId);
           const couponDiscount = getCouponDiscount();
           
           const birthYear = form.birthDate
@@ -933,8 +949,8 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
 
       // Create applications for each selected session
       for (const sessionId of sessionIds) {
-        const basePrice = formData.gender === 'female' ? 19000 : (maleOption === 'safe' ? 60000 : 49000);
-        const couponDiscount = backup.couponDiscount || 0;
+          const basePrice = getBasePrice(sessionId);
+          const couponDiscount = backup.couponDiscount || 0;
         
         const birthYear = formData.birthDate
           ? (() => {
@@ -1577,6 +1593,7 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
                 matchingOpen: false,
                 episode: 0,
                 targetMaleAge: s.targetMaleAge,
+                isCustomCuration: s.isCustomCuration,
                 createdAt: new Date(),
               } as KeylinkEvent))}
               onDateSelect={(d: Date) => {
@@ -1645,10 +1662,16 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
                       {session.ageRange && (
                         <p style={{ color: '#FF6F61', fontSize: '0.65rem', fontWeight: '800', margin: '0' }}>👤 {session.ageRange}</p>
                       )}
-                      {(session as any).targetMaleAge && (
+                      {(session as any).isCustomCuration ? (
                         <p style={{ background: '#FFF5F4', color: '#FF6F61', fontSize: '0.65rem', fontWeight: '800', margin: '0', padding: '2px 6px', borderRadius: '4px', border: '1px solid rgba(255,111,97,0.2)' }}>
-                          남성 {(session as any).targetMaleAge}
+                          ❤️ 여성 맞춤선발
                         </p>
+                      ) : (
+                        (session as any).targetMaleAge && (
+                          <p style={{ background: '#FFF5F4', color: '#FF6F61', fontSize: '0.65rem', fontWeight: '800', margin: '0', padding: '2px 6px', borderRadius: '4px', border: '1px solid rgba(255,111,97,0.2)' }}>
+                            남성 {(session as any).targetMaleAge}
+                          </p>
+                        )
                       )}
                     </div>
                   </div>
