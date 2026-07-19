@@ -830,16 +830,38 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
             : new Date().getFullYear();
           const age = new Date().getFullYear() - birthYear;
 
-          // 중복 신청 방지 로직 추가 (이미 해당 기수에 신청 중인 내역이 있다면 생성하지 않음)
+          // 중복 신청 방지 및 익명 계정 이관 로직 (전화번호 기준)
           const existingSnap = await getDocs(query(
             collection(db, 'applications'),
-            where('userId', '==', uid),
-            where('sessionId', '==', sessionId),
-            where('status', 'in', ['pending', 'applied', 'selected', 'confirmed'])
+            where('phone', '==', form.phone),
+            where('sessionId', '==', sessionId)
           ));
           
-          if (!existingSnap.empty) {
-            continue; // 이미 진행 중이거나 확정된 동일 기수 신청 내역이 있으면 중복 생성 건너뜀
+          let existingActiveApp = null;
+          for (const docSnap of existingSnap.docs) {
+            if (['pending', 'applied', 'selected', 'confirmed'].includes(docSnap.data().status)) {
+              existingActiveApp = docSnap;
+              break;
+            }
+          }
+          
+          if (existingActiveApp) {
+            const data = existingActiveApp.data();
+            // 기존 신청서가 다른 UID(비회원 등)로 작성되었다면 현재 정식 회원 UID로 소유권 이전
+            if (data.userId !== uid) {
+              batch.update(existingActiveApp.ref, {
+                userId: uid,
+                isGuestApply: false,
+                name: form.name,
+                gender: form.gender,
+                birthDate: form.birthDate,
+                phone: form.phone,
+                job: form.workplace || '',
+                residence: form.residence || '',
+                updatedAt: Timestamp.now(),
+              });
+            }
+            continue; // 중복 생성 건너뜀
           }
 
           const appRef = doc(collection(db, 'applications'));
@@ -980,15 +1002,22 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
           : new Date().getFullYear();
         const age = new Date().getFullYear() - birthYear;
 
-        // 중복 신청 방지 로직 추가
+        // 중복 신청 방지 로직 추가 (전화번호 기준)
         const existingSnap = await getDocs(query(
           collection(db, 'applications'),
-          where('userId', '==', uid),
-          where('sessionId', '==', sessionId),
-          where('status', 'in', ['pending', 'applied', 'selected', 'confirmed'])
+          where('phone', '==', formData.phone),
+          where('sessionId', '==', sessionId)
         ));
         
-        if (!existingSnap.empty) {
+        let hasActive = false;
+        for (const docSnap of existingSnap.docs) {
+          if (['pending', 'applied', 'selected', 'confirmed'].includes(docSnap.data().status)) {
+            hasActive = true;
+            break;
+          }
+        }
+        
+        if (hasActive) {
           continue; // 이미 동일 기수에 신청한 내역이 있으면 중복 생성 건너뜀
         }
 
