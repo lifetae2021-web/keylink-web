@@ -154,7 +154,8 @@ export default function SocialProfilePage() {
         updatedAt: serverTimestamp(),
         photoConsent: agreements.photoConsent,
         photoURL: user.photoURL || null,
-      });
+        isRegistered: true, // v1.0.49: ensure isRegistered is explicitly set
+      }, { merge: true });
 
       // 5,000원 쿠폰 발급 (유효기간 3개월 = 90일)
       const expireAt = new Date();

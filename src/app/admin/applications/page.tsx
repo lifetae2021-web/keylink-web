@@ -1089,14 +1089,23 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                       const userBirthDate = user.birthDate || app.birthDate || '';
                       
                       let isAgeMismatch = false;
-                      if (app.gender === 'male' && targetAgeRange && userBirthDate) {
-                        const birthYearMatch = userBirthDate.match(/(\d{2,4})/);
+                      if (targetAgeRange && userBirthDate) {
+                        let birthYearStr = '';
+                        if (userBirthDate.includes('-')) {
+                          birthYearStr = userBirthDate.split('-')[0].slice(-2);
+                        } else if (userBirthDate.length === 8) {
+                          birthYearStr = userBirthDate.slice(2, 4);
+                        } else if (userBirthDate.length >= 6) {
+                          birthYearStr = userBirthDate.slice(0, 2);
+                        } else {
+                          const match = userBirthDate.match(/(\d{2})/);
+                          if (match) birthYearStr = match[1];
+                        }
+                        
                         const rangeMatch = targetAgeRange.match(/(\d{2})~(\d{2})/);
                         
-                        if (birthYearMatch && rangeMatch) {
-                          let birthYear = parseInt(birthYearMatch[1]);
-                          if (birthYear > 1900) birthYear = birthYear % 100;
-                          
+                        if (birthYearStr && rangeMatch) {
+                          const birthYear = parseInt(birthYearStr);
                           const startYear = parseInt(rangeMatch[1]);
                           const endYear = parseInt(rangeMatch[2]);
                           

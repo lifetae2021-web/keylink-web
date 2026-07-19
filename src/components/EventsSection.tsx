@@ -292,10 +292,10 @@ export function EventCalendar({
       {/* Calendar Notice */}
       <div style={{ textAlign: 'center', marginBottom: '20px', padding: '12px', background: 'rgba(255,111,97,0.04)', borderRadius: '12px', border: '1px dashed rgba(255,111,97,0.2)' }}>
         <p style={{ fontSize: '0.75rem', fontWeight: '700', color: '#FF6F61', marginBottom: '4px' }}>
-          ✨ 여성분들은 남성 연령대를 참고하여 신청해주세요!
+          ✨ 여성 우선 선발 및 이상형 기반 맞춤 큐레이션!
         </p>
         <p style={{ fontSize: '0.7rem', fontWeight: '500', color: 'var(--color-text-muted)', letterSpacing: '-0.01em' }}>
-          선발 시 남녀간의 이상형과 나이대를<br/>세밀하게 참고하여 최종 선정합니다.
+          선발 시 남녀간의 이상형과 나이대를<br/>세밀하게 참고하여 최적의 매칭을 진행합니다.
         </p>
       </div>
 
@@ -341,9 +341,11 @@ export function EventCalendar({
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', width: '100%' }}>
                 {eventsOnDay.map((e, i) => (
                   <div key={i} className="kl-event-tag">
-                    <p className="kl-event-tag-age">
-                      {e.isCustomCuration ? '❤️ 여성 맞춤선발' : `남성 ${e.targetMaleAge ? e.targetMaleAge.replace(/년생/g, '') : ''}`}
-                    </p>
+                    {!e.isCustomCuration && (
+                      <span style={{ fontSize: '0.65rem', fontWeight: '800', color: 'var(--color-text-muted)', textAlign: 'center', lineHeight: '1.2' }}>
+                        남성 {e.targetMaleAge ? e.targetMaleAge.replace(/년생/g, '') : ''}
+                      </span>
+                    )}
                     <p className="kl-event-tag-time">
                       {format(e.date, 'HH:mm')}
                     </p>
@@ -440,7 +442,7 @@ function EventCard({ event, isSelected = false, userApp }: { event: KeylinkEvent
         {event.isCustomCuration ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '14px' }}>
             <div style={{ display: 'inline-flex', alignSelf: 'flex-start', background: '#FFF5F4', border: '1px solid rgba(255,111,97,0.2)', padding: '4px 10px', borderRadius: '8px' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: '800', color: '#FF6F61' }}>❤️ 여성 우선 맞춤선발</span>
+              <span style={{ fontSize: '0.75rem', fontWeight: '800', color: '#FF6F61' }}>❤️ 여성 우선 선발</span>
             </div>
             <div style={{ paddingLeft: '4px' }}>
               <p style={{ fontSize: '0.72rem', fontWeight: '700', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
@@ -459,11 +461,11 @@ function EventCard({ event, isSelected = false, userApp }: { event: KeylinkEvent
             </div>
             <div style={{ paddingLeft: '4px' }}>
               <p style={{ fontSize: '0.72rem', fontWeight: '700', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
-                • 여성분들은 남성 연령대 참고 후 신청해주세요.
+                • 이상형 기반 맞춤 큐레이션 진행 중
               </p>
               <p style={{ fontSize: '0.68rem', fontWeight: '500', color: '#94a3b8', lineHeight: 1.4 }}>
                 • 선발 시 남녀간의 이상형과 나이대를<br/>
-                <span style={{ paddingLeft: '8px' }}>세밀하게 참고하여 최종 선정합니다.</span>
+                <span style={{ paddingLeft: '8px' }}>세밀하게 참고하여 최적의 매칭을 진행합니다.</span>
               </p>
             </div>
           </div>

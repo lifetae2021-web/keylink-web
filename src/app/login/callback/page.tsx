@@ -61,16 +61,17 @@ function KakaoCallbackContent() {
         } else if (targetState === 'upgrade_guest_done') {
           toast.success('기존 비회원 정보가 성공적으로 연동되었습니다!');
           router.replace('/mypage');
-        } else if (isNew) {
-          toast.success('카카오 로그인으로 가입이 완료되었습니다!');
-          router.replace(redirectUrl);
         } else {
+          // 신규 가입자거나 필수 정보가 누락된 경우 소셜 프로필 설정 페이지로 이동
           const userSnap = await getDoc(doc(db, 'users', user.uid));
-          if (userSnap.exists()) {
-            toast.success('로그인에 성공했습니다!');
-            router.replace(redirectUrl);
+          const userData = userSnap.exists() ? userSnap.data() : null;
+          const isComplete = userData && userData.gender && userData.birthDate && userData.phone;
+
+          if (isNew || !isComplete) {
+            toast.success('회원가입을 위해 추가 정보를 입력해 주세요!');
+            router.replace('/register/social-profile');
           } else {
-            toast.success('카카오 로그인으로 가입이 완료되었습니다!');
+            toast.success('로그인에 성공했습니다!');
             router.replace(redirectUrl);
           }
         }
