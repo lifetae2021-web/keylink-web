@@ -1175,15 +1175,17 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                                 </div>
                                 <div className="flex flex-col">
                                   <div className="flex items-center gap-2 flex-wrap">
-                                    <button
-                                      onClick={() => { setSelectedUser(user); setIsModalOpen(true); }}
-                                      className={`text-[1rem] font-black whitespace-nowrap transition-colors ${app.attended === false && app.status === 'confirmed' ? 'text-rose-600 hover:text-rose-800' : 'text-slate-800 hover:text-[#FF7E7E]'}`}
-                                    >
-                                      {user.name || app.name}
-                                    </button>
-                                    <span className={`text-[0.65rem] font-bold px-1.5 py-0.5 rounded ${(user.gender || app.gender) === 'male' ? 'text-blue-600 bg-blue-50' : 'text-rose-600 bg-rose-50'}`}>
-                                      {(user.gender || app.gender) === 'male' ? '남성' : '여성'}
-                                    </span>
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                      <button
+                                        onClick={() => { setSelectedUser(user); setIsModalOpen(true); }}
+                                        className={`text-[1rem] font-black whitespace-nowrap transition-colors ${app.attended === false && app.status === 'confirmed' ? 'text-rose-600 hover:text-rose-800' : 'text-slate-800 hover:text-[#FF7E7E]'}`}
+                                      >
+                                        {user.name || app.name}
+                                      </button>
+                                      <span className={`text-[0.65rem] font-bold px-1.5 py-0.5 rounded whitespace-nowrap ${(user.gender || app.gender) === 'male' ? 'text-blue-600 bg-blue-50' : 'text-rose-600 bg-rose-50'}`}>
+                                        {(user.gender || app.gender) === 'male' ? '남성' : '여성'}
+                                      </span>
+                                    </div>
                                     {isDummy && (
                                       <span className="text-[0.6rem] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 border border-amber-200 shadow-sm whitespace-nowrap">
                                         더미
