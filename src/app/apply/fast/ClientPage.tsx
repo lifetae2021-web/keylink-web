@@ -482,11 +482,11 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
     const sid = explicitSessionId || Array.from(selectedSessionIds)[0];
     const sessionObj = sessions.find(s => s.id === sid);
     if (form.gender === 'female') {
-      if (femaleOption === 'group') return sessionObj?.femaleGroupPrice || 19000;
-      return sessionObj?.femalePrice || sessionObj?.price || 29000;
+      if (femaleOption === 'group') return sessionObj?.femaleGroupPrice || 24000;
+      return sessionObj?.femalePrice || 29000;
     }
     if (maleOption === 'safe') return sessionObj?.maleSafePrice || 60000;
-    return sessionObj?.malePrice || sessionObj?.price || 49000;
+    return sessionObj?.malePrice || 49000;
   };
 
   const getCouponDiscount = () => {

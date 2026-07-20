@@ -302,8 +302,11 @@ export default function EventsPage() {
     eventTime: "20:00",
     venue: "서면역 인근 프라이빗한 파티룸",
     venueAddress: "",
-    price: "29,000",
+    malePrice: "49,000",
+    maleSafePrice: "60,000",
+    femalePrice: "29,000",
     femaleGroupPrice: "24,000",
+    price: "29,000", // backward compatibility
     ageStart: "", // v7.5.3: 빈칸으로 시작
     ageEnd: "", // v7.5.3: 빈칸으로 시작
     maxMale: "8",
@@ -315,7 +318,24 @@ export default function EventsPage() {
     theme: "", // 특집 테마 (선택 사항)
   };
 
+  
   const [formData, setFormData] = useState(initialFormData);
+  
+  // v14.x: 글로벌 설정 연동
+  const [globalSettings, setGlobalSettings] = useState<any>(null);
+  useEffect(() => {
+    async function loadSettings() {
+      try {
+        const { getDoc, doc } = await import("firebase/firestore");
+        const snap = await getDoc(doc(db, "settings", "general"));
+        if (snap.exists()) {
+          setGlobalSettings(snap.data());
+        }
+      } catch (e) { console.error(e); }
+    }
+    loadSettings();
+  }, [db]);
+
 
   // v9.2.0: 기수 번호 자동 계산 (신규 등록일 때만)
   useEffect(() => {
@@ -1993,8 +2013,11 @@ ${chatLink}
       eventTime: format(session.eventDate, "HH:mm"),
       venue: session.venue || "서면역 인근 프라이빗한 파티룸",
       venueAddress: session.venueAddress || "",
-      price: Number(session.price || 0).toLocaleString(),
+      malePrice: Number(session.malePrice || 49000).toLocaleString(),
+      maleSafePrice: Number(session.maleSafePrice || 60000).toLocaleString(),
+      femalePrice: Number(session.femalePrice || session.price || 29000).toLocaleString(),
       femaleGroupPrice: Number(session.femaleGroupPrice || 24000).toLocaleString(),
+      price: Number(session.price || 29000).toLocaleString(), // backward compatibility
       ageStart,
       ageEnd,
       maxMale: String(session.maxMale),
@@ -2305,8 +2328,13 @@ ${chatLink}
         venue: formData.venue,
         location: formData.venue, // v8.6.2: 데이터 일관성을 위해 두 필드 모두 저장
         venueAddress: formData.venueAddress,
-        price: numericPrice,
-        femaleGroupPrice: numericGroupPrice,
+        
+        malePrice: Number(formData.malePrice.replace(/,/g, "")),
+        maleSafePrice: Number(formData.maleSafePrice.replace(/,/g, "")),
+        femalePrice: Number(formData.femalePrice.replace(/,/g, "")),
+        femaleGroupPrice: Number(formData.femaleGroupPrice.replace(/,/g, "")),
+        price: Number(formData.femalePrice.replace(/,/g, "")), // backward compatibility
+
         originalPrice: numericPrice + 10000,
         targetMaleAge: combinedAge,
         targetFemaleAge: combinedAge, // 남성과 동일하게 설정
@@ -2374,7 +2402,13 @@ ${chatLink}
 
       setIsModalOpen(false);
       setEditingId(null);
-      setFormData(initialFormData);
+      setFormData({
+    ...initialFormData,
+    malePrice: globalSettings?.malePrice ? globalSettings.malePrice.toLocaleString() : "49,000",
+    maleSafePrice: globalSettings?.maleSafePrice ? globalSettings.maleSafePrice.toLocaleString() : "60,000",
+    femalePrice: globalSettings?.femalePrice ? globalSettings.femalePrice.toLocaleString() : "29,000",
+    femaleGroupPrice: globalSettings?.femaleGroupPrice ? globalSettings.femaleGroupPrice.toLocaleString() : "24,000",
+  });
     } catch (err: any) {
       console.error(err);
       toast.error("저장 중 오류가 발생했습니다.");
@@ -2464,7 +2498,13 @@ ${chatLink}
         <button
           onClick={() => {
             setEditingId(null);
-            setFormData(initialFormData);
+            setFormData({
+    ...initialFormData,
+    malePrice: globalSettings?.malePrice ? globalSettings.malePrice.toLocaleString() : "49,000",
+    maleSafePrice: globalSettings?.maleSafePrice ? globalSettings.maleSafePrice.toLocaleString() : "60,000",
+    femalePrice: globalSettings?.femalePrice ? globalSettings.femalePrice.toLocaleString() : "29,000",
+    femaleGroupPrice: globalSettings?.femaleGroupPrice ? globalSettings.femaleGroupPrice.toLocaleString() : "24,000",
+  });
             setIsModalOpen(true);
           }}
           className="flex items-center gap-2 rounded-lg transition-transform hover:scale-105 px-[18px] py-[10px] text-[0.85rem] font-semibold bg-[#FF6F61] text-white shadow-[0_4px_12px_rgba(255,111,97,0.2)]"
@@ -4800,7 +4840,13 @@ ${chatLink}
                 onClick={() => {
                   setIsModalOpen(false);
                   setEditingId(null);
-                  setFormData(initialFormData);
+                  setFormData({
+    ...initialFormData,
+    malePrice: globalSettings?.malePrice ? globalSettings.malePrice.toLocaleString() : "49,000",
+    maleSafePrice: globalSettings?.maleSafePrice ? globalSettings.maleSafePrice.toLocaleString() : "60,000",
+    femalePrice: globalSettings?.femalePrice ? globalSettings.femalePrice.toLocaleString() : "29,000",
+    femaleGroupPrice: globalSettings?.femaleGroupPrice ? globalSettings.femaleGroupPrice.toLocaleString() : "24,000",
+  });
                 }}
                 className="p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-50 transition-colors"
               >
@@ -4920,42 +4966,32 @@ ${chatLink}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">
-                      여성 참가비 (원)
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="예: 29,000"
-                      value={formData.price}
-                      onChange={(e) => {
+                    <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">남성 기본 참가비 (원)</label>
+                    <input type="text" required placeholder="예: 49,000" value={formData.malePrice || ''} onChange={(e) => {
                         const val = e.target.value.replace(/[^0-9]/g, "");
-                        setFormData(prev => ({
-                          ...prev,
-                          price: val ? Number(val).toLocaleString() : "",
-                        }));
-                      }}
-                      className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-800 font-semibold focus:ring-2 focus:ring-[#FF6F61]/20 focus:border-[#FF6F61] outline-none transition-all"
-                    />
+                        setFormData(prev => ({ ...prev, malePrice: val ? Number(val).toLocaleString() : "" }));
+                      }} className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-800 font-semibold focus:ring-2 focus:ring-[#FF6F61]/20 focus:border-[#FF6F61] outline-none transition-all" />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">
-                      여성 동반참가비 (원)
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="예: 24,000"
-                      value={formData.femaleGroupPrice}
-                      onChange={(e) => {
+                    <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">남성 안심 옵션 (원)</label>
+                    <input type="text" required placeholder="예: 60,000" value={formData.maleSafePrice || ''} onChange={(e) => {
                         const val = e.target.value.replace(/[^0-9]/g, "");
-                        setFormData(prev => ({
-                          ...prev,
-                          femaleGroupPrice: val ? Number(val).toLocaleString() : "",
-                        }));
-                      }}
-                      className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-800 font-semibold focus:ring-2 focus:ring-[#FF6F61]/20 focus:border-[#FF6F61] outline-none transition-all"
-                    />
+                        setFormData(prev => ({ ...prev, maleSafePrice: val ? Number(val).toLocaleString() : "" }));
+                      }} className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-800 font-semibold focus:ring-2 focus:ring-[#FF6F61]/20 focus:border-[#FF6F61] outline-none transition-all" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">여성 기본 참가비 (원)</label>
+                    <input type="text" required placeholder="예: 29,000" value={formData.femalePrice || formData.price || ''} onChange={(e) => {
+                        const val = e.target.value.replace(/[^0-9]/g, "");
+                        setFormData(prev => ({ ...prev, femalePrice: val ? Number(val).toLocaleString() : "", price: val ? Number(val).toLocaleString() : "" }));
+                      }} className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-800 font-semibold focus:ring-2 focus:ring-[#FF6F61]/20 focus:border-[#FF6F61] outline-none transition-all" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">여성 동반 참가비 (원)</label>
+                    <input type="text" required placeholder="예: 24,000" value={formData.femaleGroupPrice || ''} onChange={(e) => {
+                        const val = e.target.value.replace(/[^0-9]/g, "");
+                        setFormData(prev => ({ ...prev, femaleGroupPrice: val ? Number(val).toLocaleString() : "" }));
+                      }} className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-800 font-semibold focus:ring-2 focus:ring-[#FF6F61]/20 focus:border-[#FF6F61] outline-none transition-all" />
                   </div>
                 </div>
 

@@ -100,6 +100,7 @@ export interface Session {
   venueAddress?: string;           // 상세 주소
   price?: number;                  // 29000
   malePrice?: number;              // v8.12.3: 남성 개별 가격
+  maleSafePrice?: number;          // 남성 세이프 옵션 가격
   femalePrice?: number;            // v8.12.3: 여성 개별 가격
   femaleGroupPrice?: number;       // 여성 동반참여 가격 (기본 24000)
   originalPrice?: number;          // 39000 (할인 표시용)
