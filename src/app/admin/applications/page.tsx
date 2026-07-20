@@ -1177,7 +1177,7 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                                   <div className="flex items-center gap-2 flex-wrap">
                                     <button
                                       onClick={() => { setSelectedUser(user); setIsModalOpen(true); }}
-                                      className={`text-[1rem] font-black transition-colors ${app.attended === false && app.status === 'confirmed' ? 'text-rose-600 hover:text-rose-800' : 'text-slate-800 hover:text-[#FF7E7E]'}`}
+                                      className={`text-[1rem] font-black whitespace-nowrap transition-colors ${app.attended === false && app.status === 'confirmed' ? 'text-rose-600 hover:text-rose-800' : 'text-slate-800 hover:text-[#FF7E7E]'}`}
                                     >
                                       {user.name || app.name}
                                     </button>
@@ -1220,7 +1220,7 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
 
                             <td style={{ padding: '0 16px' }}>
                               <div className="flex flex-col">
-                                <p className={`text-[0.85rem] font-bold tracking-tight whitespace-nowrap ${(user.admin_job || user.job || app.job) ? 'text-slate-800' : 'text-slate-400'}`}>
+                                <p className={`text-[0.85rem] font-bold tracking-tight line-clamp-2 break-keep ${(user.admin_job || user.job || app.job) ? 'text-slate-800' : 'text-slate-400'}`}>
                                   {user.admin_job || (user.job && user.job !== '-' ? user.job : null) || user.workplace?.split(',')[0] || app.job || <span className="font-normal">-</span>}
                                 </p>
                                 <span className="text-[0.72rem] text-slate-400">{user.company || ''}</span>
