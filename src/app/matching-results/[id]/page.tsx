@@ -658,7 +658,7 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
                   </div>
                   <div className="flex-1 text-gray-500 font-bold leading-relaxed text-sm text-left">
                     {result.isMatched ? (
-                      `"이번 기수에서 ${userName}님은 총 ${voteCount}표를 받으셨습니다! 많은 분들이 ${userName}님의 매력을 알아봐 주셨네요. 매칭된 소중한 인연과 즐거운 만남을 이어가시길 바랍니다! 🎉"`
+                      `"이번 기수에서 ${userName}님은 총 ${voteCount}표를 받으셨습니다! 많은 분들이 ${userName}님의 매력을 알아봐 주셨네요. 매칭된 소중한 인연과 즐거운 만남을 이어가시길 바랍니다!"`
                     ) : (
                       `"이번 기수에서 ${userName}님은 총 ${voteCount}표를 받으셨습니다. 숫자는 단지 통계일 뿐, ${userName}님의 매력은 다음 기수에서 더 빛날 거예요! 조금만 더 용기를 내어보세요. ✨"`
                     )}

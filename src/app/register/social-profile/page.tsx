@@ -169,7 +169,7 @@ export default function SocialProfilePage() {
         isUsed: false,
       });
 
-      toast.success('가입이 완료되었습니다! 🎉');
+      toast.success('가입이 완료되었습니다!');
       router.push('/');
     } catch (err: any) {
       console.error('Registration Error:', err.code, err);

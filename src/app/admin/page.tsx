@@ -223,7 +223,20 @@ export default function AdminDashboard() {
         });
 
         const upcoming = sessionsSnap.docs
-          .map(d => ({ id: d.id, ...d.data() }))
+          .map(d => {
+            const s = { id: d.id, ...d.data() };
+            // 정확한 참여자 수 재계산 (음수 방지 및 DB 씽크 오차 보정)
+            const confirmedApps = allApps.filter(
+              (a: any) => a.sessionId === d.id &&
+                (a.status === 'confirmed' || (a.paymentConfirmed === true && !['applied', 'canceled', 'rejected'].includes(a.status)))
+            );
+            let realMale = 0, realFemale = 0;
+            confirmedApps.forEach((a: any) => {
+              if (a.gender === 'male') realMale++;
+              else if (a.gender === 'female') realFemale++;
+            });
+            return { ...s, currentMale: realMale, currentFemale: realFemale };
+          })
           .filter((s: any) => {
             const d = toDate(s.eventDate);
             return d && d >= todayStart;
@@ -358,16 +371,18 @@ export default function AdminDashboard() {
                 <Skeleton className="h-8 w-2/3" />
               ) : (
                 <div className="space-y-3">
-                  <div>
-                    <p style={{ fontSize: '1.65rem', fontWeight: 800, letterSpacing: '-0.03em', color: '#0f172a', lineHeight: 1.1 }}>
+                  <div className="min-w-0">
+                    <p 
+                      className={`font-extrabold tracking-tight text-slate-900 leading-tight ${s.label === '매출' ? 'text-[1.15rem] 2xl:text-[1.3rem]' : 'text-[1.65rem]'}`}
+                    >
                       {s.label === '매출' ? formatRevenue(s.monthlyNew as number) : (s.monthlyNew ?? 0).toLocaleString()}
                       {(s.label === '가입자' || s.label === '신청') && <span style={{ fontSize: '1rem', fontWeight: 600, marginLeft: 2, color: '#64748B' }}>명</span>}
                       {s.label === '매칭 커플' && <span style={{ fontSize: '1rem', fontWeight: 600, marginLeft: 2, color: '#64748B' }}>커플</span>}
                     </p>
                   </div>
                   
-                  <div className="flex items-center justify-between text-[0.72rem] text-slate-400 font-medium">
-                    <div className="flex items-center gap-1.5">
+                  <div className="flex flex-col items-start gap-1.5 mt-2 text-[0.72rem] text-slate-400 font-medium">
+                    <div className="flex items-center gap-1.5 whitespace-nowrap">
                       <span style={{
                         fontSize: '0.68rem', fontWeight: 700, padding: '1px 5px', borderRadius: 4,
                         color: s.trend >= 0 ? '#16a34a' : '#dc2626',
@@ -378,7 +393,7 @@ export default function AdminDashboard() {
                       <span style={{ color: '#94a3b8' }}>{s.monthlyNewLabel}</span>
                     </div>
                     
-                    <div className="flex items-center gap-1 text-[0.72rem]">
+                    <div className="flex items-center gap-1 text-[0.72rem] whitespace-nowrap">
                       <span style={{ color: '#cbd5e1' }}>{s.subLabel}</span>
                       <span className="font-bold text-slate-500">{s.subValue}</span>
                     </div>
@@ -401,12 +416,12 @@ export default function AdminDashboard() {
               전체 보기 <ChevronRight size={12} />
             </Link>
           </div>
-          <div style={{ overflowX: 'auto' }}>
+          <div style={{ overflowX: 'hidden' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
                   {['이름', '성별 / 나이', '상태', '가입일'].map(h => (
-                    <th key={h} style={{ padding: '10px 24px', textAlign: 'left', fontSize: '0.72rem', fontWeight: 600, color: '#444', borderBottom: '1px solid rgba(255,255,255,0.06)', whiteSpace: 'nowrap' }}>
+                    <th key={h} style={{ padding: '10px 8px', textAlign: 'left', fontSize: '0.72rem', fontWeight: 600, color: '#444', borderBottom: '1px solid rgba(255,255,255,0.06)', whiteSpace: 'nowrap' }}>
                       {h}
                     </th>
                   ))}
@@ -416,7 +431,7 @@ export default function AdminDashboard() {
                 {isLoading ? (
                   [1, 2, 3, 4, 5].map(i => (
                     <tr key={i}>
-                      <td colSpan={4} style={{ padding: '12px 24px' }}><Skeleton className="h-6 w-full" /></td>
+                      <td colSpan={4} style={{ padding: '12px 8px' }}><Skeleton className="h-6 w-full" /></td>
                     </tr>
                   ))
                 ) : recentUsers.length > 0 ? (
@@ -425,8 +440,8 @@ export default function AdminDashboard() {
                     const d = toDate(m.createdAt);
                     return (
                       <tr key={m.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }} className="hover:bg-white/[0.02] transition-colors">
-                        <td style={{ padding: '12px 24px', fontSize: '0.85rem', fontWeight: 600 }}>{m.name || '미입력'}</td>
-                        <td style={{ padding: '12px 24px', fontSize: '0.83rem', color: '#666' }}>
+                        <td style={{ padding: '12px 8px', fontSize: '0.85rem', fontWeight: 600, whiteSpace: 'nowrap' }}>{m.name || '미입력'}</td>
+                        <td style={{ padding: '12px 8px', fontSize: '0.83rem', color: '#666', whiteSpace: 'nowrap' }}>
                           {m.gender === 'male' ? '남' : m.gender === 'female' ? '여' : '-'} / {(() => {
                             const bd = m.birthDate;
                             if (!bd) return '-';
@@ -437,12 +452,12 @@ export default function AdminDashboard() {
                             return '-';
                           })()}
                         </td>
-                        <td style={{ padding: '12px 24px' }}>
-                          <span style={{ fontSize: '0.72rem', fontWeight: 600, padding: '4px 10px', borderRadius: 20, color: s.color, background: s.bg }}>
+                        <td style={{ padding: '12px 8px', whiteSpace: 'nowrap' }}>
+                          <span style={{ fontSize: '0.72rem', fontWeight: 600, padding: '4px 6px', borderRadius: 20, color: s.color, background: s.bg }}>
                             {s.label}
                           </span>
                         </td>
-                        <td style={{ padding: '12px 24px', fontSize: '0.78rem', color: '#555' }}>
+                        <td style={{ padding: '12px 8px', fontSize: '0.78rem', color: '#555', whiteSpace: 'nowrap' }}>
                           {d ? format(d, 'yyyy-MM-dd') : '-'}
                         </td>
                       </tr>
@@ -450,7 +465,7 @@ export default function AdminDashboard() {
                   })
                 ) : (
                   <tr>
-                    <td colSpan={4} style={{ padding: '40px 24px', textAlign: 'center', color: '#555', fontSize: '0.85rem' }}>가입자가 없습니다.</td>
+                    <td colSpan={4} style={{ padding: '40px 8px', textAlign: 'center', color: '#555', fontSize: '0.85rem' }}>가입자가 없습니다.</td>
                   </tr>
                 )}
               </tbody>
@@ -466,12 +481,12 @@ export default function AdminDashboard() {
               전체 보기 <ChevronRight size={12} />
             </Link>
           </div>
-          <div style={{ overflowX: 'auto' }}>
+          <div style={{ overflowX: 'hidden' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
                   {['이름', '신청 기수', '상태', '신청일'].map(h => (
-                    <th key={h} style={{ padding: '10px 24px', textAlign: 'left', fontSize: '0.72rem', fontWeight: 600, color: '#444', borderBottom: '1px solid rgba(255,255,255,0.06)', whiteSpace: 'nowrap' }}>
+                    <th key={h} style={{ padding: '10px 8px', textAlign: 'left', fontSize: '0.72rem', fontWeight: 600, color: '#444', borderBottom: '1px solid rgba(255,255,255,0.06)', whiteSpace: 'nowrap' }}>
                       {h}
                     </th>
                   ))}
@@ -481,7 +496,7 @@ export default function AdminDashboard() {
                 {isLoading ? (
                   [1, 2, 3, 4, 5].map(i => (
                     <tr key={i}>
-                      <td colSpan={4} style={{ padding: '12px 24px' }}><Skeleton className="h-6 w-full" /></td>
+                      <td colSpan={4} style={{ padding: '12px 8px' }}><Skeleton className="h-6 w-full" /></td>
                     </tr>
                   ))
                 ) : recentApps.length > 0 ? (
@@ -490,13 +505,13 @@ export default function AdminDashboard() {
                     const isConfirmed = a.status === 'confirmed' || a.paymentConfirmed === true;
                     return (
                       <tr key={a.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }} className="hover:bg-white/[0.02] transition-colors">
-                        <td style={{ padding: '12px 24px', fontSize: '0.85rem', fontWeight: 600 }}>{a.name}</td>
-                        <td style={{ padding: '12px 24px', fontSize: '0.83rem', color: '#666' }}>{a.sessionName}</td>
-                        <td style={{ padding: '12px 24px' }}>
+                        <td style={{ padding: '12px 8px', fontSize: '0.85rem', fontWeight: 600, whiteSpace: 'nowrap' }}>{a.name}</td>
+                        <td style={{ padding: '12px 8px', fontSize: '0.83rem', color: '#666', whiteSpace: 'nowrap' }}>{a.sessionName}</td>
+                        <td style={{ padding: '12px 8px', whiteSpace: 'nowrap' }}>
                           <span style={{ 
                             fontSize: '0.72rem', 
                             fontWeight: 600, 
-                            padding: '4px 10px', 
+                            padding: '4px 6px', 
                             borderRadius: 20, 
                             color: isConfirmed ? '#4ade80' : '#facc15', 
                             background: isConfirmed ? 'rgba(74,222,128,0.1)' : 'rgba(250,204,21,0.1)' 
@@ -504,7 +519,7 @@ export default function AdminDashboard() {
                             {isConfirmed ? '확정' : (a.status === 'applied' ? '검토 중' : '대기')}
                           </span>
                         </td>
-                        <td style={{ padding: '12px 24px', fontSize: '0.78rem', color: '#555' }}>
+                        <td style={{ padding: '12px 8px', fontSize: '0.78rem', color: '#555', whiteSpace: 'nowrap' }}>
                           {d ? format(d, 'MM-dd HH:mm') : '-'}
                         </td>
                       </tr>
@@ -512,7 +527,7 @@ export default function AdminDashboard() {
                   })
                 ) : (
                   <tr>
-                    <td colSpan={4} style={{ padding: '40px 24px', textAlign: 'center', color: '#555', fontSize: '0.85rem' }}>신청자가 없습니다.</td>
+                    <td colSpan={4} style={{ padding: '40px 8px', textAlign: 'center', color: '#555', fontSize: '0.85rem' }}>신청자가 없습니다.</td>
                   </tr>
                 )}
               </tbody>
@@ -636,24 +651,23 @@ export default function AdminDashboard() {
                 const d = toDate(ev.eventDate);
                 const regionLabel = ev.region === 'busan' ? '부산' : '창원';
                 return (
-                  <div key={ev.id} className="flex items-center gap-4 rounded-xl transition-colors hover:bg-white/[0.04]" style={{ padding: '14px 16px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
-                    <div className="flex items-center justify-center rounded-xl shrink-0" style={{ width: 40, height: 40, background: 'rgba(255,111,97,0.08)' }}>
-                      <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#FF6F61' }}>{ev.episodeNumber}기</span>
+                  <div key={ev.id} className="flex items-center gap-3.5 rounded-xl transition-colors hover:bg-slate-50 border border-slate-100 shadow-sm" style={{ padding: '14px 16px', background: '#ffffff' }}>
+                    <div className="flex items-center justify-center rounded-xl shrink-0 bg-red-50" style={{ width: 44, height: 44 }}>
+                      <span className="text-red-500 font-extrabold text-[0.75rem]">{ev.episodeNumber}기</span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p style={{ fontSize: '0.88rem', fontWeight: 600 }}>{regionLabel} 키링크 {ev.episodeNumber}기</p>
-                      <p className="flex items-center gap-1.5" style={{ fontSize: '0.75rem', color: '#555', marginTop: 2 }}>
-                        <Clock size={10} />
-                        {d ? format(d, 'M월 d일 (E) HH:mm', { locale: ko }) : '날짜 미정'}
-                        {ev.venue && ` · ${ev.venue}`}
+                      <p className="text-slate-800 font-bold text-[0.9rem] truncate">{regionLabel} 키링크 {ev.episodeNumber}기</p>
+                      <p className="flex items-center gap-1.5 text-slate-500 text-[0.75rem] mt-1 truncate">
+                        <Clock size={11} className="shrink-0" />
+                        <span className="shrink-0">{d ? format(d, 'M월 d일 (E) HH:mm', { locale: ko }) : '날짜 미정'}</span>
                       </p>
                     </div>
-                    <div className="text-right shrink-0">
-                      <p style={{ fontSize: '0.78rem', fontWeight: 700, color: '#aaa' }}>
-                        남 {ev.currentMale || 0}/{ev.maxMale || 0}
+                    <div className="text-right shrink-0 whitespace-nowrap">
+                      <p className="text-slate-600 font-semibold text-[0.8rem] mb-0.5">
+                        남 {Math.max(0, Number(ev.currentMale) || 0)}/{ev.maxMale || 0}
                       </p>
-                      <p style={{ fontSize: '0.78rem', fontWeight: 700, color: '#aaa' }}>
-                        여 {ev.currentFemale || 0}/{ev.maxFemale || 0}
+                      <p className="text-slate-600 font-semibold text-[0.8rem]">
+                        여 {Math.max(0, Number(ev.currentFemale) || 0)}/{ev.maxFemale || 0}
                       </p>
                     </div>
                   </div>

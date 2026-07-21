@@ -325,7 +325,7 @@ export default function VotePage() {
         customAnswer
       }, hasVoted);
       setHasVoted(true);
-      toast.success(hasVoted ? '🎉 투표가 수정 완료되었습니다!' : '🎉 투표가 완료되었습니다!');
+      toast.success(hasVoted ? '투표가 수정 완료되었습니다!' : '투표가 완료되었습니다!');
       
       // v11.3.0: 제출/수정 성공 시 토스트 확인 후 1.2초 뒤 마이페이지로 즉시 자동 리다이렉트
       setTimeout(() => {

@@ -1729,7 +1729,7 @@ function ApplicationStatusBlock({ application, session, userId, hasVoted, submit
         {header(<Banknote size={20} color="#8B5CF6" />, `${sessionTitle} 선발 완료`, '#8B5CF6', '입금 대기')}
         <div style={{ padding: '28px 24px' }}>
           <div style={{ background: '#F5F3FF', borderRadius: '16px', padding: '20px', marginBottom: '20px' }}>
-            <p style={{ color: '#5B21B6', fontWeight: '900', fontSize: '1rem', marginBottom: '4px' }}>🎉 선발되셨습니다!</p>
+            <p style={{ color: '#5B21B6', fontWeight: '900', fontSize: '1rem', marginBottom: '4px' }}>선발되셨습니다!</p>
             <p style={{ color: '#6D28D9', fontWeight: '600', fontSize: '0.85rem', lineHeight: 1.6 }}>
               아래 계좌로 참가비를 입금해 주시면 참가 확정이 완료됩니다.
             </p>
@@ -1904,7 +1904,7 @@ function ApplicationStatusBlock({ application, session, userId, hasVoted, submit
                 <Heart size={24} color="#FFF" fill="#FFF" />
               </div>
               <h3 style={{ fontSize: '1.05rem', fontWeight: '900', color: '#1E293B', marginBottom: '8px' }}>
-                🎉 매칭 결과가 발표되었습니다!
+                매칭 결과가 발표되었습니다!
               </h3>
               <p style={{ fontSize: '0.82rem', color: '#475569', fontWeight: '600', lineHeight: 1.6, marginBottom: '20px', wordBreak: 'keep-all' }}>
                 오늘 소개팅에서 탄생한 기적 같은 인연과,<br />

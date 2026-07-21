@@ -190,7 +190,7 @@ export default function HomePage() {
           }}>
             <Sparkles size={14} color="var(--color-accent)" />
             <span style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--color-accent)', letterSpacing: '0.08em' }}>
-              2025년 론칭 · {completedBase}기 돌파 🎉
+              2025년 론칭 · {completedBase}기 돌파
             </span>
           </div>
 

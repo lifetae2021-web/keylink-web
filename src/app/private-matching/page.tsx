@@ -98,7 +98,7 @@ export default function PrivateMatchingLandingPage() {
           className="bg-white rounded-2xl shadow-xl shadow-slate-200/50 p-6 border border-slate-100"
         >
           <div className="bg-rose-50 border border-rose-100 rounded-xl p-4 mb-6 text-center">
-            <p className="text-rose-600 font-black text-sm">🎉 한시적 오픈 이벤트 🎉</p>
+            <p className="text-rose-600 font-black text-sm">한시적 오픈 이벤트</p>
             <p className="text-slate-700 text-xs mt-1 font-bold">지금 신청하면 매칭 수수료 무료!</p>
           </div>
 

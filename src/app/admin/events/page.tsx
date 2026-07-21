@@ -2313,8 +2313,8 @@ ${chatLink}
     // v8.2.3: 콤마 제거 후 숫자로 변환
     const numericPrice = Number(formData.price.replace(/,/g, ""));
     const numericGroupPrice = Number(formData.femaleGroupPrice.replace(/,/g, ""));
-    // v8.2.3: 연령대 결합
-    const combinedAge = formData.isCustomCuration ? "여성 우선 선발" : `${formData.ageStart}~${formData.ageEnd}년생`;
+    // v8.2.3: 연령대 결합 (특집 테마가 있으면 연령대 무시)
+    const combinedAge = formData.theme ? "" : (formData.isCustomCuration ? "여성 우선 선발" : `${formData.ageStart}~${formData.ageEnd}년생`);
 
     setIsSubmitting(true);
     try {
@@ -2871,7 +2871,7 @@ ${chatLink}
                 </div>
 
                 {/* 탭 버튼 */}
-                <div className="flex border-b border-slate-100 px-4 overflow-x-auto sm:overflow-x-visible gap-1">
+                <div className="flex border-b border-slate-100 px-4 overflow-x-auto overflow-y-hidden sm:overflow-visible gap-1 [&::-webkit-scrollbar]:hidden">
                   {(
                     [
                       {
@@ -2908,34 +2908,24 @@ ${chatLink}
                   {activeTab === "participants" && (
                     <div className="space-y-4">
                       {/* 헤더 */}
-                      <div className="flex items-center justify-between pl-1">
-                        <h3 className="flex items-center gap-2 text-slate-800 text-[0.95rem] font-extrabold">
-                          <ListChecks size={16} className="text-[#FF6F61]" />
+                      <div className="flex items-center justify-between pl-1 gap-2 overflow-x-auto hide-scrollbar">
+                        <h3 className="flex items-center gap-1.5 text-slate-800 text-[0.95rem] font-extrabold whitespace-nowrap shrink-0">
+                          <ListChecks size={16} className="text-[#FF6F61] shrink-0" />
                           참가 명단
-                          <span className="text-[0.75rem] font-bold px-2.5 py-0.5 rounded-full bg-orange-50 text-[#FF6F61] ml-1">
-                            총 {realParticipants.length}명 (
-                            {
-                              realParticipants.filter((a) => a.gender === "male")
-                                .length
-                            }
-                            남 /{" "}
-                            {
-                              realParticipants.filter((a) => a.gender === "female")
-                                .length
-                            }
-                            여)
+                          <span className="text-[0.7rem] font-bold px-2 py-0.5 rounded-full bg-orange-50 text-[#FF6F61] ml-0.5 whitespace-nowrap">
+                            총 {realParticipants.length}명 ({realParticipants.filter((a) => a.gender === "male").length}남/{realParticipants.filter((a) => a.gender === "female").length}여)
                           </span>
                         </h3>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 shrink-0">
                           <button
                             onClick={() => setInstagramModalOpen(true)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#FF6F61]/10 text-[#FF6F61] rounded-lg text-[0.75rem] font-bold hover:bg-[#FF6F61]/20 transition-colors"
+                            className="flex items-center gap-1 px-2.5 py-1.5 bg-[#FF6F61]/10 text-[#FF6F61] rounded-lg text-[0.7rem] font-bold hover:bg-[#FF6F61]/20 transition-colors whitespace-nowrap"
                           >
                             💭 이상형 피드 추출
                           </button>
                           {applicantsLoading && (
                             <Loader2
-                              className="animate-spin text-slate-400"
+                              className="animate-spin text-slate-400 shrink-0"
                               size={16}
                             />
                           )}
@@ -4256,7 +4246,7 @@ ${chatLink}
             <div className="p-6 max-h-[60vh] overflow-y-auto">
               {overlapResults.length === 0 ? (
                 <div className="text-center py-8 text-slate-500 font-bold text-sm">
-                  🎉 이번 기수 참가자 중 중복만남 대상자가 없습니다!
+                  이번 기수 참가자 중 중복만남 대상자가 없습니다!
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -4965,37 +4955,42 @@ ${chatLink}
                       </option>
                     </select>
                   </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">남성 기본 참가비 (원)</label>
-                    <input type="text" required placeholder="예: 49,000" value={formData.malePrice || ''} onChange={(e) => {
-                        const val = e.target.value.replace(/[^0-9]/g, "");
-                        setFormData(prev => ({ ...prev, malePrice: val ? Number(val).toLocaleString() : "" }));
-                      }} className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-800 font-semibold focus:ring-2 focus:ring-[#FF6F61]/20 focus:border-[#FF6F61] outline-none transition-all" />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide whitespace-nowrap">남성 기본가</label>
+                      <input type="text" required placeholder="49,000" value={formData.malePrice || ''} onChange={(e) => {
+                          const val = e.target.value.replace(/[^0-9]/g, "");
+                          setFormData(prev => ({ ...prev, malePrice: val ? Number(val).toLocaleString() : "" }));
+                        }} className="w-full h-11 px-3 rounded-xl border border-slate-200 bg-white text-slate-800 font-semibold focus:ring-2 focus:ring-[#FF6F61]/20 focus:border-[#FF6F61] outline-none transition-all" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide whitespace-nowrap">남성 안심 옵션</label>
+                      <input type="text" required placeholder="60,000" value={formData.maleSafePrice || ''} onChange={(e) => {
+                          const val = e.target.value.replace(/[^0-9]/g, "");
+                          setFormData(prev => ({ ...prev, maleSafePrice: val ? Number(val).toLocaleString() : "" }));
+                        }} className="w-full h-11 px-3 rounded-xl border border-slate-200 bg-white text-slate-800 font-semibold focus:ring-2 focus:ring-[#FF6F61]/20 focus:border-[#FF6F61] outline-none transition-all" />
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">남성 안심 옵션 (원)</label>
-                    <input type="text" required placeholder="예: 60,000" value={formData.maleSafePrice || ''} onChange={(e) => {
-                        const val = e.target.value.replace(/[^0-9]/g, "");
-                        setFormData(prev => ({ ...prev, maleSafePrice: val ? Number(val).toLocaleString() : "" }));
-                      }} className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-800 font-semibold focus:ring-2 focus:ring-[#FF6F61]/20 focus:border-[#FF6F61] outline-none transition-all" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">여성 기본 참가비 (원)</label>
-                    <input type="text" required placeholder="예: 29,000" value={formData.femalePrice || formData.price || ''} onChange={(e) => {
-                        const val = e.target.value.replace(/[^0-9]/g, "");
-                        setFormData(prev => ({ ...prev, femalePrice: val ? Number(val).toLocaleString() : "", price: val ? Number(val).toLocaleString() : "" }));
-                      }} className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-800 font-semibold focus:ring-2 focus:ring-[#FF6F61]/20 focus:border-[#FF6F61] outline-none transition-all" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">여성 동반 참가비 (원)</label>
-                    <input type="text" required placeholder="예: 24,000" value={formData.femaleGroupPrice || ''} onChange={(e) => {
-                        const val = e.target.value.replace(/[^0-9]/g, "");
-                        setFormData(prev => ({ ...prev, femaleGroupPrice: val ? Number(val).toLocaleString() : "" }));
-                      }} className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-800 font-semibold focus:ring-2 focus:ring-[#FF6F61]/20 focus:border-[#FF6F61] outline-none transition-all" />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide whitespace-nowrap">여성 기본가</label>
+                      <input type="text" required placeholder="29,000" value={formData.femalePrice || formData.price || ''} onChange={(e) => {
+                          const val = e.target.value.replace(/[^0-9]/g, "");
+                          setFormData(prev => ({ ...prev, femalePrice: val ? Number(val).toLocaleString() : "", price: val ? Number(val).toLocaleString() : "" }));
+                        }} className="w-full h-11 px-3 rounded-xl border border-slate-200 bg-white text-slate-800 font-semibold focus:ring-2 focus:ring-[#FF6F61]/20 focus:border-[#FF6F61] outline-none transition-all" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide whitespace-nowrap">여성 동반가</label>
+                      <input type="text" required placeholder="24,000" value={formData.femaleGroupPrice || ''} onChange={(e) => {
+                          const val = e.target.value.replace(/[^0-9]/g, "");
+                          setFormData(prev => ({ ...prev, femaleGroupPrice: val ? Number(val).toLocaleString() : "" }));
+                        }} className="w-full h-11 px-3 rounded-xl border border-slate-200 bg-white text-slate-800 font-semibold focus:ring-2 focus:ring-[#FF6F61]/20 focus:border-[#FF6F61] outline-none transition-all" />
+                    </div>
                   </div>
                 </div>
 
                 {/* Target Age */}
+                {!formData.theme && (
                 <div className="space-y-4">
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
@@ -5023,7 +5018,7 @@ ${chatLink}
                       <div className="flex items-center gap-2">
                         <input
                           type="text"
-                          required={!formData.isCustomCuration}
+                          required={!formData.isCustomCuration && !formData.theme}
                           maxLength={2}
                           placeholder="94"
                           value={formData.ageStart}
@@ -5039,7 +5034,7 @@ ${chatLink}
                         <span className="text-slate-300 font-bold">~</span>
                         <input
                           type="text"
-                          required={!formData.isCustomCuration}
+                          required={!formData.isCustomCuration && !formData.theme}
                           maxLength={2}
                           ref={ageEndRef}
                           placeholder="01"
@@ -5061,6 +5056,7 @@ ${chatLink}
                     )}
                   </div>
                 </div>
+                )}
               </div>
 
               {/* v9.1.0: 오픈채팅 링크 입력란 추가 */}
@@ -5102,28 +5098,9 @@ ${chatLink}
               </div>
 
               {/* Status and Unified Capacity (v8.2.3) */}
-              <div className="grid grid-cols-2 gap-6 p-6 rounded-2xl bg-slate-50 border border-slate-100 mb-8 items-center">
-                <div>
+              <div className="flex flex-col items-center justify-center p-6 rounded-2xl bg-slate-50 border border-slate-100 mb-8 max-w-xs mx-auto">
                   <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-widest text-center">
-                    초기 상태
-                  </label>
-                  <select
-                    value={formData.status}
-                    onChange={(e) =>
-                      setFormData(prev => ({
-                        ...prev,
-                        status: e.target.value as SessionStatus,
-                      }))
-                    }
-                    className="w-full h-11 text-center rounded-xl border-2 border-slate-200 bg-white text-slate-800 font-bold focus:border-[#FF6F61] focus:ring-0 outline-none transition-all"
-                  >
-                    <option value="open">모집 중 (게시됨)</option>
-                    <option value="closed">모집 마감</option>
-                  </select>
-                </div>
-                <div className="flex flex-col items-center">
-                  <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-widest text-center">
-                    성별 정원 (1:1 기준)
+                    정원 설정
                   </label>
                   <input
                     type="number"
@@ -5141,14 +5118,13 @@ ${chatLink}
                     placeholder="8"
                   />
                   <p className="text-[11px] text-slate-400 font-bold mt-2 text-center leading-relaxed">
-                    남녀 성비가 1:1로 자동 설정됩니다.
+                    성비 1:1
                     <br />
                     <span className="text-[#FF6F61]">
                       총 {(Number(formData.maxMale) || 0) * 2}명 선발 가능
                     </span>
                   </p>
                 </div>
-              </div>
 
               {/* 테스트 기수 여부 (v10.0.0) */}
               <div className="mb-6 flex items-center justify-between p-4 rounded-2xl bg-amber-50 border border-amber-100">
@@ -5194,7 +5170,7 @@ ${chatLink}
                   {isSubmitting && (
                     <Loader2 className="animate-spin" size={16} />
                   )}
-                  데이터베이스에 기수 등록 반영
+                  {editingId ? "수정 내용 저장" : "새 기수 등록"}
                 </button>
               </div>
             </form>

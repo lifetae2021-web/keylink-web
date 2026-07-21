@@ -534,7 +534,7 @@ export default function EventDetailPage() {
     // 모의 결제 연동
     await new Promise((r) => setTimeout(r, 2000));
     setIsSubmitting(false);
-    toast.success('🎉 예약 및 결제가 완료되었습니다! 마이페이지에서 확인하세요.');
+    toast.success('예약 및 결제가 완료되었습니다! 마이페이지에서 확인하세요.');
     router.push('/mypage');
     */
   };

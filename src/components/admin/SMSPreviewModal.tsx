@@ -628,27 +628,28 @@ const SMSPreviewModal: React.FC<SMSPreviewModalProps> = ({
             </div>
           )}
 
-          {/* Action Buttons */}
-          <div className="mt-10 flex items-center justify-end gap-3">
-            <button
-              onClick={onClose}
-              className="px-6 py-3 rounded-2xl text-sm font-bold text-slate-400 hover:text-slate-800 hover:bg-slate-100 transition-all"
-            >
-              취소
-            </button>
-            <button
-              onClick={handleSend}
-              disabled={isSending || !!editingTemplate}
-              className="px-10 py-4 rounded-2xl bg-[#FF7E7E] text-white text-sm font-black shadow-xl shadow-[#FF7E7E]/25 hover:bg-[#FF6F61] transition-all flex items-center gap-3 active:scale-95 disabled:opacity-50"
-            >
-              {isSending ? (
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              ) : (
-                <Send size={16} />
-              )}
-              {isScheduled ? '예약 발송하기' : (confirmLabel ?? '메시지 발송')}
-            </button>
-          </div>
+        </div>
+
+        {/* Action Buttons - 항상 하단에 고정 */}
+        <div className="shrink-0 px-5 md:px-8 py-4 border-t border-slate-100 bg-white flex items-center justify-end gap-3">
+          <button
+            onClick={onClose}
+            className="px-6 py-3 rounded-2xl text-sm font-bold text-slate-400 hover:text-slate-800 hover:bg-slate-100 transition-all"
+          >
+            취소
+          </button>
+          <button
+            onClick={handleSend}
+            disabled={isSending || !!editingTemplate}
+            className="px-10 py-4 rounded-2xl bg-[#FF7E7E] text-white text-sm font-black shadow-xl shadow-[#FF7E7E]/25 hover:bg-[#FF6F61] transition-all flex items-center gap-3 active:scale-95 disabled:opacity-50"
+          >
+            {isSending ? (
+              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            ) : (
+              <Send size={16} />
+            )}
+            {isScheduled ? '예약 발송하기' : (confirmLabel ?? '메시지 발송')}
+          </button>
         </div>
       </div>
     </div>

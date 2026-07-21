@@ -771,7 +771,7 @@ export default function AdminTimerPage() {
           <div className="relative z-10 w-full mb-4">
             {isFinished ? (
               <div>
-                <p className="text-[#FF6F61] font-black text-2xl mb-1">🎉 모든 소개팅 일정이 종료되었습니다!</p>
+                <p className="text-[#FF6F61] font-black text-2xl mb-1">모든 소개팅 일정이 종료되었습니다!</p>
                 <p className="text-slate-500 font-bold text-sm">참여자들에게 최종 매칭 투표를 안내해 주세요.</p>
               </div>
             ) : currentElapsedMs < 0 ? (

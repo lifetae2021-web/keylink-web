@@ -37,6 +37,7 @@ interface RecruitingSession {
   femaleGroupPrice?: number;
   maleSafePrice?: number;
   isCustomCuration?: boolean;
+  theme?: string;
 }
 
 interface FormData {
@@ -536,6 +537,7 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
               maleSafePrice: data.maleSafePrice,
               targetMaleAge: data.targetMaleAge || '',
               isCustomCuration: data.isCustomCuration || false,
+              theme: data.theme || '',
             };
           })
           .filter(s => {
@@ -1648,6 +1650,7 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
                 episode: 0,
                 targetMaleAge: s.targetMaleAge,
                 isCustomCuration: s.isCustomCuration,
+                theme: s.theme,
                 createdAt: new Date(),
               } as KeylinkEvent))}
               onDateSelect={(d: Date) => {
@@ -1716,12 +1719,17 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
                       {session.ageRange && (
                         <p style={{ color: '#FF6F61', fontSize: '0.65rem', fontWeight: '800', margin: '0' }}>👤 {session.ageRange}</p>
                       )}
-                      {session.isCustomCuration ? (
+                      {session.theme && (
+                        <p style={{ background: '#F5F3FF', color: '#8B5CF6', fontSize: '0.65rem', fontWeight: '800', margin: '0', padding: '2px 6px', borderRadius: '4px', border: '1px solid rgba(139,92,246,0.2)' }}>
+                          {session.theme}{session.theme.includes('특집') ? '' : ' 특집'}
+                        </p>
+                      )}
+                      {session.isCustomCuration && !session.theme ? (
                         <p style={{ background: '#FFF5F4', color: '#FF6F61', fontSize: '0.65rem', fontWeight: '800', margin: '0', padding: '2px 6px', borderRadius: '4px', border: '1px solid rgba(255,111,97,0.2)' }}>
                           여성 우선 선발
                         </p>
                       ) : (
-                        session.targetMaleAge && (
+                        (session.targetMaleAge && !session.theme) && (
                           <p style={{ background: '#FFF5F4', color: '#FF6F61', fontSize: '0.65rem', fontWeight: '800', margin: '0', padding: '2px 6px', borderRadius: '4px', border: '1px solid rgba(255,111,97,0.2)' }}>
                             남성 {session.targetMaleAge}
                           </p>

@@ -11,6 +11,7 @@ export interface NoticeItem {
   content: string;
   isImportant: boolean;
   date: string;
+  images?: string[];
   createdAt?: Timestamp;
 }
 

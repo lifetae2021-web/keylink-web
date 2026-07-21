@@ -482,6 +482,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
+  
+
   const markAllReadAction = () => {
     markAllRead();
   };
@@ -627,7 +629,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <Menu size={20} />
           </button>
 
-          <h1 style={{ fontSize: '1rem', fontWeight: 700, color: '#0F172A', flex: 1 }}>{pageTitle}</h1>
+          {/* 빈 공간을 채워 우측 버튼들을 오른쪽으로 밀어냅니다 */}
+          <div className="flex-1" />
 
           <div className="flex items-center gap-3">
             {/* Live site link */}
@@ -635,7 +638,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               href="https://www.keylink.kr"
               target="_blank"
               rel="noopener noreferrer"
-              className="hidden sm:flex items-center gap-1.5 rounded-lg transition-all duration-200"
+              className="flex items-center gap-1.5 rounded-lg transition-all duration-200"
               style={{ padding: '7px 14px', fontSize: '0.8rem', color: '#FF6F61', border: '1px solid rgba(255,111,97,0.25)', background: 'rgba(255,111,97,0.06)' }}
               onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,111,97,0.14)'; }}
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,111,97,0.06)'; }}
@@ -736,7 +739,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </div>
 
             {/* Admin profile */}
-            <div className="flex items-center gap-2.5 cursor-pointer" style={{ paddingLeft: 12, borderLeft: '1px solid rgba(255,255,255,0.06)' }}>
+            <div className="flex items-center gap-2.5 select-none" style={{ paddingLeft: 12, borderLeft: '1px solid rgba(0,0,0,0.06)' }}>
               <div
                 className="flex items-center justify-center rounded-full relative"
                 style={{
@@ -749,7 +752,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               >
                 {isSuperAdmin ? <Crown size={16} /> : (auth.currentUser?.email?.[0]?.toUpperCase() ?? 'A')}
               </div>
-              <div className="hidden sm:block">
+              <div className="hidden sm:block pr-2">
                 <p style={{ fontSize: '0.8rem', fontWeight: 600, lineHeight: 1.2 }}>
                   {auth.currentUser?.email?.split('@')[0] ?? 'Admin'}
                 </p>
@@ -757,7 +760,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   {isSuperAdmin ? '👑 최고관리자' : 'Administrator'}
                 </p>
               </div>
-              <ChevronDown size={13} style={{ color: '#555' }} />
             </div>
           </div>
         </header>

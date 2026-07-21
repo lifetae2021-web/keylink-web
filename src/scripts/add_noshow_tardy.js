@@ -309,4 +309,4 @@ if (modalContent.includes(oldActivitySection)) {
   console.log('⚠️ UserProfileModal activity section target not found.');
 }
 
-console.log('🎉 All updates complete!');
+console.log('All updates complete!');

@@ -40,6 +40,7 @@ function sessionToEvent(session: Session): KeylinkEvent {
     targetMaleAge: (session as any).targetMaleAge ?? '',
     targetFemaleAge: (session as any).targetFemaleAge ?? '',
     isCustomCuration: (session as any).isCustomCuration ?? false,
+    theme: session.theme || '',
     createdAt: session.createdAt,
   };
 }
@@ -341,7 +342,12 @@ export function EventCalendar({
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', width: '100%' }}>
                 {eventsOnDay.map((e, i) => (
                   <div key={i} className="kl-event-tag">
-                    {!e.isCustomCuration && (
+                    {e.theme && (
+                      <span style={{ fontSize: '0.65rem', fontWeight: '800', color: '#FF6F61', textAlign: 'center', lineHeight: '1.2' }}>
+                        {e.theme}{e.theme.includes('특집') ? '' : ' 특집'}
+                      </span>
+                    )}
+                    {!e.isCustomCuration && !e.theme && (
                       <span style={{ fontSize: '0.65rem', fontWeight: '800', color: 'var(--color-text-muted)', textAlign: 'center', lineHeight: '1.2' }}>
                         남성 {e.targetMaleAge ? e.targetMaleAge.replace(/년생/g, '') : ''}
                       </span>
@@ -439,7 +445,14 @@ function EventCard({ event, isSelected = false, userApp }: { event: KeylinkEvent
 
       {/* 남성 연령 + 날짜/장소 */}
       <div>
-        {event.isCustomCuration ? (
+        {event.theme && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '14px' }}>
+            <div style={{ display: 'inline-flex', alignSelf: 'flex-start', background: '#F5F3FF', border: '1px solid rgba(139,92,246,0.2)', padding: '4px 10px', borderRadius: '8px' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: '800', color: '#8B5CF6' }}>{event.theme}{event.theme.includes('특집') ? '' : ' 특집'}</span>
+            </div>
+          </div>
+        )}
+        {event.isCustomCuration && !event.theme ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '14px' }}>
             <div style={{ display: 'inline-flex', alignSelf: 'flex-start', background: '#FFF5F4', border: '1px solid rgba(255,111,97,0.2)', padding: '4px 10px', borderRadius: '8px' }}>
               <span style={{ fontSize: '0.75rem', fontWeight: '800', color: '#FF6F61' }}>❤️ 여성 우선 선발</span>
@@ -454,7 +467,7 @@ function EventCard({ event, isSelected = false, userApp }: { event: KeylinkEvent
               </p>
             </div>
           </div>
-        ) : event.targetMaleAge && (
+        ) : (event.targetMaleAge && !event.theme) && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '14px' }}>
             <div style={{ display: 'inline-flex', alignSelf: 'flex-start', background: '#FFF5F4', border: '1px solid rgba(255,111,97,0.2)', padding: '4px 10px', borderRadius: '8px' }}>
               <span style={{ fontSize: '0.75rem', fontWeight: '800', color: '#FF6F61' }}>남성 연령 : {event.targetMaleAge}</span>

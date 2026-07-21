@@ -47,6 +47,7 @@ export interface KeylinkEvent {
   targetMaleAge?: string; // e.g. "94~98"
   targetFemaleAge?: string; // e.g. "94~98"
   isCustomCuration?: boolean;
+  theme?: string;
   createdAt: Date;
 }
 

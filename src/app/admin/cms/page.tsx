@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Plus, Pencil, Trash2, Save, X, Star, Heart, User, Eye, EyeOff, CheckCircle2, MessageSquare, HelpCircle, TrendingUp, MousePointerClick } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { Plus, Pencil, Trash2, Save, X, Star, Heart, User, Eye, EyeOff, CheckCircle2, MessageSquare, HelpCircle, TrendingUp, MousePointerClick, ImagePlus, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
   getNotices, addNotice, updateNotice, deleteNotice, NoticeItem,
@@ -12,7 +12,7 @@ import {
   getVoteConfigTemplate, saveVoteConfigTemplate,
 } from '@/lib/firestore/cms';
 import { storage } from '@/lib/firebase';
-import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { ref as storageRef, uploadString, getDownloadURL, uploadBytes } from 'firebase/storage';
 import { VoteConfig } from '@/lib/types';
 
 type Group = 'ops' | 'legal';
@@ -67,12 +67,12 @@ export default function CmsPage() {
       </div>
 
       {/* 서브 탭 */}
-      <div className="flex gap-1 border-b border-slate-200">
+      <div className="flex gap-1 border-b border-slate-200 overflow-x-auto whitespace-nowrap">
         {subTabs.map(t => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
-            className={`px-5 py-3 text-sm font-bold border-b-2 -mb-px transition-all ${
+            className={`shrink-0 px-5 py-3 text-sm font-bold border-b-2 -mb-px transition-all ${
               tab === t.key ? 'border-[#FF6F61] text-[#FF6F61]' : 'border-transparent text-slate-400 hover:text-slate-600'
             }`}
           >
@@ -91,7 +91,56 @@ export default function CmsPage() {
   );
 }
 
+// ── 공지사항 이미지 슬라이더 ──────────────────────────────────────────
+function NoticeImageSlider({ images }: { images: string[] }) {
+  const [idx, setIdx] = useState(0);
+  if (!images || images.length === 0) return null;
+  return (
+    <div className="relative mt-3 rounded-xl overflow-hidden bg-slate-100" style={{ aspectRatio: '16/9' }}>
+      <img
+        src={images[idx]}
+        alt={`공지 이미지 ${idx + 1}`}
+        className="w-full h-full object-cover"
+      />
+      {images.length > 1 && (
+        <>
+          <button
+            onClick={() => setIdx(i => Math.max(0, i - 1))}
+            disabled={idx === 0}
+            className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-black/40 text-white flex items-center justify-center hover:bg-black/60 transition-colors disabled:opacity-30"
+          >
+            <ChevronLeft size={14} />
+          </button>
+          <button
+            onClick={() => setIdx(i => Math.min(images.length - 1, i + 1))}
+            disabled={idx === images.length - 1}
+            className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-black/40 text-white flex items-center justify-center hover:bg-black/60 transition-colors disabled:opacity-30"
+          >
+            <ChevronRight size={14} />
+          </button>
+          <div className="absolute bottom-2 inset-x-0 flex justify-center gap-1">
+            {images.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setIdx(i)}
+                className={`w-1.5 h-1.5 rounded-full transition-all ${
+                  i === idx ? 'bg-white w-3' : 'bg-white/50'
+                }`}
+              />
+            ))}
+          </div>
+        </>
+      )}
+      <div className="absolute top-2 right-2 bg-black/40 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+        {idx + 1} / {images.length}
+      </div>
+    </div>
+  );
+}
+
 // ── 공지사항 탭 ──────────────────────────────────────────
+const MAX_NOTICE_IMAGES = 5;
+
 function NoticesTab() {
   const [items, setItems] = useState<NoticeItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -99,6 +148,14 @@ function NoticesTab() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ title: '', content: '', isImportant: false, date: new Date().toISOString().slice(0, 10) });
   const [saving, setSaving] = useState(false);
+
+  // 이미지 관련 상태
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [existingImages, setExistingImages] = useState<string[]>([]); // 수정 시 기존 URL
+  const [uploadingImages, setUploadingImages] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const load = async () => {
     setIsLoading(true);
@@ -111,17 +168,66 @@ function NoticesTab() {
 
   useEffect(() => { load(); }, []);
 
+  const resetImageState = () => {
+    setImageFiles([]);
+    setImagePreviews([]);
+    setExistingImages([]);
+  };
+
   const openNew = () => {
     setEditingId(null);
     setForm({ title: '', content: '', isImportant: false, date: new Date().toISOString().slice(0, 10) });
+    resetImageState();
     setShowForm(true);
   };
 
   const openEdit = (item: NoticeItem) => {
     setEditingId(item.id);
     setForm({ title: item.title, content: item.content, isImportant: item.isImportant, date: item.date });
+    setImageFiles([]);
+    setImagePreviews([]);
+    setExistingImages(item.images || []);
     setShowForm(true);
   };
+
+  const addFiles = useCallback((files: File[]) => {
+    const totalAllowed = MAX_NOTICE_IMAGES - existingImages.length;
+    const remaining = totalAllowed - imageFiles.length;
+    if (remaining <= 0) {
+      toast.error(`이미지는 최대 ${MAX_NOTICE_IMAGES}장까지 첨부할 수 있습니다.`);
+      return;
+    }
+    const valid = files
+      .filter(f => f.type.startsWith('image/'))
+      .slice(0, remaining);
+    if (valid.length < files.filter(f => f.type.startsWith('image/')).length) {
+      toast.error(`최대 ${MAX_NOTICE_IMAGES}장 제한으로 일부 이미지가 제외되었습니다.`);
+    }
+    setImageFiles(prev => [...prev, ...valid]);
+    valid.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = e => {
+        setImagePreviews(prev => [...prev, e.target?.result as string]);
+      };
+      reader.readAsDataURL(file);
+    });
+  }, [imageFiles, existingImages]);
+
+  const removeNewImage = (idx: number) => {
+    setImageFiles(prev => prev.filter((_, i) => i !== idx));
+    setImagePreviews(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const removeExistingImage = (idx: number) => {
+    setExistingImages(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const files = Array.from(e.dataTransfer.files);
+    addFiles(files);
+  }, [addFiles]);
 
   const handleSave = async () => {
     if (!form.title.trim() || !form.content.trim()) {
@@ -130,14 +236,34 @@ function NoticesTab() {
     }
     setSaving(true);
     try {
+      let uploadedUrls: string[] = [];
+      if (imageFiles.length > 0) {
+        setUploadingImages(true);
+        toast.loading('이미지 업로드 중...', { id: 'img-upload' });
+        try {
+          uploadedUrls = await Promise.all(
+            imageFiles.map(async (file) => {
+              const imgRef = storageRef(storage, `cms_posts/${Date.now()}_${file.name}`);
+              await uploadBytes(imgRef, file);
+              return await getDownloadURL(imgRef);
+            })
+          );
+          toast.dismiss('img-upload');
+        } finally {
+          setUploadingImages(false);
+        }
+      }
+      const finalImages = [...existingImages, ...uploadedUrls];
+      const payload = { ...form, images: finalImages };
       if (editingId) {
-        await updateNotice(editingId, form);
+        await updateNotice(editingId, payload);
         toast.success('공지사항이 수정되었습니다.');
       } else {
-        await addNotice(form);
+        await addNotice(payload);
         toast.success('공지사항이 등록되었습니다.');
       }
       setShowForm(false);
+      resetImageState();
       await load();
     } finally {
       setSaving(false);
@@ -153,13 +279,11 @@ function NoticesTab() {
 
   const handleSeedNotices = async () => {
     const defaultNotices = [
-      { title: '[환영합니다] 프리미엄 매칭 서비스 키링크(Keylink) 오픈 안내', content: '안녕하세요. 신뢰 기반 프리미엄 매칭 서비스 키링크입니다.\n\n키링크는 가벼운 만남을 지양하고, 철저한 신원 인증과 재직 증명을 통과한 분들만 모이는 프라이빗한 로테이션 소개팅 플랫폼입니다.\n\n앞으로도 진정성 있는 만남을 위해 최선을 다하겠습니다. 많은 관심 부탁드립니다!', isImportant: true, date: new Date().toISOString().slice(0, 10) },
-      { title: '[정책 안내] 노쇼(No-Show) 및 비매너 회원 영구제명 조치 강화', content: '참석자 전원의 소중한 시간과 감정을 지키기 위해, 당일 무단 불참(노쇼) 및 현장에서의 불쾌한 비매너 행동 적발 시 즉시 서비스 영구제명 처리됨을 알려드립니다.\n\n매너 있고 건강한 만남 문화를 위해 회원님들의 적극적인 협조 부탁드립니다.', isImportant: true, date: new Date().toISOString().slice(0, 10) },
-      { title: '[꿀팁] 매칭 확률을 3배 높여주는 상세 신청서 작성법', content: '키링크의 로테이션 소개팅에서 매칭 성공률을 극대화하려면 사전 프로필이 매우 중요합니다!\n\n1. 취미는 구체적으로! (예: "음악감상" 보다는 "주말에 재즈바 가기")\n2. 이상형은 긍정적으로! (예: "연락 안되는 사람 싫음" 보다는 "연락이 잘 되는 사람")\n3. 사진은 밝은 표정의 단독 사진으로!\n\n정성스러운 프로필로 좋은 인연을 만나보세요.', isImportant: false, date: new Date().toISOString().slice(0, 10) }
+      { title: '[환영합니다] 프리미엄 매칭 서비스 키링크(Keylink) 오픈 안내', content: '안녕하세요. 신뢰 기반 프리미엄 매칭 서비스 키링크입니다.\n\n키링크는 가벼운 만남을 지양하고, 철저한 신원 인증과 재직 증명을 통과한 분들만 모이는 프라이빗한 로테이션 소개팅 플랫폼입니다.\n\n앞으로도 진정성 있는 만남을 위해 최선을 다하겠습니다. 많은 관심 부탁드립니다!', isImportant: true, date: new Date().toISOString().slice(0, 10), images: [] },
+      { title: '[정책 안내] 노쇼(No-Show) 및 비매너 회원 영구제명 조치 강화', content: '참석자 전원의 소중한 시간과 감정을 지키기 위해, 당일 무단 불참(노쇼) 및 현장에서의 불쾌한 비매너 행동 적발 시 즉시 서비스 영구제명 처리됨을 알려드립니다.\n\n매너 있고 건강한 만남 문화를 위해 회원님들의 적극적인 협조 부탁드립니다.', isImportant: true, date: new Date().toISOString().slice(0, 10), images: [] },
+      { title: '[꿀팁] 매칭 확률을 3배 높여주는 상세 신청서 작성법', content: '키링크의 로테이션 소개팅에서 매칭 성공률을 극대화하려면 사전 프로필이 매우 중요합니다!\n\n1. 취미는 구체적으로! (예: "음악감상" 보다는 "주말에 재즈바 가기")\n2. 이상형은 긍정적으로! (예: "연락 안되는 사람 싫음" 보다는 "연락이 잘 되는 사람")\n3. 사진은 밝은 표정의 단독 사진으로!\n\n정성스러운 프로필로 좋은 인연을 만나보세요.', isImportant: false, date: new Date().toISOString().slice(0, 10), images: [] }
     ];
-    
     if (!confirm('추천 공지사항 3개를 자동으로 등록하시겠습니까?')) return;
-    
     setSaving(true);
     toast.loading('공지사항 등록 중...', { id: 'seed' });
     try {
@@ -175,18 +299,21 @@ function NoticesTab() {
     }
   };
 
+  const totalImages = existingImages.length + imageFiles.length;
+  const isDisabled = saving || uploadingImages;
+
   return (
     <div className="space-y-4">
-      <div className="flex justify-end gap-2">
+      <div className="flex flex-col sm:flex-row justify-end gap-2">
         <button
           onClick={handleSeedNotices}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-all"
+          className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-all w-full sm:w-auto"
         >
           ✨ 추천 공지사항 자동 입력
         </button>
         <button
           onClick={openNew}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold text-white transition-all"
+          className="shrink-0 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold text-white transition-all w-full sm:w-auto"
           style={{ background: '#FF6F61' }}
         >
           <Plus size={15} /> 새 공지사항
@@ -195,11 +322,14 @@ function NoticesTab() {
 
       {/* 폼 */}
       {showForm && (
-        <div className={`${card} p-6 space-y-4`}>
-          <div className="flex items-center justify-between mb-2">
+        <div className={`${card} p-6 space-y-5`}>
+          <div className="flex items-center justify-between">
             <h3 className="font-bold text-slate-800">{editingId ? '공지사항 수정' : '새 공지사항'}</h3>
-            <button onClick={() => setShowForm(false)}><X size={18} className="text-slate-400" /></button>
+            <button onClick={() => { setShowForm(false); resetImageState(); }}>
+              <X size={18} className="text-slate-400" />
+            </button>
           </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
               <label className="text-xs font-bold text-slate-500 mb-1 block">제목</label>
@@ -240,15 +370,110 @@ function NoticesTab() {
               />
             </div>
           </div>
-          <div className="flex justify-end gap-2">
-            <button onClick={() => setShowForm(false)} className="px-4 py-2 text-sm font-bold text-slate-500 border border-slate-200 rounded-lg hover:bg-slate-50">취소</button>
+
+          {/* ── 이미지 업로드 영역 ── */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-xs font-bold text-slate-500">이미지 첨부 <span className="text-slate-400 font-normal">(최대 {MAX_NOTICE_IMAGES}장)</span></label>
+              <span className={`text-xs font-bold ${totalImages >= MAX_NOTICE_IMAGES ? 'text-rose-500' : 'text-slate-400'}`}>
+                {totalImages} / {MAX_NOTICE_IMAGES}
+              </span>
+            </div>
+
+            {/* 드래그 앤 드롭 존 */}
+            {totalImages < MAX_NOTICE_IMAGES && (
+              <div
+                onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+                className={`border-2 border-dashed rounded-xl p-6 flex flex-col items-center justify-center gap-2 cursor-pointer transition-all select-none ${
+                  isDragging
+                    ? 'border-[#FF6F61] bg-orange-50'
+                    : 'border-slate-200 bg-slate-50 hover:border-[#FF6F61] hover:bg-orange-50/50'
+                }`}
+              >
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
+                  isDragging ? 'bg-[#FF6F61] text-white' : 'bg-slate-200 text-slate-400'
+                }`}>
+                  <ImagePlus size={20} />
+                </div>
+                <p className="text-sm font-bold text-slate-500">
+                  {isDragging ? '여기에 놓으세요' : '클릭하거나 이미지를 드래그하세요'}
+                </p>
+                <p className="text-xs text-slate-400">JPG, PNG, GIF · 최대 {MAX_NOTICE_IMAGES - totalImages}장 더 추가 가능</p>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={e => {
+                    if (e.target.files) addFiles(Array.from(e.target.files));
+                    e.target.value = '';
+                  }}
+                />
+              </div>
+            )}
+
+            {/* 썸네일 미리보기 */}
+            {(existingImages.length > 0 || imagePreviews.length > 0) && (
+              <div className="flex gap-3 mt-3 overflow-x-auto pb-2">
+                {/* 기존 이미지 (수정 시) */}
+                {existingImages.map((url, i) => (
+                  <div key={`existing-${i}`} className="relative shrink-0 w-20 h-20 rounded-xl overflow-hidden border border-slate-200 group">
+                    <img src={url} alt="첨부 이미지" className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <button
+                      onClick={() => removeExistingImage(i)}
+                      className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-red-500 transition-colors"
+                    >
+                      <X size={10} />
+                    </button>
+                    <div className="absolute bottom-1 left-1 bg-black/50 text-white text-[9px] font-bold px-1 rounded">
+                      저장됨
+                    </div>
+                  </div>
+                ))}
+                {/* 새로 추가된 이미지 */}
+                {imagePreviews.map((preview, i) => (
+                  <div key={`new-${i}`} className="relative shrink-0 w-20 h-20 rounded-xl overflow-hidden border-2 border-[#FF6F61]/40 group">
+                    <img src={preview} alt="새 이미지" className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <button
+                      onClick={() => removeNewImage(i)}
+                      className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-red-500 transition-colors"
+                    >
+                      <X size={10} />
+                    </button>
+                    <div className="absolute bottom-1 left-1 bg-[#FF6F61]/80 text-white text-[9px] font-bold px-1 rounded">
+                      신규
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-end gap-2 pt-1">
+            <button
+              onClick={() => { setShowForm(false); resetImageState(); }}
+              className="px-4 py-2 text-sm font-bold text-slate-500 border border-slate-200 rounded-lg hover:bg-slate-50"
+            >
+              취소
+            </button>
             <button
               onClick={handleSave}
-              disabled={saving}
+              disabled={isDisabled}
               className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-white rounded-lg transition-all"
-              style={{ background: '#FF6F61', opacity: saving ? 0.6 : 1 }}
+              style={{ background: '#FF6F61', opacity: isDisabled ? 0.6 : 1 }}
             >
-              <Save size={14} /> {saving ? '저장 중...' : '저장'}
+              {uploadingImages
+                ? <><Loader2 size={14} className="animate-spin" /> 이미지 업로드 중...</>
+                : saving
+                  ? <><Loader2 size={14} className="animate-spin" /> 저장 중...</>
+                  : <><Save size={14} /> 저장</>
+              }
             </button>
           </div>
         </div>
@@ -262,23 +487,36 @@ function NoticesTab() {
       ) : (
         <div className="space-y-3">
           {items.map(item => (
-            <div key={item.id} className={`${card} p-5 flex items-start gap-4`}>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  {item.isImportant && <Star size={13} className="text-[#FF6F61]" fill="#FF6F61" />}
-                  <span className="font-bold text-slate-800 text-sm truncate">{item.title}</span>
-                  <span className="text-xs text-slate-400 shrink-0">{item.date}</span>
+            <div key={item.id} className={`${card} overflow-hidden`}>
+              <div className="p-5 flex items-start gap-4">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    {item.isImportant && <Star size={13} className="text-[#FF6F61]" fill="#FF6F61" />}
+                    <span className="font-bold text-slate-800 text-sm truncate">{item.title}</span>
+                    <span className="text-xs text-slate-400 shrink-0">{item.date}</span>
+                    {(item.images?.length ?? 0) > 0 && (
+                      <span className="shrink-0 flex items-center gap-0.5 text-[10px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-full">
+                        <ImagePlus size={9} /> {item.images!.length}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-500 line-clamp-2">{item.content}</p>
                 </div>
-                <p className="text-xs text-slate-500 line-clamp-2">{item.content}</p>
+                <div className="flex gap-2 shrink-0">
+                  <button onClick={() => openEdit(item)} className="p-2 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-500">
+                    <Pencil size={14} />
+                  </button>
+                  <button onClick={() => handleDelete(item.id, item.title)} className="p-2 rounded-lg border border-rose-200 hover:bg-rose-50 text-rose-500">
+                    <Trash2 size={14} />
+                  </button>
+                </div>
               </div>
-              <div className="flex gap-2 shrink-0">
-                <button onClick={() => openEdit(item)} className="p-2 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-500">
-                  <Pencil size={14} />
-                </button>
-                <button onClick={() => handleDelete(item.id, item.title)} className="p-2 rounded-lg border border-rose-200 hover:bg-rose-50 text-rose-500">
-                  <Trash2 size={14} />
-                </button>
-              </div>
+              {/* 인스타그램 피드 스타일 이미지 슬라이더 */}
+              {(item.images?.length ?? 0) > 0 && (
+                <div className="px-5 pb-5">
+                  <NoticeImageSlider images={item.images!} />
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -379,16 +617,16 @@ function FaqsTab() {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end gap-2">
+      <div className="flex flex-col sm:flex-row justify-end gap-2">
         <button
           onClick={handleSeedFaqs}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-all"
+          className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-all w-full sm:w-auto"
         >
           ✨ 추천 FAQ 자동 입력
         </button>
         <button
           onClick={openNew}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold text-white transition-all"
+          className="shrink-0 flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-bold text-white transition-all w-full sm:w-auto"
           style={{ background: '#FF6F61' }}
         >
           <Plus size={15} /> 새 FAQ
@@ -517,7 +755,7 @@ function ReviewsTab() {
       const reader = new FileReader();
       reader.onload = async (ev) => {
         const dataUrl = ev.target?.result as string;
-        const imgRef = ref(storage, `cms_reviews/${Date.now()}_${file.name}`);
+        const imgRef = storageRef(storage, `cms_reviews/${Date.now()}_${file.name}`);
         await uploadString(imgRef, dataUrl, 'data_url');
         const url = await getDownloadURL(imgRef);
         setForm(f => ({ ...f, imageUrl: url }));
@@ -561,7 +799,7 @@ function ReviewsTab() {
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
-        <button onClick={openNew} className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold text-white" style={{ background: '#FF6F61' }}>
+        <button onClick={openNew} className="shrink-0 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold text-white w-full sm:w-auto" style={{ background: '#FF6F61' }}>
           <Plus size={15} /> 새 후기
         </button>
       </div>
@@ -1247,19 +1485,19 @@ function ContentTab({ contentKey }: { contentKey: ContentKey }) {
   return (
     <div className="space-y-4">
       <div className={`${card} p-6 space-y-4`}>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <h3 className="font-bold text-slate-800">{CONTENT_LABELS[contentKey]}</h3>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
             <button
               onClick={handleLoadTemplate}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-all"
+              className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-all"
             >
               ✨ 추천 템플릿 자동 입력
             </button>
             <button
               onClick={handleSave}
               disabled={saving || isLoading}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-white rounded-lg transition-all"
+              className="w-full sm:w-auto shrink-0 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold text-white rounded-lg transition-all"
               style={{ background: '#FF6F61', opacity: (saving || isLoading) ? 0.6 : 1 }}
             >
               <Save size={14} /> {saving ? '저장 중...' : '저장'}
@@ -1349,7 +1587,7 @@ function PartnersTab() {
       const reader = new FileReader();
       reader.onload = async (ev) => {
         const dataUrl = ev.target?.result as string;
-        const imgRef = ref(storage, `cms_partners/${Date.now()}_${file.name}`);
+        const imgRef = storageRef(storage, `cms_partners/${Date.now()}_${file.name}`);
         await uploadString(imgRef, dataUrl, 'data_url');
         const url = await getDownloadURL(imgRef);
         setForm(f => ({ ...f, logoUrl: url }));
@@ -1389,11 +1627,11 @@ function PartnersTab() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <p className="text-xs text-slate-400 font-medium">🤝 협업사 카드를 등록하면 협업사 탭에 그리드 형태로 표시됩니다.</p>
         <button
           onClick={openNew}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold text-white"
+          className="shrink-0 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold text-white transition-all w-full sm:w-auto"
           style={{ background: '#FF6F61' }}
         >
           <Plus size={15} /> 새 협업사 등록
