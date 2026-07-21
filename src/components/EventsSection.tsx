@@ -290,15 +290,7 @@ export function EventCalendar({
         </button>
       </div>
 
-      {/* Calendar Notice */}
-      <div style={{ textAlign: 'center', marginBottom: '20px', padding: '12px', background: 'rgba(255,111,97,0.04)', borderRadius: '12px', border: '1px dashed rgba(255,111,97,0.2)' }}>
-        <p style={{ fontSize: '0.75rem', fontWeight: '700', color: '#FF6F61', marginBottom: '4px' }}>
-          ✨ 여성 우선 선발 및 이상형 기반 맞춤 큐레이션!
-        </p>
-        <p style={{ fontSize: '0.7rem', fontWeight: '500', color: 'var(--color-text-muted)', letterSpacing: '-0.01em' }}>
-          선발 시 남녀간의 이상형과 나이대를<br/>세밀하게 참고하여 최적의 매칭을 진행합니다.
-        </p>
-      </div>
+
 
       {/* Days of week */}
       <div className="kl-calendar-grid" style={{ marginBottom: '4px' }}>
@@ -343,8 +335,8 @@ export function EventCalendar({
                 {eventsOnDay.map((e, i) => (
                   <div key={i} className="kl-event-tag">
                     {e.theme && (
-                      <span style={{ fontSize: '0.65rem', fontWeight: '800', color: '#FF6F61', textAlign: 'center', lineHeight: '1.2' }}>
-                        {e.theme}{e.theme.includes('특집') ? '' : ' 특집'}
+                      <span style={{ display: 'block', fontSize: '0.65rem', fontWeight: '800', color: '#FF6F61', textAlign: 'center', lineHeight: '0.9', marginBottom: '0' }}>
+                        {e.theme.replace('특집', '').trim()}<br />특집
                       </span>
                     )}
                     {!e.isCustomCuration && !e.theme && (
@@ -452,22 +444,7 @@ function EventCard({ event, isSelected = false, userApp }: { event: KeylinkEvent
             </div>
           </div>
         )}
-        {event.isCustomCuration && !event.theme ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '14px' }}>
-            <div style={{ display: 'inline-flex', alignSelf: 'flex-start', background: '#FFF5F4', border: '1px solid rgba(255,111,97,0.2)', padding: '4px 10px', borderRadius: '8px' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: '800', color: '#FF6F61' }}>❤️ 여성 우선 선발</span>
-            </div>
-            <div style={{ paddingLeft: '4px' }}>
-              <p style={{ fontSize: '0.72rem', fontWeight: '700', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
-                • 본 기수는 남성 연령대를 사전에 지정하지 않습니다.
-              </p>
-              <p style={{ fontSize: '0.68rem', fontWeight: '500', color: '#94a3b8', lineHeight: 1.4 }}>
-                • 여성 참가자 우선 선발 후, 이상형과 나이대를<br/>
-                <span style={{ paddingLeft: '8px' }}>세밀하게 맞추어 남성 참가자를 큐레이션합니다.</span>
-              </p>
-            </div>
-          </div>
-        ) : (event.targetMaleAge && !event.theme) && (
+        {(event.targetMaleAge && !event.theme && (!event.title.match(/(\d+)기/) || parseInt(event.title.match(/(\d+)기/)?.[1] || '0', 10) < 137)) && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '14px' }}>
             <div style={{ display: 'inline-flex', alignSelf: 'flex-start', background: '#FFF5F4', border: '1px solid rgba(255,111,97,0.2)', padding: '4px 10px', borderRadius: '8px' }}>
               <span style={{ fontSize: '0.75rem', fontWeight: '800', color: '#FF6F61' }}>남성 연령 : {event.targetMaleAge}</span>
