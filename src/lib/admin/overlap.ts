@@ -19,17 +19,31 @@ export async function checkOverlap(userId: string, sessionId: string, gender: st
     
     if (targetPastSessions.length === 0) return null;
 
-    // 2. 현재 기수의 반대 성별 확정(confirmed) 참가자들 조회
+    // 2. 현재 기수의 반대 성별 확정(confirmed) 또는 선발(selected) 참가자들 조회
     const oppositeGender = gender === 'male' ? 'female' : 'male';
-    const currentOppositesSnap = await adminDb.collection('applications')
+
+    // confirmed 참가자
+    const currentOppConfirmedSnap = await adminDb.collection('applications')
       .where('sessionId', '==', sessionId)
       .where('gender', '==', oppositeGender)
       .where('status', '==', 'confirmed')
       .get();
+
+    // selected 참가자 (입금 대기)
+    const currentOppSelectedSnap = await adminDb.collection('applications')
+      .where('sessionId', '==', sessionId)
+      .where('gender', '==', oppositeGender)
+      .where('status', '==', 'selected')
+      .get();
+
+    const allOppDocs = [...currentOppConfirmedSnap.docs, ...currentOppSelectedSnap.docs];
+    const seenIds = new Set<string>();
     
-    const currentOpposites: any[] = currentOppositesSnap.docs
+    const currentOpposites: any[] = allOppDocs
       .map(d => ({ id: d.id, ...d.data() }))
       .filter((app: any) => {
+        if (seenIds.has(app.id)) return false;
+        seenIds.add(app.id);
         const isDummy = app.id?.startsWith('dummy') || app.userId?.startsWith('user_m_') || app.userId?.startsWith('user_f_') || app.isDummy === true;
         return !isDummy && app.isDarkTemplar !== true;
       });

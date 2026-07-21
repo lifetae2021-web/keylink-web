@@ -829,7 +829,7 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
                         return (
                           <div
                             key={app.id}
-                            className={`flex items-center gap-3 p-3 rounded-2xl border transition-all ${
+                            className={`flex flex-col gap-2.5 p-4 rounded-2xl border transition-all ${
                               status === 'present' ? 'bg-emerald-50 border-emerald-200' :
                               status === 'late'    ? 'bg-amber-50 border-amber-200' :
                               status === 'no-show' ? 'bg-rose-50 border-rose-200' :
@@ -837,17 +837,18 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
                               'bg-slate-50 border-slate-100'
                             }`}
                           >
-                            {/* 기수/날짜 */}
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-1.5">
-                                <p className="text-[0.78rem] font-black text-slate-700 truncate">
-                                  {(() => {
-                                    const sessionInfo = sessionsMap[app.sessionId];
-                                    if (!sessionInfo) return app.sessionId || '기수 미상';
-                                    const title = sessionInfo.title || `${sessionInfo.region === 'busan' ? '부산' : '창원'} ${sessionInfo.episodeNumber ? sessionInfo.episodeNumber + '기' : ''}`;
-                                    return title.replace('로테이션 소개팅 ', '').replace('로테이션 소개팅', '');
-                                  })()}
-                                </p>
+                            {/* 상단: 기수명 + 뱃지 + 날짜 */}
+                            <div className="flex items-start justify-between gap-2 min-w-0">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center flex-wrap gap-1.5 mb-1">
+                                  <p className="text-[0.82rem] font-black text-slate-800 leading-tight">
+                                    {(() => {
+                                      const sessionInfo = sessionsMap[app.sessionId];
+                                      if (!sessionInfo) return app.sessionId || '기수 미상';
+                                      const title = sessionInfo.title || `${sessionInfo.region === 'busan' ? '부산' : '창원'} ${sessionInfo.episodeNumber ? sessionInfo.episodeNumber + '기' : ''}`;
+                                      return title.replace('로테이션 소개팅 ', '').replace('로테이션 소개팅', '');
+                                    })()}
+                                  </p>
                                   {summariesMap[app.sessionId] !== undefined && (
                                     <span className="px-1.5 py-0.5 rounded-md bg-rose-100 text-rose-600 text-[0.6rem] font-black shrink-0">
                                       ❤️ {summariesMap[app.sessionId].voteCountMap?.[user.uid || user.id] || 0}표
@@ -859,38 +860,51 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
                                     </span>
                                   )}
                                 </div>
-                              {displayDate && (
-                                <p className="text-[0.65rem] text-slate-400 font-semibold">
-                                  {eventDate ? '소개팅 일시: ' : '신청일: '}
-                                  {displayDate.toLocaleDateString('ko-KR', { year: '2-digit', month: 'short', day: 'numeric' })}
-                                </p>
+                                {displayDate && (
+                                  <p className="text-[0.68rem] text-slate-400 font-semibold leading-tight">
+                                    {eventDate ? '소개팅: ' : '신청: '}
+                                    {displayDate.toLocaleDateString('ko-KR', { year: '2-digit', month: 'short', day: 'numeric' })}
+                                  </p>
+                                )}
+                              </div>
+
+                              {/* 현재 출석 상태 뱃지 */}
+                              {status && (
+                                <span className={`shrink-0 px-2 py-1 rounded-lg text-[0.65rem] font-black ${
+                                  status === 'present' ? 'bg-emerald-500 text-white' :
+                                  status === 'late'    ? 'bg-amber-500 text-white' :
+                                  status === 'no-show' ? 'bg-rose-500 text-white' :
+                                  'bg-slate-400 text-white'
+                                }`}>
+                                  {status === 'present' ? '출석' : status === 'late' ? '지각' : status === 'no-show' ? '노쇼' : '불참'}
+                                </span>
                               )}
                             </div>
 
-                            {/* 출석/지각/노쇼 토글 버튼 */}
-                            <div className="flex items-center gap-1 shrink-0">
+                            {/* 하단: 출석 토글 버튼 4개 (균등 배분) */}
+                            <div className="grid grid-cols-4 gap-1.5">
                               <button
                                 onClick={() => handleToggleStatus('present')}
-                                className={`px-2 py-1 rounded-lg text-[0.6rem] font-black border transition-all ${
-                                  status === 'present' ? 'bg-emerald-500 text-white border-emerald-500' : 'bg-white text-slate-400 border-slate-200 hover:border-emerald-300 hover:text-emerald-600'
+                                className={`py-1.5 rounded-xl text-[0.68rem] font-black border transition-all ${
+                                  status === 'present' ? 'bg-emerald-500 text-white border-emerald-500 shadow-sm' : 'bg-white text-slate-500 border-slate-200 hover:border-emerald-300 hover:text-emerald-600'
                                 }`}
                               >출석</button>
                               <button
                                 onClick={() => handleToggleStatus('late')}
-                                className={`px-2 py-1 rounded-lg text-[0.6rem] font-black border transition-all ${
-                                  status === 'late' ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-slate-400 border-slate-200 hover:border-amber-300 hover:text-amber-600'
+                                className={`py-1.5 rounded-xl text-[0.68rem] font-black border transition-all ${
+                                  status === 'late' ? 'bg-amber-500 text-white border-amber-500 shadow-sm' : 'bg-white text-slate-500 border-slate-200 hover:border-amber-300 hover:text-amber-600'
                                 }`}
                               >지각</button>
                               <button
                                 onClick={() => handleToggleStatus('no-show')}
-                                className={`px-2 py-1 rounded-lg text-[0.6rem] font-black border transition-all ${
-                                  status === 'no-show' ? 'bg-rose-500 text-white border-rose-500' : 'bg-white text-slate-400 border-slate-200 hover:border-rose-300 hover:text-rose-600'
+                                className={`py-1.5 rounded-xl text-[0.68rem] font-black border transition-all ${
+                                  status === 'no-show' ? 'bg-rose-500 text-white border-rose-500 shadow-sm' : 'bg-white text-slate-500 border-slate-200 hover:border-rose-300 hover:text-rose-600'
                                 }`}
                               >노쇼</button>
                               <button
                                 onClick={() => handleToggleStatus('excused')}
-                                className={`px-2 py-1 rounded-lg text-[0.6rem] font-black border transition-all ${
-                                  status === 'excused' ? 'bg-slate-500 text-white border-slate-500' : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300 hover:text-slate-600'
+                                className={`py-1.5 rounded-xl text-[0.68rem] font-black border transition-all ${
+                                  status === 'excused' ? 'bg-slate-500 text-white border-slate-500 shadow-sm' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300 hover:text-slate-600'
                                 }`}
                               >불참</button>
                             </div>
