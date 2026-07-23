@@ -180,6 +180,7 @@ export async function POST(req: NextRequest) {
         job: userData.admin_job || userData.job || userData.occupation || '',
         residence: userData.residence || '',
         height: userData.height || null,
+        weight: userData.weight || null,
         phone: userData.phone || '',
         status,
         paymentConfirmed: status === 'confirmed',

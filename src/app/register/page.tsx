@@ -237,7 +237,7 @@ function RegisterForm() {
       } else {
         toast.error(
           <span>
-            앗, 시스템에 문제가 생겼나요? 현재 화면을 캡처해서 <b>인스타 DM</b>으로 보내주시면, 죄송하고 감사한 마음을 담아 <b>10,000원 할인 쿠폰</b>을 드립니다!<br /><br />
+            앗, 시스템에 문제가 생겼나요? 현재 화면을 캡처해서 <b>인스타 DM</b>으로 보내주시면, 죄송하고 감사한 마음을 담아 <b>50% 할인쿠폰</b>을 드립니다!<br /><br />
             <span style={{ fontSize: '0.8rem', color: '#EF4444' }}>[오류: {error.message}]</span>
           </span>,
           { duration: 8000 }

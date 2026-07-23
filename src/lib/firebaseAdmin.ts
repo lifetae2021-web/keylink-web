@@ -1,4 +1,43 @@
 import * as admin from 'firebase-admin';
+import dns from 'node:dns';
+import axios from 'axios';
+
+// 로컬 환경(macOS 등)의 IPv6 DNS resolving(ENOTFOUND) 버그를 방지하기 위한 강제 IPv4 폴백 설정
+dns.setDefaultResultOrder('ipv4first');
+
+// Next.js 14+ 내장 fetch(undici)가 dns 설정을 무시하고 ENOTFOUND를 내는 버그를 우회하기 위한 전역 패치
+const originalFetch = global.fetch;
+if (typeof originalFetch === 'function') {
+  global.fetch = async (url: any, options?: any) => {
+    const urlStr = url?.toString() || '';
+    if (urlStr.includes('googleapis.com') || urlStr.includes('kauth.kakao.com') || urlStr.includes('kapi.kakao.com')) {
+      try {
+        const res = await axios({
+          url: urlStr,
+          method: options?.method || 'GET',
+          headers: options?.headers,
+          data: options?.body,
+          responseType: 'arraybuffer'
+        });
+        return new Response(res.data, {
+          status: res.status,
+          statusText: res.statusText,
+          headers: res.headers as any
+        });
+      } catch (e: any) {
+        if (e.response) {
+          return new Response(e.response.data, {
+            status: e.response.status,
+            statusText: e.response.statusText,
+            headers: e.response.headers as any
+          });
+        }
+        throw e;
+      }
+    }
+    return originalFetch(url, options);
+  };
+}
 
 /**
  * Firebase Admin SDK Initialization (Singleton Pattern)
@@ -56,7 +95,21 @@ export function getAdminStorage() {
 export const adminAuth = {
   get instance() { return getAdminAuth(); },
   createCustomToken: (uid: string, claims?: object) => getAdminAuth().createCustomToken(uid, claims),
-  verifyIdToken: (token: string) => getAdminAuth().verifyIdToken(token),
+  verifyIdToken: async (token: string) => {
+    // 로컬 환경(맥북 IPv6 DNS 버그) 방어를 위해 개발 모드에서는 서명 검증(네트워크 통신)을 건너뛰고 JWT를 로컬에서 직접 디코딩합니다.
+    if (process.env.NODE_ENV === 'development') {
+      try {
+        const payloadBase64 = token.split('.')[1];
+        const payloadJson = Buffer.from(payloadBase64, 'base64').toString('utf-8');
+        const payload = JSON.parse(payloadJson);
+        return { ...payload, uid: payload.sub || payload.user_id };
+      } catch (e) {
+        console.error('Local JWT decode failed, falling back to network verify:', e);
+      }
+    }
+    // 운영(실서버) 환경에서는 정상적으로 구글 API 통신을 통해 서명까지 완벽하게 검증합니다.
+    return getAdminAuth().verifyIdToken(token);
+  },
   getUser: (uid: string) => getAdminAuth().getUser(uid),
   createUser: (props: admin.auth.CreateRequest) => getAdminAuth().createUser(props),
   updateUser: (uid: string, props: admin.auth.UpdateRequest) => getAdminAuth().updateUser(uid, props),

@@ -6,7 +6,7 @@ import { Heart, CheckCircle, CheckSquare, Square, ArrowRight, AlertCircle } from
 import toast from 'react-hot-toast';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, User, updateEmail } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp, getDoc, collection, addDoc } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, getDoc, collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 import { getAuthErrorMessage } from '@/lib/auth-errors';
 
 export default function SocialProfilePage() {
@@ -157,17 +157,24 @@ export default function SocialProfilePage() {
         isRegistered: true, // v1.0.49: ensure isRegistered is explicitly set
       }, { merge: true });
 
-      // 5,000원 쿠폰 발급 (유효기간 3개월 = 90일)
-      const expireAt = new Date();
-      expireAt.setMonth(expireAt.getMonth() + 3);
-      await addDoc(collection(db, 'users', user.uid, 'coupons'), {
-        title: '웰컴 가입 축하 쿠폰',
-        type: 'amount',
-        value: 5000,
-        createdAt: serverTimestamp(),
-        expireAt: expireAt,
-        isUsed: false,
-      });
+      // 5,000원 쿠폰 발급 전 중복 발급 방지 체크
+      const couponsRef = collection(db, 'users', user.uid, 'coupons');
+      const q = query(couponsRef, where('title', '==', '웰컴 가입 축하 쿠폰'));
+      const querySnapshot = await getDocs(q);
+
+      if (querySnapshot.empty) {
+        // 쿠폰이 없는 경우에만 발급 (유효기간 3개월 = 90일)
+        const expireAt = new Date();
+        expireAt.setMonth(expireAt.getMonth() + 3);
+        await addDoc(couponsRef, {
+          title: '웰컴 가입 축하 쿠폰',
+          type: 'amount',
+          value: 5000,
+          createdAt: serverTimestamp(),
+          expireAt: expireAt,
+          isUsed: false,
+        });
+      }
 
       toast.success('가입이 완료되었습니다!');
       router.push('/');
@@ -175,7 +182,7 @@ export default function SocialProfilePage() {
       console.error('Registration Error:', err.code, err);
       toast.error(
         <span>
-          앗, 시스템에 문제가 생겼나요? 현재 화면을 캡처해서 <b>인스타 DM</b>으로 보내주시면, 죄송하고 감사한 마음을 담아 <b>10,000원 할인 쿠폰</b>을 드립니다!<br /><br />
+          앗, 시스템에 문제가 생겼나요? 현재 화면을 캡처해서 <b>인스타 DM</b>으로 보내주시면, 죄송하고 감사한 마음을 담아 <b>50% 할인쿠폰</b>을 드립니다!<br /><br />
           <span style={{ fontSize: '0.8rem', color: '#EF4444' }}>[오류: {getAuthErrorMessage(err.code)}]</span>
         </span>,
         { duration: 8000 }

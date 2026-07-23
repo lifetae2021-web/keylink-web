@@ -311,30 +311,9 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
                 현재 <span style={{ color: '#FF6F61' }}>참가 확정</span> 명단
               </h1>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontWeight: '700', fontSize: '0.9rem' }}>
-                    <span>남성 참가자 ({currentMale}/{session.maxMale})</span>
-                    <span style={{ color: '#FF6F61' }}>{Math.round(progressMale * 100)}%</span>
-                  </div>
-                  <div style={{ height: '10px', background: '#EDEDED', borderRadius: '5px', overflow: 'hidden' }}>
-                    <div style={{ width: `${progressMale * 100}%`, height: '100%', background: 'linear-gradient(90deg, #FF9A8B, #FF6F61)', borderRadius: '5px' }} />
-                  </div>
-                </div>
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontWeight: '700', fontSize: '0.9rem' }}>
-                    <span>여성 참가자 ({currentFemale}/{session.maxFemale})</span>
-                    <span style={{ color: '#FF6F61' }}>{Math.round(progressFemale * 100)}%</span>
-                  </div>
-                  <div style={{ height: '10px', background: '#EDEDED', borderRadius: '5px', overflow: 'hidden' }}>
-                    <div style={{ width: `${progressFemale * 100}%`, height: '100%', background: 'linear-gradient(90deg, #FF9A8B, #FF6F61)', borderRadius: '5px' }} />
-                  </div>
-                </div>
-              </div>
+
 
               <div style={{ marginTop: '32px', display: 'flex', gap: '12px', alignItems: 'center', color: 'var(--color-text-muted)', fontSize: '0.9rem', fontWeight: '500' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Users size={16} /> 총 {session.maxMale + session.maxFemale}명 정원</div>
-                <div style={{ width: '1px', height: '12px', background: '#ddd' }} />
                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><ShieldCheck size={16} /> 신원 검증 완료</div>
               </div>
             </div>

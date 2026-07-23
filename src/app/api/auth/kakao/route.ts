@@ -1,3 +1,4 @@
+import axios from 'axios';
 import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 
@@ -5,34 +6,72 @@ const KAKAO_TOKEN_URL = 'https://kauth.kakao.com/oauth/token';
 const KAKAO_USER_PROFILE_URL = 'https://kapi.kakao.com/v2/user/me';
 
 async function getKakaoProfile(code: string, redirectUri: string) {
+  const clientId = process.env.NEXT_PUBLIC_KAKAO_CLIENT_ID;
+  if (!clientId) {
+    console.error('[Kakao Auth] Error: NEXT_PUBLIC_KAKAO_CLIENT_ID is not defined in environment variables.');
+    throw new Error('Server Configuration Error: Missing Kakao Client ID');
+  }
+
   const params = new URLSearchParams({
     grant_type: 'authorization_code',
-    client_id: process.env.NEXT_PUBLIC_KAKAO_CLIENT_ID || '',
+    client_id: clientId,
     redirect_uri: redirectUri,
     code,
   });
 
   if (process.env.KAKAO_CLIENT_SECRET) {
     params.append('client_secret', process.env.KAKAO_CLIENT_SECRET);
+  } else {
+    console.warn('[Kakao Auth] Warning: KAKAO_CLIENT_SECRET is not defined. (It is optional but recommended)');
   }
 
+  let tokenRes;
+  try {
+    tokenRes = await axios.post(KAKAO_TOKEN_URL, params.toString(), {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8'
+      },
+      timeout: 10000,
+    });
+  } catch (err: any) {
+    console.error('[Kakao Auth] Token axios failed:', err.message);
+    if (err.cause) console.error('[Kakao Auth] Token axios error cause:', err.cause);
+    if (err.response) {
+      console.error(`[Kakao Auth] Token error status: ${err.response.status}`);
+      console.error(`[Kakao Auth] Token error data:`, err.response.data);
+    }
+    throw new Error(`Token fetch failed: ${err.message}`);
+  }
 
-  const tokenRes = await fetch(KAKAO_TOKEN_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8' },
-    body: params,
-  });
-  const tokenData = await tokenRes.json();
+  const tokenData = tokenRes.data;
   if (tokenData.error) {
-    console.error('Kakao Token Error:', tokenData);
-    throw new Error(tokenData.error_description || 'Bad credentials');
+    console.error('[Kakao Auth] Kakao Token Error response:', tokenData);
+    throw new Error(tokenData.error_description || 'Kakao Token Error');
   }
 
-  const profileRes = await fetch(KAKAO_USER_PROFILE_URL, {
-    headers: { Authorization: `Bearer ${tokenData.access_token}` },
-  });
-  const profile = await profileRes.json();
-  if (profile.error) throw new Error('카카오 프로필 조회 실패');
+  let profileRes;
+  try {
+    profileRes = await axios.get(KAKAO_USER_PROFILE_URL, {
+      headers: {
+        Authorization: `Bearer ${tokenData.access_token}`
+      },
+      timeout: 10000,
+    });
+  } catch (err: any) {
+    console.error('[Kakao Auth] Profile axios failed:', err.message);
+    if (err.cause) console.error('[Kakao Auth] Profile axios error cause:', err.cause);
+    if (err.response) {
+      console.error(`[Kakao Auth] Profile error status: ${err.response.status}`);
+      console.error(`[Kakao Auth] Profile error data:`, err.response.data);
+    }
+    throw new Error(`Profile fetch failed: ${err.message}`);
+  }
+
+  const profile = profileRes.data;
+  if (profile.error) {
+    console.error('[Kakao Auth] Kakao Profile Error response:', profile);
+    throw new Error('카카오 프로필 조회 실패');
+  }
 
   return {
     kakaoId: profile.id.toString(),

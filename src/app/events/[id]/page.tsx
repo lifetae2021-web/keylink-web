@@ -418,6 +418,8 @@ export default function EventDetailPage() {
         drinking: form.drinking,
         religion: form.religion,
         drink: form.drink,
+        avoidList: form.avoidList,
+        avoidAcquaintance: form.avoidAcquaintance,
         photos: uploadedUrls,
         employmentProof: finalVerificationUrl,
         photoConsent: form.agreePhoto,
@@ -445,6 +447,9 @@ export default function EventDetailPage() {
         job: form.workplace || '',
         residence: form.residence || '',
         phone: form.phone || '',
+        height: form.height || '',
+        weight: form.weight || '',
+        jobRole: form.jobRole || '',
         photoConsent: form.agreePhoto,
         status: 'applied',
         paymentConfirmed: false,
@@ -497,7 +502,7 @@ export default function EventDetailPage() {
       else if (err.message) msg = `오류: ${err.message}`;
       toast.error(
         <span>
-          앗, 시스템에 문제가 생겼나요? 현재 화면을 캡처해서 <b>인스타 DM</b>으로 보내주시면, 죄송하고 감사한 마음을 담아 <b>10,000원 할인 쿠폰</b>을 드립니다!<br /><br />
+          앗, 시스템에 문제가 생겼나요? 현재 화면을 캡처해서 <b>인스타 DM</b>으로 보내주시면, 죄송하고 감사한 마음을 담아 <b>50% 할인쿠폰</b>을 드립니다!<br /><br />
           <span style={{ fontSize: '0.8rem', color: '#EF4444' }}>[오류: {msg}]</span>
         </span>,
         { duration: 8000 }
