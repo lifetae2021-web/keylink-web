@@ -41,11 +41,12 @@ export default function CherryBlossoms() {
           left: `${p.x}vw`,
           top: `${p.yOffset}vh`,
           opacity: 0.15,
+          willChange: 'transform',
           transform: `scale(${p.scale}) rotate(${p.rotation}deg)`,
           animation: `fall ${p.duration}s linear ${p.delay}s infinite`,
         }}>
-          {/* 부드러운 벚꽃 잎 모양 SVG */}
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ filter: 'drop-shadow(0 2px 4px rgba(255,182,193,0.3))' }}>
+          {/* 부드러운 벚꽃 잎 모양 SVG (그림자 제거로 렌더링 부하 최소화) */}
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M12 2C12 2 16.5 5 18 9C19.5 13 17.5 17.5 12 21C6.5 17.5 4.5 13 6 9C7.5 5 12 2 12 2Z" fill="#FFDBE9" />
             <path d="M12 2C12 2 16.5 5 18 9C19.5 13 17.5 17.5 12 21" stroke="#FFB6C1" strokeWidth="0.5" />
           </svg>

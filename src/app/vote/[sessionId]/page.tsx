@@ -199,7 +199,7 @@ export default function VotePage() {
         const validCandidateIds = new Set(candidateList.map(c => c.userId));
 
         existingVote.choices.forEach(c => {
-          if (validCandidateIds.has(c.targetUserId)) {
+          if (c && c.targetUserId && validCandidateIds.has(c.targetUserId)) {
             choicesMap[c.priority] = c.targetUserId;
             if (c.reason) {
               reasonsMap[c.targetUserId] = c.reason;
@@ -209,12 +209,24 @@ export default function VotePage() {
 
         // 지워진 투표(노쇼 필터링)로 인해 발생한 우선순위 구멍을 순차적으로 1지망 ➔ 2지망 순으로 재배치
         const orderedChoices: Record<number, string> = {};
-        Object.values(choicesMap).forEach((uid, index) => {
-          orderedChoices[index + 1] = uid;
-        });
+        let order = 1;
+        Object.keys(choicesMap)
+          .map(Number)
+          .sort((a, b) => a - b)
+          .forEach(p => {
+            orderedChoices[order] = choicesMap[p];
+            order++;
+          });
 
         setChoices(orderedChoices);
         setReasons(reasonsMap);
+
+        // 선택지가 아예 없었다면 '다음 새로운 인연'을 선택했던 케이스
+        if (existingVote.choices.length === 0) {
+          setNextEventOpt(true);
+        }
+        // 한 번 제출했던 유저이므로 카톡 설정 체크박스 복원
+        setKakaoChecked(true);
       }
 
       setLoading(false);
@@ -375,7 +387,8 @@ export default function VotePage() {
         </div>
         <h1 className="text-2xl font-black text-slate-800 mb-3">투표 완료!</h1>
         <p className="text-slate-400 font-medium mb-8 leading-relaxed">
-          투표가 성공적으로 제출되었습니다.<br />매칭 결과는 행사 후 마이페이지에서 확인하실 수 있습니다.
+          <span className="text-indigo-500 font-bold">제출 후 20분 동안은<br />자유롭게 투표 수정이 가능하며,</span><br />
+          최종 매칭 결과는 <span className="text-[#FF6F61] font-bold">약 2시간 뒤</span><br />마이페이지에서 확인하실 수 있습니다.
         </p>
         <Link href="/mypage" className="px-8 py-3 rounded-2xl bg-[#FF6F61] text-white font-bold">
           마이페이지로 돌아가기

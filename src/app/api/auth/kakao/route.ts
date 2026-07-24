@@ -92,43 +92,46 @@ async function getOrCreateFirebaseUser(kakaoId: string, nickname: string) {
     });
   }
 
-  // Firestore에 유저 문서 확인
+  // Firestore에 유저 문서 확인 및 생성 (트랜잭션으로 동시성 이슈 방지)
   const userRef = adminDb.collection('users').doc(firebaseUid);
-  const userDoc = await userRef.get();
-  const isNewUser = !userDoc.exists;
+  
+  const result = await adminDb.runTransaction(async (transaction) => {
+    const userDoc = await transaction.get(userRef);
+    const isNewUser = !userDoc.exists;
 
-  if (isNewUser) {
-    const now = new Date();
-    const expireAt = new Date(now);
-    expireAt.setMonth(expireAt.getMonth() + 3);
+    if (isNewUser) {
+      const now = new Date();
+      const expireAt = new Date(now);
+      expireAt.setMonth(expireAt.getMonth() + 3);
 
-    const batch = adminDb.batch();
+      transaction.set(userRef, {
+        uid: firebaseUid,
+        name: nickname,
+        isRegistered: true,
+        loginMethod: 'kakao',
+        provider: 'kakao',
+        role: 'user',
+        createdAt: now,
+      });
 
-    batch.set(adminDb.collection('users').doc(firebaseUid), {
-      uid: firebaseUid,
-      name: nickname,
-      isRegistered: true,
-      loginMethod: 'kakao',
-      provider: 'kakao',
-      role: 'user',
-      createdAt: now,
-    });
+      // 신규 카카오 가입 시 웰컴 쿠폰 자동 발급
+      const couponRef = userRef.collection('coupons').doc();
+      transaction.set(couponRef, {
+        title: '웰컴 가입 축하 쿠폰',
+        type: 'amount',
+        value: 5000,
+        isUsed: false,
+        createdAt: now,
+        expireAt,
+      });
+      
+      return { firebaseUid, isNewUser: true, existingData: null };
+    }
 
-    // 신규 카카오 가입 시 웰컴 쿠폰 자동 발급
-    const couponRef = adminDb.collection('users').doc(firebaseUid).collection('coupons').doc();
-    batch.set(couponRef, {
-      title: '웰컴 가입 축하 쿠폰',
-      type: 'amount',
-      value: 5000,
-      isUsed: false,
-      createdAt: now,
-      expireAt,
-    });
+    return { firebaseUid, isNewUser: false, existingData: userDoc.data() };
+  });
 
-    await batch.commit();
-  }
-
-  return { firebaseUid, isNewUser, existingData: isNewUser ? null : userDoc.data() };
+  return result;
 }
 
 // GET: 리다이렉트 방식 (카카오에서 콜백)
@@ -165,9 +168,44 @@ export async function GET(req: NextRequest) {
           
           // 기존 신청 내역의 userId 업데이트
           const appsSnap = await adminDb.collection('applications').where('userId', '==', oldUid).get();
+          const sessionIds: string[] = [];
           appsSnap.forEach(appDoc => {
+            sessionIds.push(appDoc.data().sessionId);
             batch.update(appDoc.ref, { userId: firebaseUid });
           });
+          
+          // 기존 투표 내역 완벽 이관 (내가 한 투표 + 남들이 나에게 한 투표)
+          // 비회원이 참가한 세션의 모든 투표를 가져와서 일괄 업데이트 처리합니다.
+          for (const sid of sessionIds) {
+            const sessionVotesSnap = await adminDb.collection('votes').where('sessionId', '==', sid).get();
+            sessionVotesSnap.forEach(voteDoc => {
+              const vData = voteDoc.data();
+              const isMyVote = vData.userId === oldUid;
+              
+              let choicesChanged = false;
+              const newChoices = vData.choices?.map((c: any) => {
+                if (c.targetUserId === oldUid) {
+                  choicesChanged = true;
+                  return { ...c, targetUserId: firebaseUid };
+                }
+                return c;
+              });
+
+              if (isMyVote) {
+                // 내 투표는 새 문서(새 UID 기반)로 복사하고, 기존 문서는 삭제합니다.
+                const newVoteRef = adminDb.collection('votes').doc(`${sid}_${firebaseUid}`);
+                batch.set(newVoteRef, { 
+                  ...vData, 
+                  userId: firebaseUid,
+                  choices: choicesChanged ? newChoices : vData.choices 
+                });
+                batch.delete(voteDoc.ref);
+              } else if (choicesChanged) {
+                // 남이 나에게 한 투표는 타겟 유저 ID를 새 UID로 업데이트합니다.
+                batch.update(voteDoc.ref, { choices: newChoices });
+              }
+            });
+          }
           
           // 기존 비회원 정보를 새 카카오 계정에 병합
           const mergedData: any = { ...oldData, uid: firebaseUid, isRegistered: true, loginMethod: 'kakao', provider: 'kakao', role: 'user', updatedAt: new Date() };

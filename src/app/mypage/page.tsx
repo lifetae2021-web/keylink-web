@@ -80,6 +80,7 @@ function MyPageContent() {
   // v8.1.7: 신청 현황 다중 상태 관리
   const [applications, setApplications] = useState<Application[]>([]);
   const [hasVoted, setHasVoted] = useState(false);
+  const [votedMap, setVotedMap] = useState<Record<string, { voted: boolean; submittedAt?: Date | null }>>({});
   const [privateApp, setPrivateApp] = useState<any>(null); // v8.15.8: 1:1 매칭 신청 정보
   
   const [sessionsMap, setSessionsMap] = useState<Record<string, Session | null>>({});
@@ -227,6 +228,7 @@ function MyPageContent() {
           if (app.status === 'confirmed') {
             const vote = await getMyVote(app.sessionId, currentUser.uid);
             if (vote) setHasVoted(true);
+            setVotedMap(prev => ({ ...prev, [app.sessionId]: { voted: !!vote, submittedAt: vote ? vote.submittedAt : null } }));
           }
         });
       });
@@ -599,11 +601,29 @@ function MyPageContent() {
                         }}>
                           {app.status === 'confirmed' ? '✅ 신청확정' : app.status === 'applied' ? '⏳ 검토중' : app.status === 'selected' ? '⏳ 입금대기' : '취소됨'}
                         </span>
-                        {app.status === 'confirmed' && (
-                          <Link href={`/vote/${app.sessionId}`} style={{ display: 'inline-block', padding: '3px 12px', borderRadius: '100px', fontSize: '0.72rem', fontWeight: '800', background: '#FF6F61', color: '#fff', textDecoration: 'none' }}>
-                            투표하기 →
-                          </Link>
-                        )}
+                        {app.status === 'confirmed' && (() => {
+                          const voteData = votedMap[app.sessionId];
+                          const hasVoted = voteData?.voted || false;
+                          const submittedAt = voteData?.submittedAt || null;
+                          const isEditExpired = submittedAt ? (Date.now() - submittedAt.getTime() >= 20 * 60 * 1000) : false;
+
+                          if (hasVoted) {
+                            return !isEditExpired ? (
+                              <Link href={`/vote/${app.sessionId}?edit=true`} style={{ display: 'inline-block', padding: '3px 12px', borderRadius: '100px', fontSize: '0.72rem', fontWeight: '800', background: '#f1f5f9', color: '#475569', textDecoration: 'none' }}>
+                                투표 수정{submittedAt && <EditCountdownTimer submittedAt={submittedAt} />} →
+                              </Link>
+                            ) : (
+                              <span style={{ display: 'inline-block', padding: '3px 12px', borderRadius: '100px', fontSize: '0.72rem', fontWeight: '800', background: '#f8fafc', color: '#94a3b8' }}>
+                                투표 완료
+                              </span>
+                            );
+                          }
+                          return (
+                            <Link href={`/vote/${app.sessionId}`} style={{ display: 'inline-block', padding: '3px 12px', borderRadius: '100px', fontSize: '0.72rem', fontWeight: '800', background: '#FF6F61', color: '#fff', textDecoration: 'none' }}>
+                              투표하기 →
+                            </Link>
+                          );
+                        })()}
                       </div>
                     </div>
                   );
@@ -1838,7 +1858,7 @@ function ApplicationStatusBlock({ application, session, userId, hasVoted, submit
                   onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-1.5px)'}
                   onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
                 >
-                  📝 제출한 투표 수정하러 가기
+                  📝 제출한 투표 수정하러 가기{submittedAt && <EditCountdownTimer submittedAt={submittedAt} />}
                 </Link>
               </div>
             ) : (
@@ -2093,6 +2113,33 @@ function ReceivedHeartsFeed({ session, userId }: { session: Session, userId: str
       </div>
     </div>
   );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EditCountdownTimer — 투표 수정 남은 시간 표시
+// ─────────────────────────────────────────────────────────────────────────────
+function EditCountdownTimer({ submittedAt }: { submittedAt: Date }) {
+  const [timeLeft, setTimeLeft] = useState<string>('');
+
+  useEffect(() => {
+    const updateTimer = () => {
+      const diff = 20 * 60 * 1000 - (Date.now() - submittedAt.getTime());
+      if (diff <= 0) {
+        setTimeLeft('');
+        return;
+      }
+      const m = Math.floor(diff / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      setTimeLeft(`(${m}:${String(s).padStart(2, '0')} 남음)`);
+    };
+
+    updateTimer();
+    const timerId = setInterval(updateTimer, 1000);
+    return () => clearInterval(timerId);
+  }, [submittedAt]);
+
+  if (!timeLeft) return null;
+  return <span style={{ marginLeft: '4px', opacity: 0.9 }}>{timeLeft}</span>;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -287,7 +287,7 @@ export default function HomePage() {
                     </div>
                     {review.imageUrl && (
                       <div style={{ marginBottom: '24px', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--color-border)', background: 'rgba(0,0,0,0.03)', display: 'flex', alignItems: 'center', justifyContent: 'center', maxHeight: '400px' }}>
-                        <img src={review.imageUrl} alt="Review attachment" style={{ maxWidth: '100%', maxHeight: '400px', objectFit: 'contain' }} />
+                        <img src={review.imageUrl} loading="lazy" alt="Review attachment" style={{ maxWidth: '100%', maxHeight: '400px', objectFit: 'contain' }} />
                       </div>
                     )}
                     <p style={{

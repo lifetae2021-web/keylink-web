@@ -97,7 +97,7 @@ export default function StatusListPage() {
     const status = getStatusInfo(event);
     const isConfirmed = userApps[event.id]?.status === 'confirmed';
     const now = new Date();
-    const openTime = new Date(event.eventDate.getTime() - 2 * 24 * 60 * 60 * 1000);
+    const openTime = new Date(event.eventDate.getTime() - 24 * 60 * 60 * 1000);
     const isOpen = now.getTime() >= openTime.getTime();
 
     return (

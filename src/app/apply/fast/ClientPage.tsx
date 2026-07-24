@@ -827,7 +827,8 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
         for (const sessionId of Array.from(selectedSessionIds)) {
           const basePrice = getBasePrice(sessionId);
           const couponDiscount = getCouponDiscount();
-          
+
+
           const birthYear = form.birthDate
             ? (() => {
               if (form.birthDate.includes('-')) return parseInt(form.birthDate.slice(0, 4));

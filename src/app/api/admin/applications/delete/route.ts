@@ -63,8 +63,34 @@ export async function POST(req: NextRequest) {
       // ✅ Firestore 트랜잭션 규칙: 모든 read를 write보다 먼저 실행
       const sessionSnap = await transaction.get(sessionRef);
 
+      // 쿠폰 반환을 위한 읽기 (유동적 쿠폰 로직)
+      let couponSnap = null;
+      let couponRef = null;
+      let hasOtherAppsUsingCoupon = false;
+      
+      if (appPreData.userId && appPreData.couponId) {
+        // 다른 기수에 동일한 쿠폰을 대기 중이거나 정착시킨 신청서가 있는지 확인
+        const otherAppsSnap = await transaction.get(
+          adminDb.collection('applications')
+            .where('userId', '==', appPreData.userId)
+            .where('couponId', '==', appPreData.couponId)
+        );
+        hasOtherAppsUsingCoupon = otherAppsSnap.docs.some(doc => doc.id !== applicationId);
+
+        // 남은 신청서가 없다면(완전한 환불 상황) 쿠폰 문서를 가져옴
+        if (!hasOtherAppsUsingCoupon) {
+          couponRef = adminDb.doc(`users/${appPreData.userId}/coupons/${appPreData.couponId}`);
+          couponSnap = await transaction.get(couponRef);
+        }
+      }
+
       // --- writes ---
       transaction.delete(appRef);
+
+      // 쿠폰 복구 (반환)
+      if (!hasOtherAppsUsingCoupon && couponSnap && couponSnap.exists && couponRef) {
+        transaction.update(couponRef, { isUsed: false });
+      }
 
       if (prevStatus === 'confirmed' && !waitlistPromotee && !isDummy && !isDarkTemplar) {
         if (sessionSnap.exists) {

@@ -150,11 +150,11 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
     
     if (filledSlots.length === 0) return slots;
 
-    if (filledSlots.length <= 1) {
-      // 1명 이하일 때는 셔플 무효화 및 데이터 블라인드 처리
+    if (filledSlots.length <= 2) {
+      // 2명 이하일 때는 셔플 무효화 및 데이터 블라인드 처리
       slots.forEach(s => {
         if (s.isFilled) {
-          s.job = '정보 보호를 위해 2인부터 공개';
+          s.job = '정보 보호를 위해 3인부터 공개';
           s.height = '-';
           s.isBlind = true;
         }
@@ -198,7 +198,7 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
   const progressFemale = session ? (session.currentFemale / session.maxFemale) : 0;
 
   const now = new Date();
-  const openTime = session ? new Date(session.eventDate.getTime() - 2 * 24 * 60 * 60 * 1000) : null;
+  const openTime = session ? new Date(session.eventDate.getTime() - 24 * 60 * 60 * 1000) : null;
   const isOpen = openTime ? now.getTime() >= openTime.getTime() : false;
 
   if (isLoading || !isAuthLoaded) {
@@ -399,7 +399,7 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
                           <>
                             <div style={{ fontWeight: '800', color: '#111', fontSize: '1rem' }}>{row.birthYear}</div>
                             <div style={{ gridColumn: 'span 3', color: '#9CA3AF', fontWeight: '700', fontSize: '0.95rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                              정보 보호를 위해 2인부터 공개
+                              정보 보호를 위해 3인부터 공개
                             </div>
                           </>
                         ) : (
