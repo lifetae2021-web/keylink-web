@@ -2,14 +2,22 @@ import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { subDays } from 'date-fns';
 
+let detailsCache: { data: any; ts: number } | null = null;
+const DETAILS_TTL = 30 * 1000; // 30초 캐시
+
 export async function GET() {
   try {
+    if (detailsCache && Date.now() - detailsCache.ts < DETAILS_TTL) {
+      return NextResponse.json(detailsCache.data);
+    }
+
     const now = new Date();
     // 최근 24시간 데이터만 조회
     const yesterday = subDays(now, 1);
     
     const snapshot = await adminDb.collection('visitor_logs')
       .where('timestamp', '>=', yesterday)
+      .select('timestamp', 'visitorId', 'userId', 'path')
       .orderBy('timestamp', 'desc')
       .get();
 
@@ -47,7 +55,7 @@ export async function GET() {
       }
       visitorsMap[vId].paths.add(log.path);
       visitorsMap[vId].hitCount += 1;
-      // 이미 timestamp desc로 정렬되어 있으므로 첫 번째 요소가 가장 최근 접속임 (단, Set 추가 및 hitCount 누적은 계속 진행)
+      // 이미 timestamp desc로 정렬되어 있으므로 첫 번째 요소가 가장 최근 접속임
     });
 
     const recentVisitors = Object.values(visitorsMap).map(v => ({
@@ -56,11 +64,15 @@ export async function GET() {
     })).sort((a, b) => b.lastSeenAt.getTime() - a.lastSeenAt.getTime())
     .slice(0, 50); // 최근 50명만 노출
 
-    return NextResponse.json({
+    const responseData = {
       topPages,
       recentVisitors,
       totalLogs: logs.length
-    });
+    };
+
+    detailsCache = { data: responseData, ts: Date.now() };
+
+    return NextResponse.json(responseData);
   } catch (error: any) {
     console.error('[Admin Analytics Details API] Error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });

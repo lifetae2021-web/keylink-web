@@ -125,6 +125,7 @@ export const adminDb = {
   batch: () => getAdminDb().batch(),
   runTransaction: <T>(updateFunction: (transaction: FirebaseFirestore.Transaction) => Promise<T>) =>
     getAdminDb().runTransaction(updateFunction),
+  getAll: (...args: any[]) => (getAdminDb().getAll as any)(...args),
 };
 
 export const adminStorage = {

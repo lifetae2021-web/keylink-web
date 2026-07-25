@@ -38,6 +38,8 @@ function formatPathName(path: string) {
   return path;
 }
 
+const clientCalendarCache: Record<string, { data: Record<string, any>; topPages: any[] }> = {};
+
 export default function AnalyticsCalendarPage() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
@@ -49,9 +51,36 @@ export default function AnalyticsCalendarPage() {
 
   useEffect(() => {
     async function fetchCalendar() {
-      setIsLoading(true);
+      const monthStr = format(currentMonth, 'yyyy-MM');
+      const cacheKey = `kl_calendar_${monthStr}`;
+      let hasCached = false;
+
+      // 1. 인메모리 또는 sessionStorage 캐시 즉시 적용 (제로 버퍼링 로딩)
+      if (clientCalendarCache[monthStr]) {
+        setCalendarData(clientCalendarCache[monthStr].data);
+        setTopPages(clientCalendarCache[monthStr].topPages);
+        setIsLoading(false);
+        hasCached = true;
+      } else {
+        try {
+          const stored = sessionStorage.getItem(cacheKey);
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            clientCalendarCache[monthStr] = parsed;
+            setCalendarData(parsed.data);
+            setTopPages(parsed.topPages);
+            setIsLoading(false);
+            hasCached = true;
+          } else {
+            setIsLoading(true);
+          }
+        } catch {
+          setIsLoading(true);
+        }
+      }
+
+      // 2. 백그라운드 최신 데이터 동기화 (SWR)
       try {
-        const monthStr = format(currentMonth, 'yyyy-MM');
         const res = await fetch(`/api/admin/analytics/calendar?month=${monthStr}`);
         const json = await res.json();
         
@@ -74,11 +103,17 @@ export default function AnalyticsCalendarPage() {
             .slice(0, 5);
             
           setTopPages(sortedPages);
+
+          const cachePayload = { data: json.data, topPages: sortedPages };
+          clientCalendarCache[monthStr] = cachePayload;
+          try {
+            sessionStorage.setItem(cacheKey, JSON.stringify(cachePayload));
+          } catch {}
         }
       } catch (error) {
         console.error('Failed to fetch calendar data', error);
       } finally {
-        setIsLoading(false);
+        if (!hasCached) setIsLoading(false);
       }
     }
     fetchCalendar();

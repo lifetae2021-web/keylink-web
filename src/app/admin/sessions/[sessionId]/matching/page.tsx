@@ -277,9 +277,12 @@ export default function MatchingAdminPage() {
       await Promise.all(allIds.map(id =>
         updateDoc(doc(db, 'matchingResults', id), { status: 'approved', approvedAt: Timestamp.now() })
       ));
-      await updateDoc(doc(db, 'sessions', sessionId), { status: 'completed' });
+      await Promise.all([
+        updateDoc(doc(db, 'sessions', sessionId), { status: 'completed', matchedCount: (result.matchedPairs || []).length }),
+        updateDoc(doc(db, 'matchingSummaries', sessionId), { status: 'approved', approvedAt: Timestamp.now() }).catch(() => {}),
+      ]);
       toast.success('✅ 최종 승인 완료! 참가자 마이페이지에 결과가 공개되었습니다.');
-      setSession(prev => prev ? { ...prev, status: 'completed' } : prev);
+      setSession(prev => prev ? { ...prev, status: 'completed', matchedCount: (result.matchedPairs || []).length } : prev);
     } catch (e: any) {
       toast.error('승인 중 오류: ' + e.message);
     } finally {

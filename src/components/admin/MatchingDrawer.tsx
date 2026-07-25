@@ -210,7 +210,7 @@ export default function MatchingDrawer({ session, onClose }: Props) {
     try {
       await Promise.all([
         updateDoc(doc(db, 'matchingSummaries', sessionId), { status: 'approved', approvedAt: Timestamp.now() }),
-        updateDoc(doc(db, 'sessions', sessionId), { status: 'completed' }),
+        updateDoc(doc(db, 'sessions', sessionId), { status: 'completed', matchedCount: (result.matchedPairs || []).length }),
       ]);
       toast.success('✅ 최종 승인 완료! 참가자 마이페이지에 결과가 공개되었습니다.');
       setSessionStatus('completed');

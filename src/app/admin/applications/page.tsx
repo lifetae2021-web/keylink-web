@@ -50,6 +50,8 @@ const Skeleton = ({ className }: { className?: string }) => (
   <div className={`animate-pulse bg-slate-100 rounded ${className}`} />
 );
 
+let clientAppsCache: { events: any[]; applications: Record<string, any[]>; userMap: Record<string, any>; ts: number } | null = null;
+
 export default function ApplicationsPage() {
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -110,11 +112,18 @@ export default function ApplicationsPage() {
   // 1. sessions 컬렉션 실시간 동기화 (isAdmin 확인 후에만 실행)
   useEffect(() => {
     if (!isAdmin) return; // 권한 확인 전에는 리스너 미실행
+    if (clientAppsCache?.events && clientAppsCache.events.length > 0) {
+      setEvents(clientAppsCache.events);
+      if (!selectedEventId) setSelectedEventId('all');
+      setIsLoading(false);
+    }
     // v7.4.1: episodeNumber 기준 내림차순 정렬 (최신 기수가 맨 위로)
     const q = query(collection(db, 'sessions'), orderBy('episodeNumber', 'desc'));
     const unsub = onSnapshot(q, (snap) => {
       const fetchedEvents = snap.docs.map(d => ({ id: d.id, ...d.data() } as any));
       setEvents(fetchedEvents);
+      if (!clientAppsCache) clientAppsCache = { events: fetchedEvents, applications: {}, userMap: {}, ts: Date.now() };
+      else { clientAppsCache.events = fetchedEvents; clientAppsCache.ts = Date.now(); }
       // v7.4.0: 기본값을 'all'로 설정하여 진입 시 전체 목록 노출 가능
       if (!selectedEventId && fetchedEvents.length > 0) {
         setSelectedEventId('all');
@@ -126,13 +135,22 @@ export default function ApplicationsPage() {
       setIsLoading(false);
     });
     return () => unsub();
-  }, [isAdmin, selectedEventId]);
+  }, [isAdmin]);
 
   // 2. 신청 내역 실시간 동기화 (isAdmin 확인 후에만 실행)
   useEffect(() => {
     if (!isAdmin || !selectedEventId) return;
 
-    setIsDataLoading(true);
+    let hasCached = false;
+    if (clientAppsCache?.applications?.[selectedEventId]) {
+      setApplications(clientAppsCache.applications[selectedEventId]);
+      if (clientAppsCache.userMap) setUserMap(clientAppsCache.userMap);
+      setIsDataLoading(false);
+      hasCached = true;
+    } else {
+      setIsDataLoading(true);
+    }
+
     const q = selectedEventId === 'all'
       ? query(collection(db, 'applications'), orderBy('appliedAt', 'desc'), limit(1000))
       : query(
@@ -168,10 +186,15 @@ export default function ApplicationsPage() {
       }
 
       if (updated) setUserMap(newUserMap);
-      setIsDataLoading(false);
+      if (!hasCached) setIsDataLoading(false);
+
+      if (!clientAppsCache) clientAppsCache = { events: [], applications: {}, userMap: newUserMap, ts: Date.now() };
+      clientAppsCache.applications[selectedEventId] = apps;
+      clientAppsCache.userMap = newUserMap;
+      clientAppsCache.ts = Date.now();
     }, (err) => {
       console.error('Error fetching applications:', err);
-      setIsDataLoading(false);
+      if (!hasCached) setIsDataLoading(false);
     });
 
     return () => unsub();

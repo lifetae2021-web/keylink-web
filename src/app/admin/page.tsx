@@ -44,6 +44,8 @@ function toDate(val: any): Date | null {
   return null;
 }
 
+let clientDashboardCache: { stats: any; genderData: any[]; chartData: any[]; upcomingEvents: any[]; recentUsers: any[]; recentApps: any[]; ts: number } | null = null;
+
 const DAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
 
 export default function AdminDashboard() {
@@ -97,9 +99,43 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     async function fetchData() {
-      try {
-        setIsLoading(true);
+      let hasCached = false;
+      if (clientDashboardCache && Date.now() - clientDashboardCache.ts < 60000) {
+        setStats(clientDashboardCache.stats);
+        setGenderData(clientDashboardCache.genderData);
+        setChartData(clientDashboardCache.chartData);
+        setUpcomingEvents(clientDashboardCache.upcomingEvents);
+        setRecentUsers(clientDashboardCache.recentUsers);
+        setRecentApps(clientDashboardCache.recentApps);
+        setIsLoading(false);
+        hasCached = true;
+      } else {
+        try {
+          const stored = sessionStorage.getItem('kl_admin_dashboard');
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            if (Date.now() - parsed.ts < 60000) {
+              clientDashboardCache = parsed;
+              setStats(parsed.stats);
+              setGenderData(parsed.genderData);
+              setChartData(parsed.chartData);
+              setUpcomingEvents(parsed.upcomingEvents);
+              setRecentUsers(parsed.recentUsers);
+              setRecentApps(parsed.recentApps);
+              setIsLoading(false);
+              hasCached = true;
+            } else {
+              setIsLoading(true);
+            }
+          } else {
+            setIsLoading(true);
+          }
+        } catch {
+          setIsLoading(true);
+        }
+      }
 
+      try {
         // 1. 전체 회원 + 성별 + 이번 달 신규 (더미회원 제외)
         const usersSnap = await getDocs(collection(db, 'users'));
         const dummyUserIds = new Set<string>();
@@ -318,10 +354,33 @@ export default function AdminDashboard() {
           }));
         setRecentApps(recentAppsData);
 
+        const cachePayload = {
+          stats: { 
+            totalUsers: usersSnap.size, monthlyNewUsers, prevMonthlyNewUsers, 
+            weeklyApps, prevWeeklyApps, monthlyApps, prevMonthlyApps, 
+            totalApps: allApps.length, matchCount, monthlyMatchCount, 
+            prevMonthlyMatchCount, monthlyRevenue, prevMonthlyRevenue,
+            todayPV, todayUV, yesterdayPV, yesterdayUV
+          },
+          genderData: [
+            { name: '남성', value: maleCount + femaleCount > 0 ? Math.round((maleCount / (maleCount + femaleCount)) * 100) : 50, color: '#60a5fa' },
+            { name: '여성', value: maleCount + femaleCount > 0 ? Math.round((femaleCount / (maleCount + femaleCount)) * 100) : 50, color: '#FF6F61' },
+          ],
+          chartData: chart,
+          upcomingEvents: upcoming,
+          recentUsers: recentSnap.docs.map(d => ({ id: d.id, ...d.data() })),
+          recentApps: recentAppsData,
+          ts: Date.now()
+        };
+        clientDashboardCache = cachePayload;
+        try {
+          sessionStorage.setItem('kl_admin_dashboard', JSON.stringify(cachePayload));
+        } catch {}
+
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
       } finally {
-        setIsLoading(false);
+        if (!hasCached) setIsLoading(false);
       }
     }
     fetchData();

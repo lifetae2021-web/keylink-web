@@ -10,6 +10,8 @@ import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 
+let clientStatusListCache: { sessions: Session[]; userApps: Record<string, Application>; ts: number } | null = null;
+
 export default function StatusListPage() {
   const router = useRouter();
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -19,6 +21,13 @@ export default function StatusListPage() {
 
   useEffect(() => {
     async function fetchSessions() {
+      let hasCached = false;
+      if (clientStatusListCache && Date.now() - clientStatusListCache.ts < 60000) {
+        setSessions(clientStatusListCache.sessions);
+        if (clientStatusListCache.userApps) setUserApps(clientStatusListCache.userApps);
+        setIsLoading(false);
+        hasCached = true;
+      }
       try {
         const rawData = await getAllSessions();
         const data = rawData.filter(s => !s.isTest); // v10.0.0: 테스트 기수는 일반 현황 목록에서 제외
@@ -38,10 +47,16 @@ export default function StatusListPage() {
           return aFinished ? 1 : -1;
         });
         setSessions(sorted);
+        if (clientStatusListCache) {
+          clientStatusListCache.sessions = sorted;
+          clientStatusListCache.ts = Date.now();
+        } else {
+          clientStatusListCache = { sessions: sorted, userApps: {}, ts: Date.now() };
+        }
       } catch (error) {
         console.error("Error fetching sessions:", error);
       } finally {
-        setIsLoading(false);
+        if (!hasCached) setIsLoading(false);
       }
     }
     fetchSessions();
@@ -65,11 +80,13 @@ export default function StatusListPage() {
             }
           });
           setUserApps(apps);
+          if (clientStatusListCache) clientStatusListCache.userApps = apps;
         } catch (error) {
           console.error("Error fetching user applications:", error);
         }
       } else {
         setUserApps({});
+        if (clientStatusListCache) clientStatusListCache.userApps = {};
       }
     });
 
@@ -160,7 +177,9 @@ export default function StatusListPage() {
             {(event as any).targetMaleAge && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '14px' }}>
                 <div style={{ display: 'inline-flex', alignSelf: 'flex-start', background: '#FFF5F4', border: '1px solid rgba(255,111,97,0.2)', padding: '4px 10px', borderRadius: '8px' }}>
-                  <span style={{ fontSize: '0.75rem', fontWeight: '800', color: '#FF6F61' }}>남성 연령 : {(event as any).targetMaleAge}</span>
+                  <span style={{ fontSize: '0.75rem', fontWeight: '800', color: '#FF6F61' }}>
+                    {/^\d/.test(String((event as any).targetMaleAge || '')) ? `참여 연령 : ${(event as any).targetMaleAge}` : `선발 안내 : ${(event as any).targetMaleAge}`}
+                  </span>
                 </div>
                 <div style={{ paddingLeft: '4px' }}>
                   <p style={{ fontSize: '0.72rem', fontWeight: '700', color: '#64748b', lineHeight: 1.4 }}>

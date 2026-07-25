@@ -334,16 +334,34 @@ export function EventCalendar({
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', width: '100%' }}>
                 {eventsOnDay.map((e, i) => (
                   <div key={i} className="kl-event-tag">
-                    {e.theme && (
-                      <span style={{ display: 'block', fontSize: '0.65rem', fontWeight: '800', color: '#FF6F61', textAlign: 'center', lineHeight: '0.9', marginBottom: '0' }}>
-                        {e.theme.replace('특집', '').trim()}<br />특집
+                    {e.theme ? (
+                      <span style={{ display: 'block', fontSize: '0.65rem', fontWeight: '800', color: '#FF6F61', textAlign: 'center', lineHeight: '1.1', marginBottom: '0' }}>
+                        {(() => {
+                          const cleanTheme = e.theme.replace('특집', '').trim();
+                          if (cleanTheme.includes('여성') && cleanTheme.includes('우선')) return <>여성우선<br />선발</>;
+                          if (cleanTheme.includes('여성') && cleanTheme.includes('맞춤')) return <>여성맞춤<br />선발</>;
+                          if (cleanTheme.length > 5) {
+                            const mid = Math.ceil(cleanTheme.length / 2);
+                            return <>{cleanTheme.slice(0, mid).trim()}<br />{cleanTheme.slice(mid).trim()}</>;
+                          }
+                          return <>{cleanTheme}<br />특집</>;
+                        })()}
                       </span>
-                    )}
-                    {!e.isCustomCuration && !e.theme && (
+                    ) : (e.targetMaleAge && !e.isCustomCuration) ? (
                       <span style={{ fontSize: '0.65rem', fontWeight: '800', color: 'var(--color-text-muted)', textAlign: 'center', lineHeight: '1.2' }}>
-                        남성 {e.targetMaleAge ? e.targetMaleAge.replace(/년생/g, '') : ''}
+                        {(() => {
+                          const val = e.targetMaleAge.replace(/년생/g, '').trim();
+                          if (val.includes('여성') && val.includes('우선')) return <>여성우선<br />선발</>;
+                          if (val.includes('여성') && val.includes('맞춤')) return <>여성맞춤<br />선발</>;
+                          if (/^\d/.test(val)) return val;
+                          if (val.length > 5) {
+                            const mid = Math.ceil(val.length / 2);
+                            return <>{val.slice(0, mid).trim()}<br />{val.slice(mid).trim()}</>;
+                          }
+                          return val;
+                        })()}
                       </span>
-                    )}
+                    ) : null}
                     <p className="kl-event-tag-time">
                       {format(e.date, 'HH:mm')}
                     </p>
@@ -444,10 +462,12 @@ function EventCard({ event, isSelected = false, userApp }: { event: KeylinkEvent
             </div>
           </div>
         )}
-        {(event.targetMaleAge && !event.theme && (!event.title.match(/(\d+)기/) || parseInt(event.title.match(/(\d+)기/)?.[1] || '0', 10) < 137)) && (
+        {(event.targetMaleAge && !event.theme) && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '14px' }}>
             <div style={{ display: 'inline-flex', alignSelf: 'flex-start', background: '#FFF5F4', border: '1px solid rgba(255,111,97,0.2)', padding: '4px 10px', borderRadius: '8px' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: '800', color: '#FF6F61' }}>남성 연령 : {event.targetMaleAge}</span>
+              <span style={{ fontSize: '0.75rem', fontWeight: '800', color: '#FF6F61' }}>
+                {/^\d/.test(String(event.targetMaleAge || '')) ? `참여 연령 : ${event.targetMaleAge}` : `선발 안내 : ${event.targetMaleAge}`}
+              </span>
             </div>
             <div style={{ paddingLeft: '4px' }}>
               <p style={{ fontSize: '0.72rem', fontWeight: '700', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>

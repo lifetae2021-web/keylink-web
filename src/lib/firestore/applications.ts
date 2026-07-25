@@ -22,6 +22,13 @@ import { Application, ApplicationStatus } from '@/lib/types';
 
 const COLLECTION = 'applications';
 
+const applicationsCache = new Map<string, { data: Application[]; timestamp: number }>();
+
+export function clearApplicationsCache(sessionId?: string) {
+  if (sessionId) applicationsCache.delete(sessionId);
+  else applicationsCache.clear();
+}
+
 function fromDoc(snap: DocumentSnapshot): Application | null {
   if (!snap.exists()) return null;
   const d = snap.data()!;
@@ -83,6 +90,12 @@ export async function getMyLatestApplication(
 export async function getApplicationsBySession(
   sessionId: string
 ): Promise<Application[]> {
+  const now = Date.now();
+  const cached = applicationsCache.get(sessionId);
+  if (cached && now - cached.timestamp < 15000) {
+    return cached.data;
+  }
+
   // v8.1.7: orderBy 제거 — appliedAt 필드가 없는 문서가 조용히 누락되는 현상 방지
   // 정렬은 클라이언트에서 처리
   const q = query(
@@ -92,6 +105,7 @@ export async function getApplicationsBySession(
   const snap = await getDocs(q);
   const result = snap.docs.map((d) => fromDoc(d)).filter(Boolean) as Application[];
   result.sort((a, b) => a.appliedAt.getTime() - b.appliedAt.getTime());
+  applicationsCache.set(sessionId, { data: result, timestamp: now });
   return result;
 }
 
@@ -195,6 +209,7 @@ export async function submitApplication(
     appliedAt: now,
     updatedAt: now,
   });
+  clearApplicationsCache(data.sessionId);
   return docRef.id;
 }
 /** 특정 사용자의 특정 기수 신청서 조회 */
@@ -220,4 +235,5 @@ export async function cancelApplication(applicationId: string) {
     updatedAt: serverTimestamp(),
     cancelledAt: serverTimestamp(),
   });
+  clearApplicationsCache();
 }

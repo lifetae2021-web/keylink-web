@@ -2,10 +2,28 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { startOfMonth, endOfMonth, parseISO } from 'date-fns';
 
+interface CachedCalendar {
+  data: Record<string, any>;
+  ts: number;
+}
+const calendarCache: Record<string, CachedCalendar> = {};
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const monthParam = searchParams.get('month'); // format: YYYY-MM
+    
+    const now = new Date();
+    const currentMonthStr = now.toISOString().slice(0, 7); // e.g. '2026-07'
+    const isPastMonth = monthParam && monthParam < currentMonthStr;
+    const cacheTtl = isPastMonth ? Infinity : 3 * 60 * 1000; // 과거 월은 무제한 캐시, 현재 월은 3분 캐시
+
+    if (monthParam && calendarCache[monthParam]) {
+      const cached = calendarCache[monthParam];
+      if (Date.now() - cached.ts < cacheTtl) {
+        return NextResponse.json({ success: true, data: cached.data, cached: true });
+      }
+    }
     
     let targetDate = new Date();
     if (monthParam) {
@@ -15,10 +33,11 @@ export async function GET(req: NextRequest) {
     const start = startOfMonth(targetDate);
     const end = endOfMonth(targetDate);
 
-    // Fetch visitor logs for the month
+    // Fetch visitor logs for the month with select to drastically reduce payload & memory
     const snapshot = await adminDb.collection('visitor_logs')
       .where('timestamp', '>=', start)
       .where('timestamp', '<=', end)
+      .select('timestamp', 'visitorId', 'userId', 'path')
       .orderBy('timestamp', 'desc')
       .get();
 
@@ -30,8 +49,7 @@ export async function GET(req: NextRequest) {
       if (!data.timestamp || !data.visitorId) return;
 
       const dateObj = data.timestamp.toDate();
-      // Ensure KST if needed, but UTC is fine for basic grouping if timezone matches
-      // Let's format to YYYY-MM-DD in KST
+      // Format to YYYY-MM-DD in KST
       const dateKey = new Intl.DateTimeFormat('ko-KR', {
         timeZone: 'Asia/Seoul',
         year: 'numeric',
@@ -66,19 +84,23 @@ export async function GET(req: NextRequest) {
       });
     });
 
-    // Fetch user names
+    // Fetch user names via chunked getAll requests (100x faster than individual get calls)
     const userNames: Record<string, string> = {};
     const uidArray = Array.from(allUserIds);
-    await Promise.all(uidArray.map(async (uid) => {
+    for (let i = 0; i < uidArray.length; i += 100) {
+      const chunk = uidArray.slice(i, i + 100);
+      const refs = chunk.map(uid => adminDb.doc(`users/${uid}`));
       try {
-        const snap = await adminDb.doc(`users/${uid}`).get();
-        if (snap.exists) {
-          userNames[uid] = snap.data()?.name || '이름 없음';
-        }
-      } catch(e) {
-        // ignore
+        const docs = await adminDb.getAll(...refs, { fieldMask: ['name'] });
+        docs.forEach((doc: any, idx: number) => {
+          if (doc.exists) {
+            userNames[chunk[idx]] = doc.data()?.name || '이름 없음';
+          }
+        });
+      } catch (e) {
+        // fallback ignore
       }
-    }));
+    }
 
     // Format final response
     const result: Record<string, any> = {};
@@ -96,9 +118,14 @@ export async function GET(req: NextRequest) {
       };
     });
 
+    if (monthParam) {
+      calendarCache[monthParam] = { data: result, ts: Date.now() };
+    }
+
     return NextResponse.json({ success: true, data: result });
   } catch (error: any) {
     console.error('[Admin Analytics Calendar API] Error:', error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
+

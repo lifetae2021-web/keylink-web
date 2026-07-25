@@ -1755,9 +1755,9 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
                           {session.theme}{session.theme.includes('특집') ? '' : ' 특집'}
                         </p>
                       )}
-                      {(!session.theme && session.targetMaleAge && (!session.title.match(/(\d+)기/) || parseInt(session.title.match(/(\d+)기/)?.[1] || '0', 10) < 137)) && (
+                      {(!session.theme && session.targetMaleAge) && (
                         <p style={{ background: '#FFF5F4', color: '#FF6F61', fontSize: '0.65rem', fontWeight: '800', margin: '0', padding: '2px 6px', borderRadius: '4px', border: '1px solid rgba(255,111,97,0.2)' }}>
-                          남성 {session.targetMaleAge}
+                          {/^\d/.test(String(session.targetMaleAge)) ? `연령: ${session.targetMaleAge}` : session.targetMaleAge}
                         </p>
                       )}
                     </div>

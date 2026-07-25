@@ -57,6 +57,9 @@ const TableSkeleton = () => (
   </>
 );
 
+let clientUsersCache: { users: any[]; providerMap: Record<string, string>; ts: number } | null = null;
+let cachedPhotoMap: { map: Record<string, string[]>; ts: number } | null = null;
+
 export default function UsersPage() {
   const [users, setUsers] = useState<any[]>([]);
   const [selectedVisitUser, setSelectedVisitUser] = useState<any>(null);
@@ -321,7 +324,34 @@ export default function UsersPage() {
 
   useEffect(() => {
     if (!isAdmin) return;
-    setIsLoading(true);
+    let hasCached = false;
+    if (clientUsersCache && Date.now() - clientUsersCache.ts < 60000) {
+      setUsers(clientUsersCache.users);
+      setProviderMap(clientUsersCache.providerMap || {});
+      setIsLoading(false);
+      hasCached = true;
+    } else {
+      try {
+        const stored = sessionStorage.getItem('kl_admin_users');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Date.now() - parsed.ts < 60000) {
+            clientUsersCache = parsed;
+            setUsers(parsed.users);
+            setProviderMap(parsed.providerMap || {});
+            setIsLoading(false);
+            hasCached = true;
+          } else {
+            setIsLoading(true);
+          }
+        } else {
+          setIsLoading(true);
+        }
+      } catch {
+        setIsLoading(true);
+      }
+    }
+
     const q = query(collection(db, 'users'), orderBy('createdAt', 'desc'));
 
     const unsubscribe = onSnapshot(q, async (snapshot) => {
@@ -336,40 +366,56 @@ export default function UsersPage() {
         return !hasPhoto;
       });
 
+      let finalUsers = fetchedUsers;
       if (usersNeedingPhotos.length > 0) {
-        const appSnap = await getDocs(collection(db, 'private_applications'));
-        const publicAppSnap = await getDocs(collection(db, 'applications'));
-        const photoMap: Record<string, string[]> = {};
+        let photoMap: Record<string, string[]> = {};
+        if (cachedPhotoMap && Date.now() - cachedPhotoMap.ts < 5 * 60 * 1000) {
+          photoMap = cachedPhotoMap.map;
+        } else {
+          const appSnap = await getDocs(collection(db, 'private_applications'));
+          const publicAppSnap = await getDocs(collection(db, 'applications'));
 
-        const processDocs = (docs: any[]) => {
-          docs.forEach(d => {
-            const data = d.data();
-            if (data.userId && Array.isArray(data.photos) && data.photos.length > 0) {
-              photoMap[data.userId] = data.photos.filter(Boolean);
-            }
-          });
-        };
+          const processDocs = (docs: any[]) => {
+            docs.forEach(d => {
+              const data = d.data();
+              if (data.userId && Array.isArray(data.photos) && data.photos.length > 0) {
+                photoMap[data.userId] = data.photos.filter(Boolean);
+              }
+            });
+          };
 
-        processDocs(publicAppSnap.docs);
-        processDocs(appSnap.docs);
+          processDocs(publicAppSnap.docs);
+          processDocs(appSnap.docs);
+          cachedPhotoMap = { map: photoMap, ts: Date.now() };
+        }
 
-        const merged = fetchedUsers.map((u: any) => {
+        finalUsers = fetchedUsers.map((u: any) => {
           const hasPhoto = u.photos?.[0] || u.profilePhotos?.[0] || u.facePhotos?.[0] || u.bodyPhotos?.[0] || u.photoUrl || u.photoURL;
           if (!hasPhoto && photoMap[u.id]) {
             return { ...u, photos: photoMap[u.id] };
           }
           return u;
         });
-        setUsers(merged);
+        setUsers(finalUsers);
       } else {
         setUsers(fetchedUsers);
       }
 
-      setIsLoading(false);
+      if (!hasCached) setIsLoading(false);
+
+      if (clientUsersCache) {
+        clientUsersCache.users = finalUsers;
+        clientUsersCache.ts = Date.now();
+      } else {
+        clientUsersCache = { users: finalUsers, providerMap: {}, ts: Date.now() };
+      }
+      try {
+        sessionStorage.setItem('kl_admin_users', JSON.stringify(clientUsersCache));
+      } catch {}
     }, (error) => {
       console.error('Error fetching users:', error);
       toast.error('회원 데이터를 불러오는 중 오류가 발생했습니다.');
-      setIsLoading(false);
+      if (!hasCached) setIsLoading(false);
     });
 
     // 가입 방식 조회
@@ -380,6 +426,10 @@ export default function UsersPage() {
           const map: Record<string, string> = {};
           data.users.forEach((u: any) => { if (u.authProvider) map[u.id] = u.authProvider; });
           setProviderMap(map);
+          if (clientUsersCache) {
+            clientUsersCache.providerMap = map;
+            try { sessionStorage.setItem('kl_admin_users', JSON.stringify(clientUsersCache)); } catch {}
+          }
         }
       })
       .catch(() => { });

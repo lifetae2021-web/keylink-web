@@ -33,7 +33,7 @@ export default function ResultListPage() {
           const d = docSnap.data();
           const sessionId = docSnap.id;
           
-          let matchedCount = 0;
+          let matchedCount = typeof d.matchedCount === 'number' ? d.matchedCount : 0;
           let matchedRate = 0;
           if (d.status === 'completed') {
             try {
@@ -41,7 +41,9 @@ export default function ResultListPage() {
               if (summarySnap.exists()) {
                 const summaryData = summarySnap.data();
                 const matchedPairs = summaryData.matchedPairs || [];
-                matchedCount = matchedPairs.length;
+                if (matchedCount === 0) {
+                  matchedCount = matchedPairs.length;
+                }
                 
                 // 다중 매칭(1명이 여러 명과 매칭)을 고려하여 실제 매칭된 고유 인원 수 계산
                 const matchedUserIds = new Set();

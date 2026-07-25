@@ -13,6 +13,8 @@ import { Session, Application } from '@/lib/types';
 import { auth } from '@/lib/firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
 
+const statusDetailCache = new Map<string, { session: any; applicants: any[]; userMap: Record<string, any>; ts: number }>();
+
 export default function StatusPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: sessionId } = use(params);
   const [activeTab, setActiveTab] = useState<'male' | 'female'>('male');
@@ -38,6 +40,37 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
 
   useEffect(() => {
     async function fetchData() {
+      let hasCached = false;
+      const cached = statusDetailCache.get(sessionId);
+      if (cached && Date.now() - cached.ts < 60000) {
+        setSession(cached.session);
+        setApplicants(cached.applicants);
+        setUserMap(cached.userMap);
+        setIsLoading(false);
+        hasCached = true;
+      } else {
+        try {
+          const stored = sessionStorage.getItem(`kl_status_detail_${sessionId}`);
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            if (Date.now() - parsed.ts < 60000) {
+              statusDetailCache.set(sessionId, parsed);
+              setSession(parsed.session);
+              setApplicants(parsed.applicants);
+              setUserMap(parsed.userMap);
+              setIsLoading(false);
+              hasCached = true;
+            } else {
+              setIsLoading(true);
+            }
+          } else {
+            setIsLoading(true);
+          }
+        } catch {
+          setIsLoading(true);
+        }
+      }
+
       try {
         let sessionData = await getSession(sessionId);
 
@@ -48,7 +81,7 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
         }
 
         if (!sessionData) {
-          setIsLoading(false);
+          if (!hasCached) setIsLoading(false);
           return;
         }
 
@@ -69,11 +102,14 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
           }
         });
         setUserMap(map);
+        const cachePayload = { session: sessionData, applicants: appData, userMap: map, ts: Date.now() };
+        statusDetailCache.set(sessionId, cachePayload);
+        try { sessionStorage.setItem(`kl_status_detail_${sessionId}`, JSON.stringify(cachePayload)); } catch {}
 
       } catch (error) {
         console.error("Error fetching status detail:", error);
       } finally {
-        setIsLoading(false);
+        if (!hasCached) setIsLoading(false);
       }
     }
     fetchData();

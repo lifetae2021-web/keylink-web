@@ -40,12 +40,15 @@ function fromDoc(snap: DocumentSnapshot): Session | null {
       originalPrice: d.originalPrice ?? 39000,
       targetMaleAge: d.targetMaleAge ?? '',
       targetFemaleAge: d.targetFemaleAge ?? '',
+      isCustomCuration: !!d.isCustomCuration,
+      theme: d.theme ?? '',
       maxMale: d.maxMale ?? 0,
       maxFemale: d.maxFemale ?? 0,
       currentMale: d.currentMale ?? 0,
       currentFemale: d.currentFemale ?? 0,
       region: (d.region ?? 'busan') as 'busan' | 'changwon',
       status: d.status as SessionStatus,
+      matchedCount: typeof d.matchedCount === 'number' ? d.matchedCount : undefined,
       votingUnlockedAt: d.votingUnlockedAt?.toDate?.() ?? null,
       isTest: !!d.isTest,
       createdAt: d.createdAt?.toDate?.() ?? new Date(),
@@ -57,32 +60,46 @@ function fromDoc(snap: DocumentSnapshot): Session | null {
   }
 }
 
+let sessionsCache: { all: Session[]; ts: number } | null = null;
+const SESSIONS_CACHE_TTL = 30 * 1000; // 30초 캐시
+
 /** 특정 기수 단건 조회 */
 export async function getSession(sessionId: string): Promise<Session | null> {
+  if (globalCachedSessions) {
+    const found = globalCachedSessions.find(s => s.id === sessionId);
+    if (found) return found;
+  }
+  if (sessionsCache && Date.now() - sessionsCache.ts < SESSIONS_CACHE_TTL) {
+    const found = sessionsCache.all.find(s => s.id === sessionId);
+    if (found) return found;
+  }
   const snap = await getDoc(doc(db, COLLECTION, sessionId));
   return fromDoc(snap);
 }
 
 /** 신청 접수 중인 기수 목록 (status: 'open') */
 export async function getOpenSessions(): Promise<Session[]> {
-  const q = query(
-    collection(db, COLLECTION),
-    where('status', '==', 'open')
-  );
-  const snap = await getDocs(q);
-  return snap.docs
-    .map((d) => fromDoc(d))
-    .filter((s): s is Session => !!s && !s.isTest);
+  const all = await getAllSessions();
+  return all.filter(s => s.status === 'open' && !s.isTest);
 }
 
 /** 모든 기수 목록 (관리자용) */
 export async function getAllSessions(): Promise<Session[]> {
+  if (globalCachedSessions && globalCachedSessions.length > 0) {
+    return [...globalCachedSessions].sort((a, b) => (b.episodeNumber || 0) - (a.episodeNumber || 0));
+  }
+  if (sessionsCache && Date.now() - sessionsCache.ts < SESSIONS_CACHE_TTL) {
+    return sessionsCache.all;
+  }
   const q = query(
     collection(db, COLLECTION),
     orderBy('episodeNumber', 'desc')
   );
   const snap = await getDocs(q);
-  return snap.docs.map((d) => fromDoc(d)).filter(Boolean) as Session[];
+  const res = snap.docs.map((d) => fromDoc(d)).filter(Boolean) as Session[];
+  sessionsCache = { all: res, ts: Date.now() };
+  globalCachedSessions = res;
+  return res;
 }
 
 /** 특정 기수 실시간 구독 */
