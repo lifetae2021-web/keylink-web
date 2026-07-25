@@ -95,10 +95,15 @@ export function subscribeSession(
   });
 }
 
+let globalCachedSessions: Session[] | null = null;
+
 /** 모든 기수 실시간 구독 (이벤트 카드 UI용) */
 export function subscribeAllSessions(
   callback: (sessions: Session[]) => void
 ) {
+  if (globalCachedSessions && globalCachedSessions.length > 0) {
+    callback(globalCachedSessions);
+  }
   const q = query(
     collection(db, COLLECTION),
     orderBy('eventDate', 'asc')
@@ -110,6 +115,7 @@ export function subscribeAllSessions(
       const sessions = snap.docs
         .map((d) => fromDoc(d))
         .filter((s): s is Session => !!s);
+      globalCachedSessions = sessions;
       callback(sessions);
     },
     (error) => {

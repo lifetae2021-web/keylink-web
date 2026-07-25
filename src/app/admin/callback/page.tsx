@@ -37,14 +37,26 @@ function AdminKakaoCallbackContent() {
 
     const finalizeAuth = async () => {
       try {
-        // Sign in with Firebase Custom Token
-        await signInWithCustomToken(auth, token);
+        // Sign in with Firebase Custom Token (인앱 브라우저/스토리지 락 방어 로직)
+        try {
+          await signInWithCustomToken(auth, token);
+        } catch (signInErr: any) {
+          console.warn('Admin signIn attempt failed, retrying with fallback persistence:', signInErr);
+          const { setPersistence, inMemoryPersistence, browserSessionPersistence } = await import('firebase/auth');
+          try {
+            await setPersistence(auth, browserSessionPersistence);
+          } catch {
+            await setPersistence(auth, inMemoryPersistence);
+          }
+          await signInWithCustomToken(auth, token);
+        }
         toast.success('관리자 인증 성공');
         router.replace('/admin');
       } catch (err: any) {
         console.error('Firebase custom token sign-in error:', err);
         setStatus('error');
-        setErrorMessage('관리자 인증 처리에 실패했습니다.');
+        const detailMsg = err?.message || err?.code || String(err);
+        setErrorMessage(`관리자 인증 처리에 실패했습니다. (원인: ${detailMsg})`);
         toast.error('인증 처리에 실패했습니다.');
       }
     };

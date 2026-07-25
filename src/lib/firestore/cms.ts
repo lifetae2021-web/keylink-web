@@ -91,21 +91,29 @@ export interface PartnerItem {
   detailClicks?: number; // 자세히 버튼 클릭 수
 }
 
+let cachedPartners: { data: PartnerItem[]; ts: number } | null = null;
 export async function getPartners(): Promise<PartnerItem[]> {
+  const now = Date.now();
+  if (cachedPartners && now - cachedPartners.ts < 60000) return cachedPartners.data;
   const snap = await getDocs(query(collection(db, 'cms_partners'), orderBy('order', 'asc')));
-  return snap.docs.map(d => ({ id: d.id, ...d.data() } as PartnerItem));
+  const res = snap.docs.map(d => ({ id: d.id, ...d.data() } as PartnerItem));
+  cachedPartners = { data: res, ts: now };
+  return res;
 }
 
 export async function addPartner(data: Omit<PartnerItem, 'id'>): Promise<string> {
+  cachedPartners = null;
   const ref = await addDoc(collection(db, 'cms_partners'), { ...data, createdAt: serverTimestamp() });
   return ref.id;
 }
 
 export async function updatePartner(id: string, data: Partial<Omit<PartnerItem, 'id'>>) {
+  cachedPartners = null;
   await updateDoc(doc(db, 'cms_partners', id), data);
 }
 
 export async function deletePartner(id: string) {
+  cachedPartners = null;
   await deleteDoc(doc(db, 'cms_partners', id));
 }
 
@@ -126,21 +134,29 @@ export interface ReviewItem {
   imageUrl?: string;
 }
 
+let cachedReviews: { data: ReviewItem[]; ts: number } | null = null;
 export async function getReviews(): Promise<ReviewItem[]> {
+  const now = Date.now();
+  if (cachedReviews && now - cachedReviews.ts < 60000) return cachedReviews.data;
   const snap = await getDocs(query(collection(db, 'cms_reviews'), orderBy('order', 'asc')));
-  return snap.docs.map(d => ({ id: d.id, ...d.data() } as ReviewItem));
+  const res = snap.docs.map(d => ({ id: d.id, ...d.data() } as ReviewItem));
+  cachedReviews = { data: res, ts: now };
+  return res;
 }
 
 export async function addReview(data: Omit<ReviewItem, 'id'>): Promise<string> {
+  cachedReviews = null;
   const ref = await addDoc(collection(db, 'cms_reviews'), data);
   return ref.id;
 }
 
 export async function updateReview(id: string, data: Partial<Omit<ReviewItem, 'id'>>) {
+  cachedReviews = null;
   await updateDoc(doc(db, 'cms_reviews', id), data);
 }
 
 export async function deleteReview(id: string) {
+  cachedReviews = null;
   await deleteDoc(doc(db, 'cms_reviews', id));
 }
 

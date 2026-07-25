@@ -40,8 +40,24 @@ function KakaoCallbackContent() {
 
     const finalizeAuth = async () => {
       try {
-        // Sign in with Firebase Custom Token received from our API
-        const userCredential = await signInWithCustomToken(auth, token);
+        // Sign in with Firebase Custom Token received from our API (인앱 브라우저/시크릿 모드 방어 로직 추가)
+        let userCredential;
+        try {
+          userCredential = await signInWithCustomToken(auth, token);
+        } catch (signInErr: any) {
+          console.warn('First signIn attempt failed, retrying with fallback persistence:', signInErr);
+          try {
+            const { setPersistence, inMemoryPersistence, browserSessionPersistence } = await import('firebase/auth');
+            try {
+              await setPersistence(auth, browserSessionPersistence);
+            } catch {
+              await setPersistence(auth, inMemoryPersistence);
+            }
+            userCredential = await signInWithCustomToken(auth, token);
+          } catch (retryErr: any) {
+            throw retryErr || signInErr;
+          }
+        }
         const user = userCredential.user;
         
         // Parse state for redirectUrl
@@ -63,8 +79,20 @@ function KakaoCallbackContent() {
           router.replace('/mypage');
         } else {
           // 신규 가입자거나 필수 정보가 누락된 경우 소셜 프로필 설정 페이지로 이동
-          const userSnap = await getDoc(doc(db, 'users', user.uid));
-          const userData = userSnap.exists() ? userSnap.data() : null;
+          let userData = null;
+          try {
+            const userSnap = await getDoc(doc(db, 'users', user.uid));
+            userData = userSnap.exists() ? userSnap.data() : null;
+          } catch (docErr: any) {
+            console.warn('First getDoc attempt failed, retrying after delay...', docErr);
+            await new Promise(res => setTimeout(res, 500));
+            try {
+              const userSnap2 = await getDoc(doc(db, 'users', user.uid));
+              userData = userSnap2.exists() ? userSnap2.data() : null;
+            } catch (docErr2: any) {
+              console.error('getDoc failed completely, proceeding with default redirect:', docErr2);
+            }
+          }
           const isComplete = userData && userData.gender && userData.birthDate && userData.phone;
 
           if (isNew || !isComplete) {
@@ -78,7 +106,8 @@ function KakaoCallbackContent() {
       } catch (err: any) {
         console.error('Firebase custom token sign-in error:', err);
         setStatus('error');
-        setErrorMessage('로그인 인증 처리에 실패했습니다. 다시 시도해 주세요.');
+        const detailMsg = err?.message || err?.code || String(err);
+        setErrorMessage(`로그인 인증 처리에 실패했습니다. (원인: ${detailMsg}) 다시 시도해 주세요.`);
         toast.error('로그인 처리에 실패했습니다.');
       }
     };

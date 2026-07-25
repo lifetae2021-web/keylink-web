@@ -4,12 +4,13 @@ import { useState, useEffect } from 'react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell 
 } from 'recharts';
-import { ChevronLeft, Clock, MapPin, Loader2, MousePointerClick, User } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Loader2, MousePointerClick, User, Calendar as CalendarIcon } from 'lucide-react';
 import Link from 'next/link';
-import { format } from 'date-fns';
+import { 
+  format, addMonths, subMonths, startOfMonth, endOfMonth, 
+  startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, isToday
+} from 'date-fns';
 import { ko } from 'date-fns/locale';
-import { db } from '@/lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
 
 const panel = {
   background: '#ffffff',
@@ -26,10 +27,8 @@ const PATH_MAP: Record<string, string> = {
   '/status': '📋 진행 현황',
   '/events': '📅 행사 안내',
   '/matching-results': '💘 매칭 결과',
-  '/matching/result': '💘 매칭 결과 (구)',
   '/notices': '📢 공지사항',
   '/admin': '⚙️ 관리자 메인',
-  '/private-matching/apply': '💎 프라이빗 신청',
 };
 
 function formatPathName(path: string) {
@@ -39,172 +38,274 @@ function formatPathName(path: string) {
   return path;
 }
 
-export default function AnalyticsDetailsPage() {
+export default function AnalyticsCalendarPage() {
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   const [isLoading, setIsLoading] = useState(true);
-  const [data, setData] = useState<any>(null);
-  const [userMap, setUserMap] = useState<Record<string, string>>({});
+  const [calendarData, setCalendarData] = useState<Record<string, any>>({});
+  
+  // For top pages (overall month) - calculating on the fly from calendar data
+  const [topPages, setTopPages] = useState<any[]>([]);
 
   useEffect(() => {
-    async function fetchData() {
+    async function fetchCalendar() {
+      setIsLoading(true);
       try {
-        const res = await fetch('/api/admin/analytics/details');
+        const monthStr = format(currentMonth, 'yyyy-MM');
+        const res = await fetch(`/api/admin/analytics/calendar?month=${monthStr}`);
         const json = await res.json();
         
-        // userId가 있는 방문자의 경우 이름(name)을 가져오기 위한 로직
-        const uids = new Set<string>();
-        json.recentVisitors?.forEach((v: any) => {
-          if (v.userId) uids.add(v.userId);
-        });
-
-        const newMap: Record<string, string> = {};
-        for (const uid of Array.from(uids)) {
-          const userSnap = await getDoc(doc(db, 'users', uid));
-          if (userSnap.exists()) {
-            newMap[uid] = userSnap.data().name || '이름 없음';
-          }
+        if (json.success) {
+          setCalendarData(json.data);
+          
+          // Calculate top pages for the month
+          const pageCounts: Record<string, number> = {};
+          Object.values(json.data).forEach((dayObj: any) => {
+            dayObj.visitors.forEach((v: any) => {
+              v.paths.forEach((p: string) => {
+                pageCounts[p] = (pageCounts[p] || 0) + 1;
+              });
+            });
+          });
+          
+          const sortedPages = Object.entries(pageCounts)
+            .map(([path, count]) => ({ path, count, pathName: formatPathName(path) }))
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 5);
+            
+          setTopPages(sortedPages);
         }
-        setUserMap(newMap);
-
-        const mappedTopPages = (json.topPages || []).map((p: any) => ({
-          ...p,
-          pathName: formatPathName(p.path)
-        }));
-
-        setData({ ...json, topPages: mappedTopPages });
       } catch (error) {
-        console.error('Failed to fetch analytics details', error);
+        console.error('Failed to fetch calendar data', error);
       } finally {
         setIsLoading(false);
       }
     }
-    fetchData();
-  }, []);
+    fetchCalendar();
+  }, [currentMonth]);
 
-  if (isLoading) {
+  const handlePrevMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
+  const handleNextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
+
+  // Calendar Grid generation
+  const monthStart = startOfMonth(currentMonth);
+  const monthEnd = endOfMonth(monthStart);
+  const startDate = startOfWeek(monthStart);
+  const endDate = endOfWeek(monthEnd);
+  
+  const days = eachDayOfInterval({ start: startDate, end: endDate });
+
+  const renderCalendar = () => {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[50vh]">
-        <Loader2 className="animate-spin text-[#FF6F61] mb-4" size={40} />
-        <p className="text-gray-500 font-medium">상세 데이터를 분석하고 있습니다...</p>
+      <div style={panel} className="overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white">
+          <div className="flex items-center gap-2">
+            <CalendarIcon size={20} className="text-[#8b5cf6]" />
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#111' }}>
+              방문자 통계 달력
+            </h3>
+          </div>
+          <div className="flex items-center gap-4">
+            <button onClick={handlePrevMonth} className="p-1 hover:bg-gray-100 rounded-full text-gray-500">
+              <ChevronLeft size={20} />
+            </button>
+            <span className="font-bold text-gray-800 w-24 text-center">
+              {format(currentMonth, 'yyyy년 M월')}
+            </span>
+            <button onClick={handleNextMonth} className="p-1 hover:bg-gray-100 rounded-full text-gray-500">
+              <ChevronRight size={20} />
+            </button>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-7 border-b border-gray-100 bg-gray-50">
+          {['일', '월', '화', '수', '목', '금', '토'].map((day, i) => (
+            <div key={day} className={`py-2 text-center text-xs font-semibold ${i===0 ? 'text-red-500' : i===6 ? 'text-blue-500' : 'text-gray-500'}`}>
+              {day}
+            </div>
+          ))}
+        </div>
+        
+        <div className="grid grid-cols-7 bg-white">
+          {days.map((day, i) => {
+            const dateKey = format(day, 'yyyy-MM-dd');
+            const dayData = calendarData[dateKey];
+            const isSelected = selectedDate && isSameDay(day, selectedDate);
+            const isCurrentMonth = isSameMonth(day, monthStart);
+            const today = isToday(day);
+            
+            return (
+              <div 
+                key={dateKey}
+                onClick={() => setSelectedDate(day)}
+                className={`
+                  min-h-[90px] border-b border-r border-gray-100 p-2 cursor-pointer transition-all
+                  ${!isCurrentMonth ? 'bg-gray-50/50' : 'hover:bg-gray-50'}
+                  ${isSelected ? 'ring-2 ring-inset ring-[#FF6F61] bg-[#FF6F61]/5' : ''}
+                `}
+              >
+                <div className="flex justify-between items-start">
+                  <span className={`
+                    text-sm font-semibold flex items-center justify-center w-6 h-6 rounded-full
+                    ${!isCurrentMonth ? 'text-gray-400' : (i%7===0 ? 'text-red-500' : i%7===6 ? 'text-blue-500' : 'text-gray-700')}
+                    ${today ? 'bg-[#FF6F61] text-white' : ''}
+                  `}>
+                    {format(day, 'd')}
+                  </span>
+                  {dayData?.uv > 0 && (
+                    <span className="text-xs font-bold text-[#8b5cf6] bg-[#8b5cf6]/10 px-2 py-0.5 rounded-full">
+                      UV {dayData.uv}
+                    </span>
+                  )}
+                </div>
+                
+                {dayData?.uv > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {/* Show up to 3 avatars/names */}
+                    {dayData.visitors.slice(0, 3).map((v: any, idx: number) => (
+                      <div key={idx} className="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded truncate max-w-[60px]" title={v.name}>
+                        {v.name}
+                      </div>
+                    ))}
+                    {dayData.visitors.length > 3 && (
+                      <div className="text-[10px] text-gray-400 px-1">+{dayData.visitors.length - 3}</div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
     );
-  }
+  };
+
+  const renderVisitorList = () => {
+    if (!selectedDate) return null;
+    const dateKey = format(selectedDate, 'yyyy-MM-dd');
+    const dayData = calendarData[dateKey];
+    
+    return (
+      <div style={panel} className="overflow-hidden flex flex-col h-full max-h-[600px]">
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
+          <div className="flex items-center gap-2">
+            <User size={18} className="text-[#FF6F61]" />
+            <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#111' }}>
+              {format(selectedDate, 'M월 d일')} 방문자 
+            </h3>
+            {dayData?.uv > 0 && (
+              <span className="bg-[#FF6F61] text-white text-xs font-bold px-2 py-0.5 rounded-full ml-1">
+                총 {dayData.uv}명
+              </span>
+            )}
+          </div>
+        </div>
+        
+        <div className="flex-1 overflow-y-auto bg-gray-50 p-4">
+          {!dayData || dayData.visitors.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-40 text-gray-400">
+              <p>이 날짜에는 방문 기록이 없습니다.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {dayData.visitors.map((v: any, idx: number) => (
+                <div key={idx} className="bg-white p-3 rounded-lg border border-gray-100 shadow-sm">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#FF6F61]/20 to-[#FF6F61]/10 flex items-center justify-center">
+                        <span className="text-[#FF6F61] font-bold text-xs">
+                          {v.name.slice(0, 1)}
+                        </span>
+                      </div>
+                      <div>
+                        <div className="font-bold text-gray-800 text-sm">
+                          {v.name}
+                          {v.userId ? '' : <span className="text-xs text-gray-400 ml-1">(비회원)</span>}
+                        </div>
+                        <div className="text-[11px] text-gray-400">
+                          마지막 활동: {format(new Date(v.lastSeenAt), 'HH:mm')}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                      활동 {v.hitCount}회
+                    </div>
+                  </div>
+                  <div className="mt-2 pl-10">
+                    <div className="flex flex-wrap gap-1.5">
+                      {v.paths.map((p: string, pIdx: number) => (
+                        <span key={pIdx} className="text-[11px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded border border-blue-100">
+                          {formatPathName(p)}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-400">
+    <div className="space-y-6 animate-in fade-in duration-400 pb-20">
       <div className="flex items-center gap-3">
         <Link href="/admin" className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-500">
           <ChevronLeft size={20} />
         </Link>
         <div>
-          <h2 style={{ fontSize: '1.4rem', fontWeight: 900, letterSpacing: '-0.03em', color: '#0F172A' }}>통계 상세 분석</h2>
-          <p className="text-sm text-gray-500 mt-1">최근 24시간 동안의 방문자 활동 및 페이지 조회수 기록입니다.</p>
+          <h2 style={{ fontSize: '1.4rem', fontWeight: 900, letterSpacing: '-0.03em', color: '#0F172A' }}>통계 달력</h2>
+          <p className="text-sm text-gray-500 mt-1">월별 방문자(UV) 추이와 날짜별 상세 방문 기록을 확인하세요.</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
-        {/* Top Pages Chart */}
-        <div style={{ ...panel, padding: '24px' }}>
-          <div className="flex items-center gap-2 mb-6">
-            <MousePointerClick size={18} className="text-[#8b5cf6]" />
-            <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#111' }}>인기 페이지 (Top 10)</h3>
-          </div>
-          <div style={{ height: 350 }}>
-            {data?.topPages?.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={data.topPages} layout="vertical" margin={{ top: 0, right: 30, left: 20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f0f0f0" />
-                  <XAxis type="number" hide />
-                  <YAxis dataKey="pathName" type="category" axisLine={false} tickLine={false} width={130} tick={{ fontSize: 11, fill: '#666' }} />
-                  <RechartsTooltip 
-                    cursor={{ fill: 'rgba(0,0,0,0.02)' }}
-                    contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                  />
-                  <Bar dataKey="count" radius={[0, 4, 4, 0]} barSize={20}>
-                    {data.topPages.map((entry: any, index: number) => (
-                      <Cell key={`cell-${index}`} fill={index === 0 ? '#8b5cf6' : '#c4b5fd'} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex items-center justify-center h-full text-gray-400 text-sm">데이터가 없습니다.</div>
-            )}
-          </div>
+      {isLoading ? (
+        <div className="flex flex-col items-center justify-center min-h-[400px]">
+          <Loader2 className="animate-spin text-[#FF6F61] mb-4" size={40} />
+          <p className="text-gray-500 font-medium">데이터를 불러오는 중입니다...</p>
         </div>
-
-        {/* Recent Visitors Table */}
-        <div style={{ ...panel, padding: 0, overflow: 'hidden' }}>
-          <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <User size={18} className="text-[#FF6F61]" />
-              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#111' }}>실시간 방문자 추적</h3>
-            </div>
-            <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full font-semibold">
-              총 {data?.recentVisitors?.length || 0}명 (최근 50명 노출)
-            </span>
-          </div>
-          
-          <div className="max-h-[350px] overflow-y-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 sticky top-0 z-10">
-                <tr>
-                  <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 whitespace-nowrap">방문자 정보</th>
-                  <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 whitespace-nowrap">최근 방문 페이지</th>
-                  <th className="px-5 py-3 text-right text-xs font-semibold text-gray-500 whitespace-nowrap">마지막 활동</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {data?.recentVisitors?.length > 0 ? (
-                  data.recentVisitors.map((v: any, i: number) => {
-                    const isMember = !!v.userId;
-                    const name = isMember ? userMap[v.userId] || '로딩 중...' : '비회원 (익명)';
-                    
-                    return (
-                      <tr key={v.visitorId + i} className="hover:bg-gray-50/50 transition-colors">
-                        <td className="px-5 py-3">
-                          <div className="flex flex-col">
-                            <span className={`text-sm font-bold ${isMember ? 'text-blue-600' : 'text-gray-700'}`}>
-                              {name}
-                            </span>
-                            <span className="text-[0.65rem] text-gray-400 font-mono mt-0.5" title="방문자 고유 ID">
-                              {v.visitorId.slice(0, 10)}...
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-5 py-3">
-                          <div className="flex flex-col gap-1">
-                            {v.paths.map((p: string, idx: number) => (
-                              <span key={idx} className="text-xs text-gray-600 bg-gray-100 px-2 py-0.5 rounded inline-block max-w-[200px] truncate" title={p}>
-                                {formatPathName(p)}
-                              </span>
-                            ))}
-                            {v.hitCount > 5 && (
-                              <span className="text-[0.65rem] text-gray-400">외 {v.hitCount - 5}건 조회</span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-5 py-3 text-right">
-                          <span className="text-xs text-gray-500 whitespace-nowrap">
-                            {format(new Date(v.lastSeenAt), 'MM-dd HH:mm', { locale: ko })}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            {renderCalendar()}
+            
+            {/* Top Pages (Monthly) */}
+            <div style={panel} className="mt-6 p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <MousePointerClick size={18} className="text-[#8b5cf6]" />
+                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#111' }}>이달의 인기 페이지</h3>
+              </div>
+              <div style={{ height: 200 }}>
+                {topPages.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={topPages} layout="vertical" margin={{ top: 0, right: 30, left: 10, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f0f0f0" />
+                      <XAxis type="number" hide />
+                      <YAxis dataKey="pathName" type="category" axisLine={false} tickLine={false} width={120} tick={{ fontSize: 11, fill: '#666' }} />
+                      <RechartsTooltip 
+                        cursor={{ fill: 'rgba(0,0,0,0.02)' }}
+                        contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                      />
+                      <Bar dataKey="count" radius={[0, 4, 4, 0]} barSize={16}>
+                        {topPages.map((entry: any, index: number) => (
+                          <Cell key={`cell-${index}`} fill={index === 0 ? '#8b5cf6' : '#c4b5fd'} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
                 ) : (
-                  <tr>
-                    <td colSpan={3} className="px-5 py-10 text-center text-gray-400 text-sm">
-                      방문 기록이 없습니다.
-                    </td>
-                  </tr>
+                  <div className="flex items-center justify-center h-full text-gray-400 text-sm">데이터가 없습니다.</div>
                 )}
-              </tbody>
-            </table>
+              </div>
+            </div>
+          </div>
+          <div className="lg:col-span-1">
+            {renderVisitorList()}
           </div>
         </div>
-
-      </div>
+      )}
     </div>
   );
 }

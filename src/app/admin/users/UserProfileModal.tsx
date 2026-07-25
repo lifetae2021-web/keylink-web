@@ -192,7 +192,7 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
         const snap = await gd(q(col(db, 'applications'), wh('userId', '==', userId)));
         const apps = snap.docs
           .map(d => ({ id: d.id, ...d.data() } as any))
-          .filter((a: any) => a.status === 'confirmed' || a.status === 'selected' || a.status === 'cancelled' || !!a.attendanceStatus)
+          .filter((a: any) => a.status === 'confirmed' || !!a.attendanceStatus)
           .sort((a: any, b: any) => {
             const ta = a.appliedAt?.toDate?.() || new Date(0);
             const tb = b.appliedAt?.toDate?.() || new Date(0);

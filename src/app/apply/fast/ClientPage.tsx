@@ -61,6 +61,25 @@ interface FormData {
   employmentProof: string;
 }
 
+function parseBirthYear(birthDateStr: string): number {
+  if (!birthDateStr) return new Date().getFullYear();
+  const str = birthDateStr.trim();
+  if (str.includes('-')) {
+    const parts = str.split('-');
+    let y = parseInt(parts[0], 10);
+    if (!isNaN(y)) {
+      if (y < 100) return y > 30 ? 1900 + y : 2000 + y;
+      return y;
+    }
+  } else {
+    const yy = parseInt(str.slice(0, 2), 10);
+    if (!isNaN(yy)) {
+      return yy > 30 ? 1900 + yy : 2000 + yy;
+    }
+  }
+  return new Date().getFullYear();
+}
+
 type ProviderType = 'kakao' | 'google' | 'email' | null;
 
 /* ─────────────────────────────────────────
@@ -341,17 +360,7 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
           const basePrice = getBasePrice(sessionId);
           const couponDiscount = backup.couponDiscount || 0;
 
-          const birthYear = formData.birthDate
-            ? (() => {
-              if (formData.birthDate.includes('-')) {
-                const y = parseInt(formData.birthDate.slice(0, 4), 10);
-                return isNaN(y) ? new Date().getFullYear() : y;
-              }
-              const yy = parseInt(formData.birthDate.slice(0, 2), 10);
-              if (isNaN(yy)) return new Date().getFullYear();
-              return yy > 30 ? 1900 + yy : 2000 + yy;
-            })()
-            : new Date().getFullYear();
+          const birthYear = formData.birthDate ? parseBirthYear(formData.birthDate) : new Date().getFullYear();
           const age = new Date().getFullYear() - birthYear;
 
           const appRef = doc(collection(db, 'applications'));
@@ -829,13 +838,7 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
           const couponDiscount = getCouponDiscount();
 
 
-          const birthYear = form.birthDate
-            ? (() => {
-              if (form.birthDate.includes('-')) return parseInt(form.birthDate.slice(0, 4));
-              const yy = parseInt(form.birthDate.slice(0, 2));
-              return yy > 30 ? 1900 + yy : 2000 + yy;
-            })()
-            : new Date().getFullYear();
+          const birthYear = form.birthDate ? parseBirthYear(form.birthDate) : new Date().getFullYear();
           const age = new Date().getFullYear() - birthYear;
 
           // 중복 신청 방지 및 익명 계정 이관 로직 (전화번호 기준)
@@ -999,17 +1002,7 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
           const basePrice = getBasePrice(sessionId);
           const couponDiscount = backup.couponDiscount || 0;
         
-        const birthYear = formData.birthDate
-          ? (() => {
-            if (formData.birthDate.includes('-')) {
-              const y = parseInt(formData.birthDate.slice(0, 4), 10);
-              return isNaN(y) ? new Date().getFullYear() : y;
-            }
-            const yy = parseInt(formData.birthDate.slice(0, 2), 10);
-            if (isNaN(yy)) return new Date().getFullYear();
-            return yy > 30 ? 1900 + yy : 2000 + yy;
-          })()
-          : new Date().getFullYear();
+        const birthYear = formData.birthDate ? parseBirthYear(formData.birthDate) : new Date().getFullYear();
         const age = new Date().getFullYear() - birthYear;
 
         // 중복 신청 방지 로직 추가 (전화번호 기준)

@@ -1,6 +1,6 @@
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
 const firebaseConfig = {
@@ -14,7 +14,24 @@ const firebaseConfig = {
 
 const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const db = getFirestore(app);
+
+let dbInstance: ReturnType<typeof getFirestore>;
+try {
+  if (typeof window !== 'undefined') {
+    dbInstance = initializeFirestore(app, {
+      localCache: persistentLocalCache({
+        tabManager: persistentMultipleTabManager()
+      })
+    });
+  } else {
+    dbInstance = getFirestore(app);
+  }
+} catch {
+  // 이미 초기화된 경우(HMR/Fast Refresh) 또는 시크릿 모드 등 스토리지 제한 시 fallback
+  dbInstance = getFirestore(app);
+}
+export const db = dbInstance;
+
 export const storage = getStorage(app);
 // SDK 기본 10분 재시도를 10초로 제한하여 멈춤 현상(무한 로딩) 방지 (v3.5.3 Hotfix)
 storage.maxUploadRetryTime = 10000;

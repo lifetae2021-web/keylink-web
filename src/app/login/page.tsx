@@ -147,10 +147,20 @@ function LoginContent() {
         return;
       }
       
-      const persistence = autoLogin ? browserLocalPersistence : browserSessionPersistence;
-      await setPersistence(auth, persistence);
-      
-      await signInWithCustomToken(auth, data.token);
+      try {
+        const persistence = autoLogin ? browserLocalPersistence : browserSessionPersistence;
+        await setPersistence(auth, persistence);
+        await signInWithCustomToken(auth, data.token);
+      } catch (signInErr: any) {
+        console.warn('Guest signIn attempt failed, retrying with fallback persistence:', signInErr);
+        const { inMemoryPersistence } = await import('firebase/auth');
+        try {
+          await setPersistence(auth, browserSessionPersistence);
+        } catch {
+          await setPersistence(auth, inMemoryPersistence);
+        }
+        await signInWithCustomToken(auth, data.token);
+      }
       
       // Save last login method
       localStorage.setItem('keylink_last_login_method', 'guest');
