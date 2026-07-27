@@ -279,9 +279,10 @@ export default function EventDetailPage() {
     ? (form.femaleOption === 'group' ? (event.femaleGroupPrice ?? 19000) : (event.price ?? 29000))
     : displayBasePrice;
 
-  // v8.15.9: 쿠폰 할인 계산
+  // v8.15.9: 쿠폰 할인 계산 (지인동반 특가와 중복 적용 불가)
   let couponDiscount = 0;
-  if (selectedCoupon) {
+  const isGroupDiscount = form.gender === 'female' && form.femaleOption === 'group';
+  if (selectedCoupon && !isGroupDiscount) {
     const type = selectedCoupon.type;
     const value = selectedCoupon.value || selectedCoupon.amount || 0;
     if (type === 'free') {
@@ -462,10 +463,10 @@ export default function EventDetailPage() {
         groupPartnerName: form.gender === 'female' && form.femaleOption === 'group' ? form.groupPartnerName : null,
         groupPartnerBirthYear: form.gender === 'female' && form.femaleOption === 'group' ? form.groupPartnerBirthYear : null,
         
-        // v8.15.9: 쿠폰 사용 정보
-        couponId: selectedCoupon?.id || null,
-        couponTitle: selectedCoupon?.title || null,
-        couponDiscount: couponDiscount,
+        // v8.15.9: 쿠폰 사용 정보 (지인동반 특가는 쿠폰 적용 제외)
+        couponId: (form.gender === 'female' && form.femaleOption === 'group') ? null : (selectedCoupon?.id || null),
+        couponTitle: (form.gender === 'female' && form.femaleOption === 'group') ? null : (selectedCoupon?.title || null),
+        couponDiscount: (form.gender === 'female' && form.femaleOption === 'group') ? 0 : couponDiscount,
         
         instaId: form.instaId || '',
         smoking: form.smoking || '',
@@ -479,8 +480,8 @@ export default function EventDetailPage() {
         etc: form.etc || '',
       });
 
-      // 5. 사용한 쿠폰 사용 처리 (isUsed: true)
-      if (selectedCoupon) {
+      // 5. 사용한 쿠폰 사용 처리 (isUsed: true) - 지인동반 특가는 제외
+      if (selectedCoupon && !(form.gender === 'female' && form.femaleOption === 'group')) {
         const couponRef = doc(db, 'users', currentUser.uid, 'coupons', selectedCoupon.id);
         await updateDoc(couponRef, {
           isUsed: true,
@@ -1276,6 +1277,11 @@ export default function EventDetailPage() {
                     {/* v1.0.13: 쿠폰 선택 섹션 (매칭 옵션 위) */}
                     {userCoupons.length > 0 && (
                       <div className="animate-in fade-in slide-in-from-top-2 duration-500">
+                        {form.gender === 'female' && form.femaleOption === 'group' && (
+                          <div style={{ marginBottom: '12px', padding: '12px 14px', background: '#FFF5F4', border: '1px solid #FFD1CC', borderRadius: '12px', fontSize: '0.8rem', color: '#D9381E', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span>⚠️</span> 지인 동반 특가 선택 시 쿠폰 중복 할인은 적용할 수 없습니다.
+                          </div>
+                        )}
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
                           <p style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                             <Ticket size={16} color="#FF6F61" /> 쿠폰 적용
@@ -1298,7 +1304,13 @@ export default function EventDetailPage() {
                                 key={coupon.id}
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
-                                onClick={() => setSelectedCoupon(isSelected ? null : coupon)}
+                                onClick={() => {
+                                  if (!isSelected && form.gender === 'female' && form.femaleOption === 'group') {
+                                    alert('지인 동반 할인과 쿠폰 할인은 중복 적용할 수 없습니다.\n일반 매칭으로 변경 후 쿠폰을 선택해 주세요.');
+                                    return;
+                                  }
+                                  setSelectedCoupon(isSelected ? null : coupon);
+                                }}
                                 style={{
                                   padding: '14px 16px',
                                   borderRadius: '16px',
@@ -1411,7 +1423,13 @@ export default function EventDetailPage() {
                           {['normal', 'group'].map(opt => (
                             <div
                               key={opt}
-                              onClick={() => setForm(f => ({ ...f, femaleOption: opt }))}
+                              onClick={() => {
+                                if (opt === 'group' && selectedCoupon) {
+                                  alert('지인 동반 할인과 쿠폰 할인은 중복 적용할 수 없습니다.\n선택하신 쿠폰 할인이 해제됩니다.');
+                                  setSelectedCoupon(null);
+                                }
+                                setForm(f => ({ ...f, femaleOption: opt }));
+                              }}
                               style={{
                                 padding: '16px', borderRadius: '12px',
                                 border: form.femaleOption === opt ? '2px solid #FF6F61' : '1px solid #ddd',
@@ -1421,13 +1439,13 @@ export default function EventDetailPage() {
                               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                                 <span style={{ fontSize: '0.9rem', fontWeight: '700' }}>{opt === 'normal' ? '일반 매칭' : '동반할인'}</span>
                                 <div style={{ textAlign: 'right' }}>
-                                  {selectedCoupon ? (
+                                  {selectedCoupon && opt !== 'group' ? (
                                     <>
                                       <p style={{ fontSize: '0.75rem', color: '#94A3B8', textDecoration: 'line-through', marginBottom: '2px', fontWeight: '500' }}>
-                                        {opt === 'normal' ? '29,000원' : '19,000원'}
+                                        29,000원
                                       </p>
                                       <p style={{ fontSize: '0.9rem', fontWeight: '800', color: '#FF6F61' }}>
-                                        {((opt === 'normal' ? 29000 : 19000) - (selectedCoupon.type === 'free' ? (opt === 'normal' ? 29000 : 19000) : (selectedCoupon.type === 'percent' ? Math.floor((opt === 'normal' ? 29000 : 19000) * ((selectedCoupon.value || selectedCoupon.amount || 0) / 100)) : (selectedCoupon.value || selectedCoupon.amount || 0)))).toLocaleString()}원
+                                        {(29000 - (selectedCoupon.type === 'free' ? 29000 : (selectedCoupon.type === 'percent' ? Math.floor(29000 * ((selectedCoupon.value || selectedCoupon.amount || 0) / 100)) : (selectedCoupon.value || selectedCoupon.amount || 0)))).toLocaleString()}원
                                       </p>
                                     </>
                                   ) : (

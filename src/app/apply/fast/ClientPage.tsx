@@ -504,6 +504,7 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
 
   const getCouponDiscount = () => {
     if (!selectedCoupon) return 0;
+    if (form.gender === 'female' && femaleOption === 'group') return 0;
     const base = getBasePrice();
     const { type, value, amount } = selectedCoupon;
     if (type === 'free') return base;
@@ -903,9 +904,9 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
             femaleOption: form.gender === 'female' ? femaleOption : null,
             groupPartnerName: form.gender === 'female' && femaleOption === 'group' ? groupPartnerName : null,
             groupPartnerBirthYear: form.gender === 'female' && femaleOption === 'group' ? groupPartnerBirthYear : null,
-            couponId: selectedCoupon?.id || null,
-            couponTitle: selectedCoupon?.title || null,
-            couponDiscount,
+            couponId: (form.gender === 'female' && femaleOption === 'group') ? null : (selectedCoupon?.id || null),
+            couponTitle: (form.gender === 'female' && femaleOption === 'group') ? null : (selectedCoupon?.title || null),
+            couponDiscount: (form.gender === 'female' && femaleOption === 'group') ? 0 : couponDiscount,
             price: Math.max(0, basePrice - couponDiscount),
             status: 'applied',
             sessionType: 'group',
@@ -915,8 +916,8 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
           });
         }
         
-        // Mark coupon as used if selected
-        if (selectedCoupon?.id) {
+        // Mark coupon as used if selected (and not group discount)
+        if (selectedCoupon?.id && !(form.gender === 'female' && femaleOption === 'group')) {
           batch.update(doc(db, 'users', uid, 'coupons', selectedCoupon.id), {
             isUsed: true,
             usedAt: Timestamp.now(),
@@ -1315,7 +1316,13 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
             {/* 지인과 동반 참석 */}
             <button
               type="button"
-              onClick={() => setFemaleOption('group')}
+              onClick={() => {
+                if (selectedCoupon) {
+                  alert('지인 동반 할인과 쿠폰 할인은 중복 적용할 수 없습니다.\n선택하신 쿠폰 할인이 해제됩니다.');
+                  setSelectedCoupon(null);
+                }
+                setFemaleOption('group');
+              }}
               style={{
                 padding: '16px', borderRadius: '14px', border: 'none', cursor: 'pointer', textAlign: 'left',
                 background: femaleOption === 'group' ? '#F3EFFF' : '#F8FAFC',
@@ -1359,6 +1366,11 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
             <span style={{ fontSize: '1.1rem' }}>🎟️</span>
             <span style={{ fontWeight: '800', fontSize: '1rem', color: '#111' }}>쿠폰 적용</span>
           </div>
+          {form.gender === 'female' && femaleOption === 'group' && (
+            <div style={{ marginBottom: '14px', padding: '12px 14px', background: '#FFF5F4', border: '1px solid #FFD1CC', borderRadius: '12px', fontSize: '0.8rem', color: '#D9381E', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span>⚠️</span> 지인 동반 특가 선택 시 쿠폰 중복 할인은 적용할 수 없습니다.
+            </div>
+          )}
           {userCoupons.length === 0 ? (
             <p style={{ fontSize: '0.85rem', color: '#aaa', textAlign: 'center', padding: '12px 0' }}>사용 가능한 쿠폰이 없습니다.</p>
           ) : (
@@ -1372,7 +1384,13 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
                   <button
                     key={coupon.id}
                     type="button"
-                    onClick={() => setSelectedCoupon(isSelected ? null : coupon)}
+                    onClick={() => {
+                      if (!isSelected && form.gender === 'female' && femaleOption === 'group') {
+                        alert('지인 동반 할인과 쿠폰 할인은 중복 적용할 수 없습니다.\n1인 참석(일반 매칭)으로 변경 후 쿠폰을 선택해 주세요.');
+                        return;
+                      }
+                      setSelectedCoupon(isSelected ? null : coupon);
+                    }}
                     style={{
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                       padding: '14px 16px', borderRadius: '12px', border: 'none', cursor: 'pointer',
