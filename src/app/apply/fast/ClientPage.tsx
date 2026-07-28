@@ -1718,7 +1718,15 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
             </div>
           </div>
 
-
+          {/* Curation Notice */}
+          <div style={{ textAlign: 'center', marginBottom: '20px', padding: '12px', background: 'rgba(255,111,97,0.04)', borderRadius: '12px', border: '1px dashed rgba(255,111,97,0.2)' }}>
+            <p style={{ fontSize: '0.75rem', fontWeight: '700', color: '#FF6F61', marginBottom: '4px' }}>
+              이상형 기반 맞춤 큐레이션!
+            </p>
+            <p style={{ fontSize: '0.7rem', fontWeight: '500', color: '#666', letterSpacing: '-0.01em', lineHeight: 1.4 }}>
+              선발 시 남녀간의 이상형과 나이대를<br/>세밀하게 참고하여 최적의 매칭을 진행합니다.
+            </p>
+          </div>
 
           {/* Session list (checkbox) */}
           {loadingSessions ? (

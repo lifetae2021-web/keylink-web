@@ -465,6 +465,15 @@ function EventCard({ event, isSelected = false, userApp }: { event: KeylinkEvent
                 {/^\d/.test(String(event.targetMaleAge || '')) ? `참여 연령 : ${event.targetMaleAge}` : `선발 안내 : ${event.targetMaleAge}`}
               </span>
             </div>
+            <div style={{ paddingLeft: '4px' }}>
+              <p style={{ fontSize: '0.72rem', fontWeight: '700', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+                • 이상형 기반 맞춤 큐레이션 진행 중
+              </p>
+              <p style={{ fontSize: '0.68rem', fontWeight: '500', color: '#94a3b8', lineHeight: 1.4 }}>
+                • 선발 시 남녀간의 이상형과 나이대를<br/>
+                <span style={{ paddingLeft: '8px' }}>세밀하게 참고하여 최적의 매칭을 진행합니다.</span>
+              </p>
+            </div>
           </div>
         )}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', color: 'var(--color-text-muted)', fontSize: '0.9rem', fontWeight: '600' }}>
