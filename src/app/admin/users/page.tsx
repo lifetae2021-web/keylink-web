@@ -142,11 +142,13 @@ export default function UsersPage() {
           setSelectedSessionId(list[0].id);
         }
 
-        // Fetch latest application to inherit options
-        const appQ = query(collection(db, 'applications'), where('userId', '==', sessionRegistrationTarget.id), orderBy('createdAt', 'desc'), limit(1));
+        // Fetch latest application to inherit options (avoid composite index requirement by sorting in client)
+        const appQ = query(collection(db, 'applications'), where('userId', '==', sessionRegistrationTarget.id));
         const appSnap = await getDocs(appQ);
         if (!appSnap.empty) {
-          const latestApp = appSnap.docs[0].data();
+          const apps = appSnap.docs.map(d => d.data());
+          apps.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
+          const latestApp = apps[0];
           const option = sessionRegistrationTarget.gender === 'male' ? (latestApp.maleOption || 'basic') : (latestApp.femaleOption || 'basic');
           setInheritedOption(latestApp);
           setSelectedOption(option);
@@ -155,7 +157,8 @@ export default function UsersPage() {
           setSelectedOption('basic');
         }
       } catch (e) {
-        toast.error('기수 목록을 불러오지 못했습니다.');
+        console.error(e);
+        toast.error('데이터를 불러오지 못했습니다.');
       } finally {
         setIsFetchingSessions(false);
       }
