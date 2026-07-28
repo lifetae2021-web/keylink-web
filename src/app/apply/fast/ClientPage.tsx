@@ -1719,15 +1719,6 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
           </div>
 
 
-          {/* Curation Notice */}
-          <div style={{ textAlign: 'center', marginBottom: '20px', padding: '12px', background: 'rgba(255,111,97,0.04)', borderRadius: '12px', border: '1px dashed rgba(255,111,97,0.2)' }}>
-            <p style={{ fontSize: '0.75rem', fontWeight: '700', color: '#FF6F61', marginBottom: '4px' }}>
-              이상형 기반 맞춤 큐레이션!
-            </p>
-            <p style={{ fontSize: '0.7rem', fontWeight: '500', color: '#666', letterSpacing: '-0.01em', lineHeight: 1.4 }}>
-              선발 시 남녀간의 이상형과 나이대를<br/>세밀하게 참고하여 최적의 매칭을 진행합니다.
-            </p>
-          </div>
 
           {/* Session list (checkbox) */}
           {loadingSessions ? (
@@ -1768,12 +1759,12 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
                       {session.ageRange && (
                         <p style={{ color: '#FF6F61', fontSize: '0.65rem', fontWeight: '800', margin: '0' }}>👤 {session.ageRange}</p>
                       )}
-                      {session.theme && (
+                      {session.theme && !session.theme.includes('여성') && (
                         <p style={{ display: 'inline-block', background: '#F5F3FF', color: '#8B5CF6', fontSize: '0.65rem', fontWeight: '800', margin: '0', padding: '2px 6px', borderRadius: '4px', border: '1px solid rgba(139,92,246,0.2)' }}>
                           {session.theme}{session.theme.includes('특집') ? '' : ' 특집'}
                         </p>
                       )}
-                      {(!session.theme && session.targetMaleAge) && (
+                      {(!session.theme && session.targetMaleAge && !session.targetMaleAge.includes('여성')) && (
                         <p style={{ background: '#FFF5F4', color: '#FF6F61', fontSize: '0.65rem', fontWeight: '800', margin: '0', padding: '2px 6px', borderRadius: '4px', border: '1px solid rgba(255,111,97,0.2)' }}>
                           {/^\d/.test(String(session.targetMaleAge)) ? `연령: ${session.targetMaleAge}` : session.targetMaleAge}
                         </p>

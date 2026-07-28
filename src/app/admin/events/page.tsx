@@ -2502,10 +2502,14 @@ ${chatLink}
   let activeBadgeCls = "";
   if (active) {
     const now = new Date();
+    const twoHoursAfter = new Date(active.eventDate.getTime() + 2 * 60 * 60 * 1000);
     const twentyFourHoursAfter = new Date(active.eventDate.getTime() + 24 * 60 * 60 * 1000);
     const isEnded = active.isForceHidden || now >= twentyFourHoursAfter;
-    activeBadgeLabel = isEnded ? '종료' : now >= active.eventDate ? '진행 중' : isDetailFull ? '마감' : '모집 중';
-    activeBadgeCls = isEnded ? 'bg-slate-100 text-slate-500' : now >= active.eventDate ? 'bg-blue-100 text-blue-700' : isDetailFull ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-700';
+    const isCancelled = active.status === 'cancelled';
+    const isUnapproved = (now >= twoHoursAfter || active.isForceHidden) && !isCancelled && active.status !== 'completed';
+
+    activeBadgeLabel = isCancelled ? '취소' : isUnapproved ? '미승인' : isEnded ? '종료' : now >= active.eventDate ? '진행 중' : isDetailFull ? '마감' : '모집 중';
+    activeBadgeCls = isCancelled ? 'bg-amber-100 text-amber-600' : isUnapproved ? 'bg-rose-500 text-white font-black animate-pulse shadow-sm' : isEnded ? 'bg-slate-100 text-slate-500' : now >= active.eventDate ? 'bg-blue-100 text-blue-700' : isDetailFull ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-700';
   }
 
   return (
@@ -2626,10 +2630,12 @@ ${chatLink}
               const sel = selectedId === ev.id;
               const isOver = total >= maxT && maxT > 0; // v8.2.3 정원 초과 여부
               const now = new Date();
+              const twoHoursAfter = new Date(ev.eventDate.getTime() + 2 * 60 * 60 * 1000);
               const twentyFourHoursAfter = new Date(ev.eventDate.getTime() + 24 * 60 * 60 * 1000);
               const isEnded = ev.isForceHidden || now >= twentyFourHoursAfter;
-              const badgeLabel = isCancelled ? '취소' : isEnded ? '종료' : now >= ev.eventDate ? '진행 중' : isOver ? '마감' : '모집 중';
-              const badgeCls = isCancelled ? 'bg-amber-100 text-amber-600' : isEnded ? 'bg-slate-100 text-slate-500' : now >= ev.eventDate ? 'bg-blue-100 text-blue-700' : isOver ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-700';
+              const isUnapproved = (now >= twoHoursAfter || ev.isForceHidden) && !isCancelled && ev.status !== 'completed';
+              const badgeLabel = isCancelled ? '취소' : isUnapproved ? '미승인' : isEnded ? '종료' : now >= ev.eventDate ? '진행 중' : isOver ? '마감' : '모집 중';
+              const badgeCls = isCancelled ? 'bg-amber-100 text-amber-600' : isUnapproved ? 'bg-rose-500 text-white font-black animate-pulse shadow-sm' : isEnded ? 'bg-slate-100 text-slate-500' : now >= ev.eventDate ? 'bg-blue-100 text-blue-700' : isOver ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-700';
 
               // 디데이 계산
               const eventDay = new Date(ev.eventDate.getFullYear(), ev.eventDate.getMonth(), ev.eventDate.getDate());

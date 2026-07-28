@@ -31,7 +31,13 @@ export default function AllSessionsPage() {
       (ev.maxMale > 0 && currentMale >= ev.maxMale) &&
       (ev.maxFemale > 0 && currentFemale >= ev.maxFemale);
 
-    if (now >= twoHoursAfter) return { label: '종료', cls: 'bg-slate-100 text-slate-500' };
+    if (ev.status === 'cancelled') return { label: '취소', cls: 'bg-amber-100 text-amber-600' };
+    if (now >= twoHoursAfter || ev.isForceHidden) {
+      if (ev.status !== 'completed') {
+        return { label: '미승인', cls: 'bg-rose-500 text-white font-black animate-pulse shadow-sm' };
+      }
+      return { label: '종료', cls: 'bg-slate-100 text-slate-500' };
+    }
     if (now >= ev.eventDate) return { label: '진행 중', cls: 'bg-blue-100 text-blue-700' };
     if (isFull) return { label: '마감', cls: 'bg-red-100 text-red-600' };
     return { label: '모집 중', cls: 'bg-emerald-100 text-emerald-700' };

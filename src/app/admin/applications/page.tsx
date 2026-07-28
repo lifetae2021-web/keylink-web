@@ -2180,7 +2180,10 @@ function SessionDropdown({
         const maxParticipants = (ev.maxMale || 0) + (ev.maxFemale || 0);
         const isOver = maxParticipants > 0 && totalParticipants >= maxParticipants;
         let statusLabel = '모집중';
-        if (ev.status === 'completed' || now >= twoHoursAfter) statusLabel = '종료';
+        if (ev.status === 'cancelled') statusLabel = '취소';
+        else if (now >= twoHoursAfter || ev.isForceHidden) {
+          statusLabel = ev.status === 'completed' ? '종료' : '미승인';
+        }
         else if (now >= eventDate) statusLabel = '진행중';
         else if (isOver) statusLabel = '마감';
         const dateLabel = eventDate ? `(${format(eventDate, 'MM/dd')})` : '';
