@@ -173,11 +173,11 @@ export default function InstagramFeedModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-5xl h-[90vh] flex overflow-hidden">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-2 sm:p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-5xl h-[90vh] flex flex-col lg:flex-row overflow-hidden">
         
         {/* Left Side: Selection Panel */}
-        <div className="w-1/2 border-r border-slate-200 flex flex-col h-full bg-white">
+        <div className="w-full lg:w-1/2 border-b lg:border-b-0 lg:border-r border-slate-200 flex flex-col flex-1 lg:h-full bg-white min-h-[40vh]">
           <div className="p-5 border-b border-slate-100 flex items-center justify-between">
             <div>
               <h2 className="text-lg font-bold text-slate-800">인스타 피드용 이상형 추출</h2>
@@ -188,7 +188,7 @@ export default function InstagramFeedModal({
             </button>
           </div>
           
-          <div className="flex-1 overflow-y-auto p-5 grid grid-cols-2 gap-4">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Men */}
             <div>
               <div className="flex items-center justify-between mb-3">
@@ -262,7 +262,7 @@ export default function InstagramFeedModal({
         </div>
 
         {/* Right Side: Preview & Actions */}
-        <div className="w-1/2 bg-slate-50 flex flex-col h-full relative">
+        <div className="w-full lg:w-1/2 bg-slate-50 flex flex-col flex-1 lg:h-full relative min-h-[50vh]">
           <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-white">
             <span className="text-sm font-bold text-slate-500">미리보기 (1080x1350 세로형)</span>
             <div className="flex gap-2">
@@ -276,7 +276,7 @@ export default function InstagramFeedModal({
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto flex items-center justify-center p-8 bg-slate-100">
+          <div className="flex-1 overflow-auto flex lg:items-center justify-center p-4 sm:p-8 bg-slate-100">
             {/* Instagram Feed Canvas (1080x1350 Aspect Ratio roughly 4:5) */}
             <div 
               ref={captureRef}
