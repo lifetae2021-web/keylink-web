@@ -135,11 +135,13 @@ export default function InstagramFeedModal({
   const getSelectedIdealTypes = (gender: 'male' | 'female') => {
     const list = gender === 'male' ? men : women;
     const selectedIds = gender === 'male' ? selectedMen : selectedWomen;
-    return selectedIds.map(id => {
-      const p = list.find(x => x.id === id);
-      const originalText = p?.idealType || '이상형 정보 없음';
-      return { id, text: customTexts[id] ?? originalText };
-    });
+    return selectedIds
+      .map(id => list.find(x => x.id === id))
+      .filter((p): p is any => p !== undefined)
+      .map(p => {
+        const originalText = p.idealType || '이상형 정보 없음';
+        return { id: p.id, text: customTexts[p.id] ?? originalText };
+      });
   };
 
   const handleCopyGender = (gender: 'male' | 'female') => {
@@ -212,7 +214,7 @@ export default function InstagramFeedModal({
                       className={`p-3 rounded-xl border text-sm cursor-pointer transition-all ${isSelected ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-blue-300'}`}
                     >
                       <div className="flex items-center justify-between mb-1">
-                        <span className="font-bold text-slate-800">{p.name} ({p.age}년생)</span>
+                        <span className="font-bold text-slate-800">{p.name} ({p.age}세)</span>
                         {isSelected ? <CheckCircle2 size={16} className="text-blue-500" /> : <Circle size={16} className="text-slate-300" />}
                       </div>
                       <p className="text-xs text-slate-600 line-clamp-2">{p.idealType || '미작성'}</p>
@@ -247,7 +249,7 @@ export default function InstagramFeedModal({
                       className={`p-3 rounded-xl border text-sm cursor-pointer transition-all ${isSelected ? 'border-pink-500 bg-pink-50' : 'border-slate-200 hover:border-pink-300'}`}
                     >
                       <div className="flex items-center justify-between mb-1">
-                        <span className="font-bold text-slate-800">{p.name} ({p.age}년생)</span>
+                        <span className="font-bold text-slate-800">{p.name} ({p.age}세)</span>
                         {isSelected ? <CheckCircle2 size={16} className="text-pink-500" /> : <Circle size={16} className="text-slate-300" />}
                       </div>
                       <p className="text-xs text-slate-600 line-clamp-2">{p.idealType || '미작성'}</p>
@@ -321,7 +323,7 @@ export default function InstagramFeedModal({
                         </div>
                       </div>
                     ))}
-                    {selectedMen.length === 0 && <p className="text-slate-400 text-xs italic">선택된 남성 이상형이 없습니다.</p>}
+                    {getSelectedIdealTypes('male').length === 0 && <p className="text-slate-400 text-xs italic">선택된 남성 이상형이 없습니다.</p>}
                   </div>
                 </div>
 
@@ -354,7 +356,7 @@ export default function InstagramFeedModal({
                         </div>
                       </div>
                     ))}
-                    {selectedWomen.length === 0 && <p className="text-slate-400 text-xs italic text-right">선택된 여성 이상형이 없습니다.</p>}
+                    {getSelectedIdealTypes('female').length === 0 && <p className="text-slate-400 text-xs italic text-right">선택된 여성 이상형이 없습니다.</p>}
                   </div>
                 </div>
               </div>
