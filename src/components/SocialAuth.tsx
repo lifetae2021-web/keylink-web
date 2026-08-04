@@ -133,7 +133,7 @@ export default function SocialAuth({ isAdmin, isLoading, setIsLoading, lastMetho
     }
 
     setIsLoading(true);
-    const kakaoAuthUrl = `https://kauth.kakao.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&state=${state}&scope=profile_nickname`;
+    const kakaoAuthUrl = `https://kauth.kakao.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&state=${state}&scope=profile_nickname&prompt=select_account`;
     setTimeout(() => { window.location.href = kakaoAuthUrl; }, 300);
   };
 
