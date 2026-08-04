@@ -4182,7 +4182,10 @@ ${chatLink}
         onClose={() => setInstagramModalOpen(false)}
         sessionId={selectedId || ''}
         sessionName={sessions.find(s => s.id === selectedId)?.title || ''}
-        participants={participants}
+        participants={participants.map(p => ({
+          ...p,
+          idealType: userMap[p.userId]?.idealType || p.idealType
+        }))}
       />
 
       {/* v14.1.0: 선발 전 경고 모달 (지인회피 / 중복만남) */}
