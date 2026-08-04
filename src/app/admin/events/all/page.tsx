@@ -81,13 +81,13 @@ export default function AllSessionsPage() {
                   onClick={() => router.push(`/admin/events?session=${ev.id}`)}
                   className="bg-white border border-slate-200 rounded-xl p-4 text-left hover:border-slate-300 hover:shadow-sm transition-all"
                 >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-slate-800">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-0 mb-3">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-bold text-slate-800 text-base whitespace-nowrap">
                         {ev.region === 'busan' ? '부산' : '창원'} {ev.episodeNumber}기
                       </span>
                       {showDDay && (
-                        <span className={`text-[10px] font-black px-1.5 py-0.5 rounded border ${
+                        <span className={`text-[10px] font-black px-1.5 py-0.5 rounded border whitespace-nowrap ${
                           diffDays === 0 
                             ? "bg-rose-100 text-rose-700 border-rose-200 animate-pulse" 
                             : diffDays <= 3 
@@ -97,24 +97,24 @@ export default function AllSessionsPage() {
                           {diffDays === 0 ? "D-Day" : `D-${diffDays}`}
                         </span>
                       )}
-                      <span className={`text-[0.65rem] font-bold px-2 py-0.5 rounded-full ${badge.cls}`}>
+                      <span className={`text-[0.65rem] font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${badge.cls}`}>
                         {badge.label}
                       </span>
                     </div>
-                    <div className="flex items-center gap-1 text-slate-400 text-xs">
+                    <div className="flex items-center gap-1 text-slate-500 text-xs font-medium whitespace-nowrap shrink-0 bg-slate-50 px-2 py-1 rounded-md">
                       <Users size={12} />
                       <span>남 {currentMale}/{ev.maxMale} · 여 {currentFemale}/{ev.maxFemale}</span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-4 text-xs text-slate-400">
-                    <div className="flex items-center gap-1">
-                      <Calendar size={12} />
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-xs text-slate-500">
+                    <div className="flex items-center gap-1.5 whitespace-nowrap">
+                      <Calendar size={13} />
                       <span>{format(ev.eventDate, 'yyyy.MM.dd (E) HH:mm', { locale: ko })}</span>
                     </div>
                     {ev.venue && (
-                      <div className="flex items-center gap-1">
-                        <MapPin size={12} />
-                        <span>{ev.venue}</span>
+                      <div className="flex items-center gap-1.5 truncate">
+                        <MapPin size={13} className="shrink-0" />
+                        <span className="truncate">{ev.venue}</span>
                       </div>
                     )}
                   </div>
