@@ -632,6 +632,16 @@ function MyPageContent() {
             )}
           </div>
 
+          {/* 프로필 수정 (비회원) */}
+          <div style={{ marginBottom: '16px' }}>
+            <button
+              onClick={() => setIsEditing(true)}
+              style={{ width: '100%', padding: '16px', background: '#fff', borderRadius: '20px', border: '1px solid #f1f5f9', fontWeight: '800', color: '#333', fontSize: '0.95rem', cursor: 'pointer', boxShadow: '0 2px 12px rgba(0,0,0,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FF6F61" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> 내 프로필 수정하기
+            </button>
+          </div>
+
           {/* 득표수 블러 처리 카드 */}
           <div style={{ background: '#fff', borderRadius: '20px', padding: '24px', marginBottom: '16px', boxShadow: '0 2px 12px rgba(0,0,0,0.04)', border: '1px solid #f1f5f9', position: 'relative', overflow: 'hidden' }}>
             <h3 style={{ fontWeight: '900', color: '#111', marginBottom: '16px', fontSize: '1rem' }}>💕 호감 득표 현황</h3>
@@ -647,16 +657,6 @@ function MyPageContent() {
               <span style={{ fontSize: '1.5rem', marginBottom: '6px' }}>🔒</span>
               <p style={{ fontSize: '0.82rem', fontWeight: '800', color: '#555' }}>정식 가입 시 확인 가능</p>
             </div>
-          </div>
-
-          {/* 프로필 수정 (비회원) */}
-          <div style={{ marginBottom: '20px' }}>
-            <button
-              onClick={() => setIsEditing(true)}
-              style={{ width: '100%', padding: '16px', background: '#fff', borderRadius: '20px', border: '1px solid #f1f5f9', fontWeight: '800', color: '#333', fontSize: '0.95rem', cursor: 'pointer', boxShadow: '0 2px 12px rgba(0,0,0,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FF6F61" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> 내 프로필 수정하기
-            </button>
           </div>
 
           {/* 회원가입 유도 CTA */}

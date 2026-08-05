@@ -76,10 +76,11 @@ async function getKakaoProfile(code: string, redirectUri: string) {
   return {
     kakaoId: profile.id.toString(),
     nickname: profile.properties?.nickname || profile.kakao_account?.profile?.nickname || '카카오 사용자',
+    email: profile.kakao_account?.email || null,
   };
 }
 
-async function getOrCreateFirebaseUser(kakaoId: string, nickname: string) {
+async function getOrCreateFirebaseUser(kakaoId: string, nickname: string, email: string | null) {
   const firebaseUid = `kakao_${kakaoId}`;
 
   // Firebase Auth에 유저가 있는지 확인, 없으면 생성
@@ -112,6 +113,7 @@ async function getOrCreateFirebaseUser(kakaoId: string, nickname: string) {
         provider: 'kakao',
         role: 'user',
         createdAt: now,
+        kakaoEmail: email,
       });
 
       // 신규 카카오 가입 시 웰컴 쿠폰 자동 발급
@@ -126,27 +128,42 @@ async function getOrCreateFirebaseUser(kakaoId: string, nickname: string) {
       });
       
       return { firebaseUid, isNewUser: true, existingData: null };
+    } else {
+      // 기존 유저인 경우에도 이메일 정보 업데이트
+      if (email && userDoc.data()?.kakaoEmail !== email) {
+        transaction.update(userRef, { kakaoEmail: email });
+      }
+      return { firebaseUid, isNewUser: false, existingData: userDoc.data() };
     }
-
-    return { firebaseUid, isNewUser: false, existingData: userDoc.data() };
   });
 
   return result;
 }
 
 // GET: 리다이렉트 방식 (카카오에서 콜백)
-export async function GET(req: NextRequest) {
-  const { searchParams, origin } = new URL(req.url);
-  const KAKAO_REDIRECT_URI = `${origin}/api/auth/kakao`;
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
   const code = searchParams.get('code');
   const state = searchParams.get('state') || 'user';
+  const errorParam = searchParams.get('error');
+  const origin = new URL(request.url).origin;
   const isAdmin = state === 'admin';
 
-  if (!code) return NextResponse.redirect(`${origin}/login?error=code_missing`);
+  if (errorParam) {
+    const errorDesc = searchParams.get('error_description');
+    console.error('[Kakao Auth] User cancelled or error occurred:', errorParam, errorDesc);
+    // Redirect to login with error parameter
+    return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(errorParam)}&message=${encodeURIComponent(errorDesc || '')}`, request.url));
+  }
+
+  if (!code) {
+    return NextResponse.redirect(new URL('/login?error=no_code', request.url));
+  }
 
   try {
-    const { kakaoId, nickname } = await getKakaoProfile(code, KAKAO_REDIRECT_URI);
-    const { firebaseUid, isNewUser, existingData } = await getOrCreateFirebaseUser(kakaoId, nickname);
+    const redirectUri = `${origin}/api/auth/kakao`;
+    const profile = await getKakaoProfile(code, redirectUri);
+    const { firebaseUid, isNewUser, existingData } = await getOrCreateFirebaseUser(profile.kakaoId, profile.nickname, profile.email);
 
     if (isAdmin) {
       const r = existingData?.role;
@@ -247,8 +264,8 @@ export async function POST(req: NextRequest) {
 
     if (!code) return NextResponse.json({ error: 'Authorization code is missing' }, { status: 400 });
 
-    const { kakaoId, nickname } = await getKakaoProfile(code, KAKAO_REDIRECT_URI);
-    const { firebaseUid, isNewUser, existingData } = await getOrCreateFirebaseUser(kakaoId, nickname);
+    const { kakaoId, nickname, email } = await getKakaoProfile(code, KAKAO_REDIRECT_URI);
+    const { firebaseUid, isNewUser, existingData } = await getOrCreateFirebaseUser(kakaoId, nickname, email);
 
     if (isAdmin) {
       const r = existingData?.role;

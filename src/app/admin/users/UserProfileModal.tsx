@@ -1,6 +1,6 @@
 'use client';
 
-import { X, User, ShieldCheck, Phone, Camera, MapPin, Briefcase, Users2, Wine, Cigarette, Info, Coffee, Heart, HeartOff, Calendar, Ruler, Weight, ExternalLink, History, AlertCircle, CheckCircle, ChevronLeft, ChevronRight, ClipboardList, KeyRound, Copy, MessageSquare } from 'lucide-react';
+import { X, User, ShieldCheck, Phone, Camera, MapPin, Briefcase, Users2, Wine, Cigarette, Info, Coffee, Heart, HeartOff, Calendar, Ruler, Weight, ExternalLink, History, AlertCircle, CheckCircle, ChevronLeft, ChevronRight, ClipboardList, KeyRound, Copy, MessageSquare, Mail } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 import { db, auth } from '@/lib/firebase';
@@ -531,6 +531,7 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
                 {/* 1. 핵심 연락 정보 */}
                 <div className="bg-slate-50/50 border border-slate-100 rounded-[2rem] p-6 space-y-1">
                   <DetailRow label="연락처" value={user.phone} valueNode={user.phone ? <PhoneActionBadge phone={user.phone} /> : undefined} icon={Phone} />
+                  {user.kakaoEmail && <DetailRow label="카카오 이메일" value={user.kakaoEmail} icon={Mail} />}
                   <DetailRow label="인스타그램" value={user.instaId} icon={Camera} />
                   <DetailRow label="거주지" value={user.residence || user.location} icon={MapPin} />
 
