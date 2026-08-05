@@ -531,7 +531,12 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
                 {/* 1. 핵심 연락 정보 */}
                 <div className="bg-slate-50/50 border border-slate-100 rounded-[2rem] p-6 space-y-1">
                   <DetailRow label="연락처" value={user.phone} valueNode={user.phone ? <PhoneActionBadge phone={user.phone} /> : undefined} icon={Phone} />
-                  {user.kakaoEmail && <DetailRow label="카카오 이메일" value={user.kakaoEmail} icon={Mail} />}
+                  <DetailRow 
+                    label="카카오 이메일" 
+                    value={user.kakaoEmail} 
+                    valueNode={!user.kakaoEmail ? <span className="text-slate-400 italic text-xs">미수집 (재로그인 시 수집됨)</span> : undefined} 
+                    icon={Mail} 
+                  />
                   <DetailRow label="인스타그램" value={user.instaId} icon={Camera} />
                   <DetailRow label="거주지" value={user.residence || user.location} icon={MapPin} />
 
