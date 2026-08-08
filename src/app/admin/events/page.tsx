@@ -2665,8 +2665,7 @@ ${chatLink}
                     <p
                       className={`text-[0.9rem] font-bold flex items-center gap-1.5 ${sel ? "text-[#FF6F61]" : "text-slate-800"}`}
                     >
-                      {ev.region === "busan" ? "부산" : "창원"}{" "}
-                      {ev.episodeNumber}기
+                      {ev.title ? ev.title.replace(' 로테이션 소개팅', '') : `${ev.region === "busan" ? "부산" : "창원"} ${ev.episodeNumber}기`}
                       {showDDay && (
                         <span className={`text-[10px] font-black px-1.5 py-0.5 rounded border ${
                           diffDays === 0 
@@ -2743,8 +2742,7 @@ ${chatLink}
                     <div>
                       <div className="flex items-center gap-2 mb-0.5">
                         <h3 className="text-slate-900 text-xl font-black tracking-tight flex items-center gap-1.5">
-                          {active.region === "busan" ? "부산" : "창원"}{" "}
-                          {active.episodeNumber}기
+                          {active.title ? active.title.replace(' 로테이션 소개팅', '') : `${active.region === "busan" ? "부산" : "창원"} ${active.episodeNumber}기`}
                           {active.isTest && (
                             <span className="text-[10px] font-extrabold text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded-md border border-amber-200">
                               테스트
