@@ -3299,7 +3299,7 @@ ${chatLink}
                                                   <span className="whitespace-nowrap">{birthYear}</span>
                                                   <span className="text-slate-300">·</span>
                                                   <span className="flex items-center gap-1 min-w-0">
-                                                    {isDummyApp(app) ? (
+                                                    {(isDummyApp(app) || app.userId?.startsWith("dummy_")) ? (
                                                       editingAppJobId === app.id ? (
                                                         <input
                                                           autoFocus
@@ -3439,7 +3439,7 @@ ${chatLink}
                                                   <span>{getBirthYear(app)}</span>
                                                   <span>·</span>
                                                   <span className="flex items-center gap-1">
-                                                    {isDummyApp(app) ? (
+                                                    {(isDummyApp(app) || app.userId?.startsWith("dummy_")) ? (
                                                       editingAppJobId === app.id ? (
                                                         <input
                                                           autoFocus
@@ -3766,7 +3766,7 @@ ${chatLink}
                                           <span className="whitespace-nowrap">{birthYear}</span>
                                           <span className="text-slate-300">·</span>
                                           <span className="flex items-center gap-1 min-w-0">
-                                            {isDummyApp(app) ? (
+                                            {(isDummyApp(app) || app.userId?.startsWith("dummy_")) ? (
                                               editingAppJobId === app.id ? (
                                                 <input
                                                   autoFocus
