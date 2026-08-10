@@ -12,9 +12,10 @@ const db = admin.firestore();
 async function update() {
   const sessionId = 'h93In0JvH60iNEFIRrU7';
   await db.collection('sessions').doc(sessionId).update({
-    title: '부산 전문직 특집'
+    title: '전문직 특집 1기',
+    theme: admin.firestore.FieldValue.delete()
   });
-  console.log('Successfully updated session title to 부산 전문직 특집');
+  console.log('Successfully updated session title to 전문직 특집 1기 and removed theme');
 }
 
 update().catch(console.error).finally(() => process.exit(0));

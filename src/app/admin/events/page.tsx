@@ -1037,10 +1037,24 @@ ${chatLink}`;
     if (!app || !newValue.trim()) return;
     try {
       const { doc, updateDoc } = await import('firebase/firestore');
-      await updateDoc(doc(db, 'applications', app.id), {
-        job: newValue.trim(),
-        updatedAt: new Date()
-      });
+      
+      const updatePromises = [
+        updateDoc(doc(db, 'applications', app.id), {
+          job: newValue.trim(),
+          updatedAt: new Date()
+        })
+      ];
+      
+      // 더미 유저일 경우 유저 컬렉션의 job도 함께 업데이트하여 신청관리 등에 연동
+      if (app.userId) {
+        updatePromises.push(
+          updateDoc(doc(db, 'users', app.userId), {
+            job: newValue.trim()
+          }).catch(e => console.warn('User doc update failed:', e)) // 에러 무시 (더미유저가 아닐 수도 있으나 방어코드)
+        );
+      }
+      
+      await Promise.all(updatePromises);
       toast.success('직업명이 수정되었습니다.');
       setEditingAppJobId(null);
     } catch (e) {
