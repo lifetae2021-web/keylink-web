@@ -532,7 +532,7 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
               {lineupRows.length > 0 && (
                 <div className="bg-white rounded-[40px] p-8 border border-gray-100 shadow-lg mb-8">
                   <h4 className="text-lg font-black text-gray-900 mb-2 flex items-center gap-2">
-                    <Sparkles size={20} className="text-pink-400" /> {session?.episodeNumber}기 참가자 라인업
+                    <Sparkles size={20} className="text-pink-400" /> {session?.title ? session.title.replace(' 로테이션 소개팅', '') : `${session?.episodeNumber}기`} 참가자 라인업
                   </h4>
                   <p className="text-xs text-gray-400 font-medium mb-6">개인정보 보호를 위해 직업·키 정보는 5초마다 랜덤으로 섞입니다.</p>
 
@@ -736,7 +736,7 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
                   <Trophy size={48} fill="white" />
                 </div>
                 <h2 className="text-3xl md:text-4xl font-black text-gray-900 mb-4 leading-tight">
-                  {session?.region === 'busan' ? '부산' : '창원'} {session?.episodeNumber}기<br/>
+                  {session?.title ? session.title.replace(' 로테이션 소개팅', '') : `${session?.region === 'busan' ? '부산' : '창원'} ${session?.episodeNumber}기`}<br/>
                   공식 매칭 결과 리포트
                 </h2>
                 <p className="text-gray-500 font-semibold mb-6">
@@ -751,7 +751,7 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
               {lineupRows.length > 0 && (
                 <div className="bg-white rounded-[40px] p-8 border border-gray-100 shadow-lg">
                   <h4 className="text-lg font-black text-gray-900 mb-2 flex items-center gap-2">
-                    <Sparkles size={20} className="text-pink-400" /> {session?.episodeNumber}기 참가자 라인업
+                    <Sparkles size={20} className="text-pink-400" /> {session?.title ? session.title.replace(' 로테이션 소개팅', '') : `${session?.episodeNumber}기`} 참가자 라인업
                   </h4>
                   <p className="text-xs text-gray-400 font-medium mb-6">개인정보 보호를 위해 직업·키 정보는 5초마다 랜덤으로 섞입니다.</p>
                   <div className="flex gap-3 mb-6">

@@ -90,7 +90,7 @@ export default function ResultDetailPage({ params }: { params: Promise<{ id: str
               <Sparkles size={16} /> EPISODE MATCHING REPORT
             </div>
             <h1 style={{ fontSize: '3rem', fontWeight: '900', marginBottom: '20px', letterSpacing: '-0.03em', lineHeight: 1.2, color: '#111' }}>
-              <span className="kl-gradient-text">{session.episodeNumber}기</span> {session.region === 'busan' ? '부산' : '창원'} 로테이션 소개팅<br/>
+              <span className="kl-gradient-text">{session.title ? session.title.replace(' 로테이션 소개팅', '') : `${session.episodeNumber}기`}</span> {session.title ? '로테이션 소개팅' : `${session.region === 'busan' ? '부산' : '창원'} 로테이션 소개팅`}<br/>
               성공적으로 마무리되었습니다!
             </h1>
             <p style={{ color: '#666', fontSize: '1.2rem', fontWeight: '500' }}>
