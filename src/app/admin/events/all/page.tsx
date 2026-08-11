@@ -84,7 +84,7 @@ export default function AllSessionsPage() {
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-0 mb-3">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-bold text-slate-800 text-base whitespace-nowrap">
-                        {ev.region === 'busan' ? '부산' : '창원'} {ev.episodeNumber}기
+                        {ev.title ? ev.title.replace(' 로테이션 소개팅', '') : `${ev.region === 'busan' ? '부산' : '창원'} ${ev.episodeNumber}기`}
                       </span>
                       {showDDay && (
                         <span className={`text-[10px] font-black px-1.5 py-0.5 rounded border whitespace-nowrap ${
