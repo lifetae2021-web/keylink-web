@@ -1112,7 +1112,7 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                       const userBirthDate = user.birthDate || app.birthDate || '';
                       
                       let isAgeMismatch = false;
-                      if (targetAgeRange && userBirthDate) {
+                      if (app.gender === 'male' && targetAgeRange && userBirthDate) {
                         let birthYearStr = '';
                         if (userBirthDate.includes('-')) {
                           birthYearStr = userBirthDate.split('-')[0].slice(-2);
