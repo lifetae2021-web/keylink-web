@@ -377,8 +377,13 @@ export default function UsersPage() {
         if (cachedPhotoMap && Date.now() - cachedPhotoMap.ts < 5 * 60 * 1000) {
           photoMap = cachedPhotoMap.map;
         } else {
-          const appSnap = await getDocs(collection(db, 'private_applications'));
-          const publicAppSnap = await getDocs(collection(db, 'applications'));
+          // 사진 없는 유저 전체를 찾겠다고 컬렉션 전체를 훑지 않고,
+          // 필요한 유저 ID만 where('userId','in',...)로 대상을 좁혀서 조회 (Firestore in 쿼리는 최대 30개)
+          const missingUserIds = usersNeedingPhotos.map((u: { id: string }) => u.id);
+          const idChunks: string[][] = [];
+          for (let i = 0; i < missingUserIds.length; i += 30) {
+            idChunks.push(missingUserIds.slice(i, i + 30));
+          }
 
           const processDocs = (docs: any[]) => {
             docs.forEach(d => {
@@ -389,8 +394,14 @@ export default function UsersPage() {
             });
           };
 
-          processDocs(publicAppSnap.docs);
-          processDocs(appSnap.docs);
+          for (const chunk of idChunks) {
+            const [appSnap, publicAppSnap] = await Promise.all([
+              getDocs(query(collection(db, 'private_applications'), where('userId', 'in', chunk))),
+              getDocs(query(collection(db, 'applications'), where('userId', 'in', chunk))),
+            ]);
+            processDocs(publicAppSnap.docs);
+            processDocs(appSnap.docs);
+          }
           cachedPhotoMap = { map: photoMap, ts: Date.now() };
         }
 
