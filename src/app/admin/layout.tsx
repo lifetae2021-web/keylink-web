@@ -206,7 +206,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     if (authState !== 'admin' && authState !== 'super_admin') return;
 
     // 1-a. 활성 기수 동기화
-    const unsubSessions = onSnapshot(collection(db, 'sessions'), (snap) => {
+    // 신청 관리 뱃지 카운트용으로만 쓰이는 값이라 실시간 구독은 불필요 —
+    // 세션 컬렉션에 어떤 문서가 바뀌든 매번 전체를 재계산하던 상시 리스너를
+    // 관리자 로그인 시 1회성 조회로 변경 (기존 필터링 로직은 동일하게 유지)
+    getDocs(collection(db, 'sessions')).then((snap) => {
       const activeIds = new Set<string>();
       const now = new Date();
       snap.forEach(d => {
@@ -219,7 +222,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         if (!isEnded) activeIds.add(d.id);
       });
       setActiveSessionIds(activeIds);
-    }, (err) => {
+    }).catch((err) => {
       console.error('Error syncing active sessions:', err);
     });
 
@@ -241,7 +244,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     });
 
     return () => {
-      unsubSessions();
       unsubApps();
     };
   }, [authState]);
