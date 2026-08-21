@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
+import dynamic from "next/dynamic";
 import { createPortal } from "react-dom";
 import {
   Calendar,
@@ -65,10 +66,11 @@ import {
 import Link from "next/link";
 import { getVoteConfigTemplate } from "@/lib/firestore/cms";
 import { getAllVotesBySession } from "@/lib/firestore/votes";
-import SMSPreviewModal from "@/components/admin/SMSPreviewModal";
-import UserProfileModal from "@/app/admin/users/UserProfileModal";
-import MatchingDrawer from "@/components/admin/MatchingDrawer";
-import InstagramFeedModal from "./InstagramFeedModal";
+// 평소엔 닫혀있는 모달이라 페이지 최초 로딩 시 번들에 끼워 넣지 않고 열릴 때만 불러옴
+const SMSPreviewModal = dynamic(() => import("@/components/admin/SMSPreviewModal"), { ssr: false });
+const UserProfileModal = dynamic(() => import("@/app/admin/users/UserProfileModal"), { ssr: false });
+const MatchingDrawer = dynamic(() => import("@/components/admin/MatchingDrawer"), { ssr: false });
+const InstagramFeedModal = dynamic(() => import("./InstagramFeedModal"), { ssr: false });
 
 const card = "bg-white border border-slate-200 rounded-xl shadow-sm";
 

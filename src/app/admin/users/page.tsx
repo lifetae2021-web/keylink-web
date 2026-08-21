@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import {
   Search, CheckCircle, XCircle,
   Download, ShieldCheck, ChevronLeft, ChevronRight, Loader2,
@@ -15,9 +16,10 @@ import {
 import { onAuthStateChanged } from 'firebase/auth';
 import { format } from 'date-fns';
 import { chosungIncludes } from '@/lib/utils';
-import UserProfileModal from './UserProfileModal';
-import SMSPreviewModal from '@/components/admin/SMSPreviewModal';
-import VisitLogModal from './VisitLogModal';
+// 평소엔 닫혀있는 모달이라 페이지 최초 로딩 시 번들에 끼워 넣지 않고 열릴 때만 불러옴
+const UserProfileModal = dynamic(() => import('./UserProfileModal'), { ssr: false });
+const SMSPreviewModal = dynamic(() => import('@/components/admin/SMSPreviewModal'), { ssr: false });
+const VisitLogModal = dynamic(() => import('./VisitLogModal'), { ssr: false });
 
 type Status = 'all' | 'pending' | 'verified' | 'rejected' | 'dummy' | 'waitpool' | 'guest';
 

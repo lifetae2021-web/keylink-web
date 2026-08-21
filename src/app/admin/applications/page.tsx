@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, Fragment, useRef } from 'react';
+import dynamic from 'next/dynamic';
 import { createPortal } from 'react-dom';
 import {
   Search, CheckCircle, XCircle, Eye,
@@ -12,7 +13,8 @@ import {
 import toast from 'react-hot-toast';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import UserProfileModal from '../users/UserProfileModal';
+// 평소엔 닫혀있는 모달이라 페이지 최초 로딩 시 번들에 끼워 넣지 않고 열릴 때만 불러옴
+const UserProfileModal = dynamic(() => import('../users/UserProfileModal'), { ssr: false });
 import {
   collection, getDocs, doc, query, where, orderBy, Timestamp, getDoc, onSnapshot, writeBatch, increment, limit, deleteField
 } from 'firebase/firestore';
@@ -25,7 +27,7 @@ import {
 } from '@/lib/admin/selection';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
-import SMSPreviewModal from '@/components/admin/SMSPreviewModal';
+const SMSPreviewModal = dynamic(() => import('@/components/admin/SMSPreviewModal'), { ssr: false });
 import { chosungIncludes } from '@/lib/utils';
 import { updateDoc } from 'firebase/firestore';
 import AdminApplicationList from '@/components/admin/AdminApplicationList'; // v8.12.7: 1:1 매칭 리스트 컴포넌트 추가
