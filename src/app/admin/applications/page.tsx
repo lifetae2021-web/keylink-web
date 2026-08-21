@@ -107,6 +107,8 @@ export default function ApplicationsPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [dummyFilter, setDummyFilter] = useState<'exclude' | 'only'>('exclude');
   const [selectedAppIds, setSelectedAppIds] = useState<string[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 10;
 
   // 매칭 결과 (matchingSummaries 컬렉션)
   const [matchingSummary, setMatchingSummary] = useState<any>(null);
@@ -815,6 +817,12 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
     return result;
   }, [baseFiltered, userMap, searchQuery, filterGender, ageFilter, statusFilter, sortConfig]);
 
+  // 페이지네이션: 필터 변경 시 1페이지로 리셋
+  useEffect(() => { setCurrentPage(1); }, [searchQuery, filterGender, ageFilter, statusFilter, selectedEventId, dummyFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const pagedApps = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
   return (
     <div className="space-y-6 animate-in fade-in duration-400 pb-8">
       <div className="flex flex-col gap-1">
@@ -1055,10 +1063,10 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                       <input
                         type="checkbox"
                         className="rounded border-slate-300 text-[#FF7E7E] focus:ring-[#FF7E7E] cursor-pointer"
-                        checked={filtered.length > 0 && selectedAppIds.length === filtered.length}
+                        checked={pagedApps.length > 0 && pagedApps.every(app => selectedAppIds.includes(app.id))}
                         onChange={(e) => {
                           if (e.target.checked) {
-                            setSelectedAppIds(filtered.map(app => app.id));
+                            setSelectedAppIds(prev => Array.from(new Set([...prev, ...pagedApps.map(app => app.id)])));
                           } else {
                             setSelectedAppIds([]);
                           }
@@ -1100,7 +1108,7 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                       </td>
                     </tr>
                   ) : (
-                    filtered.map((app, index) => {
+                    pagedApps.map((app, index) => {
                       const user = userMap[app.userId] || {};
 const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS] || DEPOSIT_STATUS.pending;
                       const aStatus = APP_STATUS[app.status] || APP_STATUS['applied'];
@@ -1722,6 +1730,44 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                 </tbody>
               </table>
             </div>
+            {/* 데스크탑 페이지네이션 */}
+            {totalPages > 1 && (
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6, padding: '20px 0 4px' }}>
+                <button
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  style={{ width: 36, height: 36, borderRadius: 10, border: '1px solid #E2E8F0', background: currentPage === 1 ? '#F8FAFC' : '#fff', color: currentPage === 1 ? '#CBD5E1' : '#475569', cursor: currentPage === 1 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.85rem', transition: 'all 0.15s' }}
+                >
+                  ‹
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 2)
+                  .reduce<(number | string)[]>((acc, p, idx, arr) => {
+                    if (idx > 0 && (p as number) - (arr[idx - 1] as number) > 1) acc.push('...');
+                    acc.push(p);
+                    return acc;
+                  }, [])
+                  .map((p, idx) => p === '...' ? (
+                    <span key={`dot-${idx}`} style={{ padding: '0 4px', color: '#94A3B8', fontSize: '0.85rem' }}>…</span>
+                  ) : (
+                    <button
+                      key={p}
+                      onClick={() => setCurrentPage(p as number)}
+                      style={{ width: 36, height: 36, borderRadius: 10, border: currentPage === p ? 'none' : '1px solid #E2E8F0', background: currentPage === p ? '#FF7E7E' : '#fff', color: currentPage === p ? '#fff' : '#475569', cursor: 'pointer', fontWeight: 700, fontSize: '0.85rem', transition: 'all 0.15s' }}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                <button
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  style={{ width: 36, height: 36, borderRadius: 10, border: '1px solid #E2E8F0', background: currentPage === totalPages ? '#F8FAFC' : '#fff', color: currentPage === totalPages ? '#CBD5E1' : '#475569', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.85rem', transition: 'all 0.15s' }}
+                >
+                  ›
+                </button>
+                <span style={{ marginLeft: 8, fontSize: '0.75rem', color: '#94A3B8', fontWeight: 600 }}>{currentPage}/{totalPages} 페이지 (총 {filtered.length}명)</span>
+              </div>
+            )}
           </div>
 
           {/* Mobile View: Card List (Light Premium Theme - Clean White, Compliant with Compact Spacing) */}
@@ -1749,7 +1795,7 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                 )}
               </div>
             ) : (
-              filtered.map((app) => {
+              pagedApps.map((app) => {
                 const user = userMap[app.userId] || {};
                 const event = events.find(e => e.id === app.sessionId);
                 const regionName = event?.region === 'busan' ? '부산' : (event?.region === 'changwon' ? '창원' : '');
@@ -2002,6 +2048,43 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                   </div>
                 );
               })
+            )}
+            {/* 모바일 페이지네이션 */}
+            {totalPages > 1 && (
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6, padding: '16px 0 4px' }}>
+                <button
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  style={{ width: 36, height: 36, borderRadius: 10, border: '1px solid #E2E8F0', background: currentPage === 1 ? '#F8FAFC' : '#fff', color: currentPage === 1 ? '#CBD5E1' : '#475569', cursor: currentPage === 1 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.9rem' }}
+                >
+                  ‹
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+                  .reduce<(number | string)[]>((acc, p, idx, arr) => {
+                    if (idx > 0 && (p as number) - (arr[idx - 1] as number) > 1) acc.push('...');
+                    acc.push(p);
+                    return acc;
+                  }, [])
+                  .map((p, idx) => p === '...' ? (
+                    <span key={`dot-${idx}`} style={{ padding: '0 2px', color: '#94A3B8', fontSize: '0.8rem' }}>…</span>
+                  ) : (
+                    <button
+                      key={p}
+                      onClick={() => setCurrentPage(p as number)}
+                      style={{ width: 36, height: 36, borderRadius: 10, border: currentPage === p ? 'none' : '1px solid #E2E8F0', background: currentPage === p ? '#FF7E7E' : '#fff', color: currentPage === p ? '#fff' : '#475569', cursor: 'pointer', fontWeight: 700, fontSize: '0.85rem' }}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                <button
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  style={{ width: 36, height: 36, borderRadius: 10, border: '1px solid #E2E8F0', background: currentPage === totalPages ? '#F8FAFC' : '#fff', color: currentPage === totalPages ? '#CBD5E1' : '#475569', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.9rem' }}
+                >
+                  ›
+                </button>
+              </div>
             )}
           </div>
         </>
