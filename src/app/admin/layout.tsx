@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { auth, db } from '@/lib/firebase';
-import { onAuthStateChanged } from 'firebase/auth';
+import { onAuthStateChanged, type User } from 'firebase/auth';
 import { 
   collection, query, where, onSnapshot, doc, getDoc,
   orderBy, limit, getDocs
@@ -33,6 +33,19 @@ const PAGE_TITLE: Record<string, string> = {
   '/admin/excel-cleaner': '참여자 엑셀 정리',
 };
 
+// 관리자 권한 확인(getIdToken/getDoc)이 네트워크 지연으로 응답도 실패도 없이 멈출 때
+// "권한 확인 중..." 화면에 무한히 갇히는 것을 막기 위한 타임아웃 래퍼
+const AUTH_CHECK_TIMEOUT_MS = 10000;
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('AUTH_CHECK_TIMEOUT')), ms);
+    promise.then(
+      (val) => { clearTimeout(timer); resolve(val); },
+      (err) => { clearTimeout(timer); reject(err); }
+    );
+  });
+}
+
 // v8.12.8: 리얼타임 알림 시스템 (더미데이터 제거)
 interface NotificationItem {
   id: string;
@@ -56,10 +69,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [privateNotis, setPrivateNotis] = useState<NotificationItem[]>([]);
   const [cancelledNotis, setCancelledNotis] = useState<NotificationItem[]>([]);
   const [lastViewedNoti, setLastViewedNoti] = useState<number>(0);
-  const [authState, setAuthState] = useState<'loading' | 'super_admin' | 'admin' | 'denied'>('loading');
+  const [authState, setAuthState] = useState<'loading' | 'super_admin' | 'admin' | 'denied' | 'timeout'>('loading');
   const isSuperAdmin = authState === 'super_admin';
   const [pendingCount, setPendingCount] = useState(0);
   const notiRef = useRef<HTMLDivElement>(null);
+  const authUserRef = useRef<User | null>(null);
 
   // 소개팅 진행 실시간 플로팅 미니 타이머용 상태
   const [runningSession, setRunningSession] = useState<any>(null);
@@ -437,41 +451,62 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pageTitle   = PAGE_TITLE[pathname] ?? '관리자';
 
   // Auth guard
+  const runAuthCheck = useCallback(async (user: User) => {
+    authUserRef.current = user;
+    setAuthState('loading');
+    try {
+      // v12.1.0: 토큰 강제 갱신 후 role 확인 → Firestore 리스너 실행 전에 최신 인증 토큰 보장
+      // 네트워크 지연 시 응답도 실패도 없이 멈추는 것을 막기 위해 각 호출에 타임아웃 적용
+      await withTimeout(user.getIdToken(true), AUTH_CHECK_TIMEOUT_MS);
+      const snap = await withTimeout(getDoc(doc(db, 'users', user.uid)), AUTH_CHECK_TIMEOUT_MS);
+      const role = snap.exists() ? snap.data().role : null;
+      if (role === 'super_admin') {
+        setAuthState('super_admin');
+      } else if (role === 'admin') {
+        setAuthState('admin');
+      } else {
+        setAuthState('denied');
+        await auth.signOut();
+        router.replace('/admin/login');
+      }
+    } catch (err) {
+      if (err instanceof Error && err.message === 'AUTH_CHECK_TIMEOUT') {
+        // 네트워크 지연으로 시간 초과된 경우: 로그아웃시키지 않고 재시도 UI를 보여줌
+        setAuthState('timeout');
+        return;
+      }
+      setAuthState('denied');
+      await auth.signOut();
+      router.replace('/admin/login');
+    }
+  }, [router]);
+
   useEffect(() => {
     if (pathname === '/admin/login') {
       setAuthState('denied');
       return;
     }
 
-    const unsub = onAuthStateChanged(auth, async (user) => {
+    const unsub = onAuthStateChanged(auth, (user) => {
       if (!user) {
+        authUserRef.current = null;
         setAuthState('denied');
         router.replace('/admin/login');
         return;
       }
-      try {
-        // v12.1.0: 토큰 강제 갱신 후 role 확인 → Firestore 리스너 실행 전에 최신 인증 토큰 보장
-        await user.getIdToken(true);
-        const snap = await getDoc(doc(db, 'users', user.uid));
-        const role = snap.exists() ? snap.data().role : null;
-        if (role === 'super_admin') {
-          setAuthState('super_admin');
-        } else if (role === 'admin') {
-          setAuthState('admin');
-        } else {
-          setAuthState('denied');
-          await auth.signOut();
-          router.replace('/admin/login');
-        }
-      } catch {
-        setAuthState('denied');
-        await auth.signOut();
-        router.replace('/admin/login');
-      }
+      runAuthCheck(user);
     });
 
     return () => unsub();
-  }, [pathname, router]);
+  }, [pathname, router, runAuthCheck]);
+
+  const handleRetryAuthCheck = () => {
+    if (authUserRef.current) {
+      runAuthCheck(authUserRef.current);
+    } else {
+      window.location.reload();
+    }
+  };
 
   // Close notification dropdown on outside click
   useEffect(() => {
@@ -503,6 +538,24 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   };
 
   if (pathname === '/admin/login') return <>{children}</>;
+
+  // 네트워크 지연으로 권한 확인이 시간 초과된 경우: 무한 스피너 대신 재시도 UI 제공
+  if (authState === 'timeout') {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 text-center px-6" style={{ background: '#09090b' }}>
+        <p style={{ fontSize: '0.85rem', color: '#888' }}>네트워크가 지연되어 권한 확인이 오래 걸리고 있어요.</p>
+        <button
+          onClick={handleRetryAuthCheck}
+          style={{
+            padding: '10px 28px', borderRadius: '100px', background: '#FF6F61', color: '#fff',
+            fontWeight: 700, fontSize: '0.85rem', border: 'none', cursor: 'pointer'
+          }}
+        >
+          다시 시도
+        </button>
+      </div>
+    );
+  }
 
   // Loading / access denied
   if (authState === 'loading' || (authState === 'denied' && pathname !== '/admin/login')) {
