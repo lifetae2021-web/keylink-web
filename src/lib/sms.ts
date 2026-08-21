@@ -37,7 +37,17 @@ export interface BulkSMSMessage {
   text: string;
 }
 
-export async function sendBulkSMS(messages: BulkSMSMessage[], scheduledDate?: string) {
+export interface BulkSMSResult {
+  success: boolean;
+  successCount: number;
+  failCount: number;
+  groupId?: string;
+  scheduledDate?: string;
+  mock?: boolean;
+  isMock?: boolean;
+}
+
+export async function sendBulkSMS(messages: BulkSMSMessage[], scheduledDate?: string): Promise<BulkSMSResult> {
   if (!API_KEY || !API_SECRET || !SENDER_NUMBER) {
     throw new Error('Solapi API 설정이 누락되었습니다.');
   }
