@@ -1339,7 +1339,7 @@ ${user.name || app.name || "참가자"}님은 ${fDate} ${fDay} ${fTime} 소개�
     setSelectPreviewOpen(true);
   };
 
-  const handleWaitlistSelectConfirm = async (msg: string, price?: number, bypassOverlap?: any) => {
+  const handleWaitlistSelectConfirm = async (msg: string, price?: number, bypassOverlap?: any, scheduledDate?: string) => {
     if (!selectPreviewData) return;
     const token = await auth.currentUser?.getIdToken();
     const res = await fetch("/api/admin/applications/select", {
@@ -1349,14 +1349,15 @@ ${user.name || app.name || "참가자"}님은 ${fDate} ${fDay} ${fTime} 소개�
         applicationId: selectPreviewData.app.id, 
         customMessage: msg, 
         price,
-        bypassOverlapCheck: bypassOverlap 
+        bypassOverlapCheck: bypassOverlap,
+        scheduledDate
       }),
     });
     const data = await res.json();
     if (res.status === 200 && data.overlapWarning) {
       const proceed = window.confirm(`⚠️ 중복 만남 경고\n\n${data.message}\n\n그래도 선발 처리를 진행하시겠습니까?`);
       if (proceed) {
-        await handleWaitlistSelectConfirm(msg, price, true);
+        await handleWaitlistSelectConfirm(msg, price, true, scheduledDate);
       } else {
         throw new Error('중복 만남 경고로 인해 선발이 취소되었습니다.');
       }
@@ -1444,7 +1445,7 @@ ${user.name || app.name || "참가자"}님은 ${fDate} ${fDay} ${fTime} 소개�
     setConfirmPreviewOpen(true);
   };
 
-  const handleWaitlistConfirmSubmit = async (msg: string, price?: number, bypassOverlap?: any) => {
+  const handleWaitlistConfirmSubmit = async (msg: string, price?: number, bypassOverlap?: any, scheduledDate?: string) => {
     if (!confirmPreviewData) return;
     const token = await auth.currentUser?.getIdToken();
     const res = await fetch("/api/admin/applications/confirm", {
@@ -1454,14 +1455,15 @@ ${user.name || app.name || "참가자"}님은 ${fDate} ${fDay} ${fTime} 소개�
         applicationId: confirmPreviewData.app.id, 
         customMessage: msg, 
         price,
-        bypassOverlapCheck: bypassOverlap 
+        bypassOverlapCheck: bypassOverlap,
+        scheduledDate
       }),
     });
     const data = await res.json();
     if (res.status === 200 && data.overlapWarning) {
       const proceed = window.confirm(`⚠️ 중복 만남 경고\n\n${data.message}\n\n그래도 최종 참가를 확정하시겠습니까?`);
       if (proceed) {
-        await handleWaitlistConfirmSubmit(msg, price, true);
+        await handleWaitlistConfirmSubmit(msg, price, true, scheduledDate);
       } else {
         throw new Error('중복 만남 경고로 인해 참가 확정이 취소되었습니다.');
       }

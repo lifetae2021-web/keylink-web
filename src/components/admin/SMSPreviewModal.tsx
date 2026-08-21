@@ -302,6 +302,16 @@ const SMSPreviewModal: React.FC<SMSPreviewModalProps> = ({
   const handleSend = async () => {
     if (!message.trim()) return toast.error('메시지 내용을 입력해주세요.');
     if (bulkTargets && checkedTargetIds.size === 0) return toast.error('발송할 대상을 1명 이상 선택해주세요.');
+    
+    if (isScheduled && scheduledDate) {
+      const selected = new Date(scheduledDate);
+      const minDate = new Date();
+      minDate.setMinutes(minDate.getMinutes() + 9);
+      if (selected < minDate) {
+        return toast.error('예약 발송은 현재 시간으로부터 최소 10분 이후로 설정해야 합니다.');
+      }
+    }
+
     setIsSending(true);
     try {
       const finalTargets = bulkTargets ? bulkTargets.filter(t => checkedTargetIds.has(t.appId)) : undefined;
@@ -573,6 +583,11 @@ const SMSPreviewModal: React.FC<SMSPreviewModalProps> = ({
                       <input 
                         type="datetime-local" 
                         value={scheduledDate}
+                        min={(() => {
+                          const minDate = new Date();
+                          minDate.setMinutes(minDate.getMinutes() + 10);
+                          return format(minDate, "yyyy-MM-dd'T'HH:mm");
+                        })()}
                         onChange={e => setScheduledDate(e.target.value)}
                         className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-[#FF7E7E]/20 outline-none"
                       />

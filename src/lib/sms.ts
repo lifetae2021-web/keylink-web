@@ -32,47 +32,48 @@ function getHeaders() {
   };
 }
 
-/**
- * 단일 문자/알림톡 발송
- */
-export async function sendSMS({ to, text, scheduledDate }: SendSMSParams) {
-  // 번호 형식 정리 (하이픈 제거)
-  const cleanTo = to.replace(/[^0-9]/g, '');
+export interface BulkSMSMessage {
+  to: string;
+  text: string;
+}
 
+export async function sendBulkSMS(messages: BulkSMSMessage[], scheduledDate?: string) {
   if (!API_KEY || !API_SECRET || !SENDER_NUMBER) {
-    const missing = [];
-    if (!API_KEY) missing.push('SOLAPI_API_KEY');
-    if (!API_SECRET) missing.push('SOLAPI_API_SECRET');
-    if (!SENDER_NUMBER) missing.push('SOLAPI_SENDER_NUMBER');
-    throw new Error(`Solapi API 설정이 누락되었습니다 (${missing.join(', ')}).`);
+    throw new Error('Solapi API 설정이 누락되었습니다.');
   }
 
+  if (!messages || messages.length === 0) return { success: true, successCount: 0, failCount: 0 };
+
   try {
+    const formattedMessages = messages.map(m => ({
+      to: m.to.replace(/[^0-9]/g, ''),
+      from: SENDER_NUMBER,
+      text: m.text
+    }));
+
+    // 1단계: 그룹 생성
+    const groupRes = await fetch('https://api.solapi.com/messages/v4/groups', {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({}),
+    });
+    const groupData = await groupRes.json();
+    if (!groupRes.ok) throw new Error(groupData.errorMessage || '그룹 생성 실패');
+    const groupId = groupData.groupId;
+
+    // 2단계: 그룹에 메시지 추가 (최대 1만건/회)
+    const addRes = await fetch(`https://api.solapi.com/messages/v4/groups/${groupId}/messages`, {
+      method: 'PUT',
+      headers: getHeaders(),
+      body: JSON.stringify({
+        messages: formattedMessages,
+      }),
+    });
+    const addData = await addRes.json();
+    if (!addRes.ok) throw new Error(addData.errorMessage || '그룹 메시지 추가 실패');
+
+    // 3단계: 예약 발송 또는 즉시 발송
     if (scheduledDate) {
-      // ── 예약 발송: 그룹 기반 3단계 프로세스 ──
-
-      // 1단계: 그룹 생성
-      const groupRes = await fetch('https://api.solapi.com/messages/v4/groups', {
-        method: 'POST',
-        headers: getHeaders(),
-        body: JSON.stringify({}),
-      });
-      const groupData = await groupRes.json();
-      if (!groupRes.ok) throw new Error(groupData.errorMessage || '그룹 생성 실패');
-      const groupId = groupData.groupId;
-
-      // 2단계: 그룹에 메시지 추가
-      const addRes = await fetch(`https://api.solapi.com/messages/v4/groups/${groupId}/messages`, {
-        method: 'PUT',
-        headers: getHeaders(),
-        body: JSON.stringify({
-          messages: [{ to: cleanTo, from: SENDER_NUMBER, text }],
-        }),
-      });
-      const addData = await addRes.json();
-      if (!addRes.ok) throw new Error(addData.errorMessage || '그룹 메시지 추가 실패');
-
-      // 3단계: 예약 스케줄 설정
       const schedRes = await fetch(`https://api.solapi.com/messages/v4/groups/${groupId}/schedule`, {
         method: 'POST',
         headers: getHeaders(),
@@ -80,25 +81,29 @@ export async function sendSMS({ to, text, scheduledDate }: SendSMSParams) {
       });
       const schedData = await schedRes.json();
       if (!schedRes.ok) throw new Error(schedData.errorMessage || '예약 설정 실패');
-
-      return { success: true, groupId, scheduledDate };
+      
+      return { success: true, groupId, scheduledDate, successCount: messages.length, failCount: 0 };
     } else {
-      // ── 즉시 발송 ──
-      const response = await fetch('https://api.solapi.com/messages/v4/send', {
+      const sendRes = await fetch(`https://api.solapi.com/messages/v4/groups/${groupId}/send`, {
         method: 'POST',
         headers: getHeaders(),
-        body: JSON.stringify({
-          message: { to: cleanTo, from: SENDER_NUMBER, text },
-        }),
       });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.errorMessage || 'Solapi 발송 중 오류가 발생했습니다.');
-      return { success: true, ...result };
+      const sendData = await sendRes.json();
+      if (!sendRes.ok) throw new Error(sendData.errorMessage || '그룹 메시지 발송 실패');
+      
+      return { success: true, groupId, successCount: messages.length, failCount: 0 };
     }
   } catch (error) {
-    console.error('Solapi Send Error:', error);
+    console.error('Solapi Bulk Send Error:', error);
     throw error;
   }
+}
+
+/**
+ * 단일 문자/알림톡 발송
+ */
+export async function sendSMS({ to, text, scheduledDate }: SendSMSParams) {
+  return sendBulkSMS([{ to, text }], scheduledDate);
 }
 
 /**

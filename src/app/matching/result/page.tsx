@@ -220,21 +220,16 @@ export default function ResultListPage() {
                         )}
                       </div>
                       <span style={{ fontSize: '0.9rem', fontWeight: '900', color: '#FF6F61', background: 'rgba(255,111,97,0.1)', padding: '6px 14px', borderRadius: '10px' }}>
-                        {result.episodeNumber}기
+                        {result.episodeNumber === 135 ? '전문직 1기' : `${result.episodeNumber}기`}
                       </span>
                     </div>
 
                     <h3 style={{ fontSize: '1.6rem', fontWeight: '900', marginBottom: '20px', lineHeight: 1.2, color: '#111' }}>
-                      {result.region === 'busan' ? '부산' : '창원'} 로테이션 소개팅
+                      {result.episodeNumber === 135 ? '부산 전문직 특집 소개팅' : `${result.region === 'busan' ? '부산' : '창원'} 로테이션 소개팅`}
                     </h3>
 
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '32px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#666' }}>
-                        <div style={{ width: '36px', height: '36px', borderRadius: '100px', background: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <Calendar size={18} />
-                        </div>
-                        <span style={{ fontSize: '1rem', fontWeight: '600' }}>{result.eventDate.toLocaleDateString('ko-KR')}</span>
-                      </div>
+
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#111' }}>
                         <div style={{ width: '36px', height: '36px', borderRadius: '100px', background: 'rgba(255,111,97,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           {result.status === 'completed' ? (

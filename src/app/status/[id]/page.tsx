@@ -104,7 +104,7 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
         setUserMap(map);
         const cachePayload = { session: sessionData, applicants: appData, userMap: map, ts: Date.now() };
         statusDetailCache.set(sessionId, cachePayload);
-        try { sessionStorage.setItem(`kl_status_detail_${sessionId}`, JSON.stringify(cachePayload)); } catch {}
+        try { sessionStorage.setItem(`kl_status_detail_${sessionId}`, JSON.stringify(cachePayload)); } catch { }
 
       } catch (error) {
         console.error("Error fetching status detail:", error);
@@ -183,7 +183,7 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
 
     // 3. 개인정보 보호를 위한 데이터 셔플
     const filledSlots = slots.filter(s => s.isFilled);
-    
+
     if (filledSlots.length === 0) return slots;
 
     if (filledSlots.length <= 2) {
@@ -385,85 +385,85 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
               {/* 탭 버튼이 삭제되었습니다. (자동으로 반대 성별의 탭이 고정 표시됨) */}
 
               <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-            <div className="lineup-header" style={{
-              display: 'grid', gridTemplateColumns: 'minmax(60px, 80px) 120px 1fr 120px', gap: '15px',
-              padding: '15px 40px', background: 'rgba(0,0,0,0.02)', borderRadius: '16px',
-              fontWeight: '800', color: '#888', fontSize: '0.85rem', marginBottom: '16px',
-              textAlign: 'center'
-            }}>
-              <span>번호</span>
-              <span>출생연도</span>
-              <span>직업 <small style={{ fontSize: '0.65rem', color: '#bbb', fontWeight: '500' }}>(랜덤)</small></span>
-              <span>키 <small style={{ fontSize: '0.65rem', color: '#bbb', fontWeight: '500' }}>(랜덤)</small></span>
+                <div className="lineup-header" style={{
+                  display: 'grid', gridTemplateColumns: 'minmax(60px, 80px) 120px 1fr 120px', gap: '15px',
+                  padding: '15px 40px', background: 'rgba(0,0,0,0.02)', borderRadius: '16px',
+                  fontWeight: '800', color: '#888', fontSize: '0.85rem', marginBottom: '16px',
+                  textAlign: 'center'
+                }}>
+                  <span>번호</span>
+                  <span>출생연도</span>
+                  <span>직업 <small style={{ fontSize: '0.65rem', color: '#bbb', fontWeight: '500' }}>(랜덤)</small></span>
+                  <span>키 <small style={{ fontSize: '0.65rem', color: '#bbb', fontWeight: '500' }}>(랜덤)</small></span>
 
-            </div>
+                </div>
 
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={activeTab}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.3 }}
-                style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}
-              >
-                {confirmedRows.map((row, idx) => {
-                  const isFilled = row ? row.isFilled : false;
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={activeTab}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.3 }}
+                    style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}
+                  >
+                    {confirmedRows.map((row, idx) => {
+                      const isFilled = row ? row.isFilled : false;
 
-                  return (
-                    <div
-                      key={idx}
-                      className={`status-row ${isFilled ? 'v850-card cursor-pointer' : 'empty-slot'}`}
-                      onClick={() => isFilled && !row.isBlind && setSelectedRow({ ...row, idx: idx + 1 })}
-                      style={{
-                        display: 'grid', gridTemplateColumns: 'minmax(60px, 80px) 120px 1fr 120px', gap: '15px',
-                        background: isFilled ? '#fff' : 'rgba(255,255,255,0.4)',
-                        border: isFilled ? '1.5px solid #f2f2f2' : '1.5px dashed #eee',
-                        borderRadius: '24px',
-                        padding: '24px 40px',
-                        boxShadow: isFilled ? '0 8px 24px rgba(0,0,0,0.02)' : 'none',
-                        alignItems: 'center', textAlign: 'center',
-                        transition: 'all 0.3s ease',
-                        opacity: isFilled ? 1 : 0.6,
-                        cursor: isFilled && !row.isBlind ? 'pointer' : 'default'
-                      }}
-                    >
-                      <div className="row-number" style={{ fontWeight: '900', color: isFilled ? '#CCC' : '#EEE', fontSize: '1.2rem' }}>{idx + 1}</div>
+                      return (
+                        <div
+                          key={idx}
+                          className={`status-row ${isFilled ? 'v850-card cursor-pointer' : 'empty-slot'}`}
+                          onClick={() => isFilled && !row.isBlind && setSelectedRow({ ...row, idx: idx + 1 })}
+                          style={{
+                            display: 'grid', gridTemplateColumns: 'minmax(60px, 80px) 120px 1fr 120px', gap: '15px',
+                            background: isFilled ? '#fff' : 'rgba(255,255,255,0.4)',
+                            border: isFilled ? '1.5px solid #f2f2f2' : '1.5px dashed #eee',
+                            borderRadius: '24px',
+                            padding: '24px 40px',
+                            boxShadow: isFilled ? '0 8px 24px rgba(0,0,0,0.02)' : 'none',
+                            alignItems: 'center', textAlign: 'center',
+                            transition: 'all 0.3s ease',
+                            opacity: isFilled ? 1 : 0.6,
+                            cursor: isFilled && !row.isBlind ? 'pointer' : 'default'
+                          }}
+                        >
+                          <div className="row-number" style={{ fontWeight: '900', color: isFilled ? '#CCC' : '#EEE', fontSize: '1.2rem' }}>{idx + 1}</div>
 
-                      {isFilled ? (
-                        row.isBlind ? (
-                          <>
-                            <div style={{ fontWeight: '800', color: '#111', fontSize: '1rem' }}>{row.birthYear}</div>
-                            <div style={{ gridColumn: 'span 3', color: '#9CA3AF', fontWeight: '700', fontSize: '0.95rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                              정보 보호를 위해 3인부터 공개
+                          {isFilled ? (
+                            row.isBlind ? (
+                              <>
+                                <div style={{ fontWeight: '800', color: '#111', fontSize: '1rem' }}>{row.birthYear}</div>
+                                <div style={{ gridColumn: 'span 3', color: '#9CA3AF', fontWeight: '700', fontSize: '0.95rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  정보 보호를 위해 3인부터 공개
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                <div className="row-birth" style={{ fontWeight: '800', color: '#111', fontSize: '1rem' }}>{row.birthYear}</div>
+                                <div className="row-job" style={{ fontWeight: '900', color: activeTab === 'male' ? '#3B82F6' : '#FF6F61', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                                  {row.job}
+                                  <span className="random-label" style={{ fontSize: '0.65rem', color: '#bbb', fontWeight: '500' }}>(랜덤)</span>
+                                </div>
+                                <div className="row-height" style={{ color: '#666', fontWeight: '800', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                                  {row.height}
+                                  <span className="random-label" style={{ fontSize: '0.65rem', color: '#bbb', fontWeight: '500' }}>(랜덤)</span>
+                                </div>
+                              </>
+                            )
+                          ) : (
+                            <div className="row-empty" style={{ gridColumn: 'span 4', color: '#bbb', fontWeight: '700', fontSize: '0.95rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+                              <Sparkles size={16} className="text-gray-200" /> 모집 중 / 새로운 인연을 기다리고 있어요!
                             </div>
-                          </>
-                        ) : (
-                          <>
-                            <div className="row-birth" style={{ fontWeight: '800', color: '#111', fontSize: '1rem' }}>{row.birthYear}</div>
-                            <div className="row-job" style={{ fontWeight: '900', color: activeTab === 'male' ? '#3B82F6' : '#FF6F61', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                              {row.job}
-                              <span className="random-label" style={{ fontSize: '0.65rem', color: '#bbb', fontWeight: '500' }}>(랜덤)</span>
-                            </div>
-                            <div className="row-height" style={{ color: '#666', fontWeight: '800', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                              {row.height}
-                              <span className="random-label" style={{ fontSize: '0.65rem', color: '#bbb', fontWeight: '500' }}>(랜덤)</span>
-                            </div>
-                          </>
-                        )
-                      ) : (
-                        <div className="row-empty" style={{ gridColumn: 'span 4', color: '#bbb', fontWeight: '700', fontSize: '0.95rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
-                          <Sparkles size={16} className="text-gray-200" /> 모집 중 / 새로운 인연을 기다리고 있어요!
+                          )}
                         </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </motion.div>
-              </AnimatePresence>
-            </div>
-          </>
-        )}
+                      );
+                    })}
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+            </>
+          )}
         </section>
 
         {/* Assurance Banner v3.5.3 */}

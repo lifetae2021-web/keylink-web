@@ -33,9 +33,12 @@ export async function POST(req: NextRequest) {
     let successCount = 0;
     let failCount = 0;
     let lastError = null;
+    
+    // v9.1.9: 대량 발송/예약 시 단일 그룹으로 묶어 처리하도록 개선 (sendBulkSMS 사용)
+    const messagesToSend: any[] = [];
 
     for (const target of targets) {
-      // app.phone이 비어있으면 users 컬렉션에서 조회 (기존 select 라우트와 동일 패턴)
+      // app.phone이 비어있으면 users 컬렉션에서 조회
       let phone = target.phone;
       let name = target.name;
       if (!phone && target.userId) {
@@ -52,13 +55,19 @@ export async function POST(req: NextRequest) {
         .replace(/\{이름\}/g, name)
         .replace(/\{성별\}/g, genderLabel)
         .replace(/\{호수\}/g, slotLabel);
+      
+      messagesToSend.push({ to: phone, text: personalized });
+    }
+
+    if (messagesToSend.length > 0) {
       try {
-        await sendSMS({ to: phone, text: personalized, scheduledDate });
-        successCount++;
+        const { sendBulkSMS } = await import('@/lib/sms');
+        const result = await sendBulkSMS(messagesToSend, scheduledDate);
+        successCount += result.successCount || 0;
       } catch (e: any) {
-        console.error(`SMS 발송 실패 (${phone}):`, e?.message || e);
+        console.error('Bulk SMS 발송 실패:', e?.message || e);
         lastError = e?.message || String(e);
-        failCount++;
+        failCount += messagesToSend.length;
       }
     }
 
