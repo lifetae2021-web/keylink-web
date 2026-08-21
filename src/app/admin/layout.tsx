@@ -73,7 +73,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const isSuperAdmin = authState === 'super_admin';
   const [pendingCount, setPendingCount] = useState(0);
   const notiRef = useRef<HTMLDivElement>(null);
-  const authUserRef = useRef<User | null>(null);
 
   // 소개팅 진행 실시간 플로팅 미니 타이머용 상태
   const [runningSession, setRunningSession] = useState<any>(null);
@@ -452,7 +451,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   // Auth guard
   const runAuthCheck = useCallback(async (user: User) => {
-    authUserRef.current = user;
     setAuthState('loading');
     try {
       // v12.1.0: 토큰 강제 갱신 후 role 확인 → Firestore 리스너 실행 전에 최신 인증 토큰 보장
@@ -489,7 +487,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
     const unsub = onAuthStateChanged(auth, (user) => {
       if (!user) {
-        authUserRef.current = null;
         setAuthState('denied');
         router.replace('/admin/login');
         return;
@@ -500,12 +497,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return () => unsub();
   }, [pathname, router, runAuthCheck]);
 
+  // 같은 페이지에서 getIdToken()을 다시 호출하는 것만으로는 안 풀리는 경우가 있음
+  // (막힌 네트워크 연결/토큰 갱신 상태가 페이지 세션에 그대로 남아있기 때문) →
+  // 확실하게 풀리는 새로고침으로 재시도
   const handleRetryAuthCheck = () => {
-    if (authUserRef.current) {
-      runAuthCheck(authUserRef.current);
-    } else {
-      window.location.reload();
-    }
+    window.location.reload();
   };
 
   // Close notification dropdown on outside click
