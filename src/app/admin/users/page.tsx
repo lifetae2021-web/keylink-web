@@ -709,7 +709,7 @@ export default function UsersPage() {
     }
   };
 
-  const handleSendProfileRequestSms = async (message: string) => {
+  const handleSendProfileRequestSms = async (message: string, _price?: number, _extra?: any, scheduledDate?: string) => {
     if (!smsTargetUser) return;
     try {
       const token = await auth.currentUser?.getIdToken();
@@ -726,7 +726,8 @@ export default function UsersPage() {
             gender: smsTargetUser.gender,
             userId: smsTargetUser.id
           }],
-          message
+          message,
+          scheduledDate
         }),
       });
       const data = await res.json();
@@ -739,14 +740,17 @@ export default function UsersPage() {
         updatedAt: serverTimestamp()
       });
 
-      toast.success(`${smsTargetUser.name}님께 프로필 작성 요청 문자를 발송했습니다.`);
+      const successMsg = scheduledDate
+        ? `${smsTargetUser.name}님께 프로필 작성 요청 문자가 예약되었습니다.`
+        : `${smsTargetUser.name}님께 프로필 작성 요청 문자를 발송했습니다.`;
+      toast.success(successMsg);
     } catch (e) {
       console.error(e);
       throw e;
     }
   };
 
-  const handleSendGeneralSms = async (message: string) => {
+  const handleSendGeneralSms = async (message: string, _price?: number, _extra?: any, scheduledDate?: string) => {
     if (!generalSmsTargetUser) return;
     try {
       const token = await auth.currentUser?.getIdToken();
@@ -763,13 +767,17 @@ export default function UsersPage() {
             gender: generalSmsTargetUser.gender,
             userId: generalSmsTargetUser.id
           }],
-          message
+          message,
+          scheduledDate
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || '발송 실패');
 
-      toast.success(`${generalSmsTargetUser.name}님께 문자를 발송했습니다.`);
+      const successMsg = scheduledDate
+        ? `${generalSmsTargetUser.name}님께 문자가 예약되었습니다.`
+        : `${generalSmsTargetUser.name}님께 문자를 발송했습니다.`;
+      toast.success(successMsg);
     } catch (e) {
       console.error(e);
       throw e;

@@ -454,7 +454,7 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
     }
   };
 
-  const handleSendGeneralSms = async (message: string) => {
+  const handleSendGeneralSms = async (message: string, _price?: number, _extra?: any, scheduledDate?: string) => {
     if (!generalSmsTarget) return;
     try {
       const token = await auth.currentUser?.getIdToken();
@@ -472,13 +472,17 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
             gender: generalSmsTarget.gender || user.gender,
             userId: generalSmsTarget.userId
           }],
-          message
+          message,
+          scheduledDate
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || '발송 실패');
 
-      toast.success(`${user.name || generalSmsTarget.name}님께 문자를 발송했습니다.`);
+      const successMsg = scheduledDate
+        ? `${user.name || generalSmsTarget.name}님께 문자가 예약되었습니다.`
+        : `${user.name || generalSmsTarget.name}님께 문자를 발송했습니다.`;
+      toast.success(successMsg);
     } catch (e) {
       console.error(e);
       throw e;
