@@ -18,12 +18,20 @@ service firebase.storage {
       return request.resource.size < 20 * 1024 * 1024;
     }
 
+    // 관리자 여부 확인 (Firestore users 컬렉션의 role 필드 기준)
+    function isAdmin() {
+      return request.auth != null &&
+        (firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'super_admin' ||
+         firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.isAdmin == true);
+    }
+
     // ─────────────────────────────────────
     // 사용자 프로필 사진: profile_images/{uid}/...
     // ─────────────────────────────────────
     match /profile_images/{userId}/{allPaths=**} {
       allow read: if true; // URL을 아는 경우 누구나 읽기 가능
-      allow write: if isOwner(userId) && isValidImage();
+      allow write: if (isOwner(userId) || isAdmin()) && isValidImage();
     }
 
     // ─────────────────────────────────────
@@ -31,7 +39,7 @@ service firebase.storage {
     // ─────────────────────────────────────
     match /verification_proofs/{userId}/{allPaths=**} {
       allow read: if true;
-      allow write: if isOwner(userId) && isValidImage();
+      allow write: if (isOwner(userId) || isAdmin()) && isValidImage();
     }
 
     // ─────────────────────────────────────
@@ -39,7 +47,7 @@ service firebase.storage {
     // ─────────────────────────────────────
     match /private_matching/{userId}/{allPaths=**} {
       allow read: if true;
-      allow write: if isOwner(userId) && isValidImage();
+      allow write: if (isOwner(userId) || isAdmin()) && isValidImage();
     }
 
     // ─────────────────────────────────────
@@ -47,7 +55,7 @@ service firebase.storage {
     // ─────────────────────────────────────
     match /applications/{userId}/{allPaths=**} {
       allow read: if true;
-      allow write: if isOwner(userId) && isValidImage();
+      allow write: if (isOwner(userId) || isAdmin()) && isValidImage();
     }
 
     // ─────────────────────────────────────
@@ -55,7 +63,7 @@ service firebase.storage {
     // ─────────────────────────────────────
     match /users/{userId}/{allPaths=**} {
       allow read: if true;
-      allow write: if isOwner(userId) && isValidImage();
+      allow write: if (isOwner(userId) || isAdmin()) && isValidImage();
     }
 
     // ─────────────────────────────────────

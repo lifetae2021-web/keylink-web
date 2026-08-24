@@ -1,11 +1,12 @@
 'use client';
 
-import { X, User, ShieldCheck, Phone, Camera, MapPin, Briefcase, Users2, Wine, Cigarette, Info, Coffee, Heart, HeartOff, Calendar, Ruler, Weight, ExternalLink, History, AlertCircle, CheckCircle, ChevronLeft, ChevronRight, ClipboardList, KeyRound, Copy, MessageSquare, Mail } from 'lucide-react';
+import { X, User, ShieldCheck, Phone, Camera, MapPin, Briefcase, Users2, Wine, Cigarette, Info, Coffee, Heart, HeartOff, Calendar, Ruler, Weight, ExternalLink, History, AlertCircle, CheckCircle, ChevronLeft, ChevronRight, ClipboardList, KeyRound, Copy, MessageSquare, Mail, Upload } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
-import { db, auth } from '@/lib/firebase';
+import { db, auth, storage } from '@/lib/firebase';
 import { getIdToken } from 'firebase/auth';
 import { doc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import toast from 'react-hot-toast';
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
@@ -144,6 +145,9 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
   const [appsLoading, setAppsLoading] = useState(false);
   const [sessionsMap, setSessionsMap] = useState<Record<string, any>>({});
   const [summariesMap, setSummariesMap] = useState<Record<string, any>>({});
+  // 재직증명서 업로드 (관리자)
+  const [isUploadingProof, setIsUploadingProof] = useState(false);
+  const proofInputRef = useRef<HTMLInputElement>(null);
 
   // v11.2.0: user 로컬 상태 변화를 감지하여 부모 userMap도 실시간 갱신
   // 콜백 함수를 Ref로 관리하여 dependency 목록에서 제외함으로써 무한 렌더링 루프를 원천 방지합니다.
@@ -300,6 +304,37 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
     } finally {
       setIsUpdating(false);
     }
+  };
+
+  // 관리자 재직증명서 업로드 핸들러
+  const handleAdminProofUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const uid = user.uid || user.id;
+    if (!uid) { toast.error('회원 UID를 찾을 수 없습니다.'); return; }
+    setIsUploadingProof(true);
+    try {
+      const reader = new FileReader();
+      reader.onload = async (ev) => {
+        const dataUrl = ev.target?.result as string;
+        const fileExt = file.name.split('.').pop() || 'jpg';
+        const storageRef = ref(storage, `verification_proofs/${uid}/${Date.now()}.${fileExt}`);
+        await uploadString(storageRef, dataUrl, 'data_url');
+        const downloadUrl = await getDownloadURL(storageRef);
+        const userRef = doc(db, 'users', uid);
+        await updateDoc(userRef, { employmentProof: downloadUrl });
+        setUser((prev: any) => ({ ...prev, employmentProof: downloadUrl }));
+        toast.success('재직증명서가 성공적으로 업로드되었습니다.');
+        setIsUploadingProof(false);
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error(error);
+      toast.error('업로드에 실패했습니다.');
+      setIsUploadingProof(false);
+    }
+    // 같은 파일 재업로드 허용
+    e.target.value = '';
   };
 
   const handleResetPassword = async () => {
@@ -591,35 +626,56 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
                   <DetailRow label="출생" value={user.birthDate ? `${user.birthDate.includes('-') ? user.birthDate.split('-')[0].slice(-2) : (user.birthDate.length === 8 ? user.birthDate.slice(2, 4) : user.birthDate.slice(0, 2))}년생` : null} icon={Calendar} />
 
                   {/* v7.8.0 재직 증명 확인 섹션 */}
-                  <div className="flex items-center justify-between py-4 border-b border-slate-50">
-                    <div className="flex items-center">
-                      <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
-                        <ShieldCheck size={18} className="text-blue-500" />
+                  <div className="py-4 border-b border-slate-50">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
+                          <ShieldCheck size={18} className="text-blue-500" />
+                        </div>
+                        <div className="ml-4">
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">재직 인증 서류</p>
+                          {(user.employmentProof || user.verificationUrl) ? (
+                            <button
+                              onClick={() => setShowProofPopup(true)}
+                              className="text-[0.85rem] font-black text-blue-600 hover:underline flex items-center gap-1 cursor-pointer"
+                            >
+                              서류 확인하기 <ExternalLink size={12} />
+                            </button>
+                          ) : (
+                            <p className="text-[0.85rem] font-bold text-slate-300 italic">미업로드</p>
+                          )}
+                        </div>
                       </div>
-                      <div className="ml-4">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">재직 인증 서류</p>
-                        {(user.employmentProof || user.verificationUrl) ? (
-                          <button
-                            onClick={() => setShowProofPopup(true)}
-                            className="text-[0.85rem] font-black text-blue-600 hover:underline flex items-center gap-1 cursor-pointer"
-                          >
-                            서류 확인하기 <ExternalLink size={12} />
-                          </button>
-                        ) : (
-                          <p className="text-[0.85rem] font-bold text-slate-300 italic">미업로드</p>
-                        )}
+                      <div className="flex items-center gap-2">
+                        {/* 관리자 직접 업로드 버튼 */}
+                        <input
+                          ref={proofInputRef}
+                          type="file"
+                          accept="image/*,.pdf"
+                          style={{ display: 'none' }}
+                          onChange={handleAdminProofUpload}
+                        />
+                        <button
+                          onClick={() => proofInputRef.current?.click()}
+                          disabled={isUploadingProof}
+                          className="px-3 py-2 rounded-xl text-xs font-black transition-all bg-blue-50 text-blue-500 hover:bg-blue-100 flex items-center gap-1"
+                          title="관리자 직접 업로드"
+                        >
+                          {isUploadingProof ? <span className="animate-spin">⏳</span> : <Upload size={12} />}
+                          {isUploadingProof ? '업로드 중...' : '업로드'}
+                        </button>
+                        <button
+                          onClick={handleToggleVerify}
+                          disabled={isUpdating}
+                          className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${user.isVerified
+                              ? 'bg-rose-50 text-rose-500 hover:bg-rose-100'
+                              : 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-md shadow-emerald-200'
+                            }`}
+                        >
+                          {isUpdating ? '처리 중...' : user.isVerified ? '반려' : '인증 승인'}
+                        </button>
                       </div>
                     </div>
-                    <button
-                      onClick={handleToggleVerify}
-                      disabled={isUpdating}
-                      className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${user.isVerified
-                          ? 'bg-rose-50 text-rose-500 hover:bg-rose-100'
-                          : 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-md shadow-emerald-200'
-                        }`}
-                    >
-                      {isUpdating ? '처리 중...' : user.isVerified ? '반려' : '인증 승인'}
-                    </button>
                   </div>
 
                   {/* 지인 회피 */}
