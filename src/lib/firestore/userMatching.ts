@@ -10,22 +10,29 @@ import { db } from '@/lib/firebase';
 import { Session, Application, Vote } from '@/lib/types';
 
 async function getSummary(sessionId: string) {
-  const snap = await getDoc(doc(db, 'matchingSummaries', sessionId));
-  if (!snap.exists()) return null;
-  
-  const data = snap.data();
-  // For older sessions, if status field is missing, we assume it's approved
-  if (data.status && data.status !== 'approved') return null;
-  
-  return data as {
-    sessionId: string;
-    matchedPairs: { userAId: string; userBId: string }[];
-    unmatchedUserIds: string[];
-    voteCountMap: Record<string, number>;
-    status: 'pending' | 'approved';
-    approvedAt: any;
-    calculatedAt: any;
-  };
+  try {
+    const snap = await getDoc(doc(db, 'matchingSummaries', sessionId));
+    if (!snap.exists()) return null;
+    
+    const data = snap.data();
+    // For older sessions, if status field is missing, we assume it's approved
+    if (data.status && data.status !== 'approved') return null;
+    
+    return data as {
+      sessionId: string;
+      matchedPairs: { userAId: string; userBId: string }[];
+      unmatchedUserIds: string[];
+      voteCountMap: Record<string, number>;
+      status: 'pending' | 'approved';
+      approvedAt: any;
+      calculatedAt: any;
+    };
+  } catch (error: any) {
+    // If it throws PERMISSION_DENIED, it means the document doesn't exist or is not approved yet.
+    if (error.code === 'permission-denied') return null;
+    console.warn("getSummary error:", error);
+    return null;
+  }
 }
 
 function getPartnerIds(summary: NonNullable<Awaited<ReturnType<typeof getSummary>>>, userId: string): string[] {
