@@ -88,6 +88,7 @@ export async function POST(req: NextRequest) {
         };
         if (price !== undefined) {
           updateData.price = price;
+          updateData.amountPaid = price;
         }
         transaction.update(appRef, updateData);
       });

@@ -34,8 +34,8 @@ const ADMIN_ROLES = ['일반회원', '신뢰회원', 'VIP회원', '제안', '블
 
 const TABS: { key: Status; label: string }[] = [
   { key: 'all', label: '전체' },
-  { key: 'pending', label: '승인대기' },
   { key: 'verified', label: '인증완료' },
+  { key: 'pending', label: '승인대기' },
   { key: 'rejected', label: '반려' },
   { key: 'waitpool', label: '⚡ 우선 대기' },
   { key: 'guest', label: '비회원' },
