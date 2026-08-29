@@ -141,6 +141,7 @@ export interface Application {
   paymentConfirmed: boolean;
   appliedAt: Date;
   updatedAt: Date;
+  reRequestCount?: number;
 
   // 쿠폰 할인 관련 필드 (v10.2.9)
   couponId?: string | null;

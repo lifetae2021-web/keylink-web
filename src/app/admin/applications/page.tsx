@@ -233,7 +233,7 @@ export default function ApplicationsPage() {
   }, [selectedEventId]);
 
   // status 변경 로직
-  const updateAppStatus = async (app: any, status: string, customMessage?: string, updatedPrice?: number) => {
+  const updateAppStatus = async (app: any, status: string, customMessage?: string, updatedPrice?: number, isReRequest?: boolean) => {
     try {
       const { id: appId, sessionId, gender, status: prevStatus } = app;
       const user = userMap[app.userId] || {};
@@ -249,7 +249,8 @@ export default function ApplicationsPage() {
           body: JSON.stringify({
             applicationId: appId,
             customMessage: customMessage,
-            price: updatedPrice
+            price: updatedPrice,
+            isReRequest: isReRequest
           })
         });
 
@@ -417,7 +418,8 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
       session, 
       defaultMsg, 
       targetStatus: type === 'confirm' ? 'confirmed' : 'selected',
-      autoSelectTemplateName: is100PercentDiscount && type !== 'confirm' ? '선발 (100% 할인/보증금)' : undefined
+      autoSelectTemplateName: is100PercentDiscount && type !== 'confirm' ? '선발 (100% 할인/보증금)' : undefined,
+      isReRequest: type === 're-request'
     });
     setPreviewModalOpen(true);
   };
@@ -1371,8 +1373,8 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                                         <>
                                           <button
                                           onClick={() => {
-                                            if (app.isSmsSent) {
-                                              if (!window.confirm('이미 문자를 보낸 유저입니다. 다시 보내시겠습니까?')) return;
+                                            if (app.reRequestCount > 0) {
+                                              if (!window.confirm(`이전에 재요청 문자를 ${app.reRequestCount}번 보냈습니다. 다시 보내시겠습니까?`)) return;
                                             }
                                             handleOpenPreview(app, 're-request');
                                           }}
@@ -1644,8 +1646,8 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                                         <>
                                           <button
                                           onClick={() => {
-                                            if (app.isSmsSent) {
-                                              if (!window.confirm('이미 문자를 보낸 유저입니다. 다시 보내시겠습니까?')) return;
+                                            if (app.reRequestCount > 0) {
+                                              if (!window.confirm(`이전에 재요청 문자를 ${app.reRequestCount}번 보냈습니다. 다시 보내시겠습니까?`)) return;
                                             }
                                             handleOpenPreview(app, 're-request');
                                           }}
@@ -1974,8 +1976,8 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                             <>
                               <button
                                 onClick={() => {
-                                  if (app.isSmsSent) {
-                                    if (!window.confirm('이미 문자를 보낸 유저입니다. 다시 보내시겠습니까?')) return;
+                                  if (app.reRequestCount > 0) {
+                                    if (!window.confirm(`이전에 재요청 문자를 ${app.reRequestCount}번 보냈습니다. 다시 보내시겠습니까?`)) return;
                                   }
                                   handleOpenPreview(app, 're-request');
                                 }}
@@ -2099,7 +2101,7 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
         isOpen={previewModalOpen}
         onClose={() => setPreviewModalOpen(false)}
         onConfirm={async (msg, updatedPrice) => {
-          if (previewData) await updateAppStatus(previewData.app, previewData.targetStatus || 'selected', msg, updatedPrice);
+          if (previewData) await updateAppStatus(previewData.app, previewData.targetStatus || 'selected', msg, updatedPrice, previewData.isReRequest);
         }}
         applicant={previewData?.app}
         session={previewData?.session}

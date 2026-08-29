@@ -11,7 +11,7 @@ import { checkOverlap } from '@/lib/admin/overlap';
 
 export async function POST(req: NextRequest) {
   try {
-    const { applicationId, customMessage, price, bypassOverlapCheck, scheduledDate } = await req.json();
+    const { applicationId, customMessage, price, bypassOverlapCheck, scheduledDate, isReRequest } = await req.json();
 
     if (!applicationId) {
       return NextResponse.json({ error: '신청서 ID가 필요합니다.' }, { status: 400 });
@@ -155,10 +155,14 @@ ${name}님은 ${formattedDate} ${formattedDay} ${formattedTime} 소개팅 날짜
       smsResult = await sendSMS({ to: phone, text: message, scheduledDate });
       if (smsResult?.success) {
         // SMS 발송 완료 후 상태 업데이트
-        await adminDb.doc(`applications/${applicationId}`).update({
+        const updateData: any = {
           isSmsSent: true,
           lastSmsSentAt: FieldValue.serverTimestamp()
-        });
+        };
+        if (isReRequest) {
+          updateData.reRequestCount = FieldValue.increment(1);
+        }
+        await adminDb.doc(`applications/${applicationId}`).update(updateData);
       }
     } catch (smsError: any) {
       console.error('SMS Send Error:', smsError);
