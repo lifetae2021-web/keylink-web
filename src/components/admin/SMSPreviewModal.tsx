@@ -26,7 +26,7 @@ interface Template {
 }
 
 // 변수 치환 함수
-function applyVariables(content: string, applicant: any, session: any, customPrice?: number): string {
+function applyVariables(content: string, applicant: any, session: any, customPrice?: number, suppressDiscountSuffix?: boolean): string {
   let eventTime = new Date();
   if (session?.eventDate) {
     if (typeof session.eventDate.toDate === 'function') {
@@ -66,9 +66,9 @@ function applyVariables(content: string, applicant: any, session: any, customPri
   const finalPrice = customPrice !== undefined ? customPrice : (applicant?.price ?? genderPrice);
   const couponDiscount = applicant?.couponDiscount && applicant.couponDiscount > 0 ? applicant.couponDiscount : 0;
   const isGroupDiscount = applicant?.gender === 'female' && applicant?.femaleOption === 'group';
-  const discountSuffix = couponDiscount > 0
+  const discountSuffix = suppressDiscountSuffix ? '' : (couponDiscount > 0
     ? ` (할인쿠폰 적용, ${couponDiscount.toLocaleString('ko-KR')}원 할인)`
-    : (isGroupDiscount ? ' (동반할인 적용)' : '');
+    : (isGroupDiscount ? ' (동반할인 적용)' : ''));
   const formattedPrice = `${finalPrice.toLocaleString('ko-KR')}원${discountSuffix}`;
 
   const openChatLink = session?.openChatLink || '';
@@ -153,7 +153,7 @@ const SMSPreviewModal: React.FC<SMSPreviewModalProps> = ({
           : (applicant.femaleOption === 'group' ? 24000 : (session?.femalePrice || 29000));
         let initialPrice = applicant.price ?? gp;
         if (autoSelectTemplateName && autoSelectTemplateName.includes('100%')) {
-          initialPrice = 29000;
+          initialPrice = applicant.gender === 'male' ? 30000 : 29000;
         }
         setCurrentPrice(initialPrice);
 
@@ -190,11 +190,12 @@ const SMSPreviewModal: React.FC<SMSPreviewModalProps> = ({
     setCurrentPrice(newPrice);
 
     if (applicant) {
+      const isFullDiscountDeposit = !!(autoSelectTemplateName && autoSelectTemplateName.includes('100%'));
       const couponDiscount = applicant.couponDiscount && applicant.couponDiscount > 0 ? applicant.couponDiscount : 0;
       const isGroupDiscount = applicant.gender === 'female' && applicant.femaleOption === 'group';
-      const discountSuffix = couponDiscount > 0
+      const discountSuffix = isFullDiscountDeposit ? '' : (couponDiscount > 0
         ? ` (할인쿠폰 적용, ${couponDiscount.toLocaleString('ko-KR')}원 할인)`
-        : (isGroupDiscount ? ' (동반할인 적용)' : '');
+        : (isGroupDiscount ? ' (동반할인 적용)' : ''));
       const newPriceString = `${newPrice.toLocaleString('ko-KR')}원${discountSuffix}`;
 
       if (lastPriceString && message.includes(lastPriceString)) {
@@ -220,19 +221,20 @@ const SMSPreviewModal: React.FC<SMSPreviewModalProps> = ({
             ? (applicant?.maleOption === 'safe' ? 60000 : (session?.malePrice || 49000))
             : (applicant?.femaleOption === 'group' ? 24000 : (session?.femalePrice || 29000));
           let initialPrice = applicant?.price ?? gp;
-          if (autoSelectTemplateName && autoSelectTemplateName.includes('100%')) {
-            initialPrice = 29000;
+          const isFullDiscountDeposit = !!(autoSelectTemplateName && autoSelectTemplateName.includes('100%'));
+          if (isFullDiscountDeposit) {
+            initialPrice = applicant?.gender === 'male' ? 30000 : 29000;
             setCurrentPrice(initialPrice);
           }
 
-          const applied = applyVariables(target.content, applicant, session, initialPrice);
+          const applied = applyVariables(target.content, applicant, session, initialPrice, isFullDiscountDeposit);
           setMessage(applied);
 
           const couponDiscount = applicant?.couponDiscount && applicant?.couponDiscount > 0 ? applicant.couponDiscount : 0;
           const isGroupDiscount = applicant?.gender === 'female' && applicant?.femaleOption === 'group';
-          const discountSuffix = couponDiscount > 0
+          const discountSuffix = isFullDiscountDeposit ? '' : (couponDiscount > 0
             ? ` (할인쿠폰 적용, ${couponDiscount.toLocaleString('ko-KR')}원 할인)`
-            : (isGroupDiscount ? ' (동반할인 적용)' : '');
+            : (isGroupDiscount ? ' (동반할인 적용)' : ''));
           const initialPriceString = `${initialPrice.toLocaleString('ko-KR')}원${discountSuffix}`;
           setLastPriceString(initialPriceString);
         }
