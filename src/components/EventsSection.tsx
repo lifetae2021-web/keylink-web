@@ -458,11 +458,11 @@ function EventCard({ event, isSelected = false, userApp }: { event: KeylinkEvent
             </div>
           </div>
         )}
-        {(event.targetMaleAge && !event.theme && !event.targetMaleAge.includes('여성')) && (
+        {((event.targetMaleAge && !event.theme && !event.targetMaleAge.includes('여성')) || event.isCustomCuration) && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '14px' }}>
-            <div style={{ display: 'inline-flex', alignSelf: 'flex-start', background: '#FFF5F4', border: '1px solid rgba(255,111,97,0.2)', padding: '4px 10px', borderRadius: '8px' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: '800', color: '#FF6F61' }}>
-                {/^\d/.test(String(event.targetMaleAge || '')) ? `참여 연령 : ${event.targetMaleAge}` : `선발 안내 : ${event.targetMaleAge}`}
+            <div style={{ display: 'inline-flex', alignSelf: 'flex-start', background: event.isCustomCuration ? '#F8F9FA' : '#FFF5F4', border: event.isCustomCuration ? '1px solid #E5E7EB' : '1px solid rgba(255,111,97,0.2)', padding: '4px 10px', borderRadius: '8px' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: '800', color: event.isCustomCuration ? '#6B7280' : '#FF6F61' }}>
+                {event.isCustomCuration ? '연령대 미정' : (/^\d/.test(String(event.targetMaleAge || '')) ? `참여 연령 : ${event.targetMaleAge}` : `선발 안내 : ${event.targetMaleAge}`)}
               </span>
             </div>
             <div style={{ paddingLeft: '4px' }}>

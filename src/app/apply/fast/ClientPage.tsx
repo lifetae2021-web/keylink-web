@@ -1777,6 +1777,11 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
                           {/^\d/.test(String(session.targetMaleAge)) ? `남성 연령: ${session.targetMaleAge}` : session.targetMaleAge}
                         </p>
                       )}
+                      {session.isCustomCuration && (
+                        <p style={{ background: '#F8F9FA', color: '#6B7280', fontSize: '0.65rem', fontWeight: '800', margin: '0', padding: '2px 6px', borderRadius: '4px', border: '1px solid #E5E7EB' }}>
+                          연령대 미정
+                        </p>
+                      )}
                     </div>
                   </div>
                 </button>
