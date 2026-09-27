@@ -2165,14 +2165,62 @@ ${chatLink}
 
     if (
       !window.confirm(
-        `[${name}] 정말 이 기수를 삭제하시겠습니까?\n삭제 후에는 126기가 125기가 되는 등 이후 기수 번호가 자동으로 앞당겨집니다.`,
+        `[${name}] 정말 이 기수를 삭제하시겠습니까?\n삭제 후에는 126기가 125기가 되는 등 이후 기수 번호가 자동으로 앞당겨집니다.\n\n대기자로 남아있던 회원들은 '우선 대기풀'에 자동으로 등록됩니다.`,
       )
     )
       return;
 
     try {
-      const { writeBatch, getDocs, updateDoc } = await import("firebase/firestore");
+      const { writeBatch, getDocs, updateDoc, arrayUnion } = await import("firebase/firestore");
+      // arrayUnion() 내부 객체에는 serverTimestamp() 사용 불가 → Timestamp.now() 사용
+      const cancelledAt = Timestamp.now();
+      const regionLabel = sessionToDelete.region === "busan" ? "부산" : "창원";
+      const sessionTitle = `${regionLabel} 로테이션 소개팅 ${sessionToDelete.episodeNumber}기`;
+
+      // eventDate 포맷팅 (MM.dd)
+      let sessionDateStr = "";
+      if (sessionToDelete.eventDate) {
+        try {
+          const dateObj = toJsDate(sessionToDelete.eventDate);
+          const month = String(dateObj.getMonth() + 1).padStart(2, "0");
+          const day = String(dateObj.getDate()).padStart(2, "0");
+          sessionDateStr = `${month}.${day}`;
+        } catch (e) {
+          console.error("Failed to parse eventDate:", e);
+        }
+      }
+
+      // 0. 해당 기수의 대기자(참가 미확정) 신청자 목록 조회 — 삭제 전에 우선 대기풀 등록 처리
+      const appSnap = await getDocs(
+        query(collection(db, "applications"), where("sessionId", "==", id))
+      );
+      const waitlistedApps = appSnap.docs.filter((d) =>
+        ["applied", "held", "waitlisted", "selected"].includes(d.data().status)
+      );
+      const waitlistedUserIds = new Set<string>();
+      waitlistedApps.forEach((appDoc) => {
+        const data = appDoc.data();
+        if (data.userId) waitlistedUserIds.add(data.userId);
+      });
+
       const batch = writeBatch(db);
+
+      // 대기자 회원 문서에 취소(우선 대기풀 등록) 이력 기록
+      waitlistedApps.forEach((appDoc) => {
+        const data = appDoc.data();
+        if (!data.userId) return;
+        const userRef = doc(db, "users", data.userId);
+        batch.update(userRef, {
+          cancelledSessionHistory: arrayUnion({
+            sessionId: id,
+            sessionTitle,
+            sessionDate: sessionDateStr,
+            applicationStatus: data.status,
+            cancelledAt, // Timestamp.now()
+          }),
+          updatedAt: serverTimestamp(),
+        });
+      });
 
       // 1. 대상 기수 삭제
       batch.delete(doc(db, "sessions", id));
@@ -2199,7 +2247,7 @@ ${chatLink}
         });
 
       await batch.commit();
-      toast.success("기수가 삭제되었으며, 이후 기수 번호가 조정되었습니다.");
+      toast.success(`기수가 삭제되었으며, 이후 기수 번호가 조정되었습니다. ${waitlistedUserIds.size}명이 우선 대기풀에 등록되었습니다.`);
       if (selectedId === id) setSelectedId(null);
     } catch (err: any) {
       console.error(err);
