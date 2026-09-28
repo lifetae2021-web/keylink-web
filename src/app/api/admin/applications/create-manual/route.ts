@@ -9,7 +9,7 @@ import { checkOverlap } from '@/lib/admin/overlap';
  */
 export async function POST(req: NextRequest) {
   try {
-    const { userId, sessionId, status, bypassOverlapCheck, selectedOption, inheritedAmountPaid } = await req.json();
+    const { userId, sessionId, status, bypassOverlapCheck, selectedOption, inheritedAmountPaid, couponId } = await req.json();
 
     if (!userId || !sessionId || !status) {
       return NextResponse.json({ error: '회원 ID, 기수 ID, 등록할 상태가 필요합니다.' }, { status: 400 });
@@ -112,11 +112,20 @@ export async function POST(req: NextRequest) {
     const isDummy = userId.startsWith('user_m_') || userId.startsWith('user_f_') || userData.isDummy === true;
 
     // 4. 트랜잭션을 통한 기수 인원 카운터 업데이트 및 슬롯 배정
+    let appliedCouponInfo: { title: string; discount: number } | null = null;
     await adminDb.runTransaction(async (transaction) => {
       // 트랜잭션 내에서 최신 세션 문서 조회
       const freshSessionSnap = await transaction.get(sessionDocRef);
       if (!freshSessionSnap.exists) throw new Error('기수 정보가 존재하지 않습니다.');
       const freshSessionData = freshSessionSnap.data()!;
+
+      // v1.0.58: 보유 쿠폰 자동 적용 — 지인동반 옵션은 쿠폰과 중복 적용 불가라 제외
+      let couponRef: FirebaseFirestore.DocumentReference | null = null;
+      let couponSnap: FirebaseFirestore.DocumentSnapshot | null = null;
+      if (couponId && selectedOption !== 'group') {
+        couponRef = adminDb.doc(`users/${userId}/coupons/${couponId}`);
+        couponSnap = await transaction.get(couponRef);
+      }
 
       let prevStatus = 'none';
       let prevSlot = null;
@@ -203,6 +212,32 @@ export async function POST(req: NextRequest) {
         newAppData.price = Number(inheritedAmountPaid);
       }
 
+      // v1.0.58: 보유 쿠폰 자동 적용 — 승계된 금액이 있으면 그 위에서, 없으면 세션 정가 기준으로 할인
+      if (couponRef && couponSnap && couponSnap.exists && !couponSnap.data()?.isUsed) {
+        const coupon = couponSnap.data()!;
+        const basePrice = newAppData.price != null
+          ? Number(newAppData.price)
+          : (gender === 'male'
+              ? (selectedOption === 'safe' ? (freshSessionData.maleSafePrice || 60000) : (freshSessionData.malePrice || 49000))
+              : (freshSessionData.femalePrice || 35000));
+        const couponValue = coupon.value || coupon.amount || 0;
+        const discount = coupon.type === 'free'
+          ? basePrice
+          : coupon.type === 'percent'
+            ? Math.floor(basePrice * (couponValue / 100))
+            : couponValue;
+        const finalPrice = Math.max(0, basePrice - discount);
+
+        newAppData.price = finalPrice;
+        newAppData.amountPaid = finalPrice;
+        newAppData.couponId = couponId;
+        newAppData.couponTitle = coupon.title || '쿠폰';
+        newAppData.couponDiscount = discount;
+
+        transaction.update(couponRef, { isUsed: true, usedAt: FieldValue.serverTimestamp() });
+        appliedCouponInfo = { title: coupon.title || '쿠폰', discount };
+      }
+
       // 🌑 닼템 플래그 부여
       if (isDarkTemplar) {
         newAppData.isDarkTemplar = true;
@@ -232,10 +267,11 @@ export async function POST(req: NextRequest) {
       }
     });
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       message: '참여 등록이 성공적으로 완료되었습니다.',
-      applicationId: newAppRef.id
+      applicationId: newAppRef.id,
+      appliedCoupon: appliedCouponInfo
     });
 
   } catch (error: any) {

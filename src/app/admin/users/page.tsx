@@ -127,6 +127,8 @@ export default function UsersPage() {
   const [isRegistering, setIsRegistering] = useState(false);
   const [inheritedOption, setInheritedOption] = useState<any | null>(null);
   const [selectedOption, setSelectedOption] = useState<string>('basic');
+  const [availableCoupon, setAvailableCoupon] = useState<any | null>(null);
+  const [applyCoupon, setApplyCoupon] = useState(true);
 
   useEffect(() => {
     if (!sessionRegistrationTarget) return;
@@ -158,6 +160,27 @@ export default function UsersPage() {
           setInheritedOption(null);
           setSelectedOption('basic');
         }
+
+        // 보유 중인 미사용 쿠폰 조회 (만료된 쿠폰은 제외, 만료일 임박순으로 하나 선택)
+        const couponsSnap = await getDocs(query(
+          collection(db, 'users', sessionRegistrationTarget.id, 'coupons'),
+          where('isUsed', '==', false)
+        ));
+        const now = new Date();
+        const validCoupons = couponsSnap.docs
+          .map(d => ({ id: d.id, ...d.data() } as any))
+          .filter(c => {
+            if (!c.expireAt) return true;
+            const exp = c.expireAt.toDate ? c.expireAt.toDate() : new Date(c.expireAt);
+            return exp > now;
+          })
+          .sort((a, b) => {
+            const at = a.expireAt?.toMillis ? a.expireAt.toMillis() : Infinity;
+            const bt = b.expireAt?.toMillis ? b.expireAt.toMillis() : Infinity;
+            return at - bt;
+          });
+        setAvailableCoupon(validCoupons[0] || null);
+        setApplyCoupon(true);
       } catch (e) {
         console.error(e);
         toast.error('데이터를 불러오지 못했습니다.');
@@ -187,7 +210,8 @@ export default function UsersPage() {
           status: registrationStatus,
           bypassOverlapCheck: bypassOverlap,
           selectedOption: selectedOption,
-          inheritedAmountPaid: inheritedOption?.amountPaid || inheritedOption?.price || null
+          inheritedAmountPaid: inheritedOption?.amountPaid || inheritedOption?.price || null,
+          couponId: (applyCoupon && availableCoupon && selectedOption !== 'group') ? availableCoupon.id : null
         })
       });
       const data = await res.json();
@@ -202,10 +226,13 @@ export default function UsersPage() {
         return;
       }
       if (!res.ok) throw new Error(data.error || '참여 등록에 실패했습니다.');
-      toast.success('기수 참여 등록이 성공적으로 처리되었습니다.');
+      const couponMsg = data.appliedCoupon ? ` (쿠폰 "${data.appliedCoupon.title}" -${data.appliedCoupon.discount.toLocaleString()}원 자동 적용됨)` : '';
+      toast.success(`기수 참여 등록이 성공적으로 처리되었습니다.${couponMsg}`);
       setSessionRegistrationTarget(null);
       setInheritedOption(null);
       setSelectedOption('basic');
+      setAvailableCoupon(null);
+      setApplyCoupon(true);
     } catch (e: any) {
       toast.error(e.message || '오류가 발생했습니다.');
     } finally {
@@ -1392,6 +1419,10 @@ export default function UsersPage() {
                           <span className="text-[0.75rem] font-bold text-slate-500">
                             {(() => {
                               if (!u.birthDate) return '-';
+                              // 하이픈 포맷("YY-MM-D"처럼 0패딩이 빠진 값 포함)은 연도 부분만 보면 되므로 우선 처리
+                              if (u.birthDate.includes('-')) {
+                                return `${u.birthDate.split('-')[0].slice(-2)}년생`;
+                              }
                               const digits = u.birthDate.replace(/\D/g, '');
                               if (digits.length === 8) return `${digits.slice(2, 4)}년생`;
                               if (digits.length === 6) return `${digits.slice(0, 2)}년생`;
@@ -2025,6 +2056,30 @@ export default function UsersPage() {
                   </p>
                 )}
               </div>
+
+              {/* 보유 쿠폰 자동 적용 (v1.0.58) */}
+              {availableCoupon && selectedOption !== 'group' && (
+                <label className="flex items-center justify-between gap-2 px-4 py-3 rounded-2xl border border-amber-200 bg-amber-50/50 cursor-pointer">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">🎟️</span>
+                    <div>
+                      <p className="text-xs font-black text-amber-700">{availableCoupon.title || '보유 쿠폰'}</p>
+                      <p className="text-[10px] font-bold text-amber-500">
+                        {availableCoupon.type === 'free' ? '100% 무료' : availableCoupon.type === 'percent' ? `${availableCoupon.value || availableCoupon.amount}% 할인` : `${(availableCoupon.value || availableCoupon.amount || 0).toLocaleString()}원 할인`} · 등록 시 자동 사용 처리됩니다
+                      </p>
+                    </div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={applyCoupon}
+                    onChange={(e) => setApplyCoupon(e.target.checked)}
+                    className="w-4 h-4 accent-amber-500 cursor-pointer"
+                  />
+                </label>
+              )}
+              {selectedOption === 'group' && availableCoupon && (
+                <p className="text-[11px] font-bold text-slate-400 -mt-2">지인동반 옵션은 쿠폰과 중복 적용되지 않아 보유 쿠폰이 자동 적용되지 않습니다.</p>
+              )}
 
               {/* 등록 상태 선택 */}
               <div>
