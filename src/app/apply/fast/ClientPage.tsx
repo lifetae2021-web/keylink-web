@@ -201,7 +201,6 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
     privacy: false,
     thirdParty: false,
     refund: false,
-    marketing: false,
   });
   // ── Auth state ──
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -213,16 +212,16 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
     if (errorFields.length > 0) setErrorFields([]);
   }, [form, agreements, selectedSessionIds, photos]);
 
-  const isAllAgreed = currentUser 
-    ? agreements.refund 
-    : (agreements.terms && agreements.privacy && agreements.thirdParty && agreements.refund && agreements.marketing);
+  const isAllAgreed = currentUser
+    ? agreements.refund
+    : (agreements.terms && agreements.privacy && agreements.thirdParty && agreements.refund);
 
   const toggleAllAgreements = () => {
     const nextVal = !isAllAgreed;
     if (currentUser) {
       setAgreements(a => ({ ...a, refund: nextVal }));
     } else {
-      setAgreements({ terms: nextVal, privacy: nextVal, thirdParty: nextVal, refund: nextVal, marketing: nextVal });
+      setAgreements({ terms: nextVal, privacy: nextVal, thirdParty: nextVal, refund: nextVal });
     }
   };
   const [pinModalOpen, setPinModalOpen] = useState(false);
@@ -490,16 +489,89 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
     }
   }, [currentUser]);
 
+  // ── 여성 얼리버드 할인 헬퍼 (v1.0.57) ──
+  // 행사일 기준 2주 전: 10,000원 할인, 1주 전: 5,000원 할인. 동반 참석 가격에는 적용하지 않음.
+  // 정상가(femalePrice) 자체가 35,000원 기준이라 "정가" 표시와 실제 할인액이 항상 일치함.
+  // SSR에서 계산한 값과 클라이언트 최초 렌더 값이 어긋나 하이드레이션 오류가 나는 것을 막기 위해,
+  // 초 단위로 갱신되는 카운트다운은 마운트 전엔 null(서버와 동일)로 두고 마운트 후에만 채운다.
+  const [nowTick, setNowTick] = useState<number | null>(null);
+  useEffect(() => {
+    setNowTick(Date.now());
+    const id = setInterval(() => setNowTick(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  // 여성: 2주 전 -10,000원, 1주 전 -5,000원. 남성: 2주 전 -5,000원 단일 구간(공정성 차원, v1.0.57).
+  // 할인 금액은 일 단위 기준이라 하이드레이션 안전한 Date.now()를 바로 사용한다 (초 단위 카운트다운과 분리).
+  const getEarlyBirdDiscount = (sessionObj?: RecruitingSession, gender: 'male' | 'female' = 'female') => {
+    if (!sessionObj?.eventDate) return 0;
+    const diffDays = (sessionObj.eventDate.getTime() - Date.now()) / DAY_MS;
+    if (gender === 'male') {
+      return diffDays >= 14 ? 5000 : 0;
+    }
+    if (diffDays >= 14) return 10000;
+    if (diffDays >= 7) return 5000;
+    return 0;
+  };
+
+  // 현재 할인 구간이 끝나는 시각까지 남은 시간 (다음 단계로 내려가거나 할인이 사라지는 시점)
+  // 마운트 전(nowTick === null)에는 서버 렌더와 동일하게 아무것도 보여주지 않는다.
+  const getEarlyBirdCountdownText = (sessionObj?: RecruitingSession, gender: 'male' | 'female' = 'female') => {
+    if (!sessionObj?.eventDate || nowTick === null) return null;
+    const diffDays = (sessionObj.eventDate.getTime() - nowTick) / DAY_MS;
+    let targetMs: number;
+    if (gender === 'male') {
+      if (diffDays >= 14) targetMs = sessionObj.eventDate.getTime() - 14 * DAY_MS;
+      else return null;
+    } else if (diffDays >= 14) {
+      targetMs = sessionObj.eventDate.getTime() - 14 * DAY_MS;
+    } else if (diffDays >= 7) {
+      targetMs = sessionObj.eventDate.getTime() - 7 * DAY_MS;
+    } else return null;
+
+    const remaining = targetMs - nowTick;
+    if (remaining <= 0) return null;
+    const totalSec = Math.floor(remaining / 1000);
+    const days = Math.floor(totalSec / 86400);
+    const hours = Math.floor((totalSec % 86400) / 3600);
+    const minutes = Math.floor((totalSec % 3600) / 60);
+    const seconds = totalSec % 60;
+    return days > 0
+      ? `${days}일 ${hours}시간 ${minutes}분 ${seconds}초`
+      : `${hours}시간 ${minutes}분 ${seconds}초`;
+  };
+
   // ── 가격 계산 헬퍼 ──
   const getBasePrice = (explicitSessionId?: string) => {
     const sid = explicitSessionId || Array.from(selectedSessionIds)[0];
     const sessionObj = sessions.find(s => s.id === sid);
     if (form.gender === 'female') {
-      if (femaleOption === 'group') return sessionObj?.femaleGroupPrice || 24000;
-      return sessionObj?.femalePrice || 29000;
+      if (femaleOption === 'group') return sessionObj?.femaleGroupPrice || 25000;
+      const normalPrice = sessionObj?.femalePrice || 35000;
+      return Math.max(0, normalPrice - getEarlyBirdDiscount(sessionObj, 'female'));
     }
     if (maleOption === 'safe') return sessionObj?.maleSafePrice || 60000;
-    return sessionObj?.malePrice || 49000;
+    const normalMalePrice = sessionObj?.malePrice || 49000;
+    return Math.max(0, normalMalePrice - getEarlyBirdDiscount(sessionObj, 'male'));
+  };
+
+  // 여성 "1인 참석" 카드 표시용 (첫 번째 선택 기수 기준)
+  const getFemaleNormalPriceDisplay = () => {
+    const sid = Array.from(selectedSessionIds)[0];
+    const sessionObj = sessions.find(s => s.id === sid);
+    const normalPrice = sessionObj?.femalePrice || 35000;
+    const discount = getEarlyBirdDiscount(sessionObj, 'female');
+    return { normalPrice, finalPrice: Math.max(0, normalPrice - discount), discount };
+  };
+
+  // 남성 "일반 매칭" 카드 표시용 (첫 번째 선택 기수 기준)
+  const getMaleNormalPriceDisplay = () => {
+    const sid = Array.from(selectedSessionIds)[0];
+    const sessionObj = sessions.find(s => s.id === sid);
+    const normalPrice = sessionObj?.malePrice || 49000;
+    const discount = getEarlyBirdDiscount(sessionObj, 'male');
+    return { normalPrice, finalPrice: Math.max(0, normalPrice - discount), discount };
   };
 
   const getCouponDiscount = () => {
@@ -815,7 +887,9 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
           gender: form.gender,
           birthDate: form.birthDate,
           phone: form.phone,
-          job: form.workplace || '',
+          workplace: form.workplace || '',
+          jobRole: form.workplace || '',
+          job: form.workplace || '', // 구버전 화면 호환용 (workplace/jobRole이 최신 표시 기준)
           residence: form.residence || '',
           instaId: form.instaId || '',
           smoking: form.smoking || '',
@@ -1268,8 +1342,20 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
               }}
             >
               <p style={{ fontSize: '0.7rem', fontWeight: '700', color: maleOption === 'normal' ? '#FF6F61' : '#94A3B8', marginBottom: '6px' }}>일반 매칭</p>
-              <p style={{ fontSize: '1.15rem', fontWeight: '900', color: '#111', marginBottom: '4px' }}>49,000원</p>
-              <p style={{ fontSize: '0.68rem', color: '#94A3B8', lineHeight: 1.4 }}>매칭 실패 시 환불 없음</p>
+              {(() => {
+                const { normalPrice, finalPrice, discount } = getMaleNormalPriceDisplay();
+                return (
+                  <>
+                    {discount > 0 && (
+                      <p style={{ fontSize: '0.75rem', color: '#94A3B8', textDecoration: 'line-through', marginBottom: '2px' }}>정가 {normalPrice.toLocaleString()}원</p>
+                    )}
+                    <p style={{ fontSize: '1.15rem', fontWeight: '900', color: '#111', marginBottom: '4px' }}>{finalPrice.toLocaleString()}원</p>
+                    <p style={{ fontSize: '0.68rem', color: '#94A3B8', lineHeight: 1.4 }}>
+                      {discount > 0 ? `얼리버드 -${discount.toLocaleString()}원 적용중` : '매칭 실패 시 환불 없음'}
+                    </p>
+                  </>
+                );
+              })()}
             </button>
             {/* 안심 매칭 패키지 */}
             <button
@@ -1310,8 +1396,20 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
               }}
             >
               <p style={{ fontSize: '0.7rem', fontWeight: '700', color: femaleOption === 'normal' ? '#FF6F61' : '#94A3B8', marginBottom: '6px' }}>1인 참석</p>
-              <p style={{ fontSize: '1.15rem', fontWeight: '900', color: '#111', marginBottom: '4px' }}>29,000원</p>
-              <p style={{ fontSize: '0.68rem', color: '#94A3B8', lineHeight: 1.4 }}>일반 신청</p>
+              {(() => {
+                const { normalPrice, finalPrice, discount } = getFemaleNormalPriceDisplay();
+                return (
+                  <>
+                    {discount > 0 && (
+                      <p style={{ fontSize: '0.75rem', color: '#94A3B8', textDecoration: 'line-through', marginBottom: '2px' }}>정가 {normalPrice.toLocaleString()}원</p>
+                    )}
+                    <p style={{ fontSize: '1.15rem', fontWeight: '900', color: '#111', marginBottom: '4px' }}>{finalPrice.toLocaleString()}원</p>
+                    <p style={{ fontSize: '0.68rem', color: '#94A3B8', lineHeight: 1.4 }}>
+                      {discount > 0 ? `얼리버드 -${discount.toLocaleString()}원 적용중` : '일반 신청'}
+                    </p>
+                  </>
+                );
+              })()}
             </button>
             {/* 지인과 동반 참석 */}
             <button
@@ -1331,7 +1429,9 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
               }}
             >
               <p style={{ fontSize: '0.7rem', fontWeight: '700', color: femaleOption === 'group' ? '#A98FD5' : '#94A3B8', marginBottom: '6px' }}>지인과 동반 참석</p>
-              <p style={{ fontSize: '1.15rem', fontWeight: '900', color: '#111', marginBottom: '4px' }}>19,000원</p>
+              <p style={{ fontSize: '1.15rem', fontWeight: '900', color: '#111', marginBottom: '4px' }}>
+                {(sessions.find(s => s.id === Array.from(selectedSessionIds)[0])?.femaleGroupPrice || 25000).toLocaleString()}원
+              </p>
               <p style={{ fontSize: '0.68rem', color: '#94A3B8', lineHeight: 1.4 }}>동반 할인 적용</p>
             </button>
           </div>
@@ -1466,7 +1566,6 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
             { key: 'privacy', label: '개인정보 수집 및 이용 동의 (필수)' },
             { key: 'thirdParty', label: '개인정보 제3자 제공 동의 (필수)' },
             { key: 'refund', label: '환불 및 취소 규정 확인 및 동의 (필수)' },
-            { key: 'marketing', label: '마케팅 활용 모자이크 촬영 동의 (필수)' },
           ].filter(item => {
             if (currentUser && item.key !== 'refund') return false;
             return true;
@@ -1783,6 +1882,47 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
                         </p>
                       )}
                     </div>
+                    {form.gender === 'male' ? (
+                      getEarlyBirdDiscount(session, 'male') > 0 && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', margin: '2px 0 0' }}>
+                          <p style={{ background: '#FFF0EE', color: '#FF6F61', fontSize: '0.65rem', fontWeight: '800', margin: '0', padding: '2px 6px', borderRadius: '4px', border: '1px solid rgba(255,111,97,0.3)' }}>
+                            남성 얼리버드 -{getEarlyBirdDiscount(session, 'male').toLocaleString()}원
+                          </p>
+                          {getEarlyBirdCountdownText(session, 'male') && (
+                            <p style={{ color: '#FF6F61', fontSize: '0.63rem', fontWeight: '700', margin: '0' }}>
+                              남은시간: {getEarlyBirdCountdownText(session, 'male')}
+                            </p>
+                          )}
+                        </div>
+                      )
+                    ) : form.gender === 'female' ? (
+                      getEarlyBirdDiscount(session, 'female') > 0 && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', margin: '2px 0 0' }}>
+                          <p style={{ background: '#FFF0EE', color: '#FF6F61', fontSize: '0.65rem', fontWeight: '800', margin: '0', padding: '2px 6px', borderRadius: '4px', border: '1px solid rgba(255,111,97,0.3)' }}>
+                            여성 얼리버드 -{getEarlyBirdDiscount(session, 'female').toLocaleString()}원
+                          </p>
+                          {getEarlyBirdCountdownText(session, 'female') && (
+                            <p style={{ color: '#FF6F61', fontSize: '0.63rem', fontWeight: '700', margin: '0' }}>
+                              남은시간: {getEarlyBirdCountdownText(session, 'female')}
+                            </p>
+                          )}
+                        </div>
+                      )
+                    ) : (
+                      // 비회원/성별 미정: 금액·성별 구분 없이 "얼리버드 할인"만 안내
+                      getEarlyBirdDiscount(session, 'female') > 0 && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', margin: '2px 0 0' }}>
+                          <p style={{ background: '#FFF0EE', color: '#FF6F61', fontSize: '0.65rem', fontWeight: '800', margin: '0', padding: '2px 6px', borderRadius: '4px', border: '1px solid rgba(255,111,97,0.3)' }}>
+                            얼리버드 할인
+                          </p>
+                          {getEarlyBirdCountdownText(session, 'female') && (
+                            <p style={{ color: '#FF6F61', fontSize: '0.63rem', fontWeight: '700', margin: '0' }}>
+                              남은시간: {getEarlyBirdCountdownText(session, 'female')}
+                            </p>
+                          )}
+                        </div>
+                      )
+                    )}
                   </div>
                 </button>
               ))}
@@ -1877,7 +2017,7 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
                       if (photos.length === 0) {
                         setPhotos(['https://dummyimage.com/600x400/FF6F61/fff&text=TEST']);
                       }
-                      setAgreements({ terms: true, privacy: true, thirdParty: true, refund: true, marketing: true });
+                      setAgreements({ terms: true, privacy: true, thirdParty: true, refund: true });
                       toast.success('테스트용 데이터가 자동 입력되었습니다!');
                     }
                   }}
@@ -2551,8 +2691,8 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
 
                 <p style={{ fontWeight: '700', marginBottom: '4px', color: '#555' }}>여성 참가 비용</p>
                 <ul style={{ paddingLeft: '16px', margin: '0 0 10px 0', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                  <li>일반 신청: 29,000원</li>
-                  <li>동반 신청 (지인과 함께 신청 시): 19,000원 (1만 원 할인 적용)</li>
+                  <li>일반 신청: 35,000원</li>
+                  <li>동반 신청 (지인과 함께 신청 시): 25,000원 (1만 원 할인 적용)</li>
                 </ul>
                 <p style={{ fontSize: '0.8rem', color: '#666', marginTop: '4px' }}>* 대관료, 음료, 다과 및 각종 혜택 비용이 모두 포함되어 있습니다.</p>
               </div>

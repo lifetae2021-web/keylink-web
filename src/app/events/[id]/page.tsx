@@ -67,7 +67,7 @@ export default function EventDetailPage() {
     idealType: '', nonIdealType: '',
     smoking: '', drinking: '', religion: '',
     drink: [] as string[], etc: '',
-    agreeTerms: true, agreeRule: true, agreePhoto: true, // Auto-checked on load
+    agreeTerms: true, agreeRule: true, // Auto-checked on load
     maleOption: 'normal', // 'normal' | 'safe'
     femaleOption: 'normal', // 'normal' | 'group'
     groupPartnerName: '',
@@ -134,7 +134,6 @@ export default function EventDetailPage() {
             etc: d.etc || '',
             agreeTerms: true,
             agreeRule: true,
-            agreePhoto: true,
             maleOption: 'normal',
             femaleOption: 'normal',
             groupPartnerName: '',
@@ -273,11 +272,43 @@ export default function EventDetailPage() {
   const soldOutM = event.currentMale >= event.maxMale;
   const soldOutF = event.currentFemale >= event.maxFemale;
 
-  // 성별 및 옵션 기반 가격 로직
-  let displayBasePrice = form.gender === 'female' ? 40000 : (form.maleOption === 'safe' ? 60000 : 49000);
+  // 성별 및 옵션 기반 가격 로직 (v1.0.57: apply/fast와 동일한 얼리버드 규칙 적용)
+  // 여성: 행사일 2주 전 -10,000원, 1주 전 -5,000원 / 남성: 2주 전 -5,000원 단일 구간. 동반·안심 옵션에는 적용 안 함.
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  const getEarlyBirdDiscount = (gender: 'male' | 'female') => {
+    if (!event?.eventDate) return 0;
+    const diffDays = (new Date(event.eventDate).getTime() - Date.now()) / DAY_MS;
+    if (gender === 'male') return diffDays >= 14 ? 5000 : 0;
+    if (diffDays >= 14) return 10000;
+    if (diffDays >= 7) return 5000;
+    return 0;
+  };
+
+  const femaleNormalPrice = event.femalePrice ?? 35000;
+  const femaleGroupPrice = event.femaleGroupPrice ?? 25000;
+  const maleNormalPrice = event.malePrice ?? 49000;
+  const maleSafePrice = event.maleSafePrice ?? 60000;
+  const femaleEarlyBirdDiscount = getEarlyBirdDiscount('female');
+  const maleEarlyBirdDiscount = getEarlyBirdDiscount('male');
+  const femaleNormalFinal = Math.max(0, femaleNormalPrice - femaleEarlyBirdDiscount);
+  const maleNormalFinal = Math.max(0, maleNormalPrice - maleEarlyBirdDiscount);
+
+  // 옵션별 정가(할인 전)/할인 후 가격 조회 헬퍼 — 표시용 카드와 최종 결제 계산이 항상 같은 값을 쓰도록 통일
+  const getOptionFullPrice = (gender: 'male' | 'female', opt: string) => {
+    if (gender === 'female') return opt === 'group' ? femaleGroupPrice : femaleNormalPrice;
+    return opt === 'safe' ? maleSafePrice : maleNormalPrice;
+  };
+  const getOptionPrice = (gender: 'male' | 'female', opt: string) => {
+    if (gender === 'female') return opt === 'group' ? femaleGroupPrice : femaleNormalFinal;
+    return opt === 'safe' ? maleSafePrice : maleNormalFinal;
+  };
+
+  let displayBasePrice = form.gender === 'female'
+    ? femaleNormalPrice
+    : (form.maleOption === 'safe' ? maleSafePrice : maleNormalPrice);
   let basePriceBeforeCoupon = form.gender === 'female'
-    ? (form.femaleOption === 'group' ? (event.femaleGroupPrice ?? 19000) : (event.price ?? 29000))
-    : displayBasePrice;
+    ? getOptionPrice('female', form.femaleOption)
+    : getOptionPrice('male', form.maleOption);
 
   // v8.15.9: 쿠폰 할인 계산 (지인동반 특가와 중복 적용 불가)
   let couponDiscount = 0;
@@ -295,7 +326,44 @@ export default function EventDetailPage() {
   }
 
   let finalPrice = Math.max(0, basePriceBeforeCoupon - couponDiscount);
-  let isDiscounted = form.gender === 'female' || couponDiscount > 0;
+  const activeEarlyBirdDiscount = form.gender === 'female'
+    ? (form.femaleOption === 'normal' ? femaleEarlyBirdDiscount : 0)
+    : (form.maleOption === 'normal' ? maleEarlyBirdDiscount : 0);
+  let isDiscounted = couponDiscount > 0 || activeEarlyBirdDiscount > 0;
+
+  // 매칭 옵션 카드의 가격 표시 (정가 취소선 + 얼리버드/쿠폰 할인가) — 카드 표시와 실제 결제 계산이 같은 값을 쓰도록 통일
+  const renderOptionPrice = (gender: 'male' | 'female', opt: string) => {
+    const rowBase = getOptionPrice(gender, opt);
+    const rowFull = getOptionFullPrice(gender, opt);
+    const rowEarlyBird = opt === 'normal' ? (gender === 'female' ? femaleEarlyBirdDiscount : maleEarlyBirdDiscount) : 0;
+    const couponEligible = gender === 'female' ? opt !== 'group' : true;
+
+    if (selectedCoupon && couponEligible) {
+      const value = selectedCoupon.value || selectedCoupon.amount || 0;
+      const couponAmt = selectedCoupon.type === 'free' ? rowBase : selectedCoupon.type === 'percent' ? Math.floor(rowBase * (value / 100)) : value;
+      const rowFinal = Math.max(0, rowBase - couponAmt);
+      return (
+        <>
+          <p style={{ fontSize: '0.75rem', color: '#94A3B8', textDecoration: 'line-through', marginBottom: '2px', fontWeight: '500' }}>
+            {rowFull.toLocaleString()}원
+          </p>
+          <p style={{ fontSize: '0.9rem', fontWeight: '800', color: '#FF6F61' }}>{rowFinal.toLocaleString()}원</p>
+        </>
+      );
+    }
+    if (rowEarlyBird > 0) {
+      return (
+        <>
+          <p style={{ fontSize: '0.75rem', color: '#94A3B8', textDecoration: 'line-through', marginBottom: '2px', fontWeight: '500' }}>
+            {rowFull.toLocaleString()}원
+          </p>
+          <p style={{ fontSize: '0.9rem', fontWeight: '800', color: '#FF6F61' }}>{rowBase.toLocaleString()}원</p>
+          <p style={{ fontSize: '0.65rem', color: '#FF6F61', fontWeight: '700' }}>얼리버드 -{rowEarlyBird.toLocaleString()}원</p>
+        </>
+      );
+    }
+    return <span style={{ fontSize: '0.9rem', fontWeight: '800' }}>{rowBase.toLocaleString()}원</span>;
+  };
 
   const handleStep1Entry = () => {
     if (!currentUser) {
@@ -318,10 +386,6 @@ export default function EventDetailPage() {
     e.preventDefault();
     if (!form.agreeRule) {
       toast.error('운영 규정에 동의해주세요.');
-      return;
-    }
-    if (!form.agreePhoto) {
-      toast.error('마케팅 활용 동의에 체크해주세요.');
       return;
     }
 
@@ -423,7 +487,6 @@ export default function EventDetailPage() {
         avoidAcquaintance: form.avoidAcquaintance,
         photos: uploadedUrls,
         employmentProof: finalVerificationUrl,
-        photoConsent: form.agreePhoto,
         verificationUrl: deleteField(),
         updatedAt: serverTimestamp()
       }, { merge: true });
@@ -451,7 +514,6 @@ export default function EventDetailPage() {
         height: form.height || '',
         weight: form.weight || '',
         jobRole: form.jobRole || '',
-        photoConsent: form.agreePhoto,
         status: 'applied',
         paymentConfirmed: false,
         appliedAt: now,
@@ -1112,12 +1174,6 @@ export default function EventDetailPage() {
                       </button>
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-                      <label style={{ display: 'flex', gap: '10px', alignItems: 'center', cursor: 'pointer', flex: 1 }}>
-                        <input type="checkbox" checked={form.agreePhoto} onChange={(e) => setForm(f => ({ ...f, agreePhoto: e.target.checked }))} style={{ flexShrink: 0 }} />
-                        <span style={{ fontSize: '0.85rem' }}>[필수] 마케팅 활용 모자이크 촬영 동의</span>
-                      </label>
-                    </div>
                   </div>
                 </form>
               </div>
@@ -1380,18 +1436,7 @@ export default function EventDetailPage() {
                               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                                 <span style={{ fontSize: '0.9rem', fontWeight: '700' }}>{opt === 'normal' ? '일반 매칭' : '안심 매칭 패키지'}</span>
                                 <div style={{ textAlign: 'right' }}>
-                                  {selectedCoupon ? (
-                                    <>
-                                      <p style={{ fontSize: '0.75rem', color: '#94A3B8', textDecoration: 'line-through', marginBottom: '2px', fontWeight: '500' }}>
-                                        {opt === 'normal' ? '49,000원' : '60,000원'}
-                                      </p>
-                                      <p style={{ fontSize: '0.9rem', fontWeight: '800', color: '#FF6F61' }}>
-                                        {((opt === 'normal' ? 49000 : 60000) - (selectedCoupon.type === 'free' ? (opt === 'normal' ? 49000 : 60000) : (selectedCoupon.type === 'percent' ? Math.floor((opt === 'normal' ? 49000 : 60000) * ((selectedCoupon.value || selectedCoupon.amount || 0) / 100)) : (selectedCoupon.value || selectedCoupon.amount || 0)))).toLocaleString()}원
-                                      </p>
-                                    </>
-                                  ) : (
-                                    <span style={{ fontSize: '0.9rem', fontWeight: '800' }}>{opt === 'normal' ? '49,000원' : '60,000원'}</span>
-                                  )}
+                                  {renderOptionPrice('male', opt)}
                                 </div>
                               </div>
                               <p style={{ fontSize: '0.75rem', color: opt === 'normal' ? 'var(--color-text-muted)' : '#FF6F61' }}>{opt === 'normal' ? '매칭 실패 시 환불 없음' : '미매칭 시 30% 환불 보장'}</p>
@@ -1439,18 +1484,7 @@ export default function EventDetailPage() {
                               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                                 <span style={{ fontSize: '0.9rem', fontWeight: '700' }}>{opt === 'normal' ? '일반 매칭' : '동반할인'}</span>
                                 <div style={{ textAlign: 'right' }}>
-                                  {selectedCoupon && opt !== 'group' ? (
-                                    <>
-                                      <p style={{ fontSize: '0.75rem', color: '#94A3B8', textDecoration: 'line-through', marginBottom: '2px', fontWeight: '500' }}>
-                                        29,000원
-                                      </p>
-                                      <p style={{ fontSize: '0.9rem', fontWeight: '800', color: '#FF6F61' }}>
-                                        {(29000 - (selectedCoupon.type === 'free' ? 29000 : (selectedCoupon.type === 'percent' ? Math.floor(29000 * ((selectedCoupon.value || selectedCoupon.amount || 0) / 100)) : (selectedCoupon.value || selectedCoupon.amount || 0)))).toLocaleString()}원
-                                      </p>
-                                    </>
-                                  ) : (
-                                    <span style={{ fontSize: '0.9rem', fontWeight: '800' }}>{opt === 'normal' ? '29,000원' : '19,000원'}</span>
-                                  )}
+                                  {renderOptionPrice('female', opt)}
                                 </div>
                               </div>
                             </div>

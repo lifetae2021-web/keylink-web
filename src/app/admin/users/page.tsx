@@ -531,6 +531,14 @@ export default function UsersPage() {
       const matchGender = genderFilter === 'all' || u.gender === genderFilter;
       return matchSearch && matchFilter && matchGender;
     }).sort((a, b) => {
+      // 승인대기 탭에서는 "정보수정"으로 재승인 대기에 들어온 사람(isJobReviewed === false)을
+      // 신규 미승인 가입자보다 항상 위에 노출 (재검토가 빠르고 급한 경우가 많음)
+      if (filter === 'pending') {
+        const aEdited = a.isJobReviewed === false ? 0 : 1;
+        const bEdited = b.isJobReviewed === false ? 0 : 1;
+        if (aEdited !== bEdited) return aEdited - bEdited;
+      }
+
       if (!sortConfig.direction || !sortConfig.key) return 0;
 
       let valA: any, valB: any;
@@ -669,9 +677,11 @@ export default function UsersPage() {
   const handleJobUpdate = async (userId: string, value: string) => {
     try {
       const userRef = doc(db, 'users', userId);
+      // job 필드는 절대 덮어쓰지 않는다 — 일부 회원(구버전 가입)은 workplace 없이 job에
+      // 본인이 직접 적은 직업명이 들어있어서, 여기서 job까지 같이 바꾸면 그 원본이 사라짐.
+      // admin_job은 어디서든 job보다 우선해서 읽히므로 이것만 갱신해도 화면에는 정상 반영됨.
       await updateDoc(userRef, {
         admin_job: value,
-        job: value, // for backwards compatibility
         isJobReviewed: true,
         updatedAt: Timestamp.now()
       });
@@ -793,7 +803,7 @@ export default function UsersPage() {
       u.name || '-',
       u.email || '-',
       u.gender === 'male' ? '남성' : '여성',
-      u.job || '-',
+      u.admin_job || u.job || '-',
       u.birthDate ? `${u.birthDate.includes('-') ? u.birthDate.split('-')[0].slice(-2) : (u.birthDate.length === 8 ? u.birthDate.slice(2, 4) : u.birthDate.slice(0, 2))}년생` : '-',
       STATUS_CFG[(u.status || 'pending') as keyof typeof STATUS_CFG].label,
       u.role || '일반회원',

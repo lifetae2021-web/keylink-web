@@ -637,7 +637,7 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
                           {(user.employmentProof || user.verificationUrl) ? (
                             <button
                               onClick={() => setShowProofPopup(true)}
-                              className="text-[0.85rem] font-black text-blue-600 hover:underline flex items-center gap-1 cursor-pointer"
+                              className="text-[0.85rem] font-black text-blue-600 hover:underline flex items-center gap-1 cursor-pointer whitespace-nowrap"
                             >
                               서류 확인하기 <ExternalLink size={12} />
                             </button>

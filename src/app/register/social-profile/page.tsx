@@ -21,10 +21,9 @@ export default function SocialProfilePage() {
     terms: false,
     privacy: false,
     thirdParty: false,
-    photoConsent: false,
   });
 
-  const isAllAgreed = agreements.terms && agreements.privacy && agreements.thirdParty && agreements.photoConsent;
+  const isAllAgreed = agreements.terms && agreements.privacy && agreements.thirdParty;
 
   const [form, setForm] = useState({
     email: '',
@@ -102,7 +101,7 @@ export default function SocialProfilePage() {
   const toggleAll = () => {
     if (error) setError(null);
     const nextVal = !isAllAgreed;
-    setAgreements({ terms: nextVal, privacy: nextVal, thirdParty: nextVal, photoConsent: nextVal });
+    setAgreements({ terms: nextVal, privacy: nextVal, thirdParty: nextVal });
   };
 
   const handleSubmit = async () => {
@@ -152,7 +151,6 @@ export default function SocialProfilePage() {
         provider,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-        photoConsent: agreements.photoConsent,
         photoURL: user.photoURL || null,
         isRegistered: true, // v1.0.49: ensure isRegistered is explicitly set
       }, { merge: true });
@@ -303,7 +301,6 @@ export default function SocialProfilePage() {
                   { key: 'terms', label: '서비스 이용약관 동의 (필수)' },
                   { key: 'privacy', label: '개인정보 수집 및 이용 동의 (필수)' },
                   { key: 'thirdParty', label: '개인정보 제3자 제공 동의 (필수)' },
-                  { key: 'photoConsent', label: '마케팅 활용 모자이크 촬영 동의 (필수)' },
                 ].map(({ key, label }) => (
                   <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
                     onClick={() => setAgreements(a => ({ ...a, [key]: !a[key as keyof typeof agreements] }))}>

@@ -1278,7 +1278,7 @@ ${chatLink}`;
 
     const genderPrice = app.gender === 'male'
       ? (app.maleOption === 'safe' ? 60000 : (session.malePrice || 49000))
-      : (app.femaleOption === 'group' ? 24000 : (session.femalePrice || 29000));
+      : (app.femaleOption === 'group' ? (session.femaleGroupPrice || 25000) : (session.femalePrice || 35000));
 
     // v8.12.3: 저장된 '입금 요청 (기본)' 템플릿 자동 적용
     const targetTemplate = smsTemplates.find(t => t.name === '입금 요청 (기본)');
@@ -2156,6 +2156,32 @@ ${chatLink}
   };
 
   // 4. 삭제 처리
+  // 기수 취소/삭제로 참가가 무산된 신청서가 쿠폰을 사용했었다면 미사용 상태로 되돌린다.
+  // 같은 쿠폰을 다른(취소되지 않은) 신청서가 여전히 쓰고 있으면 복구하지 않는다.
+  const queueCouponRestores = async (apps: any[], batch: any) => {
+    let restoredCount = 0;
+    for (const appDoc of apps) {
+      const data = appDoc.data();
+      if (!data.userId || !data.couponId || data.status === 'cancelled') continue;
+
+      const otherAppsSnap = await getDocs(query(
+        collection(db, 'applications'),
+        where('userId', '==', data.userId),
+        where('couponId', '==', data.couponId)
+      ));
+      const hasOtherUse = otherAppsSnap.docs.some(d => d.id !== appDoc.id);
+      if (hasOtherUse) continue;
+
+      const couponRef = doc(db, 'users', data.userId, 'coupons', data.couponId);
+      const couponSnap = await getDoc(couponRef);
+      if (couponSnap.exists() && couponSnap.data()?.isUsed) {
+        batch.update(couponRef, { isUsed: false, updatedAt: serverTimestamp() });
+        restoredCount++;
+      }
+    }
+    return restoredCount;
+  };
+
   const handleDeleteSession = async (id: string, name: string) => {
     const sessionToDelete = sessions.find(s => s.id === id);
     if (!sessionToDelete) {
@@ -2222,6 +2248,9 @@ ${chatLink}
         });
       });
 
+      // 기수 자체가 삭제되어 참가가 무산되므로, 그 신청서들이 썼던 쿠폰을 복구
+      const restoredCouponCount = await queueCouponRestores(appSnap.docs, batch);
+
       // 1. 대상 기수 삭제
       batch.delete(doc(db, "sessions", id));
 
@@ -2247,7 +2276,8 @@ ${chatLink}
         });
 
       await batch.commit();
-      toast.success(`기수가 삭제되었으며, 이후 기수 번호가 조정되었습니다. ${waitlistedUserIds.size}명이 우선 대기풀에 등록되었습니다.`);
+      const couponMsg = restoredCouponCount > 0 ? ` 쿠폰 ${restoredCouponCount}건도 복구되었습니다.` : '';
+      toast.success(`기수가 삭제되었으며, 이후 기수 번호가 조정되었습니다. ${waitlistedUserIds.size}명이 우선 대기풀에 등록되었습니다.${couponMsg}`);
       if (selectedId === id) setSelectedId(null);
     } catch (err: any) {
       console.error(err);
@@ -2326,6 +2356,9 @@ ${chatLink}
         });
       });
 
+      // 기수가 취소되어 참가가 무산되므로, 그 신청서들이 썼던 쿠폰을 복구
+      const restoredCouponCount = await queueCouponRestores(appSnap.docs, batch);
+
       // 3. 이후 기수들 번호 조정 (동일 지역, 더 높은 기수 번호)
       const qSessions = query(
         collection(db, "sessions"),
@@ -2348,7 +2381,8 @@ ${chatLink}
         });
 
       await batch.commit();
-      toast.success(`${sessionTitle} 취소 처리 및 이후 기수 번호 조정 완료. ${userIds.size}명이 우선 대기풀에 등록되었습니다.`);
+      const couponMsg = restoredCouponCount > 0 ? ` 쿠폰 ${restoredCouponCount}건도 복구되었습니다.` : '';
+      toast.success(`${sessionTitle} 취소 처리 및 이후 기수 번호 조정 완료. ${userIds.size}명이 우선 대기풀에 등록되었습니다.${couponMsg}`);
     } catch (err: any) {
       console.error(err);
       toast.error('기수 취소 처리 중 오류 발생: ' + err.message);
@@ -3745,7 +3779,7 @@ ${chatLink}
                                                 const daysLeft = Math.ceil((eventDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
                                                 const genderPrice = app.gender === 'male'
                                                   ? (app.maleOption === 'safe' ? 60000 : (session?.malePrice || 49000))
-                                                  : (app.femaleOption === 'group' ? 24000 : (session?.femalePrice || 29000));
+                                                  : (app.femaleOption === 'group' ? (session?.femaleGroupPrice || 25000) : (session?.femalePrice || 35000));
                                                 const finalPrice = (app.price ?? genderPrice).toLocaleString('ko-KR');
                                                 const daysText = daysLeft > 0 ? `행사까지 딱 ${daysLeft}일 남았습니다!` : '행사가 곧 시작됩니다!';
                                                 const msg = `[키링크] ${daysText}\n\n${_name}님, 안녕하세요!\n아직까지 ${fDate}(${fDay}) ${fTime} 모임의 입금 내역이 확인되지 않아 다시 안내드립니다.\n\n인원이 일찍 마감되거나 기한 내에 ${finalPrice}원 입금이 되지 않을 경우, 부득이하게 예약이 취소될 수 있습니다.\n\n3333359229548 카카오뱅크 태영훈(키링크)\n\n혹시나 입금이 늦을 것 같은 경우 말씀해주세요 :)`;
