@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import {
   TrendingUp, Users, CreditCard, Calendar,
   ArrowUpRight, ArrowDownRight, DollarSign,
-  Download, Filter, Loader2, X, ChevronRight, Search
+  Download, Filter, Loader2, X, ChevronLeft, ChevronRight, Search
 } from 'lucide-react';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -15,7 +15,7 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer
 } from 'recharts';
-import { format, startOfMonth, endOfMonth, isWithinInterval, subMonths } from 'date-fns';
+import { format, startOfMonth, endOfMonth, isWithinInterval, subMonths, addMonths } from 'date-fns';
 import { ko } from 'date-fns/locale';
 
 const CHOSUNGS = ["ㄱ","ㄲ","ㄴ","ㄷ","ㄸ","ㄹ","ㅁ","ㅂ","ㅃ","ㅅ","ㅆ","ㅇ","ㅈ","ㅉ","ㅊ","ㅋ","ㅌ","ㅍ","ㅎ"];
@@ -46,6 +46,7 @@ const panel = {
 function DetailModal({
   title,
   filterMonth,
+  filterMonthDate,
   filterSessionId,
   applications,
   sessions,
@@ -53,6 +54,7 @@ function DetailModal({
 }: {
   title: string;
   filterMonth: 'all' | 'current';
+  filterMonthDate?: Date;
   filterSessionId?: string;
   applications: any[];
   sessions: any[];
@@ -202,13 +204,13 @@ function DetailModal({
       app.status === 'confirmed' || (app.paymentConfirmed === true && !['applied', 'cancelled', 'rejected'].includes(app.status))
     );
 
-    const now = new Date();
+    const targetMonth = filterMonthDate || new Date();
     let filtered = filterMonth === 'current'
       ? confirmed.filter(app => {
           const session = sessionMap[app.sessionId];
           if (!session) return false;
           const date = session.eventDate instanceof Date ? session.eventDate : session.eventDate?.toDate?.() || new Date();
-          return isWithinInterval(date, { start: startOfMonth(now), end: endOfMonth(now) });
+          return isWithinInterval(date, { start: startOfMonth(targetMonth), end: endOfMonth(targetMonth) });
         })
       : confirmed;
 
@@ -273,7 +275,7 @@ function DetailModal({
         const nameB = b.app.name || '';
         return nameA.localeCompare(nameB, 'ko');
       });
-  }, [applications, sessions, sessionMap, filterMonth, filterSessionId, searchQuery]);
+  }, [applications, sessions, sessionMap, filterMonth, filterMonthDate, filterSessionId, searchQuery]);
 
   const total = rows.reduce((s, r) => s + r.amount, 0);
 
@@ -629,11 +631,16 @@ export default function RevenueStatsPage() {
   const [dummyUserIds, setDummyUserIds] = useState<Set<string>>(new Set());
   const [superAdminUserIds, setSuperAdminUserIds] = useState<Set<string>>(new Set());
 
+  // 당월 매출 카드 전월/다음달 이동
+  const [revenueMonthOffset, setRevenueMonthOffset] = useState(0);
+  const revenueViewMonth = useMemo(() => addMonths(new Date(), revenueMonthOffset), [revenueMonthOffset]);
+
   // 상세 모달 상태
   const [modalConfig, setModalConfig] = useState<{
     open: boolean;
     title: string;
     filterMonth: 'all' | 'current';
+    filterMonthDate?: Date;
     filterSessionId?: string;
   }>({ open: false, title: '', filterMonth: 'all' });
 
@@ -681,7 +688,7 @@ export default function RevenueStatsPage() {
     if (isLoading) return null;
 
     // 1. 테스트 기수 제외
-    const activeNonTestSessions = sessions.filter(s => !s.isTest);
+    const activeNonTestSessions = sessions.filter(s => !s.isTest && s.status !== 'cancelled');
     const activeSessionIds = new Set(activeNonTestSessions.map(s => s.id));
 
     // 2. 더미 회원 및 기재되지 않은(삭제된) 기수 결제 내역 제외
@@ -766,13 +773,13 @@ export default function RevenueStatsPage() {
     const totalRevenue = eventRevenues.reduce((acc, curr) => acc + curr.total, 0);
 
     const now = new Date();
-    const currentMonthStart = startOfMonth(now);
-    const currentMonthEnd = endOfMonth(now);
-    const prevMonthStart = startOfMonth(subMonths(now, 1));
-    const prevMonthEnd = endOfMonth(subMonths(now, 1));
+    const viewedMonthStart = startOfMonth(revenueViewMonth);
+    const viewedMonthEnd = endOfMonth(revenueViewMonth);
+    const prevMonthStart = startOfMonth(subMonths(revenueViewMonth, 1));
+    const prevMonthEnd = endOfMonth(subMonths(revenueViewMonth, 1));
 
     const thisMonthRevenue = eventRevenues
-      .filter(ev => isWithinInterval(ev.date, { start: currentMonthStart, end: currentMonthEnd }))
+      .filter(ev => isWithinInterval(ev.date, { start: viewedMonthStart, end: viewedMonthEnd }))
       .reduce((acc, curr) => acc + curr.total, 0);
 
     const prevMonthRevenue = eventRevenues
@@ -793,7 +800,7 @@ export default function RevenueStatsPage() {
     }
 
     return { totalRevenue, thisMonthRevenue, growth, eventRevenues, chartData, realApps, activeNonTestSessions };
-  }, [sessions, applications, isLoading, dummyUserIds, superAdminUserIds]);
+  }, [sessions, applications, isLoading, dummyUserIds, superAdminUserIds, revenueViewMonth]);
 
   if (isSuperAdmin === null || isLoading) {
     return (
@@ -828,15 +835,17 @@ export default function RevenueStatsPage() {
       desc: '현재까지 집계된 모든 수익',
       canDetail: true,
       filterMonth: 'all' as const,
+      isMonthCard: false,
     },
     {
-      label: '당월 매출 내역',
+      label: revenueMonthOffset === 0 ? '당월 매출 내역' : `${format(revenueViewMonth, 'M월', { locale: ko })} 매출 내역`,
       value: `₩${stats.thisMonthRevenue.toLocaleString()}`,
       icon: CreditCard,
       color: '#0F172A',
-      desc: `${format(new Date(), 'MMMM', { locale: ko })} 매출액`,
+      desc: `${format(revenueViewMonth, 'MMMM', { locale: ko })} 매출액`,
       canDetail: true,
       filterMonth: 'current' as const,
+      isMonthCard: true,
     },
     {
       label: '전월 대비 성장률',
@@ -846,6 +855,7 @@ export default function RevenueStatsPage() {
       desc: stats.growth >= 0 ? '지난달보다 수익 증가' : '지난달보다 수익 감소',
       canDetail: false,
       filterMonth: 'all' as const,
+      isMonthCard: false,
     },
   ];
 
@@ -872,8 +882,28 @@ export default function RevenueStatsPage() {
           {cards.map((card, i) => (
             <div key={i} style={panel} className="p-8 relative overflow-hidden group">
               <div className="relative z-10 flex flex-col gap-4">
-                <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ background: `${card.color}10` }}>
-                  <card.icon size={24} style={{ color: card.color }} />
+                <div className="flex items-center justify-between">
+                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ background: `${card.color}10` }}>
+                    <card.icon size={24} style={{ color: card.color }} />
+                  </div>
+                  {card.isMonthCard && (
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => setRevenueMonthOffset(o => o - 1)}
+                        className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                        title="전월"
+                      >
+                        <ChevronLeft size={16} />
+                      </button>
+                      <button
+                        onClick={() => setRevenueMonthOffset(o => o + 1)}
+                        className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                        title="다음달"
+                      >
+                        <ChevronRight size={16} />
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <p className="text-slate-400 text-xs font-bold uppercase tracking-wider">{card.label}</p>
@@ -882,7 +912,7 @@ export default function RevenueStatsPage() {
                 <p className="text-slate-500 text-xs">{card.desc}</p>
                 {card.canDetail && (
                   <button
-                    onClick={() => setModalConfig({ open: true, title: `${card.label} 상세 내역`, filterMonth: card.filterMonth })}
+                    onClick={() => setModalConfig({ open: true, title: `${card.label} 상세 내역`, filterMonth: card.filterMonth, filterMonthDate: card.isMonthCard ? revenueViewMonth : undefined })}
                     className="flex items-center gap-1 text-xs font-bold text-slate-400 hover:text-[#FF7E7E] transition-colors w-fit mt-1 group/btn"
                   >
                     자세히 보기
@@ -1015,6 +1045,7 @@ export default function RevenueStatsPage() {
         <DetailModal
           title={modalConfig.title}
           filterMonth={modalConfig.filterMonth}
+          filterMonthDate={modalConfig.filterMonthDate}
           filterSessionId={modalConfig.filterSessionId}
           applications={stats.realApps}
           sessions={stats.activeNonTestSessions}
