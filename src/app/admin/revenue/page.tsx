@@ -42,6 +42,9 @@ const panel = {
   boxShadow: '0 4px 20px -1px rgba(0, 0, 0, 0.03)'
 };
 
+// 관리자 화면에서는 "로테이션 소개팅"을 "로소"로 줄여서 표시
+const shortenSessionName = (name: string) => name.replace(/로테이션 소개팅/g, '로소');
+
 // 상세 모달 컴포넌 (일부 환불 상태 및 핸들러 추가)
 function DetailModal({
   title,
@@ -247,9 +250,10 @@ function DetailModal({
 
         const amount = Math.max(0, baseAmount - Number(app.refundedAmount || 0));
           
-        const sessionName = session.episodeNumber
-          ? `${session.region === 'busan' ? '부산' : '창원'} ${session.episodeNumber}기`
-          : '-';
+        const sessionName = shortenSessionName(session.title
+          || (session.episodeNumber
+            ? `${session.region === 'busan' ? '부산' : '창원'} ${session.episodeNumber}기`
+            : '-'));
         const confirmedAt = app.updatedAt instanceof Date ? app.updatedAt : (app.updatedAt?.toDate?.() || new Date());
         
         // v8.12.2: 옵션 라벨 추가
@@ -281,40 +285,40 @@ function DetailModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-stretch sm:items-center justify-center p-0 sm:p-4 bg-slate-900/50 backdrop-blur-sm"
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+      <div className="bg-white sm:rounded-2xl shadow-2xl w-full max-w-4xl h-full sm:h-auto sm:max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
         {/* 헤더 */}
-        <div className="flex items-center justify-between px-8 py-5 border-b border-slate-100">
-          <div>
-            <h3 className="text-lg font-black text-slate-800">{title}</h3>
+        <div className="flex items-start justify-between gap-3 px-4 sm:px-8 py-4 sm:py-5 border-b border-slate-100 shrink-0">
+          <div className="min-w-0">
+            <h3 className="text-base sm:text-lg font-black text-slate-800 truncate">{title}</h3>
             <p className="text-xs text-slate-400 font-bold mt-0.5">
               총 {rows.length}건 · 합계 ₩{total.toLocaleString()}
             </p>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="참여자 이름 검색..."
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                className="w-48 pl-9 pr-3 py-2 text-sm font-medium bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-[#FF7E7E] focus:ring-2 focus:ring-[#FF7E7E]/20 transition-all placeholder:text-slate-300"
-              />
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            </div>
-            <button
-              onClick={onClose}
-              className="p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition-colors"
-            >
-              <X size={20} />
-            </button>
+          <button
+            onClick={onClose}
+            className="p-2 -mr-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition-colors shrink-0"
+          >
+            <X size={20} />
+          </button>
+        </div>
+        <div className="px-4 sm:px-8 py-3 border-b border-slate-100 shrink-0">
+          <div className="relative w-full sm:w-56 sm:ml-auto">
+            <input
+              type="text"
+              placeholder="참여자 이름 검색..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-3 py-2 text-sm font-medium bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-[#FF7E7E] focus:ring-2 focus:ring-[#FF7E7E]/20 transition-all placeholder:text-slate-300"
+            />
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           </div>
         </div>
 
         {/* 테이블 */}
-        <div className="overflow-auto flex-1">
+        <div className="overflow-auto flex-1" style={{ WebkitOverflowScrolling: 'touch' }}>
           {rows.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 gap-3 text-slate-400">
               <TrendingUp size={36} className="text-slate-200" />
@@ -325,7 +329,7 @@ function DetailModal({
               <thead className="sticky top-0 bg-slate-50/90 backdrop-blur-sm">
                 <tr>
                   {['기수', '참여자', '성별', '옵션', '결제 금액', '상태', '메모'].map(h => (
-                    <th key={h} className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100">
+                    <th key={h} className="px-3 sm:px-6 py-3 sm:py-4 text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100">
                       {h}
                     </th>
                   ))}
@@ -336,13 +340,13 @@ function DetailModal({
                   <tr key={i} className={`hover:bg-slate-50/60 transition-colors ${
                     isRefunded ? 'bg-sky-50/30' : isRefundPending ? 'bg-amber-50/20' : isFree ? 'bg-purple-50/20' : isNoShow ? 'bg-rose-50/10' : ''
                   }`}>
-                    <td className="px-6 py-4">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4">
                       <span className="text-sm font-black text-slate-700">{sessionName}</span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4">
                       <span className="text-sm font-bold text-slate-800">{app.name || '-'}</span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4">
                       <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${
                         app.gender === 'male'
                           ? 'bg-blue-50 text-blue-600'
@@ -351,10 +355,10 @@ function DetailModal({
                         {app.gender === 'male' ? '남성' : '여성'}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4">
                       <span className="text-xs font-bold text-slate-500">{optionLabel}</span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4">
                       {isRefunded ? (
                         <span className="text-base font-black text-sky-500">₩0 <span className="text-xs text-slate-400 font-medium">(보증금 반환)</span></span>
                       ) : isRefundPending ? (
@@ -394,7 +398,7 @@ function DetailModal({
                         </span>
                       )}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4">
                       {isRefunded ? (
                         <div className="flex items-center gap-2">
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-sky-50 text-sky-600">
@@ -485,7 +489,7 @@ function DetailModal({
                         </div>
                       )}
                     </td>
-                    <td className="px-6 py-4 min-w-[200px]">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 min-w-[200px]">
                       <input
                         type="text"
                         defaultValue={app.adminMemo || ''}
@@ -505,8 +509,8 @@ function DetailModal({
               </tbody>
               <tfoot className="bg-slate-50 border-t-2 border-slate-100">
                 <tr>
-                  <td colSpan={4} className="px-6 py-4 text-sm font-black text-slate-500 text-right pr-8">합계</td>
-                  <td className="px-6 py-4 text-lg font-black text-[#FF7E7E]">₩{total.toLocaleString()}</td>
+                  <td colSpan={4} className="px-3 sm:px-6 py-3 sm:py-4 text-sm font-black text-slate-500 text-right pr-8">합계</td>
+                  <td className="px-3 sm:px-6 py-3 sm:py-4 text-lg font-black text-[#FF7E7E]">₩{total.toLocaleString()}</td>
                   <td colSpan={2} />
                 </tr>
               </tfoot>
@@ -759,7 +763,7 @@ export default function RevenueStatsPage() {
 
       return {
         id: session.id,
-        name: `${session.region === 'busan' ? '부산' : '창원'} ${session.episodeNumber}기`,
+        name: shortenSessionName(session.title || `${session.region === 'busan' ? '부산' : '창원'} ${session.episodeNumber}기`),
         date: session.eventDate,
         count: confirmedApps.length,
         paidCount,
@@ -963,7 +967,7 @@ export default function RevenueStatsPage() {
 
         {/* Detailed Revenue Table */}
         <div style={panel} className="overflow-hidden bg-white">
-          <div className="p-8 flex items-center justify-between border-b border-slate-50">
+          <div className="p-4 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-50">
             <div>
               <h3 className="text-lg font-black text-slate-800">기수별 매출 상세</h3>
               <p className="text-xs text-slate-400 font-bold mt-1 font-sans">INDIVIDUAL SESSION REVENUE PERFORMANCE</p>
@@ -974,27 +978,27 @@ export default function RevenueStatsPage() {
               </div>
             </div>
           </div>
-          <div className="overflow-x-auto text-nowrap">
+          <div className="overflow-x-auto text-nowrap" style={{ WebkitOverflowScrolling: 'touch' }}>
             <table className="w-full text-left">
               <thead>
                 <tr className="bg-slate-50/50">
                   {['운영 기수', '행사 일정', '확정 인원', '합계 매출액', '지표'].map(h => (
-                    <th key={h} className="px-8 py-5 text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 italic">{h}</th>
+                    <th key={h} className="px-4 sm:px-8 py-3 sm:py-5 text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 italic">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {stats.eventRevenues.map((ev, i) => (
+                {stats.eventRevenues.filter(ev => ev.date <= new Date()).map((ev, i) => (
                   <tr key={i} className="hover:bg-slate-50/70 transition-colors group">
-                    <td className="px-8 py-6">
+                    <td className="px-4 sm:px-8 py-3 sm:py-6">
                       <span className="text-sm font-black text-slate-800 group-hover:text-[#FF7E7E] transition-colors">{ev.name}</span>
                     </td>
-                    <td className="px-8 py-6">
+                    <td className="px-4 sm:px-8 py-3 sm:py-6">
                       <span className="text-xs font-bold text-slate-500">{format(ev.date, 'yyyy. MM. dd (eee)', { locale: ko })}</span>
                     </td>
-                    <td className="px-8 py-6">
+                    <td className="px-4 sm:px-8 py-3 sm:py-6">
                       <div className="flex flex-col gap-1">
-                        <button 
+                        <button
                           onClick={() => setModalConfig({ open: true, title: `${ev.name} 참가 상세 내역`, filterMonth: 'all', filterSessionId: ev.id })}
                           className="flex items-center gap-2 hover:bg-slate-100 p-1 -ml-1 rounded-lg transition-colors cursor-pointer group/sessionbtn text-left"
                         >
@@ -1022,10 +1026,10 @@ export default function RevenueStatsPage() {
                         )}
                       </div>
                     </td>
-                    <td className="px-8 py-6">
+                    <td className="px-4 sm:px-8 py-3 sm:py-6">
                       <span className="text-base font-black text-[#0F172A]">₩{ev.total.toLocaleString()}</span>
                     </td>
-                    <td className="px-8 py-6">
+                    <td className="px-4 sm:px-8 py-3 sm:py-6">
                       <div className="flex items-center gap-2">
                         <div className="flex-1 h-1.5 w-16 bg-slate-100 rounded-full overflow-hidden">
                           <div className="h-full bg-[#FF7E7E] rounded-full" style={{ width: `${Math.min((ev.total / 500000) * 100, 100)}%` }} />

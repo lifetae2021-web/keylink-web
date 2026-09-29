@@ -61,19 +61,21 @@ export async function GET(req: NextRequest) {
         groupedByDay[dateKey] = {};
       }
 
-      const vId = data.visitorId;
-      if (!groupedByDay[dateKey][vId]) {
-        groupedByDay[dateKey][vId] = {
-          visitorId: vId,
+      // 로그인 회원은 기기/브라우저가 바뀌면 visitorId가 여러 개 생길 수 있으므로
+      // userId가 있으면 userId 기준으로, 비회원(userId 없음)은 visitorId 기준으로 묶는다
+      const groupKey = data.userId || data.visitorId;
+      if (!groupedByDay[dateKey][groupKey]) {
+        groupedByDay[dateKey][groupKey] = {
+          visitorId: data.visitorId,
           userId: data.userId || null,
           lastSeenAt: dateObj,
           paths: new Set<string>(),
           hitCount: 0,
         };
       }
-      
-      groupedByDay[dateKey][vId].paths.add(data.path || '/');
-      groupedByDay[dateKey][vId].hitCount += 1;
+
+      groupedByDay[dateKey][groupKey].paths.add(data.path || '/');
+      groupedByDay[dateKey][groupKey].hitCount += 1;
     });
 
     // Collect all unique userIds to fetch names
@@ -84,17 +86,19 @@ export async function GET(req: NextRequest) {
       });
     });
 
-    // Fetch user names via chunked getAll requests (100x faster than individual get calls)
+    // Fetch user names/gender via chunked getAll requests (100x faster than individual get calls)
     const userNames: Record<string, string> = {};
+    const userGenders: Record<string, string> = {};
     const uidArray = Array.from(allUserIds);
     for (let i = 0; i < uidArray.length; i += 100) {
       const chunk = uidArray.slice(i, i + 100);
       const refs = chunk.map(uid => adminDb.doc(`users/${uid}`));
       try {
-        const docs = await adminDb.getAll(...refs, { fieldMask: ['name'] });
+        const docs = await adminDb.getAll(...refs, { fieldMask: ['name', 'gender'] });
         docs.forEach((doc: any, idx: number) => {
           if (doc.exists) {
             userNames[chunk[idx]] = doc.data()?.name || '이름 없음';
+            if (doc.data()?.gender) userGenders[chunk[idx]] = doc.data().gender;
           }
         });
       } catch (e) {
@@ -109,6 +113,7 @@ export async function GET(req: NextRequest) {
       const visitorsArray = Object.values(visitorsMap).map(v => ({
         ...v,
         name: v.userId ? (userNames[v.userId] || '알 수 없음') : '비회원',
+        gender: v.userId ? (userGenders[v.userId] || null) : null,
         paths: Array.from(v.paths).slice(0, 10), // Limit to top 10 paths
       })).sort((a, b) => b.lastSeenAt.getTime() - a.lastSeenAt.getTime());
 

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import {
   Users, Heart, TrendingUp, Clock,
   CalendarCheck, UserPlus, ChevronRight, Zap, Loader2,
-  ClipboardList, Calendar, Eye
+  ClipboardList, Calendar
 } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
@@ -177,7 +177,6 @@ export default function AdminDashboard() {
       { label: '매출',      icon: TrendingUp, color: '#4ade80', monthlyNew: stats.monthlyRevenue,    monthlyNewLabel: '이번 달', subValue: formatRevenue(stats.prevMonthlyRevenue),     subLabel: '전월', trend: calcTrend(stats.monthlyRevenue, stats.prevMonthlyRevenue) }
     ] : []),
     { label: '방문자(UV)', icon: Users,      color: '#8b5cf6', monthlyNew: stats.todayUV,          monthlyNewLabel: '오늘',    subValue: stats.yesterdayUV.toLocaleString(),          subLabel: '어제', trend: calcTrend(stats.todayUV, stats.yesterdayUV) },
-    { label: '페이지뷰(PV)', icon: Eye,        color: '#f59e0b', monthlyNew: stats.todayPV,          monthlyNewLabel: '오늘',    subValue: stats.yesterdayPV.toLocaleString(),          subLabel: '어제', trend: calcTrend(stats.todayPV, stats.yesterdayPV) },
   ];
 
   return (
@@ -189,9 +188,9 @@ export default function AdminDashboard() {
       </div>
 
       {/* Stats */}
-      <div className={`grid grid-cols-2 lg:grid-cols-3 ${isSuperAdmin ? 'xl:grid-cols-6' : 'xl:grid-cols-5'} gap-4`}>
+      <div className={`grid grid-cols-2 lg:grid-cols-3 ${isSuperAdmin ? 'xl:grid-cols-5' : 'xl:grid-cols-4'} gap-4`}>
         {statsCards.map((s, i) => {
-          const isAnalytics = s.label === '방문자(UV)' || s.label === '페이지뷰(PV)';
+          const isAnalytics = s.label === '방문자(UV)';
           const CardWrapper = (isAnalytics ? Link : 'div') as any;
           const wrapperProps = isAnalytics ? { href: '/admin/analytics' } : {};
 

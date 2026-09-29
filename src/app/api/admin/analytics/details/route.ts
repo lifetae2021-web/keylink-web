@@ -39,13 +39,16 @@ export async function GET() {
       .slice(0, 10);
 
     // 2. 방문자 목록 집계 (최근 접속 순)
+    // 로그인 회원은 기기/브라우저가 바뀌면 visitorId가 여러 개 생길 수 있으므로
+    // userId가 있으면 userId 기준으로, 비회원(userId 없음)은 visitorId 기준으로 묶는다
     const visitorsMap: Record<string, any> = {};
     logs.forEach(log => {
       const vId = log.visitorId;
       if (!vId) return;
+      const groupKey = log.userId || vId;
 
-      if (!visitorsMap[vId]) {
-        visitorsMap[vId] = {
+      if (!visitorsMap[groupKey]) {
+        visitorsMap[groupKey] = {
           visitorId: vId,
           userId: log.userId || null,
           lastSeenAt: log.timestamp?.toDate() || new Date(),
@@ -53,8 +56,8 @@ export async function GET() {
           hitCount: 0,
         };
       }
-      visitorsMap[vId].paths.add(log.path);
-      visitorsMap[vId].hitCount += 1;
+      visitorsMap[groupKey].paths.add(log.path);
+      visitorsMap[groupKey].hitCount += 1;
       // 이미 timestamp desc로 정렬되어 있으므로 첫 번째 요소가 가장 최근 접속임
     });
 
