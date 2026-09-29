@@ -668,6 +668,11 @@ export default function UsersPage() {
         const aEdited = a.isJobReviewed === false ? 0 : 1;
         const bEdited = b.isJobReviewed === false ? 0 : 1;
         if (aEdited !== bEdited) return aEdited - bEdited;
+
+        // 재직인증서류를 등록한 사람을 미등록자보다 위로 노출 (검토 가능한 사람 우선)
+        const aHasProof = (a.employmentProof || a.verificationUrl) ? 0 : 1;
+        const bHasProof = (b.employmentProof || b.verificationUrl) ? 0 : 1;
+        if (aHasProof !== bHasProof) return aHasProof - bHasProof;
       }
 
       if (!sortConfig.direction || !sortConfig.key) return 0;
