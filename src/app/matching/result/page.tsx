@@ -139,7 +139,7 @@ export default function ResultListPage() {
             transition={{ duration: 0.8 }}
           >
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(255,111,97,0.1)', color: '#FF6F61', padding: '8px 20px', borderRadius: '100px', fontWeight: '800', fontSize: '0.9rem', marginBottom: '24px', letterSpacing: '0.1em' }}>
-              <Trophy size={16} /> KEYLINK CUMULATIVE IMPACT
+              <Trophy size={16} /> 키링크 누적 성과
             </div>
             
             <h1 style={{ fontSize: '3.5rem', fontWeight: '900', marginBottom: '40px', letterSpacing: '-0.04em', lineHeight: 1.1, color: '#111' }}>

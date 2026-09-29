@@ -169,7 +169,7 @@ export default function StatusListPage() {
               )}
             </div>
             <h3 style={{ fontSize: '1.2rem', fontWeight: '900', color: '#111', margin: 0, lineHeight: 1.3 }}>
-              {event.title}
+              {event.title.replace(/\s*\d+기\s*$/, '')}
             </h3>
           </div>
 

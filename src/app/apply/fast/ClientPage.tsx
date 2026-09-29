@@ -536,10 +536,10 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
     const days = Math.floor(totalSec / 86400);
     const hours = Math.floor((totalSec % 86400) / 3600);
     const minutes = Math.floor((totalSec % 3600) / 60);
-    const seconds = totalSec % 60;
+    // 목록 카드에 한 줄로 들어가야 해서 초 단위는 생략
     return days > 0
-      ? `${days}일 ${hours}시간 ${minutes}분 ${seconds}초`
-      : `${hours}시간 ${minutes}분 ${seconds}초`;
+      ? `${days}일 ${hours}시간 ${minutes}분`
+      : `${hours}시간 ${minutes}분`;
   };
 
   // ── 가격 계산 헬퍼 ──
@@ -1858,7 +1858,7 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
                     {selectedSessionIds.has(session.id) && <Check size={10} color="#fff" strokeWidth={3} />}
                   </div>
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1px' }}>
-                    <p style={{ fontWeight: '800', color: '#111', fontSize: '0.8rem', marginBottom: '0' }}>{session.title}</p>
+                    <p style={{ fontWeight: '800', color: '#111', fontSize: '0.8rem', marginBottom: '0' }}>{session.title.replace(/\s*\d+기\s*$/, '')}</p>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                       <p style={{ color: '#888', fontSize: '0.7rem', fontWeight: '600', margin: '0', minWidth: '115px' }}>
                         📅 {formatKorDate(session.eventDate)}
