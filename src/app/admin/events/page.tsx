@@ -1554,6 +1554,33 @@ ${user.name || app.name || "참가자"}님은 ${fDate} ${fDay} ${fTime} 소개�
             await updateDoc(docRef(db, 'users', app.userId), updates);
           }
 
+          // v13.x: 실제 출석(present/late)으로 처음 전환되는 시점 = 실제 참여했다고 간주
+          // 이 세션 날짜보다 먼저 등록된 우선 대기풀 이력은 해소된 것으로 보고 제거 (아직 지나지 않은 기수 확정은 해소로 치지 않음)
+          if (willParticipate && !wasParticipating && active?.eventDate) {
+            try {
+              const { getDoc } = await import('firebase/firestore');
+              const userSnap = await getDoc(docRef(db, 'users', app.userId));
+              const cancelledHistory = userSnap.data()?.cancelledSessionHistory;
+              if (Array.isArray(cancelledHistory) && cancelledHistory.length > 0) {
+                const rawEventDate = active.eventDate as any;
+                const attendedSessionTime = rawEventDate?.toDate
+                  ? rawEventDate.toDate().getTime()
+                  : new Date(rawEventDate).getTime();
+                const remainingHistory = cancelledHistory.filter((h: any) => {
+                  const enteredAt = h.cancelledAt?.toDate
+                    ? h.cancelledAt.toDate().getTime()
+                    : (h.cancelledAt ? new Date(h.cancelledAt).getTime() : 0);
+                  return enteredAt >= attendedSessionTime;
+                });
+                if (remainingHistory.length !== cancelledHistory.length) {
+                  await updateDoc(docRef(db, 'users', app.userId), { cancelledSessionHistory: remainingHistory });
+                }
+              }
+            } catch (e) {
+              console.error('우선대기 이력 정리 실패:', e);
+            }
+          }
+
           // v11.2.0: 로컬 userMap 상태 강제 동기화 (실시간 숫자 변경 해결)
           if (nsDiff !== 0 || tdDiff !== 0 || pcDiff !== 0) {
             setUserMap((prevMap) => {

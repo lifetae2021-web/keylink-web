@@ -199,7 +199,7 @@ function DetailModal({
 
   const rows = useMemo(() => {
     const confirmed = applications.filter(app =>
-      app.status === 'confirmed' || (app.paymentConfirmed === true && !['applied', 'canceled', 'rejected'].includes(app.status))
+      app.status === 'confirmed' || (app.paymentConfirmed === true && !['applied', 'cancelled', 'rejected'].includes(app.status))
     );
 
     const now = new Date();
@@ -627,6 +627,7 @@ export default function RevenueStatsPage() {
   }, [router]);
 
   const [dummyUserIds, setDummyUserIds] = useState<Set<string>>(new Set());
+  const [superAdminUserIds, setSuperAdminUserIds] = useState<Set<string>>(new Set());
 
   // 상세 모달 상태
   const [modalConfig, setModalConfig] = useState<{
@@ -657,14 +658,19 @@ export default function RevenueStatsPage() {
 
     const unsubUsers = onSnapshot(collection(db, 'users'), (snap) => {
       const dummies = new Set<string>();
+      const superAdmins = new Set<string>();
       snap.docs.forEach(doc => {
         const u = doc.data();
         const isDummy = u.isDummy === true || doc.id?.startsWith('dummy') || doc.id?.startsWith('user_m_') || doc.id?.startsWith('user_f_');
         if (isDummy) {
           dummies.add(doc.id);
         }
+        if (u.role === 'super_admin') {
+          superAdmins.add(doc.id);
+        }
       });
       setDummyUserIds(dummies);
+      setSuperAdminUserIds(superAdmins);
       setIsLoading(false);
     });
 
@@ -688,7 +694,10 @@ export default function RevenueStatsPage() {
         app.userId?.startsWith('user_m_') ||
         app.userId?.startsWith('user_f_') ||
         dummyUserIds.has(app.userId);
-      return !isDummy;
+      if (isDummy) return false;
+      // v13.x: 관리자 본인 테스트(닼템/super_admin) 신청건은 매출 통계에서 제외
+      const isDarkTemplar = app.isDarkTemplar === true || superAdminUserIds.has(app.userId);
+      return !isDarkTemplar;
     });
 
     const sessionMap: Record<string, any> = {};
@@ -697,7 +706,7 @@ export default function RevenueStatsPage() {
     const eventRevenues = activeNonTestSessions.map(session => {
       const confirmedApps = realApps.filter(app =>
         app.sessionId === session.id &&
-        (app.status === 'confirmed' || (app.paymentConfirmed === true && !['applied', 'canceled', 'rejected'].includes(app.status)))
+        (app.status === 'confirmed' || (app.paymentConfirmed === true && !['applied', 'cancelled', 'rejected'].includes(app.status)))
       );
 
       let paidCount = 0;
@@ -784,7 +793,7 @@ export default function RevenueStatsPage() {
     }
 
     return { totalRevenue, thisMonthRevenue, growth, eventRevenues, chartData, realApps, activeNonTestSessions };
-  }, [sessions, applications, isLoading, dummyUserIds]);
+  }, [sessions, applications, isLoading, dummyUserIds, superAdminUserIds]);
 
   if (isSuperAdmin === null || isLoading) {
     return (

@@ -251,6 +251,13 @@ export default function UsersPage() {
   const [couponMap, setCouponMap] = useState<Record<string, any[]>>({});
   const [selectedCouponUser, setSelectedCouponUser] = useState<any | null>(null);
 
+  // 쿠폰 수동 사용 처리 (특정 기수 신청건에 연결)
+  const [couponUseTarget, setCouponUseTarget] = useState<{ userId: string; couponId: string; coupon: any } | null>(null);
+  const [couponUseApplications, setCouponUseApplications] = useState<any[]>([]);
+  const [selectedCouponUseAppId, setSelectedCouponUseAppId] = useState('');
+  const [isFetchingCouponUseApps, setIsFetchingCouponUseApps] = useState(false);
+  const [isMarkingCouponUsed, setIsMarkingCouponUsed] = useState(false);
+
   const isCouponSubmitDisabled = isSendingCoupon || (couponTitle === '직접 입력' ? !customCouponTitle : !couponTitle) || !discountValue;
 
   const handleSendCoupon = async () => {
@@ -319,6 +326,103 @@ export default function UsersPage() {
     } catch (e) {
       console.error(e);
       toast.error('쿠폰 삭제 중 오류가 발생했습니다.');
+    }
+  };
+
+  const openCouponUsePicker = (userId: string, couponId: string, coupon: any) => {
+    setCouponUseTarget({ userId, couponId, coupon });
+    setCouponUseApplications([]);
+    setSelectedCouponUseAppId('');
+  };
+
+  useEffect(() => {
+    if (!couponUseTarget) return;
+    const fetchApps = async () => {
+      setIsFetchingCouponUseApps(true);
+      try {
+        const appQ = query(collection(db, 'applications'), where('userId', '==', couponUseTarget.userId));
+        const appSnap = await getDocs(appQ);
+        const apps = appSnap.docs
+          .map(d => ({ id: d.id, ...d.data() } as any))
+          .filter(a => a.status !== 'cancelled');
+        apps.sort((a, b) => (b.appliedAt?.toMillis?.() || 0) - (a.appliedAt?.toMillis?.() || 0));
+
+        const sessionIds = Array.from(new Set(apps.map(a => a.sessionId).filter(Boolean)));
+        const sessionDocs = await Promise.all(sessionIds.map(id => getDoc(doc(db, 'sessions', id))));
+        const sessionMap: Record<string, any> = {};
+        sessionDocs.forEach(sDoc => {
+          if (sDoc.exists()) sessionMap[sDoc.id] = sDoc.data();
+        });
+
+        const enriched = apps.map(a => {
+          const s = sessionMap[a.sessionId] || {};
+          const dateStr = s.eventDate ? format(s.eventDate.toDate ? s.eventDate.toDate() : new Date(s.eventDate), 'yyyy.MM.dd') : '';
+          const regionLabel = s.region === 'busan' ? '부산' : s.region === 'changwon' ? '창원' : '';
+          const epLabel = s.episodeNumber ? `${s.episodeNumber}기` : '';
+          return {
+            ...a,
+            sessionLabel: `[${regionLabel} ${epLabel}] ${s.title || dateStr || '기수 정보 없음'}${dateStr ? ` (${dateStr})` : ''}`,
+          };
+        });
+
+        setCouponUseApplications(enriched);
+        if (enriched.length > 0) setSelectedCouponUseAppId(enriched[0].id);
+      } catch (e) {
+        console.error(e);
+        toast.error('신청 내역을 불러오지 못했습니다.');
+      } finally {
+        setIsFetchingCouponUseApps(false);
+      }
+    };
+    fetchApps();
+  }, [couponUseTarget]);
+
+  const handleConfirmMarkCouponUsed = async () => {
+    if (!couponUseTarget) return;
+    const { userId, couponId, coupon } = couponUseTarget;
+    const selectedApp = couponUseApplications.find(a => a.id === selectedCouponUseAppId) || null;
+
+    if (selectedApp?.couponId && selectedApp.couponId !== couponId) {
+      return toast.error('해당 신청건에는 이미 다른 쿠폰이 연결되어 있습니다.');
+    }
+
+    setIsMarkingCouponUsed(true);
+    try {
+      await updateDoc(doc(db, 'users', userId, 'coupons', couponId), {
+        isUsed: true,
+        usedAt: serverTimestamp(),
+        ...(selectedApp ? { usedInSession: selectedApp.sessionId } : {}),
+      });
+
+      if (selectedApp) {
+        let couponDiscount = Number(coupon.value ?? coupon.amount ?? 0);
+        if (coupon.type === 'percent') {
+          const pct = Number(coupon.value ?? coupon.amount ?? 0);
+          const basePrice = selectedApp.price || 0;
+          couponDiscount = pct >= 100 ? basePrice : Math.round((basePrice * pct) / (100 - pct));
+        } else if (coupon.type === 'free') {
+          couponDiscount = selectedApp.price || 0;
+        }
+        await updateDoc(doc(db, 'applications', selectedApp.id), {
+          couponId,
+          couponTitle: coupon.title,
+          couponDiscount,
+        });
+      }
+
+      setCouponMap(prev => ({
+        ...prev,
+        [userId]: (prev[userId] || []).map(c =>
+          c.id === couponId ? { ...c, isUsed: true, usedAt: Timestamp.now(), ...(selectedApp ? { usedInSession: selectedApp.sessionId } : {}) } : c
+        )
+      }));
+      toast.success(selectedApp ? `쿠폰이 "${selectedApp.sessionLabel}" 신청건에 사용 처리되었습니다.` : '쿠폰이 사용 처리되었습니다.');
+      setCouponUseTarget(null);
+    } catch (e) {
+      console.error(e);
+      toast.error('쿠폰 사용 처리 중 오류가 발생했습니다.');
+    } finally {
+      setIsMarkingCouponUsed(false);
     }
   };
 
@@ -486,8 +590,8 @@ export default function UsersPage() {
     const isGuest = (u: any) => u.isRegistered === false && !isMerged(u);
     const isRegular = (u: any) => !isDummy(u) && !isGuest(u) && !isMerged(u);
     return {
-      all: users.filter(u => isRegular(u)).length,
-      pending: users.filter(u => isRegular(u) && ((u.status || 'pending') === 'pending' || u.isJobReviewed === false)).length,
+      all: users.filter(u => !isDummy(u) && !isMerged(u)).length,
+      pending: users.filter(u => isRegular(u) && u.status !== 'rejected' && ((u.status || 'pending') === 'pending' || u.isJobReviewed === false)).length,
       verified: users.filter(u => isRegular(u) && (u.status || 'pending') === 'verified' && u.isJobReviewed !== false).length,
       rejected: users.filter(u => isRegular(u) && u.status === 'rejected').length,
       dummy: users.filter(u => isDummy(u)).length,
@@ -507,8 +611,8 @@ export default function UsersPage() {
       if (filter === 'dummy') return isDummy(u);
       if (filter === 'guest') return isGuest(u);
       if (filter === 'waitpool') return isRegular(u) && Array.isArray(u.cancelledSessionHistory) && u.cancelledSessionHistory.length > 0;
-      if (filter === 'all') return isRegular(u);
-      if (filter === 'pending') return isRegular(u) && ((u.status || 'pending') === 'pending' || u.isJobReviewed === false);
+      if (filter === 'all') return !isDummy(u);
+      if (filter === 'pending') return isRegular(u) && u.status !== 'rejected' && ((u.status || 'pending') === 'pending' || u.isJobReviewed === false);
       if (filter === 'verified') return isRegular(u) && (u.status || 'pending') === 'verified' && u.isJobReviewed !== false;
       return isRegular(u) && (u.status || 'pending') === filter;
     });
@@ -546,9 +650,9 @@ export default function UsersPage() {
       } else if (filter === 'waitpool') {
         matchFilter = isRegular(u) && Array.isArray(u.cancelledSessionHistory) && u.cancelledSessionHistory.length > 0;
       } else if (filter === 'all') {
-        matchFilter = isRegular(u);
+        matchFilter = !isDummy(u);
       } else if (filter === 'pending') {
-        matchFilter = isRegular(u) && ((u.status || 'pending') === 'pending' || u.isJobReviewed === false);
+        matchFilter = isRegular(u) && u.status !== 'rejected' && ((u.status || 'pending') === 'pending' || u.isJobReviewed === false);
       } else if (filter === 'verified') {
         matchFilter = isRegular(u) && (u.status || 'pending') === 'verified' && u.isJobReviewed !== false;
       } else {
@@ -2205,32 +2309,120 @@ export default function UsersPage() {
                             </span>
                             <span className="text-[0.85rem] font-bold text-slate-800">{coupon.title}</span>
                           </div>
-                          <button
-                            onClick={() => handleDeleteCoupon(selectedCouponUser.id, coupon.id)}
-                            className="p-1.5 rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-all"
-                            title="쿠폰 삭제"
-                          >
-                            <Trash2 size={16} />
-                          </button>
+                          <div className="flex items-center gap-1">
+                            {isUsable && (
+                              <button
+                                onClick={() => openCouponUsePicker(selectedCouponUser.id, coupon.id, coupon)}
+                                className="p-1.5 rounded-lg text-slate-300 hover:text-emerald-500 hover:bg-emerald-50 transition-all"
+                                title="사용 처리 (신청 시 수기로 할인이 반영된 경우)"
+                              >
+                                <CheckCircle size={16} />
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleDeleteCoupon(selectedCouponUser.id, coupon.id)}
+                              className="p-1.5 rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-all"
+                              title="쿠폰 삭제"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
                         </div>
-                        <div className="flex items-center flex-nowrap gap-3 text-[11px] font-bold mt-2 whitespace-nowrap overflow-x-auto kl-scrollbar pb-1">
-                          <span className="text-blue-600 shrink-0">
+                        <div className="text-[11px] font-bold mt-2">
+                          <div className="text-blue-600">
                             {coupon.type === 'percent' ? `${coupon.value || coupon.amount}% 할인` : `₩${(coupon.value || coupon.amount || 0).toLocaleString()} 할인`}
-                          </span>
-                          <span className="text-slate-300 shrink-0">|</span>
-                          <span className="text-slate-500 shrink-0">
-                            {format(createdDate, 'yyyy.MM.dd')} 발급
-                          </span>
-                          <span className="text-slate-300 shrink-0">|</span>
-                          <span className={`${isExpired ? 'text-rose-500' : 'text-slate-500'} shrink-0`}>
-                            {coupon.validityMonths === 'unlimited' ? '무제한' : `${format(expiryDate, 'yyyy.MM.dd')} 까지`}
-                          </span>
+                          </div>
+                          <div className={`mt-1 ${isExpired ? 'text-rose-500' : 'text-slate-500'}`}>
+                            {coupon.validityMonths === 'unlimited'
+                              ? `${format(createdDate, 'yyyy.MM.dd')} 발급 · 무제한`
+                              : `${format(createdDate, 'yyyy.MM.dd')} 발급 ~ ${format(expiryDate, 'yyyy.MM.dd')} 까지`}
+                          </div>
                         </div>
                       </div>
                     </div>
                   );
                 });
               })()}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 쿠폰 수동 사용 처리 - 기수 선택 모달 */}
+      {couponUseTarget && (
+        <div
+          onClick={() => !isMarkingCouponUsed && setCouponUseTarget(null)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 10001, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ background: '#fff', borderRadius: '24px', width: '100%', maxWidth: '420px', padding: '32px' }}
+            className="shadow-2xl animate-in zoom-in-95 duration-200"
+          >
+            <div className="flex justify-between items-start mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-500">
+                  <CheckCircle size={20} />
+                </div>
+                <div>
+                  <h2 className="text-lg font-black text-slate-900 leading-tight">쿠폰 사용 처리</h2>
+                  <p className="text-xs font-bold text-slate-400 mt-0.5">{couponUseTarget.coupon.title}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => !isMarkingCouponUsed && setCouponUseTarget(null)}
+                className="p-2 text-slate-400 hover:bg-slate-100 rounded-full transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div>
+              <label className="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2">
+                어느 기수 신청건에 사용 처리할까요?
+              </label>
+              {isFetchingCouponUseApps ? (
+                <div className="flex items-center justify-center py-3 bg-slate-50 rounded-2xl border border-slate-100">
+                  <Loader2 className="animate-spin text-slate-300" size={20} />
+                </div>
+              ) : couponUseApplications.length === 0 ? (
+                <div className="py-3 px-4 text-sm font-bold text-slate-400 bg-slate-50 rounded-2xl border border-slate-100">
+                  신청 내역이 없습니다. (기수 연결 없이 사용 처리됩니다)
+                </div>
+              ) : (
+                <select
+                  value={selectedCouponUseAppId}
+                  onChange={e => setSelectedCouponUseAppId(e.target.value)}
+                  className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-emerald-400 outline-none transition-colors text-sm font-semibold text-slate-700 bg-white cursor-pointer shadow-sm"
+                >
+                  {couponUseApplications.map(a => (
+                    <option key={a.id} value={a.id}>
+                      {a.sessionLabel}{a.couponId ? ' (이미 쿠폰 연결됨)' : ''}
+                    </option>
+                  ))}
+                </select>
+              )}
+              <p className="text-[11px] font-bold text-slate-400 mt-2 leading-relaxed">
+                선택한 신청건에 쿠폰이 연결되고, 할인 내역이 표시됩니다. 가격(price)은 변경되지 않으니 이미 수기로 반영된 금액과 일치하는지 확인해 주세요.
+              </p>
+            </div>
+
+            <div className="flex gap-2 mt-6">
+              <button
+                onClick={() => setCouponUseTarget(null)}
+                disabled={isMarkingCouponUsed}
+                className="flex-1 py-3 rounded-2xl border border-slate-200 text-sm font-bold text-slate-500 hover:bg-slate-50 transition-colors disabled:opacity-50"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleConfirmMarkCouponUsed}
+                disabled={isMarkingCouponUsed || isFetchingCouponUseApps}
+                className="flex-1 py-3 rounded-2xl bg-emerald-500 text-white text-sm font-bold hover:bg-emerald-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {isMarkingCouponUsed && <Loader2 className="animate-spin" size={16} />}
+                사용 처리
+              </button>
             </div>
           </div>
         </div>

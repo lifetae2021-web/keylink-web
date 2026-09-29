@@ -656,9 +656,6 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
       if (activeTab === '1on1' && app.sessionType !== '1on1') return false;
 
       const user = userMap[app.userId] || {};
-      // 1.5. 닼템 제외 (신청 관리 목록에서는 명시적 닼템만 숨김, 관리자 테스트 용도로 super_admin은 노출)
-      const isDarkTemplar = app.isDarkTemplar === true;
-      if (isDarkTemplar) return false;
 
       // 2. 더미 계정 필터링
       const isDummy = app.id?.startsWith('dummy') || app.userId?.startsWith('user_m_') || app.userId?.startsWith('user_f_') || user.isDummy === true;
@@ -1550,6 +1547,7 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                                         borderRadius: 4,
                                         color: aStatus.color,
                                         background: aStatus.bg,
+                                        whiteSpace: 'nowrap',
                                       }}>
                                         {aStatus.label}
                                       </span>
@@ -1904,6 +1902,7 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                           borderRadius: 4,
                           color: aStatus.color,
                           background: aStatus.bg,
+                          whiteSpace: 'nowrap',
                         }}>
                           {aStatus.label}
                         </span>
