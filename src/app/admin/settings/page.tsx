@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Save, Bell, Shield, Globe, Database, Key, Gift, Loader2 } from 'lucide-react';
+import { Save, Bell, Shield, Globe, Database, Key, Gift, Loader2, Flower2, Leaf, Snowflake } from 'lucide-react';
 import { auth, db } from '@/lib/firebase';
 import { getIdToken } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
@@ -60,6 +60,124 @@ function PriceInputRow({ label, value, onChange }: { label: string; value: strin
   );
 }
 
+function EffectModeButtons({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="flex gap-1.5 mb-4" style={{ flexWrap: 'nowrap' }}>
+      {[
+        { key: 'on', label: '항상 켜짐' },
+        { key: 'auto', label: '기간 자동 설정' },
+        { key: 'off', label: '항상 꺼짐' },
+      ].map(opt => (
+        <button
+          key={opt.key}
+          onClick={() => onChange(opt.key)}
+          className="rounded-lg transition-colors"
+          style={{
+            padding: '7px 10px', fontSize: '0.72rem', fontWeight: 600, whiteSpace: 'nowrap',
+            border: `1px solid ${value === opt.key ? '#FF6F61' : '#e2e8f0'}`,
+            background: value === opt.key ? 'rgba(255,111,97,0.08)' : '#fff',
+            color: value === opt.key ? '#FF6F61' : '#64748b',
+          }}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function EffectIconButton({
+  effectKey, icon: Icon, label, activeColor, mode,
+  openEffect, setOpenEffect,
+}: {
+  effectKey: string;
+  icon: any;
+  label: string;
+  activeColor: string;
+  mode: string;
+  openEffect: string | null;
+  setOpenEffect: (v: string | null) => void;
+}) {
+  const isOpen = openEffect === effectKey;
+  const statusLabel = mode === 'on' ? '켜짐' : mode === 'auto' ? '기간 자동' : '꺼짐';
+  const statusColor = mode === 'on' ? '#22c55e' : mode === 'auto' ? '#3b82f6' : '#94a3b8';
+
+  return (
+    <div style={{ flex: '1 1 0', minWidth: 0 }}>
+      <button
+        onClick={() => setOpenEffect(isOpen ? null : effectKey)}
+        className="transition-colors"
+        style={{
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
+          padding: '10px 10px', borderRadius: 14, width: '100%',
+          border: `1.5px solid ${isOpen ? activeColor : '#e2e8f0'}`,
+          background: isOpen ? `${activeColor}10` : '#fff',
+          cursor: 'pointer',
+        }}
+      >
+        <Icon size={20} style={{ color: activeColor }} />
+        <span style={{ fontSize: '0.76rem', fontWeight: 700, color: '#334155', whiteSpace: 'nowrap' }}>{label}</span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.62rem', fontWeight: 700, color: statusColor, whiteSpace: 'nowrap' }}>
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: statusColor, flexShrink: 0 }} />
+          {statusLabel}
+        </span>
+      </button>
+    </div>
+  );
+}
+
+function EffectDropdown({
+  mode, onModeChange, startMonth, startDay, endMonth, endDay,
+  onStartMonth, onStartDay, onEndMonth, onEndDay, onClose,
+  onSaveDates, savingDates,
+}: {
+  mode: string; onModeChange: (v: string) => void;
+  startMonth: string | number; startDay: string | number; endMonth: string | number; endDay: string | number;
+  onStartMonth: (v: string) => void; onStartDay: (v: string) => void; onEndMonth: (v: string) => void; onEndDay: (v: string) => void;
+  onClose: () => void;
+  onSaveDates: () => void;
+  savingDates: boolean;
+}) {
+  return (
+    <>
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          position: 'absolute', top: 'calc(100% + 8px)', left: 0, right: 0, zIndex: 50,
+          background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14,
+          boxShadow: '0 10px 30px rgba(0,0,0,0.1)', padding: 16,
+        }}
+      >
+        <EffectModeButtons value={mode} onChange={onModeChange} />
+        {mode === 'auto' && (
+          <>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2">
+                <InputRow label="시작 월" value={startMonth} onChange={onStartMonth} type="number" />
+                <InputRow label="시작 일" value={startDay} onChange={onStartDay} type="number" />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <InputRow label="종료 월" value={endMonth} onChange={onEndMonth} type="number" />
+                <InputRow label="종료 일" value={endDay} onChange={onEndDay} type="number" />
+              </div>
+            </div>
+            <button
+              onClick={onSaveDates}
+              disabled={savingDates}
+              className="flex items-center justify-center gap-2 rounded-lg transition-colors"
+              style={{ width: '100%', marginTop: 12, padding: '9px', fontSize: '0.8rem', fontWeight: 700, background: savingDates ? '#555' : '#FF6F61', color: '#fff', border: 'none' }}
+            >
+              {savingDates ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
+              {savingDates ? '저장 중...' : '날짜 저장'}
+            </button>
+          </>
+        )}
+      </div>
+    </>
+  );
+}
+
 function Toggle({ label, desc, value, onChange }: { label: string; desc: string; value: boolean; onChange: (v: boolean) => void }) {
   return (
     <div className="flex items-center justify-between py-3" style={{ borderBottom: '1px solid #f1f5f9' }}>
@@ -103,7 +221,24 @@ export default function SettingsPage() {
     notifyPayment: true,
     notifyMatch: false,
     notifyD1: true,
+    cherryBlossomMode: 'on',
+    cherryBlossomStartMonth: 3,
+    cherryBlossomStartDay: 1,
+    cherryBlossomEndMonth: 4,
+    cherryBlossomEndDay: 15,
+    autumnLeavesMode: 'off',
+    autumnLeavesStartMonth: 9,
+    autumnLeavesStartDay: 15,
+    autumnLeavesEndMonth: 11,
+    autumnLeavesEndDay: 30,
+    snowMode: 'off',
+    snowStartMonth: 12,
+    snowStartDay: 1,
+    snowEndMonth: 2,
+    snowEndDay: 28,
   });
+
+  const [openEffect, setOpenEffect] = useState<string | null>(null);
 
   const [backfilling, setBackfilling] = useState(false);
   const [backfillResult, setBackfillResult] = useState<{ issuedCount: number; skippedCount: number; issuedTo: string[] } | null>(null);
@@ -130,6 +265,39 @@ export default function SettingsPage() {
     setSettings((prev: any) => ({ ...prev, [key]: value }));
   };
 
+  // 계절 이펙트는 한 번에 하나만 켜지도록 상호 배타적으로 처리
+  // 페이지 하단의 "저장" 버튼과 별개로, 선택 즉시 Firestore에 반영된다 (토글처럼 동작하도록)
+  const EFFECT_MODE_KEYS = ['cherryBlossomMode', 'autumnLeavesMode', 'snowMode'];
+  const handleEffectModeChange = async (key: string, value: string) => {
+    const updates: Record<string, string> = { [key]: value };
+    if (value !== 'off') {
+      EFFECT_MODE_KEYS.forEach(k => { if (k !== key) updates[k] = 'off'; });
+    }
+    setSettings((prev: any) => ({ ...prev, ...updates }));
+    try {
+      await setDoc(doc(db, 'settings', 'general'), { ...updates, updatedAt: new Date() }, { merge: true });
+    } catch (e) {
+      console.error(e);
+      toast.error('이펙트 설정 저장 중 오류가 발생했습니다.');
+    }
+  };
+
+  const [savingEffectDates, setSavingEffectDates] = useState(false);
+  const handleSaveEffectDates = async (fields: string[]) => {
+    setSavingEffectDates(true);
+    try {
+      const updates: Record<string, number> = {};
+      fields.forEach(f => { updates[f] = Number(settings[f]); });
+      await setDoc(doc(db, 'settings', 'general'), { ...updates, updatedAt: new Date() }, { merge: true });
+      toast.success('날짜 범위가 저장되었습니다.');
+    } catch (e) {
+      console.error(e);
+      toast.error('날짜 저장 중 오류가 발생했습니다.');
+    } finally {
+      setSavingEffectDates(false);
+    }
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -143,6 +311,18 @@ export default function SettingsPage() {
         capacity: Number(settings.capacity),
         matchResultTime: Number(settings.matchResultTime),
         reservationDeadline: Number(settings.reservationDeadline),
+        cherryBlossomStartMonth: Number(settings.cherryBlossomStartMonth),
+        cherryBlossomStartDay: Number(settings.cherryBlossomStartDay),
+        cherryBlossomEndMonth: Number(settings.cherryBlossomEndMonth),
+        cherryBlossomEndDay: Number(settings.cherryBlossomEndDay),
+        autumnLeavesStartMonth: Number(settings.autumnLeavesStartMonth),
+        autumnLeavesStartDay: Number(settings.autumnLeavesStartDay),
+        autumnLeavesEndMonth: Number(settings.autumnLeavesEndMonth),
+        autumnLeavesEndDay: Number(settings.autumnLeavesEndDay),
+        snowStartMonth: Number(settings.snowStartMonth),
+        snowStartDay: Number(settings.snowStartDay),
+        snowEndMonth: Number(settings.snowEndMonth),
+        snowEndDay: Number(settings.snowEndDay),
         updatedAt: new Date()
       };
       await setDoc(docRef, payload, { merge: true });
@@ -239,6 +419,59 @@ export default function SettingsPage() {
                   <PriceInputRow label="여성 동반 옵션 참가비 (원)" value={settings.femaleGroupPrice} onChange={v => handleChange('femaleGroupPrice', v)} />
                   <InputRow label="기본 정원 (남/여 각)"    value={settings.capacity} onChange={v => handleChange('capacity', v)} type="number" />
                 </div>
+              </div>
+              <div style={{ ...panel, padding: '24px' }}>
+                <h3 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: 4, color: '#334155' }}>사이트 계절 이펙트</h3>
+                <p style={{ fontSize: '0.78rem', color: '#666', marginBottom: 16 }}>
+                  전체 화면에 표시되는 계절 효과입니다. 아이콘을 눌러 켜짐/기간 자동 설정/꺼짐을 선택하세요.
+                </p>
+                {(() => {
+                  const EFFECTS = [
+                    {
+                      key: 'cherry', icon: Flower2, label: '벚꽃', color: '#FF6F61', modeField: 'cherryBlossomMode',
+                      startMonthField: 'cherryBlossomStartMonth', startDayField: 'cherryBlossomStartDay',
+                      endMonthField: 'cherryBlossomEndMonth', endDayField: 'cherryBlossomEndDay',
+                    },
+                    {
+                      key: 'leaves', icon: Leaf, label: '낙엽', color: '#D97706', modeField: 'autumnLeavesMode',
+                      startMonthField: 'autumnLeavesStartMonth', startDayField: 'autumnLeavesStartDay',
+                      endMonthField: 'autumnLeavesEndMonth', endDayField: 'autumnLeavesEndDay',
+                    },
+                    {
+                      key: 'snow', icon: Snowflake, label: '눈', color: '#38BDF8', modeField: 'snowMode',
+                      startMonthField: 'snowStartMonth', startDayField: 'snowStartDay',
+                      endMonthField: 'snowEndMonth', endDayField: 'snowEndDay',
+                    },
+                  ];
+                  const openConfig = EFFECTS.find(e => e.key === openEffect);
+                  return (
+                    <div style={{ position: 'relative' }}>
+                      <div className="flex gap-2" style={{ flexWrap: 'nowrap' }}>
+                        {EFFECTS.map(e => (
+                          <EffectIconButton
+                            key={e.key}
+                            effectKey={e.key} icon={e.icon} label={e.label} activeColor={e.color}
+                            mode={settings[e.modeField]}
+                            openEffect={openEffect} setOpenEffect={setOpenEffect}
+                          />
+                        ))}
+                      </div>
+                      {openConfig && (
+                        <EffectDropdown
+                          mode={settings[openConfig.modeField]}
+                          onModeChange={v => handleEffectModeChange(openConfig.modeField, v)}
+                          startMonth={settings[openConfig.startMonthField]} startDay={settings[openConfig.startDayField]}
+                          endMonth={settings[openConfig.endMonthField]} endDay={settings[openConfig.endDayField]}
+                          onStartMonth={v => handleChange(openConfig.startMonthField, v)} onStartDay={v => handleChange(openConfig.startDayField, v)}
+                          onEndMonth={v => handleChange(openConfig.endMonthField, v)} onEndDay={v => handleChange(openConfig.endDayField, v)}
+                          onClose={() => setOpenEffect(null)}
+                          savingDates={savingEffectDates}
+                          onSaveDates={() => handleSaveEffectDates([openConfig.startMonthField, openConfig.startDayField, openConfig.endMonthField, openConfig.endDayField])}
+                        />
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
               <div className="flex justify-end">
                 <button

@@ -5,6 +5,8 @@ import { useState, useEffect } from 'react';
 import Navbar from './Navbar';
 import Footer from './Footer';
 import CherryBlossoms from './CherryBlossoms';
+import AutumnLeaves from './AutumnLeaves';
+import Snow from './Snow';
 import ProfileGuard from './ProfileGuard';
 import AnalyticsTracker from './AnalyticsTracker';
 
@@ -32,6 +34,8 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
       <AnalyticsTracker />
       <ProfileGuard />
       <CherryBlossoms />
+      <AutumnLeaves />
+      <Snow />
       <Navbar />
       <main className="flex-grow">{children}</main>
       {shouldShowFooter && <Footer />}

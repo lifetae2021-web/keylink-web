@@ -686,7 +686,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <div className="flex items-center gap-3">
             {/* Live site link */}
             <a
-              href="https://www.keylink.kr"
+              href="/"
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-1.5 rounded-lg transition-all duration-200"

@@ -1,6 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { db } from '@/lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
+import { isCherryBlossomActive } from '@/lib/seasonalEffects';
 
 // 벚꽃 잎 하나를 나타내는 속성
 interface Petal {
@@ -15,6 +18,18 @@ interface Petal {
 
 export default function CherryBlossoms() {
   const [petals, setPetals] = useState<Petal[]>([]);
+  const [enabled, setEnabled] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    getDoc(doc(db, 'settings', 'general'))
+      .then(snap => {
+        if (cancelled) return;
+        setEnabled(isCherryBlossomActive(snap.exists() ? snap.data() : null));
+      })
+      .catch(() => { /* 설정 조회 실패 시 기존처럼 항상 표시 */ });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     // 벚꽃 잎 20개 생성
@@ -29,6 +44,8 @@ export default function CherryBlossoms() {
     }));
     setPetals(newPetals);
   }, []);
+
+  if (!enabled) return null;
 
   return (
     <div style={{

@@ -8,6 +8,8 @@ import { doc, getDoc, collection, query, where, getDocs, orderBy } from 'firebas
 import { Heart, ArrowLeft, Trophy, Sparkles, ShieldCheck, Users, MapPin, Loader2, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import CherryBlossoms from '@/components/CherryBlossoms';
+import AutumnLeaves from '@/components/AutumnLeaves';
+import Snow from '@/components/Snow';
 
 import { getUserMatchResult, getUserVoteStats } from '@/lib/firestore/userMatching';
 import { getVotesReceivedByMe, getMyVote } from '@/lib/firestore/votes';
@@ -512,6 +514,8 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
   return (
     <div className="min-h-screen bg-[#FDFDFD] pt-24 pb-20 px-6 relative overflow-hidden">
       <CherryBlossoms />
+      <AutumnLeaves />
+      <Snow />
       <div className="max-w-3xl mx-auto relative z-10">
         
         {/* Back Link */}

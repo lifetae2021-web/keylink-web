@@ -8,6 +8,8 @@ import { db } from '@/lib/firebase';
 import { collection, query, where, orderBy, getDocs, doc, getDoc } from 'firebase/firestore';
 import { Session } from '@/lib/types';
 import CherryBlossoms from '@/components/CherryBlossoms';
+import AutumnLeaves from '@/components/AutumnLeaves';
+import Snow from '@/components/Snow';
 
 export default function ResultListPage() {
   const [totalCouples, setTotalCouples] = useState(0);
@@ -120,6 +122,8 @@ export default function ResultListPage() {
   return (
     <div style={{ paddingBottom: '100px', background: 'var(--color-bg)', minHeight: '100vh', position: 'relative', overflow: 'hidden' }}>
       <CherryBlossoms />
+      <AutumnLeaves />
+      <Snow />
 
       {/* Hero Section */}
       <section style={{

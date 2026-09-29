@@ -7,6 +7,8 @@ import { motion } from 'framer-motion';
 import { getSession } from '@/lib/firestore/sessions';
 import { Session } from '@/lib/types';
 import CherryBlossoms from '@/components/CherryBlossoms';
+import AutumnLeaves from '@/components/AutumnLeaves';
+import Snow from '@/components/Snow';
 
 export default function ResultDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: sessionId } = use(params);
@@ -59,6 +61,8 @@ export default function ResultDetailPage({ params }: { params: Promise<{ id: str
   return (
     <div style={{ paddingBottom: '100px', background: 'var(--color-bg)', minHeight: '100vh', position: 'relative', overflow: 'hidden' }}>
       <CherryBlossoms />
+      <AutumnLeaves />
+      <Snow />
 
       {/* Sticky Header */}
       <section style={{

@@ -1405,6 +1405,51 @@ function MyPageContent() {
       </div>
       )}
 
+      {/* ── FLOATING CTA ── */}
+      <div style={{
+        position: 'fixed',
+        bottom: '32px',
+        right: '32px',
+        zIndex: 200,
+        animation: 'floatButton 2.5s ease-in-out infinite'
+      }}>
+        <style>{`
+          @keyframes floatButton {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+          }
+        `}</style>
+        <button
+          onClick={() => router.push('/apply/fast')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            background: '#FF6F61',
+            color: '#fff',
+            fontWeight: '900',
+            fontSize: '1rem',
+            padding: '16px 28px',
+            borderRadius: '100px',
+            border: 'none',
+            cursor: 'pointer',
+            textDecoration: 'none',
+            boxShadow: '0 8px 24px rgba(255,111,97,0.4)',
+            transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.transform = 'scale(1.05)';
+            e.currentTarget.style.boxShadow = '0 12px 32px rgba(255,111,97,0.5)';
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.transform = 'scale(1)';
+            e.currentTarget.style.boxShadow = '0 8px 24px rgba(255,111,97,0.4)';
+          }}
+        >
+          지금 바로 신청하기 <ArrowRight size={18} />
+        </button>
+      </div>
+
       <style>{`
         .kl-scrollbar::-webkit-scrollbar { height: 4px; width: 4px; }
         .kl-scrollbar::-webkit-scrollbar-track { background: #fdfdfd; }
