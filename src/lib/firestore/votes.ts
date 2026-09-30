@@ -61,6 +61,21 @@ export async function getMyVote(
   return fromDoc(snap.docs[0]);
 }
 
+/** 유저가 참여한 모든 세션의 투표 여부를 한 번에 조회 (sessionId -> Vote) */
+export async function getMyVotesMap(userId: string): Promise<Record<string, Vote>> {
+  const q = query(
+    collection(db, COLLECTION),
+    where('userId', '==', userId)
+  );
+  const snap = await getDocs(q);
+  const map: Record<string, Vote> = {};
+  snap.docs.forEach((d) => {
+    const v = fromDoc(d);
+    if (v) map[v.sessionId] = v;
+  });
+  return map;
+}
+
 /** 특정 기수 전체 투표 목록 (관리자 / 알고리즘용) */
 export async function getAllVotesBySession(sessionId: string): Promise<Vote[]> {
   const q = query(

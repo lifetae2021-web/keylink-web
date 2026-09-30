@@ -4,10 +4,10 @@ import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { auth, db, storage } from '@/lib/firebase';
 import { compressImage } from '@/lib/utils';
-import { onAuthStateChanged, User, updatePassword } from 'firebase/auth';
-import { 
-  doc, getDoc, updateDoc, serverTimestamp, deleteField, 
-  collection, query, where, getDocs, arrayUnion
+import { User, updatePassword } from 'firebase/auth';
+import {
+  doc, getDoc, updateDoc, serverTimestamp, deleteField,
+  collection, query, where, getDocs, arrayUnion, documentId
 } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import {
@@ -19,8 +19,9 @@ import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { subscribeMyApplication, subscribeMyApplications } from '@/lib/firestore/applications';
 import { subscribeSession } from '@/lib/firestore/sessions';
-import { getMyVote, getVotesReceivedByMe } from '@/lib/firestore/votes';
+import { getMyVote, getMyVotesMap, getVotesReceivedByMe } from '@/lib/firestore/votes';
 import { Application, Session, Vote } from '@/lib/types';
+import { useAuth } from '@/contexts/AuthContext';
 
 const EMPTY = '미입력';
 
@@ -69,6 +70,7 @@ function MyPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const mode = searchParams.get('mode');
+  const { user: authUser, userData: authUserData, coupons: userCoupons, authLoading, profileLoading } = useAuth();
 
   const [user, setUser] = useState<User | null>(null);
   const [userData, setUserData] = useState<any>(null);
@@ -86,7 +88,6 @@ function MyPageContent() {
   const [sessionsMap, setSessionsMap] = useState<Record<string, Session | null>>({});
   const [isAdmin, setIsAdmin] = useState(false);
   const [isGuestUser, setIsGuestUser] = useState(false);
-  const [userCoupons, setUserCoupons] = useState<any[]>([]);
 
   // Edit Form State
   const [editForm, setEditForm] = useState<any>({
@@ -152,22 +153,27 @@ function MyPageContent() {
     }
   };
 
-  // [Draft] Load from localStorage if exists
+  // v13.x: 로그인 상태 동기화 + 미로그인 시 리다이렉트 (AuthContext 기반)
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      if (!currentUser) { router.replace('/login'); return; }
-      setUser(currentUser);
-      try {
-        const snap = await getDoc(doc(db, 'users', currentUser.uid));
-        if (snap.exists()) {
-          const d = snap.data();
+    if (authLoading) return;
+    if (!authUser) { router.replace('/login'); return; }
+    setUser(authUser);
+  }, [authUser, authLoading, router]);
+
+  // v13.x: users/{uid} 문서는 AuthContext가 이미 구독 중이므로 여기서 다시 읽지 않고 재사용한다
+  useEffect(() => {
+    if (!authUser) return;
+    if (profileLoading) return;
+    try {
+        const d = authUserData;
+        if (d) {
           setUserData(d);
           // 관리자 여부 확인
           const role = d?.role;
           setIsAdmin(role === 'admin' || role === 'super_admin');
           // 비회원 여부 확인
           setIsGuestUser(d?.isRegistered === false);
-          
+
           const initialForm = {
             name: d.name || '',
             gender: d.gender || '',
@@ -194,7 +200,7 @@ function MyPageContent() {
           };
 
           // [Draft] Load from UNIFIED profile draft
-          const savedDraft = localStorage.getItem(`kl_unified_profile_draft_${currentUser.uid}`);
+          const savedDraft = localStorage.getItem(`kl_unified_profile_draft_${authUser.uid}`);
           if (savedDraft) {
             try {
               const draft = JSON.parse(savedDraft);
@@ -207,70 +213,59 @@ function MyPageContent() {
           }
 
           setVerificationPreview(initialForm.employmentProof || '');
-          
+
           const savedPhotos = d.photos || d.profilePhotos || [];
           const legacyFace = d.facePhotos || [];
           const legacyBody = d.bodyPhotos || [];
           const merged = savedPhotos.length > 0 ? savedPhotos : [...legacyFace, ...legacyBody].slice(0, 5);
           setPhotos(merged);
         }
-      } catch (e) { console.error(e); }
-      finally { setLoading(false); }
+    } catch (e) { console.error(e); }
+    finally { setLoading(false); }
+  }, [authUser, authUserData, profileLoading]);
 
-      const unsubApps = subscribeMyApplications(currentUser.uid, (apps) => {
-        setApplications(apps);
-        apps.forEach(async (app) => {
-          if (sessionsMap[app.sessionId] === undefined) {
-            subscribeSession(app.sessionId, (s) => {
-              setSessionsMap(prev => ({ ...prev, [app.sessionId]: s || null }));
-            });
-          }
-          if (app.status === 'confirmed') {
-            const vote = await getMyVote(app.sessionId, currentUser.uid);
-            if (vote) setHasVoted(true);
-            setVotedMap(prev => ({ ...prev, [app.sessionId]: { voted: !!vote, submittedAt: vote ? vote.submittedAt : null } }));
-          }
-        });
-      });
+  // 신청 현황 / 1:1 매칭 신청 구독 (로그인 유저 기준)
+  useEffect(() => {
+    if (!authUser) return;
+    const userId = authUser.uid;
 
-      // v8.15.8: 1:1 매칭 신청 현황 조회
-      const privateQ = query(collection(db, 'private_applications'), where('userId', '==', currentUser.uid));
-      getDocs(privateQ).then(snap => {
-        if (!snap.empty) {
-          setPrivateApp(snap.docs[0].data());
+    const unsubApps = subscribeMyApplications(userId, (apps) => {
+      setApplications(apps);
+      apps.forEach((app) => {
+        if (sessionsMap[app.sessionId] === undefined) {
+          subscribeSession(app.sessionId, (s) => {
+            setSessionsMap(prev => ({ ...prev, [app.sessionId]: s || null }));
+          });
         }
       });
 
-      // v8.18.0: 보유 쿠폰 현황 조회
-      const couponsQ = query(collection(db, 'users', currentUser.uid, 'coupons'), where('isUsed', '==', false));
-      getDocs(couponsQ).then(snap => {
-        const now = new Date();
-        const coupons = snap.docs.map(cd => {
-          const data = cd.data();
-          let expireAt = data.expireAt || data.expiresAt;
-          if (!expireAt && data.validityMonths && data.validityMonths !== 'unlimited' && data.createdAt) {
-            const created = data.createdAt.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
-            const exp = new Date(created);
-            exp.setMonth(exp.getMonth() + Number(data.validityMonths));
-            expireAt = exp;
-          }
-          let title = data.title || data.name || '할인 쿠폰';
-          if (title === '가입 축하 5,000원 할인쿠폰') title = '웰컴 가입 축하 쿠폰';
-          return { id: cd.id, ...data, expireAt, title };
-        }).filter(c => {
-          if (c.expireAt) {
-            const exp = c.expireAt.toDate ? c.expireAt.toDate() : new Date(c.expireAt);
-            return exp > now;
-          }
-          return true;
+      // v13.x: 확정 신청 건마다 투표 여부를 따로 조회하지 않고, 유저의 전체 투표를 한 번에 조회해서 매핑
+      const confirmedSessionIds = apps.filter(a => a.status === 'confirmed').map(a => a.sessionId);
+      if (confirmedSessionIds.length > 0) {
+        getMyVotesMap(userId).then(voteMap => {
+          let anyVoted = false;
+          const nextVotedMap: Record<string, { voted: boolean; submittedAt?: Date | null }> = {};
+          confirmedSessionIds.forEach(sid => {
+            const vote = voteMap[sid];
+            if (vote) anyVoted = true;
+            nextVotedMap[sid] = { voted: !!vote, submittedAt: vote ? vote.submittedAt : null };
+          });
+          if (anyVoted) setHasVoted(true);
+          setVotedMap(prev => ({ ...prev, ...nextVotedMap }));
         });
-        setUserCoupons(coupons);
-      });
-
-      return () => { unsubApps(); };
+      }
     });
-    return () => unsubscribe();
-  }, [router]);
+
+    // v8.15.8: 1:1 매칭 신청 현황 조회
+    const privateQ = query(collection(db, 'private_applications'), where('userId', '==', userId));
+    getDocs(privateQ).then(snap => {
+      if (!snap.empty) {
+        setPrivateApp(snap.docs[0].data());
+      }
+    });
+
+    return () => { unsubApps(); };
+  }, [authUser]);
 
   // [Draft] Auto-save to UNIFIED profile draft
   useEffect(() => {
@@ -1554,17 +1549,21 @@ function ApplicationStatusSection({ applications, sessionsMap, userId, isAdmin =
   });
 
   useEffect(() => {
-    visibleApps.forEach(async (app) => {
-      if (app.status === 'confirmed' && votedMap[app.sessionId] === undefined) {
-        const vote = await getMyVote(app.sessionId, userId);
-        setVotedMap(prev => ({ 
-          ...prev, 
-          [app.sessionId]: { 
-            voted: !!vote, 
-            submittedAt: vote ? vote.submittedAt : null 
-          } 
-        }));
-      }
+    const confirmedSessionIds = visibleApps
+      .filter(app => app.status === 'confirmed' && votedMap[app.sessionId] === undefined)
+      .map(app => app.sessionId);
+    if (confirmedSessionIds.length === 0) return;
+
+    // v13.x: 확정 신청 건마다 투표 여부를 개별 조회하지 않고, 유저의 전체 투표를 한 번에 조회해서 매핑
+    getMyVotesMap(userId).then(voteMap => {
+      setVotedMap(prev => {
+        const next = { ...prev };
+        confirmedSessionIds.forEach(sessionId => {
+          const vote = voteMap[sessionId];
+          next[sessionId] = { voted: !!vote, submittedAt: vote ? vote.submittedAt : null };
+        });
+        return next;
+      });
     });
   }, [visibleApps, userId]);
 
@@ -2079,14 +2078,37 @@ function ReceivedHeartsFeed({ session, userId }: { session: Session, userId: str
         
         setMyVote(mine);
 
-        const profiles = await Promise.all(received.map(async (v) => {
-          const [userSnap, appSnap] = await Promise.all([
-            getDoc(doc(db, 'users', v.userId)),
-            getDocs(query(collection(db, 'applications'), where('userId', '==', v.userId), where('sessionId', '==', session.id), where('status', '==', 'confirmed')))
-          ]);
-          const appData = !appSnap.empty ? appSnap.docs[0].data() : {};
-          return { id: v.userId, voteData: v, ...(userSnap.data() || {}), gender: appData.gender, slotNumber: appData.slotNumber };
-        }));
+        if (received.length === 0) {
+          setVoters([]);
+          return;
+        }
+
+        // v13.x: 투표자마다 users/applications를 개별 조회하지 않고,
+        // 세션의 확정 신청서 전체 + 유저 문서를 배치로 한 번씩만 조회해서 매핑
+        const voterIds = Array.from(new Set(received.map(v => v.userId)));
+        const [confirmedAppsSnap, usersMap] = await Promise.all([
+          getDocs(query(collection(db, 'applications'), where('sessionId', '==', session.id), where('status', '==', 'confirmed'))),
+          (async () => {
+            const map = new Map<string, any>();
+            const chunks: string[][] = [];
+            for (let i = 0; i < voterIds.length; i += 30) chunks.push(voterIds.slice(i, i + 30));
+            await Promise.all(chunks.map(async (chunk) => {
+              const uSnap = await getDocs(query(collection(db, 'users'), where(documentId(), 'in', chunk)));
+              uSnap.docs.forEach(d => map.set(d.id, d.data()));
+            }));
+            return map;
+          })(),
+        ]);
+        const appByUserId = new Map<string, any>();
+        confirmedAppsSnap.docs.forEach(d => {
+          const data = d.data();
+          appByUserId.set(data.userId, data);
+        });
+
+        const profiles = received.map((v) => {
+          const appData = appByUserId.get(v.userId) || {};
+          return { id: v.userId, voteData: v, ...(usersMap.get(v.userId) || {}), gender: appData.gender, slotNumber: appData.slotNumber };
+        });
 
         setVoters(profiles);
       } catch (e) {

@@ -5,6 +5,7 @@ import {
   getDocs,
   doc,
   getDoc,
+  documentId,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Session, Application, Vote } from '@/lib/types';
@@ -41,6 +42,32 @@ function getPartnerIds(summary: NonNullable<Awaited<ReturnType<typeof getSummary
     .map(p => p.userAId === userId ? p.userBId : p.userAId);
 }
 
+// v13.x: sessions는 공개 컬렉션(allow read: if true)이라 배치 조회가 안전함.
+// matchingSummaries는 status == 'approved' 조건부 읽기 규칙이 있어 배치 시 전체 쿼리가
+// permission-denied로 실패할 위험이 있으므로 getSummary()의 개별 조회 방식을 그대로 유지한다.
+async function getSessionsMap(sessionIds: string[]): Promise<Map<string, Session>> {
+  const map = new Map<string, Session>();
+  const uniqueIds = Array.from(new Set(sessionIds));
+  const chunks: string[][] = [];
+  for (let i = 0; i < uniqueIds.length; i += 30) {
+    chunks.push(uniqueIds.slice(i, i + 30));
+  }
+  await Promise.all(chunks.map(async (chunk) => {
+    const q = query(collection(db, 'sessions'), where(documentId(), 'in', chunk));
+    const snap = await getDocs(q);
+    snap.docs.forEach((d) => {
+      const data = d.data();
+      map.set(d.id, {
+        id: d.id,
+        ...data,
+        eventDate: data.eventDate?.toDate?.() || new Date(),
+        createdAt: data.createdAt?.toDate?.() || new Date(),
+      } as Session);
+    });
+  }));
+  return map;
+}
+
 /**
  * 사용자가 참여한 기수 목록 및 상태 조회
  */
@@ -49,26 +76,22 @@ export async function getUserParticipations(userId: string, isAdmin: boolean = f
   const snap = await getDocs(q);
   if (snap.empty) return [];
 
-  const participations = await Promise.all(snap.docs.map(async (appDoc) => {
-    const appData = { id: appDoc.id, ...appDoc.data() } as Application;
+  const appDataList = snap.docs.map((appDoc) => ({ id: appDoc.id, ...appDoc.data() } as Application));
 
-    // v10.2.0: 세션 정보와 매칭 요약 데이터를 병렬 조회하여 기수 목록 로딩 대폭 단축
-    const [sessionSnap, summary] = await Promise.all([
-      getDoc(doc(db, 'sessions', appData.sessionId)),
-      getSummary(appData.sessionId)
-    ]);
+  // v13.x: 신청서마다 sessions를 개별 조회하지 않고, 고유 세션 ID들을 모아 한 번에 배치 조회
+  const [sessionsMap, summaries] = await Promise.all([
+    getSessionsMap(appDataList.map(a => a.sessionId)),
+    Promise.all(Array.from(new Set(appDataList.map(a => a.sessionId))).map(async (sid) => [sid, await getSummary(sid)] as const)),
+  ]);
+  const summaryMap = new Map(summaries);
 
-    if (!sessionSnap.exists()) return null;
+  const participations = await Promise.all(appDataList.map(async (appData) => {
+    const sessionData = sessionsMap.get(appData.sessionId);
+    const summary = summaryMap.get(appData.sessionId) ?? null;
 
-    const d = sessionSnap.data()!;
-    if (d.isTest && !isAdmin) return null; // 테스트 기수는 일반 유저 목록에서 제외
+    if (!sessionData) return null;
 
-    const sessionData = {
-      id: sessionSnap.id,
-      ...d,
-      eventDate: d.eventDate?.toDate?.() || new Date(),
-      createdAt: d.createdAt?.toDate?.() || new Date(),
-    } as Session;
+    if (sessionData.isTest && !isAdmin) return null; // 테스트 기수는 일반 유저 목록에서 제외
 
     const inResults = summary && (
       (summary.unmatchedUserIds || []).includes(userId) ||

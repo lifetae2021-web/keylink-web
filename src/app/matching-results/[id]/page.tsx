@@ -125,7 +125,10 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
           }
 
           // 4. Fetch Participant Slots mapping
+          // v13.x: appsSnap을 userId 기준 Map으로도 만들어서, 아래 파트너/투표/선택 상대 조회 시
+          // 세션당 신청서를 또 쿼리하지 않고 메모리에서 바로 조회하도록 재사용한다.
           const pMap: Record<string, any> = {};
+          const appsByUserId = new Map<string, any>();
           appsSnap.docs.forEach((d: any) => {
             const data = d.data();
             pMap[data.userId] = {
@@ -133,6 +136,7 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
               slotNumber: data.slotNumber || 0,
               name: data.name
             };
+            appsByUserId.set(data.userId, data);
           });
           setParticipantMap(pMap);
 
@@ -154,23 +158,15 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
             setIsParticipant(true);
 
             // Resolve all partner profiles for multi-match support
-            const resolvedPartners = await Promise.all((matchResult.partnerIds || []).map(async (partnerId: any) => {
+            // v13.x: 파트너도 같은 세션의 confirmed 참가자이므로 appsByUserId/lineupUserMap(=luMap)에서
+            // 바로 조회한다 — 파트너 수만큼 신청서·세션·유저 문서를 다시 읽지 않는다.
+            const resolvedPartners = (matchResult.partnerIds || []).map((partnerId: any) => {
               try {
-                const appQuery = query(
-                  collection(db, 'applications'),
-                  where('sessionId', '==', sessionId),
-                  where('userId', '==', partnerId)
-                );
-                const [appSnap, sessionSnap, userSnap] = await Promise.all([
-                  getDocs(appQuery),
-                  getDoc(doc(db, 'sessions', sessionId)),
-                  getDoc(doc(db, 'users', partnerId))
-                ]);
-                if (!appSnap.empty) {
-                  const appData = appSnap.docs[0].data();
-                  const userData = userSnap.exists() ? userSnap.data() : null;
+                const appData = appsByUserId.get(partnerId);
+                if (appData) {
+                  const userData = luMap[partnerId] || null;
                   const batchTitle = sessionSnap.exists() ? `${sessionSnap.data().episodeNumber || ''}기` : '';
-                  
+
                   let calculatedAge = '미입력';
                   const birthDateVal = appData.birthDate || userData?.birthDate;
                   if (birthDateVal) {
@@ -201,7 +197,7 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
                 console.error("Error resolving partner profile:", partnerId, err);
               }
               return null;
-            }));
+            });
 
             const validPartners = resolvedPartners.filter(Boolean) as any[];
 
@@ -222,26 +218,20 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
             // 6. Fetch Stats & Choices only if participated
             
             // Resolve received votes
+            // v13.x: 투표한 사람도 같은 세션의 confirmed 참가자이므로 appsByUserId에서 바로 조회
             const visibility = sessionSnap.data()?.voteConfig?.resultVisibility || 'all';
-            const resolvedReceived = await Promise.all(receivedVotes.map(async (v: any) => {
-              const appQuery = query(
-                collection(db, 'applications'),
-                where('sessionId', '==', sessionId),
-                where('userId', '==', v.userId),
-                where('status', '==', 'confirmed')
-              );
-              const appSnap = await getDocs(appQuery);
-              const appData = !appSnap.empty ? appSnap.docs[0].data() : {};
-              
+            const resolvedReceived = receivedVotes.map((v: any) => {
+              const appData = appsByUserId.get(v.userId) || {};
+
               if (appData.isDarkTemplar) return null;
 
-              return { 
-                id: v.userId, 
-                voteData: v, 
-                gender: appData.gender, 
-                slotNumber: appData.slotNumber 
+              return {
+                id: v.userId,
+                voteData: v,
+                gender: appData.gender,
+                slotNumber: appData.slotNumber
               };
-            }));
+            });
 
             const validReceived = resolvedReceived.filter(Boolean);
 
@@ -276,22 +266,14 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
             // 표 개수는 매칭 엔진 집계 당시의 정확한 총 득표수를 사용함 (실시간 리스트 개수로 덮어씌우지 않음)
             setVoteCount(displayedVoters.length);
             
-            const resolvedChoices = await Promise.all(stats.myChoices.map(async (v: any) => {
+            // v13.x: 내가 선택한 상대도 같은 세션의 confirmed 참가자이므로 appsByUserId/luMap에서 바로 조회
+            const resolvedChoices = stats.myChoices.map((v: any) => {
               let label = '알 수 없음';
               let jobDisplay = '확인 중';
               try {
-                const appQuery = query(
-                  collection(db, 'applications'),
-                  where('sessionId', '==', sessionId),
-                  where('userId', '==', v.targetUserId)
-                );
-                const [appSnap, userSnap] = await Promise.all([
-                  getDocs(appQuery),
-                  getDoc(doc(db, 'users', v.targetUserId))
-                ]);
-                if (!appSnap.empty) {
-                  const appData = appSnap.docs[0].data();
-                  const userData = userSnap.exists() ? userSnap.data() : null;
+                const appData = appsByUserId.get(v.targetUserId);
+                const userData = luMap[v.targetUserId] || null;
+                if (appData) {
                   const genderKo = appData.gender === 'male' ? '키링남' : '키링녀';
                   const slot = appData.slotNumber ? `${appData.slotNumber}호` : '호수 미정';
                   label = `${genderKo} ${slot}`;
@@ -311,7 +293,7 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
                 partnerName: label,
                 job: jobDisplay
               };
-            }));
+            });
             setMyChoices(resolvedChoices);
           } else {
             setIsParticipant(false);

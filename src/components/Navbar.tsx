@@ -4,11 +4,11 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { Menu, X, LogOut, User as UserIcon } from 'lucide-react';
-import { auth, db } from '@/lib/firebase';
-import { onAuthStateChanged, signOut, User } from 'firebase/auth';
-import { doc, onSnapshot, collection, query, where, getDocs } from 'firebase/firestore';
+import { auth } from '@/lib/firebase';
+import { signOut } from 'firebase/auth';
 import toast from 'react-hot-toast';
 import { APP_VERSION } from '@/lib/constants';
+import { useAuth } from '@/contexts/AuthContext';
 const version = APP_VERSION;
 // v8.1.7: Premium Navigation Bar
 
@@ -23,11 +23,10 @@ const navLinks = [
 ];
 
 export default function Navbar() {
+  const { user, isAdmin, coupons } = useAuth();
+  const unusedCouponsCount = coupons.length;
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [unusedCouponsCount, setUnusedCouponsCount] = useState(0);
   const [activeAnchor, setActiveAnchor] = useState<string | null>(null);
   const isManualScrolling = useRef(false);
   const pathname = usePathname();
@@ -105,51 +104,8 @@ export default function Navbar() {
 
     window.addEventListener('scroll', handleScroll, { passive: true });
 
-    let unsubDoc: (() => void) | null = null;
-
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      if (unsubDoc) { unsubDoc(); unsubDoc = null; }
-      if (currentUser) {
-        unsubDoc = onSnapshot(doc(db, 'users', currentUser.uid), (snap) => {
-          const role = snap.exists() ? snap.data()?.role : '';
-          setIsAdmin(snap.exists() && (role === 'admin' || role === 'super_admin'));
-        });
-
-        // v8.18.0: 미사용 쿠폰 개수 조회 (네비게이션 알림용)
-        const couponsQ = query(collection(db, 'users', currentUser.uid, 'coupons'), where('isUsed', '==', false));
-        getDocs(couponsQ).then(snap => {
-          const now = new Date();
-          const validCoupons = snap.docs.map(cd => {
-            const data = cd.data();
-            let expireAt = data.expireAt || data.expiresAt;
-            if (!expireAt && data.validityMonths && data.validityMonths !== 'unlimited' && data.createdAt) {
-              const created = data.createdAt.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
-              const exp = new Date(created);
-              exp.setMonth(exp.getMonth() + Number(data.validityMonths));
-              expireAt = exp;
-            }
-            return { expireAt };
-          }).filter(c => {
-            if (c.expireAt) {
-              const exp = c.expireAt.toDate ? c.expireAt.toDate() : new Date(c.expireAt);
-              return exp > now;
-            }
-            return true;
-          });
-          setUnusedCouponsCount(validCoupons.length);
-        });
-
-      } else {
-        setIsAdmin(false);
-        setUnusedCouponsCount(0);
-      }
-    });
-
     return () => {
       window.removeEventListener('scroll', handleScroll);
-      unsubscribe();
-      if (unsubDoc) unsubDoc();
     };
   }, [pathname]);
 

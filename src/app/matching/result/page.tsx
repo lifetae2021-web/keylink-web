@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Heart, ArrowRight, Trophy, Sparkles, Calendar, Users, BarChart3, Clock, MapPin, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence, animate } from 'framer-motion';
 import { db } from '@/lib/firebase';
-import { collection, query, where, orderBy, getDocs, doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, orderBy, getDocs, documentId } from 'firebase/firestore';
 import { Session } from '@/lib/types';
 import CherryBlossoms from '@/components/CherryBlossoms';
 import AutumnLeaves from '@/components/AutumnLeaves';
@@ -31,44 +31,60 @@ export default function ResultListPage() {
           orderBy('episodeNumber', 'desc')
         );
         const snap = await getDocs(q);
-        const fetched = await Promise.all(snap.docs.map(async (docSnap) => {
+
+        // v13.x: 완료된 기수마다 matchingSummaries를 개별 조회하지 않고,
+        // status == 'approved' 조건으로 배치 조회 (규칙상 승인되지 않은 문서는 배치 결과에서 자연히 제외됨)
+        const completedIds = snap.docs.filter(d => d.data().status === 'completed').map(d => d.id);
+        const summaryMap = new Map<string, any>();
+        const chunks: string[][] = [];
+        for (let i = 0; i < completedIds.length; i += 30) {
+          chunks.push(completedIds.slice(i, i + 30));
+        }
+        await Promise.all(chunks.map(async (chunk) => {
+          try {
+            const sq = query(
+              collection(db, 'matchingSummaries'),
+              where(documentId(), 'in', chunk),
+              where('status', '==', 'approved')
+            );
+            const sSnap = await getDocs(sq);
+            sSnap.docs.forEach(sd => summaryMap.set(sd.id, sd.data()));
+          } catch (e) {
+            console.error("Error fetching matchingSummaries batch:", e);
+          }
+        }));
+
+        const fetched = snap.docs.map((docSnap) => {
           const d = docSnap.data();
           const sessionId = docSnap.id;
-          
+
           let matchedCount = typeof d.matchedCount === 'number' ? d.matchedCount : 0;
           let matchedRate = 0;
-          if (d.status === 'completed') {
-            try {
-              const summarySnap = await getDoc(doc(db, 'matchingSummaries', sessionId));
-              if (summarySnap.exists()) {
-                const summaryData = summarySnap.data();
-                const matchedPairs = summaryData.matchedPairs || [];
-                if (matchedCount === 0) {
-                  matchedCount = matchedPairs.length;
-                }
-                
-                // 다중 매칭(1명이 여러 명과 매칭)을 고려하여 실제 매칭된 고유 인원 수 계산
-                const matchedUserIds = new Set();
-                matchedPairs.forEach((p: any) => {
-                  if (p.maleId) matchedUserIds.add(p.maleId);
-                  if (p.femaleId) matchedUserIds.add(p.femaleId);
-                  if (p.userAId) matchedUserIds.add(p.userAId);
-                  if (p.userBId) matchedUserIds.add(p.userBId);
-                });
-                
-                const uniqueMatchedCount = matchedUserIds.size;
-                const unmatchedCount = (summaryData.unmatchedUserIds || []).length;
-                const total = uniqueMatchedCount + unmatchedCount;
-                
-                if (total > 0) {
-                  matchedRate = Math.round((uniqueMatchedCount / total) * 100);
-                }
-              }
-            } catch (e) {
-              console.error("Error fetching matchingSummary:", sessionId, e);
+          const summaryData = summaryMap.get(sessionId);
+          if (d.status === 'completed' && summaryData) {
+            const matchedPairs = summaryData.matchedPairs || [];
+            if (matchedCount === 0) {
+              matchedCount = matchedPairs.length;
+            }
+
+            // 다중 매칭(1명이 여러 명과 매칭)을 고려하여 실제 매칭된 고유 인원 수 계산
+            const matchedUserIds = new Set();
+            matchedPairs.forEach((p: any) => {
+              if (p.maleId) matchedUserIds.add(p.maleId);
+              if (p.femaleId) matchedUserIds.add(p.femaleId);
+              if (p.userAId) matchedUserIds.add(p.userAId);
+              if (p.userBId) matchedUserIds.add(p.userBId);
+            });
+
+            const uniqueMatchedCount = matchedUserIds.size;
+            const unmatchedCount = (summaryData.unmatchedUserIds || []).length;
+            const total = uniqueMatchedCount + unmatchedCount;
+
+            if (total > 0) {
+              matchedRate = Math.round((uniqueMatchedCount / total) * 100);
             }
           }
-          
+
           return {
             id: sessionId,
             ...d,
@@ -77,7 +93,7 @@ export default function ResultListPage() {
             matchedCount: matchedCount > 0 ? matchedCount : null,
             matchedRate: matchedRate > 0 ? matchedRate : null,
           } as any;
-        }));
+        });
         // Filter out test sessions (isTest: true) from public matching reports
         const publicSessions = fetched.filter((s: any) => s && !s.isTest);
         setSessions(publicSessions);

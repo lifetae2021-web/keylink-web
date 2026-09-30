@@ -10,10 +10,10 @@ import { Session } from '@/lib/types';
 import { subscribeAllSessions } from '@/lib/firestore/sessions';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from 'date-fns';
 import { ko } from 'date-fns/locale';
-import { auth, db } from '@/lib/firebase';
-import { onAuthStateChanged } from 'firebase/auth';
+import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { Application } from '@/lib/types';
+import { useAuth } from '@/contexts/AuthContext';
 
 // Firestore Session → KeylinkEvent 어댑터
 function sessionToEvent(session: Session): KeylinkEvent {
@@ -47,13 +47,13 @@ function sessionToEvent(session: Session): KeylinkEvent {
 
 export function EventsSection({ standalone = false, calendarOnly = false }: { standalone?: boolean; calendarOnly?: boolean }) {
   const searchParams = useSearchParams();
+  // v13.x: 관리자 여부는 AuthContext가 이미 구독 중인 users/{uid} 문서에서 바로 가져온다 (중복 조회 제거)
+  const { user, isAdmin } = useAuth();
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedRegion, setSelectedRegion] = useState<'busan' | 'changwon'>('busan');
   const [allSessions, setAllSessions] = useState<Session[]>([]);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [userApps, setUserApps] = useState<Record<string, Application>>({});
-  const [user, setUser] = useState<any>(null);
 
   // Firestore 실시간 구독
   useEffect(() => {
@@ -61,52 +61,39 @@ export function EventsSection({ standalone = false, calendarOnly = false }: { st
       setAllSessions(sessions);
       setIsLoading(false);
     });
-
-    const unsubAuth = onAuthStateChanged(auth, async (currentUser) => {
-      setUser(currentUser);
-      if (currentUser) {
-        try {
-          // 관리자(admin/super_admin) 여부 확인
-          const { getDoc, doc } = await import('firebase/firestore');
-          const userSnap = await getDoc(doc(db, 'users', currentUser.uid));
-          if (userSnap.exists()) {
-            const role = userSnap.data()?.role;
-            setIsAdmin(role === 'admin' || role === 'super_admin');
-          } else {
-            setIsAdmin(false);
-          }
-
-          const q = query(
-            collection(db, 'applications'),
-            where('userId', '==', currentUser.uid)
-          );
-          const snap = await getDocs(q);
-          const apps: Record<string, Application> = {};
-          snap.forEach(doc => {
-            const data = doc.data() as Application;
-            if (data.status !== 'cancelled') {
-              // v8.13.4: 동일 기수에 신청서가 여러 개일 경우 'confirmed' 상태를 최우선으로 저장
-              const existingApp = apps[data.sessionId];
-              if (!existingApp || (data.status === 'confirmed' && existingApp.status !== 'confirmed')) {
-                apps[data.sessionId] = { ...data, id: doc.id };
-              }
-            }
-          });
-          setUserApps(apps);
-        } catch (error) {
-          console.error("Error fetching user applications:", error);
-        }
-      } else {
-        setUserApps({});
-        setIsAdmin(false);
-      }
-    });
-
-    return () => {
-      unsubscribe();
-      unsubAuth();
-    };
+    return () => unsubscribe();
   }, []);
+
+  // 내 신청 내역 조회 (로그인 상태 변경 시)
+  useEffect(() => {
+    if (!user) {
+      setUserApps({});
+      return;
+    }
+    (async () => {
+      try {
+        const q = query(
+          collection(db, 'applications'),
+          where('userId', '==', user.uid)
+        );
+        const snap = await getDocs(q);
+        const apps: Record<string, Application> = {};
+        snap.forEach(doc => {
+          const data = doc.data() as Application;
+          if (data.status !== 'cancelled') {
+            // v8.13.4: 동일 기수에 신청서가 여러 개일 경우 'confirmed' 상태를 최우선으로 저장
+            const existingApp = apps[data.sessionId];
+            if (!existingApp || (data.status === 'confirmed' && existingApp.status !== 'confirmed')) {
+              apps[data.sessionId] = { ...data, id: doc.id };
+            }
+          }
+        });
+        setUserApps(apps);
+      } catch (error) {
+        console.error("Error fetching user applications:", error);
+      }
+    })();
+  }, [user]);
 
   // 카드 리스트용 실시간 이벤트 변환 및 필터링 (useMemo로 동적 갱신)
   const liveEvents = useMemo(() => {

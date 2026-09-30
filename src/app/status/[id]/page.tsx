@@ -3,7 +3,7 @@
 import { use, useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { collection, doc, getDocs, getDoc, query, where } from 'firebase/firestore';
+import { collection, getDocs, query, where, documentId } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Users, ShieldCheck, RefreshCcw, ArrowRight, Heart, Timer, MapPin, Sparkles, Loader2, Gauge } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -91,16 +91,16 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
         setSession(sessionData);
         setApplicants(appData);
 
-        // v8.4.8+: 사용자 상세 정보(키, MBTI 등) 가져오기
-        const userPromises = confirmedApps.map(a => getDoc(doc(db, 'users', a.userId)));
-        const userSnaps = await Promise.all(userPromises);
-
+        // v13.x: 확정 신청자마다 users를 개별 조회하지 않고 배치로 한 번씩만 조회
+        const userIds = Array.from(new Set(confirmedApps.map(a => a.userId)));
         const map: Record<string, any> = {};
-        userSnaps.forEach(snap => {
-          if (snap.exists()) {
-            map[snap.id] = snap.data();
-          }
-        });
+        const chunks: string[][] = [];
+        for (let i = 0; i < userIds.length; i += 30) chunks.push(userIds.slice(i, i + 30));
+        await Promise.all(chunks.map(async (chunk) => {
+          if (chunk.length === 0) return;
+          const uSnap = await getDocs(query(collection(db, 'users'), where(documentId(), 'in', chunk)));
+          uSnap.docs.forEach(snap => { map[snap.id] = snap.data(); });
+        }));
         setUserMap(map);
         const cachePayload = { session: sessionData, applicants: appData, userMap: map, ts: Date.now() };
         statusDetailCache.set(sessionId, cachePayload);

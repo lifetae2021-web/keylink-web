@@ -2,14 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { auth, db } from '@/lib/firebase';
-import { onAuthStateChanged } from 'firebase/auth';
+import { db } from '@/lib/firebase';
 import { format } from 'date-fns';
-import { collection, query, orderBy, getDocs, where, doc, updateDoc, getDoc } from 'firebase/firestore';
+import { collection, query, getDocs, where, doc, updateDoc } from 'firebase/firestore';
 import { Heart, Trophy, Clock, CheckCircle2, ArrowRight, Loader2, XCircle, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cancelApplication } from '@/lib/firestore/applications';
 import toast from 'react-hot-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 import { getUserParticipations } from '@/lib/firestore/userMatching';
 
@@ -23,30 +23,22 @@ interface MatchingRound {
 }
 
 export default function MatchingResultsListPage() {
-  const [user, setUser] = useState<any>(null);
+  // v13.x: 로그인 유저/관리자 여부는 AuthContext가 이미 구독 중이므로 재사용 (중복 조회 제거)
+  const { user, isAdmin, authLoading } = useAuth();
   const [rounds, setRounds] = useState<MatchingRound[]>([]);
   const [privateApps, setPrivateApps] = useState<any[]>([]); // v8.12.7: 1:1 매칭 데이터
   const [activeTab, setActiveTab] = useState<'group' | '1on1'>('group');
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      setUser(currentUser);
+    if (authLoading) return;
+    (async (currentUser) => {
       if (currentUser) {
         try {
-          // v10.2.0: 기수별 참여 내역 및 1:1 매칭 신청 내역을 병렬 조회하여 응답 속도 최적화
+          // v10.2.0: 1:1 매칭 신청 내역 조회
           const privateQ = query(collection(db, 'private_applications'), where('userId', '==', currentUser.uid));
-          const [userDoc, privateSnap] = await Promise.all([
-            getDoc(doc(db, 'users', currentUser.uid)),
-            getDocs(privateQ)
-          ]);
-          
-          let isAdmin = false;
-          if (userDoc.exists()) {
-            const uData = userDoc.data();
-            isAdmin = uData.role === 'admin' || uData.role === 'super_admin';
-          }
-          
+          const privateSnap = await getDocs(privateQ);
+
           const participations = await getUserParticipations(currentUser.uid, isAdmin);
 
           const roundsData: MatchingRound[] = participations.map(p => ({
@@ -72,10 +64,8 @@ export default function MatchingResultsListPage() {
       } else {
         setIsLoading(false);
       }
-    });
-
-    return () => unsubscribe();
-  }, []);
+    })(user);
+  }, [user, authLoading, isAdmin]);
 
   const handleCancel = async (applicationId: string, episode: number) => {
     if (!confirm(`${episode}기 신청을 취소하시겠습니까?\n취소 후에는 복구가 불가능합니다.`)) return;

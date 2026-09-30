@@ -16,13 +16,15 @@ import { ko } from 'date-fns/locale';
 import toast from 'react-hot-toast';
 import { auth, db, storage } from '@/lib/firebase';
 import { compressImage } from '@/lib/utils';
-import { onAuthStateChanged, User } from 'firebase/auth';
-import { doc, getDoc, setDoc, deleteField, addDoc, collection, query, where, getDocs, Timestamp, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { User } from 'firebase/auth';
+import { doc, setDoc, deleteField, addDoc, collection, query, where, getDocs, Timestamp, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function EventDetailPage() {
   const { id } = useParams();
   const router = useRouter();
+  const { user: authUser, userData: authUserData, coupons: authCoupons, profileLoading } = useAuth();
   const [event, setEvent] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -88,28 +90,17 @@ export default function EventDetailPage() {
   const photoInputRef = useRef<HTMLInputElement>(null);
 
   // Firebase 사용자 인증 및 정보 불러오기
+  // v13.x: users/{uid} + 쿠폰 목록은 AuthContext가 이미 구독 중이므로 여기서 다시 읽지 않고
+  // context 값을 그대로 재사용한다 (속도 개선, 중복 조회 제거).
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        setCurrentUser(user);
-        // Firestore에서 유저 데이터 및 미사용 쿠폰 목록을 병렬로 한 번에 조회 (속도 개선)
-        const userRef = doc(db, 'users', user.uid);
-        const couponsQ = query(
-          collection(db, 'users', user.uid, 'coupons'),
-          where('isUsed', '==', false)
-        );
+    setCurrentUser(authUser);
+    if (!authUser) return;
+    if (profileLoading) return;
 
-        const [userSnap, couponsSnap] = await Promise.all([
-          getDoc(userRef),
-          getDocs(couponsQ)
-        ]);
-
-        if (userSnap.exists()) {
-          const data = userSnap.data();
+    if (authUserData) {
+          const d = authUserData;
           // 관리자 여부 확인
-          const role = data?.role;
-          setIsAdmin(role === 'admin' || role === 'super_admin');
-          const d = data;
+          setIsAdmin(d.role === 'admin' || d.role === 'super_admin');
           const initialProfile = {
             name: d.name || '',
             gender: d.gender || '',
@@ -143,9 +134,9 @@ export default function EventDetailPage() {
 
           // [Draft] Load and merge with profile data
           // 1. Load UNIFIED profile draft
-          const unifiedDraftStr = localStorage.getItem(`kl_unified_profile_draft_${user.uid}`);
+          const unifiedDraftStr = localStorage.getItem(`kl_unified_profile_draft_${authUser.uid}`);
           // 2. Load SESSION specific draft
-          const sessionDraftStr = localStorage.getItem(`kl_session_draft_${id}_${user.uid}`);
+          const sessionDraftStr = localStorage.getItem(`kl_session_draft_${id}_${authUser.uid}`);
           
           let mergedForm = { ...initialProfile };
 
@@ -189,42 +180,10 @@ export default function EventDetailPage() {
           setHasProfile(true);
           setUserGender(d.gender || '');
 
-          // v8.15.9: 사용 가능한 쿠폰 가져오기
-          const couponsData = couponsSnap.docs.map(doc => {
-            const data = doc.data();
-            let expireAt = data.expireAt || data.expiresAt;
-            // v8.16.5: validityMonths 처리 (일부 쿠폰은 기간제로 저장됨)
-            if (!expireAt && data.validityMonths && data.validityMonths !== 'unlimited' && data.createdAt) {
-              const createdDate = data.createdAt.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
-              const expiry = new Date(createdDate);
-              expiry.setMonth(expiry.getMonth() + Number(data.validityMonths));
-              expireAt = expiry;
-            }
-            let title = data.title || data.name || '할인 쿠폰';
-            if (title === '가입 축하 5,000원 할인쿠폰') title = '웰컴 가입 축하 쿠폰';
-            
-            return {
-              id: doc.id,
-              ...data,
-              expireAt,
-              title
-            };
-          }).filter(c => {
-            // 만료일 체크 (있는 경우에만)
-            if (c.expireAt) {
-              const expireDate = c.expireAt.toDate ? c.expireAt.toDate() : new Date(c.expireAt);
-              return expireDate > new Date();
-            }
-            return true;
-          });
-          setUserCoupons(couponsData);
-        }
-      } else {
-        setCurrentUser(null);
-      }
-    });
-    return () => unsubscribe();
-  }, []);
+          // v13.x: 쿠폰 목록은 AuthContext가 이미 필터링해서 제공
+          setUserCoupons(authCoupons);
+    }
+  }, [authUser, authUserData, authCoupons, profileLoading, id]);
 
   // [Draft] Auto-save draft when form changes (Split between Unified and Session)
   useEffect(() => {

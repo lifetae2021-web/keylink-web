@@ -9,6 +9,7 @@ import AutumnLeaves from './AutumnLeaves';
 import Snow from './Snow';
 import ProfileGuard from './ProfileGuard';
 import AnalyticsTracker from './AnalyticsTracker';
+import { AuthProvider } from '@/contexts/AuthContext';
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -30,15 +31,17 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
   const shouldShowFooter = !isMobile || pathname === '/';
 
   return (
-    <div className="flex flex-col min-h-screen">
-      <AnalyticsTracker />
-      <ProfileGuard />
-      <CherryBlossoms />
-      <AutumnLeaves />
-      <Snow />
-      <Navbar />
-      <main className="flex-grow">{children}</main>
-      {shouldShowFooter && <Footer />}
-    </div>
+    <AuthProvider>
+      <div className="flex flex-col min-h-screen">
+        <AnalyticsTracker />
+        <ProfileGuard />
+        <CherryBlossoms />
+        <AutumnLeaves />
+        <Snow />
+        <Navbar />
+        <main className="flex-grow">{children}</main>
+        {shouldShowFooter && <Footer />}
+      </div>
+    </AuthProvider>
   );
 }
