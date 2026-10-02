@@ -83,7 +83,7 @@ const PhoneActionBadge = ({ phone }: { phone: string }) => {
           <a href={`tel:${phone}`} onClick={() => setIsOpen(false)} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors">
             <Phone size={14} className="text-blue-500" /> 통화 연결
           </a>
-          <a href={`sms:${phone}`} onClick={() => setIsOpen(false)} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors">
+          <a href={`sms:${phone}`} onClick={() => { navigator.clipboard?.writeText(phone).then(() => toast.success("번호가 복사되었습니다. 받는 사람이 다르면 붙여넣기 하세요.")).catch(() => {}); setIsOpen(false); }} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors">
             <MessageSquare size={14} className="text-emerald-500" /> 문자 전송
           </a>
           <button onClick={handleCopy} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors text-left w-full">
