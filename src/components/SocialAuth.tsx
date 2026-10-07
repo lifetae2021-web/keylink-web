@@ -12,7 +12,8 @@ import {
 } from 'firebase/auth';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import toast from 'react-hot-toast';
-import { detectInAppBrowser } from '@/lib/inAppBrowser';
+import { detectInAppBrowser, canAutoOpenExternal, openInExternalBrowser, InAppInfo } from '@/lib/inAppBrowser';
+import InAppBrowserSheet from '@/components/InAppBrowserSheet';
 import { Loader2, X } from 'lucide-react';
 
 interface SocialAuthProps {
@@ -26,23 +27,17 @@ interface SocialAuthProps {
 export default function SocialAuth({ isAdmin, isLoading, setIsLoading, lastMethod, redirectUrl }: SocialAuthProps) {
   const router = useRouter();
 
-  // 인스타/페이스북/네이버 등 인앱 브라우저 감지 (카카오 로그인이 앱 전환 중 끊기는 문제 방지)
-  const [inApp, setInApp] = useState<{ isAndroid: boolean } | null>(null);
+  // 인앱 브라우저(인스타 등)에서는 카카오 로그인이 앱 전환 중 끊길 수 있어, 카카오 버튼 클릭 시에만 안내한다
+  const [inApp, setInApp] = useState<InAppInfo | null>(null);
+  const [showInAppSheet, setShowInAppSheet] = useState(false);
   useEffect(() => {
     setInApp(detectInAppBrowser());
   }, []);
 
-  const openInExternalBrowser = () => {
-    const url = window.location.href;
-    if (inApp?.isAndroid) {
-      const stripped = url.replace(/^https?:\/\//, '');
-      const scheme = url.startsWith('https') ? 'https' : 'http';
-      window.location.href = `intent://${stripped}#Intent;scheme=${scheme};package=com.android.chrome;end`;
-      return;
-    }
-    navigator.clipboard?.writeText(url).then(
+  const copyUrl = () => {
+    navigator.clipboard?.writeText(window.location.href).then(
       () => toast.success('주소가 복사되었어요. Safari나 Chrome에 붙여넣어 주세요.'),
-      () => toast.error('복사에 실패했어요. 우측 하단 ⋯ 메뉴에서 "브라우저에서 열기"를 눌러주세요.')
+      () => toast.error('복사에 실패했어요. ⋯ 메뉴에서 "브라우저에서 열기"를 눌러주세요.')
     );
   };
 
@@ -144,6 +139,15 @@ export default function SocialAuth({ isAdmin, isLoading, setIsLoading, lastMetho
   };
 
   const handleKakaoLogin = () => {
+    if (inApp) {
+      if (canAutoOpenExternal(inApp)) openInExternalBrowser(inApp);
+      else setShowInAppSheet(true);
+      return;
+    }
+    proceedKakaoLogin();
+  };
+
+  const proceedKakaoLogin = () => {
     const clientId = process.env.NEXT_PUBLIC_KAKAO_CLIENT_ID;
     const redirectUri = `${window.location.origin}/api/auth/kakao`;
     const state = isAdmin ? 'admin' : (redirectUrl ? `user|${redirectUrl}` : 'user');
@@ -160,24 +164,6 @@ export default function SocialAuth({ isAdmin, isLoading, setIsLoading, lastMetho
 
   return (
     <>
-      {inApp && (
-        <div style={{ width: '100%', background: '#FFF5F4', border: '1.5px solid #FFD6D1', borderRadius: '14px', padding: '14px 16px', marginBottom: '12px', textAlign: 'center' }}>
-          <p style={{ fontSize: '0.82rem', fontWeight: '800', color: '#111', marginBottom: '4px' }}>
-            지금 보고 계신 앱(인스타 등)에서는 로그인이 안 될 수 있어요
-          </p>
-          <p style={{ fontSize: '0.75rem', color: '#888', lineHeight: 1.5, marginBottom: '10px' }}>
-            Safari나 Chrome 같은 기본 브라우저에서 열어주세요.<br />
-            {inApp.isAndroid ? '아래 버튼을 누르면 Chrome으로 열려요.' : '우측 하단 ⋯ → "브라우저에서 열기"를 눌러도 됩니다.'}
-          </p>
-          <button
-            type="button"
-            onClick={openInExternalBrowser}
-            style={{ padding: '9px 18px', borderRadius: '100px', border: 'none', background: '#FF6F61', color: '#fff', fontWeight: '800', fontSize: '0.8rem', cursor: 'pointer' }}
-          >
-            {inApp.isAndroid ? '기본 브라우저로 열기' : '주소 복사하기'}
-          </button>
-        </div>
-      )}
       <div className="flex items-center justify-center gap-5 w-full pt-2">
         {/* Kakao Login */}
         <div style={{ position: 'relative' }}>
@@ -222,6 +208,29 @@ export default function SocialAuth({ isAdmin, isLoading, setIsLoading, lastMetho
           </button>
         </div>
       </div>
+
+      {showInAppSheet && (
+        <InAppBrowserSheet title="Safari에서 열어주세요" onClose={() => setShowInAppSheet(false)}>
+          <p style={{ fontSize: '0.88rem', color: '#666', lineHeight: 1.7, textAlign: 'center', marginBottom: '20px', wordBreak: 'keep-all' }}>
+            지금 보고 계신 앱 안에서는 카카오 로그인이 되지 않을 수 있어요.<br />
+            화면의 <strong style={{ color: '#111' }}>⋯ 버튼 → 브라우저에서 열기</strong>를 눌러주세요.
+          </p>
+          <button
+            type="button"
+            onClick={copyUrl}
+            style={{ width: '100%', padding: '15px', borderRadius: '100px', border: 'none', background: '#FF6F61', color: '#fff', fontWeight: '800', fontSize: '0.95rem', cursor: 'pointer' }}
+          >
+            주소 복사하기
+          </button>
+          <button
+            type="button"
+            onClick={() => { setShowInAppSheet(false); proceedKakaoLogin(); }}
+            style={{ width: '100%', padding: '14px', marginTop: '6px', background: 'transparent', border: 'none', color: '#aaa', fontSize: '0.82rem', cursor: 'pointer' }}
+          >
+            그래도 카카오로 계속하기
+          </button>
+        </InAppBrowserSheet>
+      )}
 
       {/* 계정 연동 모달 */}
       {linkModal && (

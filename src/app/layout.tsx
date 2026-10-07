@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Toaster } from "react-hot-toast";
 import PublicLayout from "@/components/PublicLayout";
+import InAppRedirect from "@/components/InAppRedirect";
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -39,6 +40,7 @@ export default function RootLayout({
         <meta name="naver-site-verification" content="9b970ee721188c8302fcc57b81e05845687da65b" />
       </head>
       <body className="antialiased">
+        <InAppRedirect />
         <PublicLayout>{children}</PublicLayout>
 <Toaster
           position="top-center"

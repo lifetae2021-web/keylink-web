@@ -16,7 +16,8 @@ import {
 import toast from 'react-hot-toast';
 import Link from 'next/link';
 import { compressImage } from '@/lib/utils';
-import { detectInAppBrowser } from '@/lib/inAppBrowser';
+import { detectInAppBrowser, InAppInfo } from '@/lib/inAppBrowser';
+import InAppBrowserSheet from '@/components/InAppBrowserSheet';
 import { EventCalendar } from '@/components/EventsSection';
 import { KeylinkEvent } from '@/types';
 
@@ -262,7 +263,8 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
     return () => unsubscribe();
   }, []);
 
-  const [inApp, setInApp] = useState<{ isAndroid: boolean } | null>(null);
+  const [inApp, setInApp] = useState<InAppInfo | null>(null);
+  const [inAppSheet, setInAppSheet] = useState<{ fromDup: boolean } | null>(null);
   useEffect(() => { setInApp(detectInAppBrowser()); }, []);
 
   // ── Kakao redirect: auto-complete application ──
@@ -1280,7 +1282,12 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
     }
   };
 
-  const handleKakaoLoginFunnel = async () => {
+  const handleKakaoLoginFunnel = async (opts?: { force?: boolean; fromDup?: boolean }) => {
+    // 인앱 브라우저에서는 카카오 로그인이 끊길 수 있어 먼저 안내 (입력 내용 보존을 위해 외부 브라우저로 강제 이동하지 않음)
+    if (inApp && !opts?.force) {
+      setInAppSheet({ fromDup: !!opts?.fromDup });
+      return;
+    }
     setSocialLoading(true);
     const currentUid = auth.currentUser?.uid || 'temp_' + Date.now();
     const { uploadedPhotos, uploadedProof } = await uploadBase64Photos(currentUid, photos, form.employmentProof);
@@ -2387,6 +2394,32 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
         </p>
       </div>
 
+      {inAppSheet && (
+        <InAppBrowserSheet title="카카오 로그인이 안 될 수 있어요" onClose={() => setInAppSheet(null)}>
+          <p style={{ fontSize: '0.88rem', color: '#666', lineHeight: 1.7, textAlign: 'center', marginBottom: '20px', wordBreak: 'keep-all' }}>
+            {inAppSheet.fromDup
+              ? <>지금 보고 계신 앱 안에서는 카카오 로그인이 되지 않을 수 있어요.<br />안 되면 <strong style={{ color: '#111' }}>Safari/Chrome</strong>에서 다시 열어주세요.</>
+              : <>지금 보고 계신 앱 안에서는 카카오 로그인이 되지 않을 수 있어요.<br /><strong style={{ color: '#111' }}>비회원으로 신청을 먼저 완료</strong>하고, 가입은 나중에 Safari/Chrome에서 해도 돼요.</>}
+          </p>
+          {!inAppSheet.fromDup && (
+            <button
+              type="button"
+              onClick={() => { setInAppSheet(null); setNonMemberWarning(true); }}
+              style={{ width: '100%', padding: '15px', borderRadius: '100px', border: 'none', background: '#FF6F61', color: '#fff', fontWeight: '800', fontSize: '0.95rem', cursor: 'pointer' }}
+            >
+              비회원으로 신청 완료하기
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => { const d = inAppSheet.fromDup; setInAppSheet(null); handleKakaoLoginFunnel({ force: true, fromDup: d }); }}
+            style={{ width: '100%', padding: '14px', marginTop: '6px', background: 'transparent', border: 'none', color: '#aaa', fontSize: '0.82rem', cursor: 'pointer' }}
+          >
+            그래도 카카오로 계속하기
+          </button>
+        </InAppBrowserSheet>
+      )}
+
       {/* ─── Duplicate Account Modal ─── */}
       {dupModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', backdropFilter: 'blur(6px)' }}>
@@ -2405,15 +2438,9 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
               </p>
             </div>
 
-            {dupModal.provider === 'kakao' && inApp && (
-              <p style={{ fontSize: '0.74rem', color: '#B45309', background: '#FFF8E7', borderRadius: '12px', padding: '10px 12px', marginBottom: '12px', lineHeight: 1.5, textAlign: 'center', wordBreak: 'keep-all' }}>
-                인스타 등 앱 안에서는 카카오 로그인이 안 될 수 있어요. 안 되면 Safari/Chrome에서 다시 열어주세요.
-              </p>
-            )}
-
             {dupModal.provider === 'kakao' && (
               <button
-                onClick={() => { setDupModal(null); handleKakaoLoginFunnel(); }}
+                onClick={() => { setDupModal(null); handleKakaoLoginFunnel({ fromDup: true }); }}
                 style={{ width: '100%', padding: '15px', background: '#FEE500', border: 'none', borderRadius: '100px', fontWeight: '800', fontSize: '0.95rem', color: '#3c1e1e', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '10px' }}
               >
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="#3c1e1e"><path d="M12 2C6.48 2 2 5.92 2 10.8c0 3.12 1.75 5.87 4.38 7.53L5.44 22l4.35-2.3c.72.2 1.45.3 2.21.3 5.52 0 10-3.93 10-8.8S17.52 2 12 2z" /></svg>
@@ -2484,22 +2511,10 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
                   </p>
                 </div>
 
-                {inApp && (
-                  <div style={{ background: '#FFF5F4', border: '1.5px solid #FFD6D1', borderRadius: '14px', padding: '12px 14px', marginBottom: '16px', textAlign: 'center' }}>
-                    <p style={{ fontSize: '0.8rem', fontWeight: '800', color: '#111', marginBottom: '4px' }}>
-                      인스타 등 앱 안에서는 카카오 로그인이 안 될 수 있어요
-                    </p>
-                    <p style={{ fontSize: '0.74rem', color: '#888', lineHeight: 1.5, wordBreak: 'keep-all' }}>
-                      로그인이 안 되면 아래 <strong style={{ color: '#FF6F61' }}>"다음에 하기 (비회원으로 진행)"</strong>로 신청을 먼저 완료하세요.
-                      가입은 나중에 Safari/Chrome에서 해도 됩니다.
-                    </p>
-                  </div>
-                )}
-
                 {/* Social login buttons (Styled like SocialAuth) */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '20px', marginBottom: '24px' }}>
                   <button
-                    onClick={handleKakaoLoginFunnel}
+                    onClick={() => handleKakaoLoginFunnel()}
                     disabled={socialLoading}
                     style={{ width: '54px', height: '54px', background: '#FEE500', border: 'none', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', transition: 'all 0.2s' }}
                     title="카카오 로그인"
