@@ -12,6 +12,7 @@ import {
 } from 'firebase/auth';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import toast from 'react-hot-toast';
+import { detectInAppBrowser } from '@/lib/inAppBrowser';
 import { Loader2, X } from 'lucide-react';
 
 interface SocialAuthProps {
@@ -28,10 +29,7 @@ export default function SocialAuth({ isAdmin, isLoading, setIsLoading, lastMetho
   // 인스타/페이스북/네이버 등 인앱 브라우저 감지 (카카오 로그인이 앱 전환 중 끊기는 문제 방지)
   const [inApp, setInApp] = useState<{ isAndroid: boolean } | null>(null);
   useEffect(() => {
-    const ua = navigator.userAgent;
-    if (/Instagram|FBAN|FBAV|FB_IAB|NAVER\(inapp|DaumApps|Line\/|Snapchat|TikTok|musical_ly/i.test(ua)) {
-      setInApp({ isAndroid: /Android/i.test(ua) });
-    }
+    setInApp(detectInAppBrowser());
   }, []);
 
   const openInExternalBrowser = () => {

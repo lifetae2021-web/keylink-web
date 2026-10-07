@@ -16,6 +16,7 @@ import {
 import toast from 'react-hot-toast';
 import Link from 'next/link';
 import { compressImage } from '@/lib/utils';
+import { detectInAppBrowser } from '@/lib/inAppBrowser';
 import { EventCalendar } from '@/components/EventsSection';
 import { KeylinkEvent } from '@/types';
 
@@ -260,6 +261,9 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
     });
     return () => unsubscribe();
   }, []);
+
+  const [inApp, setInApp] = useState<{ isAndroid: boolean } | null>(null);
+  useEffect(() => { setInApp(detectInAppBrowser()); }, []);
 
   // ── Kakao redirect: auto-complete application ──
   useEffect(() => {
@@ -2401,6 +2405,12 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
               </p>
             </div>
 
+            {dupModal.provider === 'kakao' && inApp && (
+              <p style={{ fontSize: '0.74rem', color: '#B45309', background: '#FFF8E7', borderRadius: '12px', padding: '10px 12px', marginBottom: '12px', lineHeight: 1.5, textAlign: 'center', wordBreak: 'keep-all' }}>
+                인스타 등 앱 안에서는 카카오 로그인이 안 될 수 있어요. 안 되면 Safari/Chrome에서 다시 열어주세요.
+              </p>
+            )}
+
             {dupModal.provider === 'kakao' && (
               <button
                 onClick={() => { setDupModal(null); handleKakaoLoginFunnel(); }}
@@ -2473,6 +2483,18 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
                     모두 확인하실 수 있어요
                   </p>
                 </div>
+
+                {inApp && (
+                  <div style={{ background: '#FFF5F4', border: '1.5px solid #FFD6D1', borderRadius: '14px', padding: '12px 14px', marginBottom: '16px', textAlign: 'center' }}>
+                    <p style={{ fontSize: '0.8rem', fontWeight: '800', color: '#111', marginBottom: '4px' }}>
+                      인스타 등 앱 안에서는 카카오 로그인이 안 될 수 있어요
+                    </p>
+                    <p style={{ fontSize: '0.74rem', color: '#888', lineHeight: 1.5, wordBreak: 'keep-all' }}>
+                      로그인이 안 되면 아래 <strong style={{ color: '#FF6F61' }}>"다음에 하기 (비회원으로 진행)"</strong>로 신청을 먼저 완료하세요.
+                      가입은 나중에 Safari/Chrome에서 해도 됩니다.
+                    </p>
+                  </div>
+                )}
 
                 {/* Social login buttons (Styled like SocialAuth) */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '20px', marginBottom: '24px' }}>
