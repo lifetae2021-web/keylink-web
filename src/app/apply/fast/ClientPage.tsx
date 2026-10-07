@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
-import { compressImage } from '@/lib/utils';
+import { compressImage, formatBirthDate, isValidBirthDate } from '@/lib/utils';
 import { detectInAppBrowser, InAppInfo } from '@/lib/inAppBrowser';
 import InAppBrowserSheet from '@/components/InAppBrowserSheet';
 import { EventCalendar } from '@/components/EventsSection';
@@ -696,13 +696,7 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
   const setField = (key: keyof FormData, val: string | string[]) => setForm(prev => ({ ...prev, [key]: val }));
 
   const handleBirthDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let val = e.target.value.replace(/[^0-9]/g, '');
-    if (val.length > 2 && val.length <= 4) {
-      val = val.replace(/(\d{2})(\d{1,2})/, '$1-$2');
-    } else if (val.length > 4) {
-      val = val.replace(/(\d{2})(\d{2})(\d{1,2})/, '$1-$2-$3');
-    }
-    setField('birthDate', val.substring(0, 8));
+    setField('birthDate', formatBirthDate(e.target.value));
   };
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -743,6 +737,7 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
     addError(!!form.name.trim(), '이름을 입력해 주세요.', 'field-name');
     addError(!!form.gender, '성별을 선택해 주세요.', 'field-gender');
     addError(!!form.birthDate.trim(), '생년월일을 입력해 주세요.', 'field-birthDate');
+    if (form.birthDate.trim()) addError(isValidBirthDate(form.birthDate), '생년월일을 다시 확인해 주세요. (ex. 940530)', 'field-birthDate');
     addError(!!form.phone.trim(), '전화번호를 입력해 주세요.', 'field-phone');
     addError(!!form.height.trim(), '키(cm)를 입력해 주세요.', 'field-height');
     addError(!!form.weight.trim(), '체중(kg)을 입력해 주세요.', 'field-weight');

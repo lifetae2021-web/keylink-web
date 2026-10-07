@@ -8,6 +8,7 @@ import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, User, updateEmail } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp, getDoc, collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 import { getAuthErrorMessage } from '@/lib/auth-errors';
+import { formatBirthDate, isValidBirthDate } from '@/lib/utils';
 
 export default function SocialProfilePage() {
   const router = useRouter();
@@ -41,7 +42,7 @@ export default function SocialProfilePage() {
     (isKakao ? true : form.email.includes('@')) && // 카카오는 이메일 선택
     form.name.length >= 2 &&
     form.gender &&
-    form.birthDate.length === 8 && // 94-05-30 format (hyphened)
+    isValidBirthDate(form.birthDate) && // 94-05-30 format (hyphened)
     form.phone.length >= 12;
 
   useEffect(() => {
@@ -77,16 +78,6 @@ export default function SocialProfilePage() {
     if (digits.length <= 3) return digits;
     if (digits.length <= 7) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
     return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
-  };
-
-  const formatBirthDate = (val: string) => {
-    let digits = val.replace(/[^0-9]/g, '');
-    if (digits.length > 2 && digits.length <= 4) {
-      digits = digits.replace(/(\d{2})(\d{1,2})/, '$1-$2');
-    } else if (digits.length > 4) {
-      digits = digits.replace(/(\d{2})(\d{2})(\d{1,2})/, '$1-$2-$3');
-    }
-    return digits.substring(0, 8);
   };
 
   const update = (key: string, value: string) => {

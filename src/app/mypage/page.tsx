@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { auth, db, storage } from '@/lib/firebase';
-import { compressImage } from '@/lib/utils';
+import { compressImage, formatBirthDate, isValidBirthDate } from '@/lib/utils';
 import { User, updatePassword } from 'firebase/auth';
 import {
   doc, getDoc, updateDoc, serverTimestamp, deleteField,
@@ -288,6 +288,7 @@ function MyPageContent() {
     if (!editForm.name) return toast.error('성함을 입력해주세요.');
     if (!editForm.gender) return toast.error('성별을 선택해주세요.');
     if (!editForm.birthDate) return toast.error('생년월일을 입력해주세요.');
+    if (!isValidBirthDate(editForm.birthDate)) return toast.error('생년월일을 다시 확인해 주세요. (ex. 940530)');
     if (!editForm.workplace) return toast.error('회사명 / 직무를 입력해주세요.');
     
     // v7.8.5: 재직 증명 필수 검사 해제 (선택사항으로 변경)
@@ -498,16 +499,6 @@ function MyPageContent() {
     if (d.length <= 3) return d;
     if (d.length <= 7) return `${d.slice(0,3)}-${d.slice(3)}`;
     return `${d.slice(0,3)}-${d.slice(3,7)}-${d.slice(7)}`;
-  };
-
-  const formatBirthDate = (val: string) => {
-    let digits = val.replace(/[^0-9]/g, '');
-    if (digits.length > 2 && digits.length <= 4) {
-      digits = digits.replace(/(\d{2})(\d{1,2})/, '$1-$2');
-    } else if (digits.length > 4) {
-      digits = digits.replace(/(\d{2})(\d{2})(\d{1,2})/, '$1-$2-$3');
-    }
-    return digits.substring(0, 8);
   };
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {

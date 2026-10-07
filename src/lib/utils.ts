@@ -91,3 +91,26 @@ export const chosungIncludes = (target: string | undefined | null, query: string
   }
   return false;
 };
+
+// 생년월일 입력 포맷터: 6자리(940530)와 8자리(19940530) 모두 받아 'YY-MM-DD'로 정규화한다.
+// 19/20으로 시작하는 7자리 이상은 YYYYMMDD 입력으로 보고 연도 앞 2자리를 버린다
+// (19xx/20xx를 YY로 읽으면 2019·2020년생이 되어 성인 입력과 구분되므로 모호하지 않다).
+export const formatBirthDate = (val: string): string => {
+  let d = val.replace(/[^0-9]/g, '');
+  if (d.length >= 7 && /^(19|20)/.test(d)) d = d.slice(2);
+  d = d.slice(0, 6);
+  if (d.length > 4) return `${d.slice(0, 2)}-${d.slice(2, 4)}-${d.slice(4)}`;
+  if (d.length > 2) return `${d.slice(0, 2)}-${d.slice(2)}`;
+  return d;
+};
+
+// 'YY-MM-DD' 형식, 월/일 범위, 나이 18~70세 범위인지 검사
+export const isValidBirthDate = (val: string): boolean => {
+  const m = /^(\d{2})-(\d{2})-(\d{2})$/.exec(val.trim());
+  if (!m) return false;
+  const yy = Number(m[1]), mm = Number(m[2]), dd = Number(m[3]);
+  if (mm < 1 || mm > 12 || dd < 1 || dd > 31) return false;
+  const year = yy > 30 ? 1900 + yy : 2000 + yy;
+  const age = new Date().getFullYear() - year;
+  return age >= 18 && age <= 70;
+};

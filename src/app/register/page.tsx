@@ -8,6 +8,7 @@ import { Suspense } from 'react';
 import { auth, db } from '@/lib/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { formatBirthDate, isValidBirthDate } from '@/lib/utils';
 
 function RegisterForm() {
   const router = useRouter();
@@ -73,16 +74,6 @@ function RegisterForm() {
     return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
   };
 
-  const formatBirthDate = (val: string) => {
-    let digits = val.replace(/[^0-9]/g, '');
-    if (digits.length > 2 && digits.length <= 4) {
-      digits = digits.replace(/(\d{2})(\d{1,2})/, '$1-$2');
-    } else if (digits.length > 4) {
-      digits = digits.replace(/(\d{2})(\d{2})(\d{1,2})/, '$1-$2-$3');
-    }
-    return digits.substring(0, 8);
-  };
-
   const update = (key: string, value: string) => {
     let formattedValue = value;
 
@@ -119,6 +110,7 @@ function RegisterForm() {
     if (!form.gender) { toast.error('성별을 선택해 주세요.'); return false; }
     if (!form.name || form.name.length < 2) { toast.error('이름은 2자 이상 입력해 주세요.'); return false; }
     if (!form.birthDate) { toast.error('생년월일을 입력해 주세요.'); return false; }
+    if (!isValidBirthDate(form.birthDate)) { toast.error('생년월일을 다시 확인해 주세요. (ex. 940530)'); return false; }
     if (form.phone !== form.phoneConfirm) { toast.error('연락처 재확인이 일치하지 않습니다.'); return false; }
     return true;
   };
