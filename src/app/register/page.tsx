@@ -85,8 +85,8 @@ function RegisterForm() {
     }
 
     if (key === 'name') {
-      // Allow only Korean characters
-      const filtered = value.replace(/[^ㄱ-ㅎ|ㅏ-ㅣ|가-힣]/g, '');
+      // Allow only Korean characters (ㆍ U+318D / ᆢ U+11A2: 천지인 키보드 조합 중간 글자라 지우면 조합이 깨짐)
+      const filtered = value.replace(/[^ㄱ-ㅎㅏ-ㅣ가-힣ㆍᆢ]/g, '');
       if (filtered !== value) setNameError(true);
       formattedValue = filtered;
     }
