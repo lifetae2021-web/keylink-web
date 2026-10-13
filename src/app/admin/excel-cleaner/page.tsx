@@ -1,5 +1,6 @@
 'use client';
 
+import KLSelect from '@/components/ui/Select';
 import { useState, useRef, useMemo } from 'react';
 import * as XLSX from 'xlsx';
 import {
@@ -660,10 +661,10 @@ export default function ExcelCleanerPage() {
                       <div key={field} className="flex flex-col gap-1">
                         <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">{FIELD_LABELS[field]}</label>
                         <div className="relative">
-                          <select
+                          <KLSelect
                             value={colMap[field]}
                             onChange={e => updateColMap(field, parseInt(e.target.value, 10))}
-                            className="w-full text-xs border rounded-lg px-2 py-1.5 appearance-none pr-6 outline-none focus:border-violet-400 transition-all"
+                            className="w-full text-xs border rounded-lg px-2 py-1.5 outline-none focus:border-violet-400 transition-all"
                             style={{
                               background: colMap[field] === -1 ? '#FEF2F2' : '#F5F3FF',
                               borderColor: colMap[field] === -1 ? '#FCA5A5' : '#C4B5FD',
@@ -675,8 +676,7 @@ export default function ExcelCleanerPage() {
                             {rawHeaders.map((h, i) => (
                               <option key={i} value={i}>{i}: {h}</option>
                             ))}
-                          </select>
-                          <ChevronDown size={11} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400" />
+                          </KLSelect>
                         </div>
                       </div>
                     ))}

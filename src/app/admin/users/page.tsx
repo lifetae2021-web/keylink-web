@@ -1,5 +1,6 @@
 'use client';
 
+import KLSelect from '@/components/ui/Select';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import {
@@ -1379,7 +1380,8 @@ export default function UsersPage() {
                               const userRole = u.role === '블랙리스트' ? '블랙' : (u.role || '일반회원');
                               const rs = roleStyles[userRole] || roleStyles['일반회원'];
                               return (
-                                <select
+                                <KLSelect
+                                  hideChevron
                                   value={userRole}
                                   onChange={(e) => updateRole(u.id, e.target.value)}
                                   style={{
@@ -1403,7 +1405,7 @@ export default function UsersPage() {
                                   }}
                                 >
                                   {(isSuperAdmin ? ALL_ROLES : ADMIN_ROLES).map(r => <option key={r} value={r} className="bg-white text-slate-700">{r}</option>)}
-                                </select>
+                                </KLSelect>
                               );
                             })()}
                           </div>
@@ -1660,7 +1662,8 @@ export default function UsersPage() {
                           const userRole = u.role === '블랙리스트' ? '블랙' : (u.role || '일반회원');
                           const rs = roleStyles[userRole] || roleStyles['일반회원'];
                           return (
-                            <select
+                            <KLSelect
+                              hideChevron
                               value={userRole}
                               onChange={(e) => updateRole(u.id, e.target.value)}
                               style={{
@@ -1684,7 +1687,7 @@ export default function UsersPage() {
                               }}
                             >
                               {(isSuperAdmin ? ALL_ROLES : ADMIN_ROLES).map(r => <option key={r} value={r} className="bg-white text-slate-700">{r}</option>)}
-                            </select>
+                            </KLSelect>
                           );
                         })()}
                       </div>
@@ -1980,7 +1983,7 @@ export default function UsersPage() {
               {/* 쿠폰 메시지 */}
               <div className="flex flex-col gap-2">
                 <label className="block text-xs font-bold text-slate-500">쿠폰 메시지(제목)</label>
-                <select
+                <KLSelect
                   value={couponTitle}
                   onChange={e => setCouponTitle(e.target.value)}
                   className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-400 outline-none transition-colors text-sm font-semibold text-slate-700 bg-white cursor-pointer shadow-sm"
@@ -1992,7 +1995,7 @@ export default function UsersPage() {
                   <option value="다음 만남 응원 쿠폰">다음 만남 응원 쿠폰</option>
                   <option value="VIP 전용 시크릿 쿠폰">VIP 전용 시크릿 쿠폰</option>
                   <option value="직접 입력">직접 입력...</option>
-                </select>
+                </KLSelect>
 
                 {couponTitle === '직접 입력' && (
                   <input
@@ -2162,7 +2165,7 @@ export default function UsersPage() {
                     등록 가능한 기수가 없습니다.
                   </div>
                 ) : (
-                  <select
+                  <KLSelect
                     value={selectedSessionId}
                     onChange={e => setSelectedSessionId(e.target.value)}
                     className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-emerald-400 outline-none transition-colors text-sm font-semibold text-slate-700 bg-white cursor-pointer shadow-sm"
@@ -2177,7 +2180,7 @@ export default function UsersPage() {
                         </option>
                       );
                     })}
-                  </select>
+                  </KLSelect>
                 )}
               </div>
 
@@ -2187,7 +2190,7 @@ export default function UsersPage() {
                   참가 옵션
                   {inheritedOption && <span className="ml-2 text-[10px] text-blue-500 font-bold tracking-normal">(이전 결제 내역 감지됨)</span>}
                 </label>
-                <select
+                <KLSelect
                   value={selectedOption}
                   onChange={(e) => setSelectedOption(e.target.value)}
                   className={`w-full px-4 py-3 rounded-2xl border outline-none transition-colors text-sm font-semibold cursor-pointer shadow-sm ${
@@ -2203,7 +2206,7 @@ export default function UsersPage() {
                   {sessionRegistrationTarget.gender === 'female' && (
                     <option value="group">지인동반 (선택됨)</option>
                   )}
-                </select>
+                </KLSelect>
                 {inheritedOption && selectedOption !== 'basic' && (
                   <p className="text-[11px] font-bold text-blue-500 mt-1.5 flex items-center gap-1">
                     <span className="w-1 h-1 rounded-full bg-blue-400"></span>
@@ -2441,7 +2444,7 @@ export default function UsersPage() {
                   신청 내역이 없습니다. (기수 연결 없이 사용 처리됩니다)
                 </div>
               ) : (
-                <select
+                <KLSelect
                   value={selectedCouponUseAppId}
                   onChange={e => setSelectedCouponUseAppId(e.target.value)}
                   className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-emerald-400 outline-none transition-colors text-sm font-semibold text-slate-700 bg-white cursor-pointer shadow-sm"
@@ -2451,7 +2454,7 @@ export default function UsersPage() {
                       {a.sessionLabel}{a.couponId ? ' (이미 쿠폰 연결됨)' : ''}
                     </option>
                   ))}
-                </select>
+                </KLSelect>
               )}
               <p className="text-[11px] font-bold text-slate-400 mt-2 leading-relaxed">
                 선택한 신청건에 쿠폰이 연결되고, 할인 내역이 표시됩니다. 가격(price)은 변경되지 않으니 이미 수기로 반영된 금액과 일치하는지 확인해 주세요.

@@ -1,5 +1,6 @@
 'use client';
 
+import KLSelect from '@/components/ui/Select';
 import { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { doc, onSnapshot } from 'firebase/firestore';
@@ -189,11 +190,11 @@ export default function LiveTimerPage() {
              <h3 className="text-sm font-black text-slate-800 mb-3 flex items-center gap-1.5 border-b border-slate-100 pb-2"><MapPin size={16} className="text-rose-500"/>내 자리 찾기</h3>
              
              <div className="flex items-center gap-2 mb-4">
-               <select className="h-10 px-3 bg-slate-50 border border-slate-300 rounded-lg text-sm font-bold text-slate-700 outline-none flex-1" value={searchGender} onChange={e => setSearchGender(e.target.value as any)}>
+               <KLSelect className="h-10 px-3 bg-slate-50 border border-slate-300 rounded-lg text-sm font-bold text-slate-700 outline-none flex-1" value={searchGender} onChange={e => setSearchGender(e.target.value as any)}>
                  <option value="">성별</option>
                  <option value="male">남성</option>
                  <option value="female">여성</option>
-               </select>
+               </KLSelect>
                <input type="number" placeholder="번호 (ex. 1)" className="w-24 h-10 px-3 text-center bg-slate-50 border border-slate-300 rounded-lg text-sm font-bold text-slate-700 outline-none" value={searchNum} onChange={e => setSearchNum(e.target.value === '' ? '' : Number(e.target.value))} />
              </div>
 

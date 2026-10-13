@@ -1,4 +1,5 @@
 'use client';
+import KLSelect from '@/components/ui/Select';
 import { useState } from 'react';
 import Link from 'next/link';
 import { Heart, CheckCircle, Clock, ArrowRight, Lock, Users, AlertCircle } from 'lucide-react';
@@ -157,7 +158,7 @@ export default function MatchingPage() {
             <div key={key}>
               <label className="kl-label" style={{ fontSize: '1rem', color: '#111', fontWeight: '600', marginBottom: '6px' }}>{label}</label>
               <p style={{ fontSize: '0.8rem', color: '#555', marginBottom: '10px' }}>{desc}</p>
-              <select
+              <KLSelect
                 className="kl-input"
                 value={rankings[key as keyof typeof rankings]}
                 onChange={(e) => setRankings(r => ({ ...r, [key]: e.target.value }))}
@@ -170,7 +171,7 @@ export default function MatchingPage() {
                     {p.nickname}
                   </option>
                 ))}
-              </select>
+              </KLSelect>
             </div>
           ))}
 

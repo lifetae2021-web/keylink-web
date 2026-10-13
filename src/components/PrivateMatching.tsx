@@ -1,4 +1,5 @@
 'use client';
+import KLSelect from '@/components/ui/Select';
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { auth, db, storage } from '@/lib/firebase';
@@ -411,7 +412,7 @@ export default function PrivateMatching() {
                 <div className="grid grid-cols-2 gap-4 mt-4">
                   <div>
                     <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1.5">흡연 여부</label>
-                    <select 
+                    <KLSelect 
                       value={form.smoking}
                       onChange={e => setForm(f => ({...f, smoking: e.target.value}))}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-800 focus:bg-white focus:border-purple-500 transition-all outline-none"
@@ -420,11 +421,11 @@ export default function PrivateMatching() {
                       <option value="비흡연">비흡연</option>
                       <option value="전자담배">전자담배</option>
                       <option value="연초">연초</option>
-                    </select>
+                    </KLSelect>
                   </div>
                   <div>
                     <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1.5">음주 빈도</label>
-                    <select 
+                    <KLSelect 
                       value={form.drinking}
                       onChange={e => setForm(f => ({...f, drinking: e.target.value}))}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-800 focus:bg-white focus:border-purple-500 transition-all outline-none"
@@ -434,12 +435,12 @@ export default function PrivateMatching() {
                       <option value="가끔 (월 1~2회)">가끔 (월 1~2회)</option>
                       <option value="주 1~2회">주 1~2회</option>
                       <option value="즐겨 마시는 편">즐겨 마시는 편</option>
-                    </select>
+                    </KLSelect>
                   </div>
                 </div>
                 <div className="mt-4">
                   <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1.5">종교</label>
-                  <select 
+                  <KLSelect 
                     value={form.religion}
                     onChange={e => setForm(f => ({...f, religion: e.target.value}))}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-800 focus:bg-white focus:border-purple-500 transition-all outline-none"
@@ -450,7 +451,7 @@ export default function PrivateMatching() {
                     <option value="천주교">천주교</option>
                     <option value="불교">불교</option>
                     <option value="기타">기타</option>
-                  </select>
+                  </KLSelect>
                 </div>
                 <p className="text-[11px] text-slate-400 mt-3 flex items-center gap-1.5 pl-1">
                   <Info size={12} className="text-purple-400" />

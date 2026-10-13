@@ -1,5 +1,6 @@
 'use client';
 
+import KLSelect from '@/components/ui/Select';
 import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { db, auth, storage } from '@/lib/firebase';
@@ -2824,15 +2825,14 @@ function FormField({ id, label, required, errorFields, children }: { id?: string
 function SelectField({ value, onChange, options, placeholder }: { value: string; onChange: (v: string) => void; options: string[]; placeholder: string }) {
   return (
     <div style={{ position: 'relative' }}>
-      <select
+      <KLSelect
         value={value}
         onChange={e => onChange(e.target.value)}
-        style={{ ...inputStyle, appearance: 'none', paddingRight: '40px', cursor: 'pointer', color: value ? '#111' : '#aaa' }}
+        style={{ ...inputStyle, cursor: 'pointer', color: value ? '#111' : '#aaa' }}
       >
         <option value="">{placeholder}</option>
         {options.map(o => <option key={o} value={o}>{o}</option>)}
-      </select>
-      <ChevronDown size={16} color="#aaa" style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+      </KLSelect>
 
           </div>
   );

@@ -2,6 +2,8 @@
 @import "tailwindcss";
 
 :root {
+  /* 라이트 전용 사이트: 기기가 다크 모드여도 드롭다운 목록·스크롤바·기본 입력창이 어두운 색으로 뜨지 않도록 고정 */
+  color-scheme: light;
   /* === Keylink Spring (설렘) Design Tokens === */
   --color-primary: #FFDBE9;
   /* Soft Peach Pink */

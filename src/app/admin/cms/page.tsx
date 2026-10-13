@@ -1,5 +1,6 @@
 'use client';
 
+import KLSelect from '@/components/ui/Select';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Plus, Pencil, Trash2, Save, X, Star, Heart, User, Eye, EyeOff, CheckCircle2, MessageSquare, HelpCircle, TrendingUp, MousePointerClick, ImagePlus, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -837,10 +838,10 @@ function ReviewsTab() {
             </div>
             <div>
               <label className="text-xs font-bold text-slate-500 mb-1 block">지역</label>
-              <select value={form.region} onChange={e => setForm(f => ({ ...f, region: e.target.value }))} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#FF6F61]">
+              <KLSelect value={form.region} onChange={e => setForm(f => ({ ...f, region: e.target.value }))} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#FF6F61]">
                 <option>부산</option>
                 <option>창원</option>
-              </select>
+              </KLSelect>
             </div>
             <div>
               <label className="text-xs font-bold text-slate-500 mb-1 block">순서</label>
@@ -1202,14 +1203,14 @@ function VoteConfigTab() {
 
             <div>
               <label className="text-xs font-bold text-slate-500 mb-1 block">결과 공개 범위</label>
-              <select
+              <KLSelect
                 value={form.resultVisibility}
                 onChange={e => setForm(f => ({ ...f, resultVisibility: e.target.value as 'all' | 'mutual' }))}
                 className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#FF6F61]"
               >
                 <option value="all">모두 공개 (누가 누구를 선택했는지 모두 표시)</option>
                 <option value="mutual">상호 매칭만 공개 (서로 선택한 경우만 표시)</option>
-              </select>
+              </KLSelect>
             </div>
 
             <div className="flex items-center gap-2 pt-2">
@@ -1363,30 +1364,30 @@ function VoteConfigTab() {
                   <div className="flex gap-3">
                     <div className="flex-1">
                       <label className="text-xs font-bold text-slate-500 mb-1 block">질문 형식</label>
-                      <select
+                      <KLSelect
                         value={form.customQuestionType || 'text'}
                         onChange={e => setForm(f => ({ ...f, customQuestionType: e.target.value as 'text'|'choice' }))}
                         className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 bg-white"
                       >
                         <option value="text">주관식 (텍스트 입력)</option>
                         <option value="choice">객관식 (선택형)</option>
-                      </select>
+                      </KLSelect>
                     </div>
                     <div className="flex-1">
                       <label className="text-xs font-bold text-slate-500 mb-1 block">필수 여부</label>
-                      <select
+                      <KLSelect
                         value={form.customQuestionRequired ? 'true' : 'false'}
                         onChange={e => setForm(f => ({ ...f, customQuestionRequired: e.target.value === 'true' }))}
                         className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 bg-white"
                       >
                         <option value="false">선택 (응답 안해도 제출 가능)</option>
                         <option value="true">필수 (응답해야 제출 가능)</option>
-                      </select>
+                      </KLSelect>
                     </div>
                   </div>
                   <div>
                     <label className="text-xs font-bold text-slate-500 mb-1 block">질문 노출 위치</label>
-                    <select
+                    <KLSelect
                       value={form.customQuestionOrder || 2}
                       onChange={e => setForm(f => ({ ...f, customQuestionOrder: Number(e.target.value) }))}
                       className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 bg-white"
@@ -1394,7 +1395,7 @@ function VoteConfigTab() {
                       <option value={2}>2번째 (이성 선택 직후)</option>
                       <option value={3}>3번째 (호감 공개 모드 설정 직후)</option>
                       <option value={4}>4번째 (마지막, 후기 작성 직후)</option>
-                    </select>
+                    </KLSelect>
                   </div>
                   {form.customQuestionType === 'choice' && (
                     <div className="p-3 bg-white border border-slate-200 rounded-lg space-y-2">
