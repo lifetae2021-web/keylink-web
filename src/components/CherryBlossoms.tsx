@@ -18,7 +18,8 @@ interface Petal {
 
 export default function CherryBlossoms() {
   const [petals, setPetals] = useState<Petal[]>([]);
-  const [enabled, setEnabled] = useState(true);
+  // 설정을 읽기 전에는 표시하지 않는다. 처음부터 켜 두면 낙엽 모드인데도 접속 직후 벚꽃이 먼저 떨어졌다가 바뀐다.
+  const [enabled, setEnabled] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -27,7 +28,7 @@ export default function CherryBlossoms() {
         if (cancelled) return;
         setEnabled(isCherryBlossomActive(snap.exists() ? snap.data() : null));
       })
-      .catch(() => { /* 설정 조회 실패 시 기존처럼 항상 표시 */ });
+      .catch(() => { if (!cancelled) setEnabled(true); /* 설정 조회 실패 시 기존처럼 항상 표시 */ });
     return () => { cancelled = true; };
   }, []);
 
