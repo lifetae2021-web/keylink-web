@@ -19,6 +19,32 @@ interface UserProfileModalProps {
   openProof?: boolean;
 }
 
+// 유저 정보 수정 알림에 표시할 변경 항목 이름
+const LOG_FIELD_LABELS: Record<string, string> = {
+  name: '이름',
+  gender: '성별',
+  birthDate: '생년월일',
+  phone: '연락처',
+  workplace: '회사명/직무',
+  employmentProof: '재직 서류',
+  photos: '사진',
+  verification_revoked: '인증 상태',
+  profile: '프로필 저장',
+  instaId: '인스타그램',
+  height: '키',
+  weight: '몸무게',
+  residence: '거주지',
+  smoking: '흡연',
+  drinking: '음주',
+  religion: '종교',
+  drink: '선호 음료',
+  idealType: '이상형',
+  nonIdealType: '비선호 유형',
+  etc: '기타',
+  avoidList: '지인 회피',
+  avoidAcquaintance: '지인 회피(기존)',
+};
+
 // ── 전화번호 액션 팝업
 const PhoneActionBadge = ({ phone }: { phone: string }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -379,16 +405,19 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
     }
   };
 
-  const handleApproveWorkplace = async (latestWorkplace: string) => {
+  const handleApproveWorkplace = async (latestWorkplace?: string) => {
     if (isUpdating) return;
     setIsUpdating(true);
     try {
       const userRef = doc(db, 'users', user.uid || user.id);
-      const updateData: any = { admin_job: latestWorkplace, job: latestWorkplace, isJobReviewed: true };
+      // 회사명/직무가 실제로 바뀐 기록이 있을 때만 직업을 갱신하고, 아니면 승인 처리만 한다
+      const updateData: any = latestWorkplace
+        ? { admin_job: latestWorkplace, job: latestWorkplace, isJobReviewed: true }
+        : { isJobReviewed: true };
 
       await updateDoc(userRef, updateData);
       setUser((prev: any) => ({ ...prev, ...updateData }));
-      toast.success('유저가 입력한 직업이 마스터 정보로 반영되고 승인되었습니다.');
+      toast.success(latestWorkplace ? '유저가 입력한 직업이 마스터 정보로 반영되고 승인되었습니다.' : '변경 내용을 확인하고 승인했습니다.');
     } catch (error) {
       console.error(error);
       toast.error('직업 마스터 반영에 실패했습니다.');
@@ -400,6 +429,9 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
   const age = user.birthDate
     ? new Date().getFullYear() - parseInt(user.birthDate.split('-')[0]) + 1
     : null;
+
+  // 알림창에는 실제로 바뀐 항목만 표시 (값 변경 없이 저장만 한 'profile' 기록은 제외)
+  const changeLogs: any[] = (user?.user_logs || []).filter((l: any) => l.field !== 'profile');
 
   const photos: string[] = [
     ...(Array.isArray(user.photos) ? user.photos : []),
@@ -528,43 +560,50 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
                   <span className="text-slate-400">/</span>
                   <span className="text-slate-700">{user.birthDate ? `${user.birthDate.includes('-') ? user.birthDate.split('-')[0].slice(-2) : (user.birthDate.length === 8 ? user.birthDate.slice(2, 4) : user.birthDate.slice(0, 2))}년생` : '??'}</span>
                 </div>
-                <DetailRow label="거주지" value={user.residence || user.location} icon={MapPin} />
               </div>
 
               {/* Detail Content */}
               <div className="px-8 pt-8 space-y-10">
 
                 {/* v8.8.8: Audit Logs & Master Data Reflection */}
-                {(!user.isJobReviewed && user.user_logs && user.user_logs.length > 0) && (
+                {(!user.isJobReviewed && changeLogs.length > 0) && (
                   <div className="bg-rose-50 border border-rose-200 rounded-3xl p-5 mb-6">
                     <div className="flex items-center gap-2 mb-3">
                       <AlertCircle size={18} className="text-rose-500" />
                       <h4 className="text-[0.95rem] font-black text-rose-600 tracking-tight">유저 정보 수정 알림</h4>
                     </div>
                     <p className="text-xs text-rose-500/80 font-bold mb-4">
-                      유저가 본인의 프로필 정보를 수정했습니다. 변경된 '회사명/직무'를 확인하시고, 라인업 화면에 공개할 마스터 직업에 편입시켜 주세요.
+                      유저가 본인의 프로필 정보를 수정했습니다. 아래 변경 내용을 확인해 주세요. '회사명/직무'가 바뀌었다면 라인업 화면에 공개할 마스터 직업에 편입시켜 주세요.
                     </p>
-                    <div className="space-y-2 mb-4">
-                      {[...user.user_logs].reverse().slice(0, 3).map((log: any, idx: number) => (
-                        <div key={idx} className="bg-white rounded-xl p-3 shadow-sm border border-rose-100 flex items-center justify-between">
-                          <div>
-                            <span className="text-[10px] font-bold text-slate-400 block mb-0.5 max-w-[200px] truncate">{log.changedAt ? new Date(log.changedAt).toLocaleString() : '최근'}</span>
-                            <div className="flex items-center gap-2 text-[0.85rem] font-bold text-slate-700">
-                              <span className="line-through text-slate-400 max-w-[120px] truncate">{log.oldValue || '비어있음'}</span>
-                              <span className="text-xs text-rose-300">→</span>
-                              <span className="text-rose-600 max-w-[150px] truncate">{log.newValue}</span>
-                            </div>
+                    <div className="space-y-2 mb-4 max-h-80 overflow-y-auto pr-1">
+                      {[...changeLogs].reverse().slice(0, 15).map((log: any, idx: number) => (
+                        <div key={idx} className="bg-white rounded-xl p-3 shadow-sm border border-rose-100">
+                          <div className="flex items-center justify-between gap-2 mb-1.5">
+                            <span className="text-[10px] font-bold text-slate-400">{log.changedAt ? new Date(log.changedAt).toLocaleString() : '최근'}</span>
+                            <span className="shrink-0 text-[10px] font-black text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full whitespace-nowrap">
+                              {LOG_FIELD_LABELS[log.field] || log.field || '변경'}
+                            </span>
                           </div>
+                          <p className="text-[0.82rem] font-bold leading-snug break-words">
+                            <span className="line-through text-slate-400">{log.oldValue || '비어있음'}</span>
+                            <span className="text-rose-300 mx-1.5">→</span>
+                            <span className="text-rose-600">{log.newValue || '비어있음'}</span>
+                          </p>
                         </div>
                       ))}
                     </div>
 
                     <button
-                      onClick={() => handleApproveWorkplace(user.user_logs[user.user_logs.length - 1].newValue)}
+                      onClick={() => handleApproveWorkplace(
+                        [...changeLogs].reverse().find((l: any) => l.field === 'workplace' && l.newValue && l.newValue !== '미입력')?.newValue
+                      )}
                       disabled={isUpdating}
-                      className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-black text-[0.85rem] transition-all shadow-md shadow-rose-200"
+                      className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-black text-[0.85rem] leading-tight transition-all shadow-md shadow-rose-200"
                     >
-                      <CheckCircle size={16} /> 변경 내용 마스터 데이터에 반영 및 승인
+                      <CheckCircle size={16} className="shrink-0" />
+                      <span className="text-center break-keep">
+                        {changeLogs.some((l: any) => l.field === 'workplace') ? '변경 내용 마스터 데이터에 반영 및 승인' : '변경 내용 확인 완료 및 승인'}
+                      </span>
                     </button>
                   </div>
                 )}
@@ -633,13 +672,13 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
 
                   {/* v7.8.0 재직 증명 확인 섹션 */}
                   <div className="py-4 border-b border-slate-50">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center min-w-0">
+                        <div className="w-10 h-10 shrink-0 rounded-xl bg-blue-50 flex items-center justify-center">
                           <ShieldCheck size={18} className="text-blue-500" />
                         </div>
                         <div className="ml-4">
-                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">재직 인증 서류</p>
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">재직 인증 서류</p>
                           {(user.employmentProof || user.verificationUrl) ? (
                             <button
                               onClick={() => setShowProofPopup(true)}
@@ -652,8 +691,8 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
                           )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        {/* 관리자 직접 업로드 버튼 */}
+                      <div className="flex items-center gap-2 shrink-0">
+                        {/* 관리자 직접 업로드 버튼 (좁은 화면에서 줄바꿈되지 않도록 아이콘만 표시) */}
                         <input
                           ref={proofInputRef}
                           type="file"
@@ -664,16 +703,16 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
                         <button
                           onClick={() => proofInputRef.current?.click()}
                           disabled={isUploadingProof}
-                          className="px-3 py-2 rounded-xl text-xs font-black transition-all bg-blue-50 text-blue-500 hover:bg-blue-100 flex items-center gap-1"
-                          title="관리자 직접 업로드"
+                          className="w-9 h-9 shrink-0 rounded-xl text-xs font-black transition-all bg-blue-50 text-blue-500 hover:bg-blue-100 flex items-center justify-center"
+                          title={isUploadingProof ? '업로드 중...' : '재직 서류 직접 업로드'}
+                          aria-label="재직 서류 직접 업로드"
                         >
-                          {isUploadingProof ? <span className="animate-spin">⏳</span> : <Upload size={12} />}
-                          {isUploadingProof ? '업로드 중...' : '업로드'}
+                          {isUploadingProof ? <span className="animate-spin">⏳</span> : <Upload size={14} />}
                         </button>
                         <button
                           onClick={handleToggleVerify}
                           disabled={isUpdating}
-                          className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${user.isVerified
+                          className={`px-4 py-2 rounded-xl text-xs font-black whitespace-nowrap shrink-0 transition-all ${user.isVerified
                               ? 'bg-rose-50 text-rose-500 hover:bg-rose-100'
                               : 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-md shadow-emerald-200'
                             }`}

@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { db, auth, storage } from '@/lib/firebase';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import {
-  collection, getDocs, query, where, addDoc, doc, setDoc, Timestamp, getDoc, updateDoc, writeBatch
+  collection, getDocs, query, where, addDoc, doc, setDoc, Timestamp, getDoc, updateDoc, writeBatch, arrayUnion
 } from 'firebase/firestore';
 import {
   signInAnonymously, GoogleAuthProvider, signInWithPopup, onAuthStateChanged
@@ -16,6 +16,7 @@ import {
 import toast from 'react-hot-toast';
 import Link from 'next/link';
 import { compressImage, formatBirthDate, isValidBirthDate } from '@/lib/utils';
+import { buildProfileChangeLogs } from '@/lib/profileChangeLog';
 import { detectInAppBrowser, InAppInfo } from '@/lib/inAppBrowser';
 import InAppBrowserSheet from '@/components/InAppBrowserSheet';
 import { EventCalendar } from '@/components/EventsSection';
@@ -881,7 +882,21 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
         const { uploadedPhotos, uploadedProof } = await uploadBase64Photos(uid, photos, form.employmentProof);
 
         const batch = writeBatch(db);
-        
+
+        // 기존 프로필과 비교해 바뀐 항목마다 변경 기록을 남긴다 (관리자 '유저 정보 수정 알림'에 표시)
+        const prevUserSnap = await getDoc(doc(db, 'users', uid));
+        const profileLogs = prevUserSnap.exists()
+          ? buildProfileChangeLogs(prevUserSnap.data(), {
+              name: form.name, gender: form.gender, birthDate: form.birthDate, phone: form.phone,
+              workplace: form.workplace || '', residence: form.residence || '', instaId: form.instaId || '',
+              smoking: form.smoking || '', drinking: form.drinking || '', religion: form.religion || '',
+              drink: form.drink || [], idealType: form.idealType || '', nonIdealType: form.nonIdealType || '',
+              avoidList: form.avoidList || [], etc: form.etc || '', height: form.height || '', weight: form.weight || '',
+              ...(uploadedPhotos.length > 0 ? { photos: uploadedPhotos } : {}),
+              ...(uploadedProof ? { employmentProof: uploadedProof } : {}),
+            })
+          : [];
+
         // Update user profile with latest form info
         batch.set(doc(db, 'users', uid), {
           name: form.name,
@@ -905,6 +920,7 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
           weight: form.weight || '',
           ...(uploadedPhotos.length > 0 ? { photos: uploadedPhotos } : {}),
           ...(uploadedProof ? { employmentProof: uploadedProof } : {}),
+          ...(profileLogs.length > 0 ? { user_logs: arrayUnion(...profileLogs), isJobReviewed: false } : {}),
           updatedAt: Timestamp.now(),
         }, { merge: true });
 

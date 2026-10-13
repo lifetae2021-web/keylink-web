@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { auth, db, storage } from '@/lib/firebase';
 import { compressImage, formatBirthDate, isValidBirthDate, normalizeBirthDate } from '@/lib/utils';
+import { buildProfileChangeLogs, CORE_PROFILE_FIELDS, ProfileChangeLog } from '@/lib/profileChangeLog';
 import { User, updatePassword } from 'firebase/auth';
 import {
   doc, getDoc, updateDoc, serverTimestamp, deleteField,
@@ -344,76 +345,16 @@ function MyPageContent() {
 
       // v8.15.3: 프로필 저장 시 항상 isJobReviewed=false → 관리자에게 알림/뱃지 표시
       // v9.1.0: 개인정보 수정 시 인증 상태 취소(승인 대기 전환) 및 변경 로깅 강화
-      const newLogs = [];
       const changedAt = new Date().toISOString();
+      // 바뀐 항목마다 로그 1건씩 남긴다 (관리자 '유저 정보 수정 알림'에 그대로 표시). 저장하지 않는 값은 비교에서 제외.
+      const newLogs: ProfileChangeLog[] = buildProfileChangeLogs(
+        userData,
+        { ...sanitizedForm, photos: uploadedUrls, employmentProof: finalVerificationUrl },
+        changedAt
+      );
 
-      if (userData?.name !== sanitizedForm.name) {
-        newLogs.push({
-          field: 'name',
-          oldValue: userData?.name || '미입력',
-          newValue: sanitizedForm.name || '미입력',
-          changedAt
-        });
-      }
-
-      if (userData?.gender !== sanitizedForm.gender) {
-        newLogs.push({
-          field: 'gender',
-          oldValue: userData?.gender === 'male' ? '남성' : userData?.gender === 'female' ? '여성' : '미입력',
-          newValue: sanitizedForm.gender === 'male' ? '남성' : sanitizedForm.gender === 'female' ? '여성' : '미입력',
-          changedAt
-        });
-      }
-
-      if (normalizeBirthDate(userData?.birthDate) !== sanitizedForm.birthDate) {
-        newLogs.push({
-          field: 'birthDate',
-          oldValue: userData?.birthDate || '미입력',
-          newValue: sanitizedForm.birthDate || '미입력',
-          changedAt
-        });
-      }
-
-      if (userData?.phone !== sanitizedForm.phone) {
-        newLogs.push({
-          field: 'phone',
-          oldValue: userData?.phone || '미입력',
-          newValue: sanitizedForm.phone || '미입력',
-          changedAt
-        });
-      }
-      
-      const oldWorkplace = userData?.workplace || userData?.jobRole || userData?.job || '미입력';
-      const newWorkplace = sanitizedForm.workplace || '미입력';
-      if (oldWorkplace !== newWorkplace) {
-        newLogs.push({
-          field: 'workplace',
-          oldValue: oldWorkplace,
-          newValue: newWorkplace,
-          changedAt
-        });
-      }
-
-      if (userData?.employmentProof !== finalVerificationUrl) {
-        newLogs.push({
-          field: 'employmentProof',
-          oldValue: userData?.employmentProof ? '이전 재직 증명 서류' : '미입력',
-          newValue: finalVerificationUrl ? '새로운 재직 증명 서류' : '삭제됨',
-          changedAt
-        });
-      }
-
-      const oldPhotos = userData?.photos || [];
-      if (JSON.stringify(oldPhotos) !== JSON.stringify(uploadedUrls)) {
-        newLogs.push({
-          field: 'photos',
-          oldValue: `이전 사진 ${oldPhotos.length}장`,
-          newValue: `새로운 사진 ${uploadedUrls.length}장`,
-          changedAt
-        });
-      }
-
-      const hasCoreInfoChanged = newLogs.length > 0;
+      // 인증 취소/재승인 대기는 핵심 정보(이름·성별·생년월일·연락처·회사명·서류·사진)가 바뀐 경우에만 적용
+      const hasCoreInfoChanged = newLogs.some(l => CORE_PROFILE_FIELDS.includes(l.field));
       let nextIsVerified = userData?.isVerified ?? false;
       let nextStatus = userData?.status ?? 'pending';
 
@@ -429,7 +370,7 @@ function MyPageContent() {
       }
 
       if (newLogs.length === 0) {
-        newLogs.push({ field: 'profile', changedAt });
+        newLogs.push({ field: 'profile', oldValue: '', newValue: '', changedAt });
       }
 
       const updateData: any = {
