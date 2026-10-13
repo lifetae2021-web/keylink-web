@@ -104,13 +104,23 @@ export const formatBirthDate = (val: string): string => {
   return d;
 };
 
-// 'YY-MM-DD' 형식, 월/일 범위, 나이 18~70세 범위인지 검사
+// 저장된 생년월일을 'YY-MM-DD'로 통일 (YYYY-MM-DD / YYYYMMDD / YYMMDD 모두 허용, 해석 불가면 원본 유지)
+export const normalizeBirthDate = (val?: string): string => {
+  const raw = (val || '').trim();
+  if (!raw) return '';
+  const m = /^(?:19|20)?(\d{2})-?(\d{2})-?(\d{2})$/.exec(raw);
+  return m ? `${m[1]}-${m[2]}-${m[3]}` : raw;
+};
+
+// 'YY-MM-DD' 형식, 실제 존재하는 날짜, 나이 18~70세 범위인지 검사
 export const isValidBirthDate = (val: string): boolean => {
   const m = /^(\d{2})-(\d{2})-(\d{2})$/.exec(val.trim());
   if (!m) return false;
   const yy = Number(m[1]), mm = Number(m[2]), dd = Number(m[3]);
-  if (mm < 1 || mm > 12 || dd < 1 || dd > 31) return false;
   const year = yy > 30 ? 1900 + yy : 2000 + yy;
+  // 실제 달력에 있는 날짜인지 확인 (4/31, 2/30, 평년 2/29 등 차단)
+  const date = new Date(year, mm - 1, dd);
+  if (date.getFullYear() !== year || date.getMonth() !== mm - 1 || date.getDate() !== dd) return false;
   const age = new Date().getFullYear() - year;
   return age >= 18 && age <= 70;
 };

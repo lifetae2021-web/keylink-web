@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { auth, db, storage } from '@/lib/firebase';
-import { compressImage, formatBirthDate, isValidBirthDate } from '@/lib/utils';
+import { compressImage, formatBirthDate, isValidBirthDate, normalizeBirthDate } from '@/lib/utils';
 import { User, updatePassword } from 'firebase/auth';
 import {
   doc, getDoc, updateDoc, serverTimestamp, deleteField,
@@ -179,7 +179,7 @@ function MyPageContent() {
             gender: d.gender || '',
             phone: d.phone || '',
             instaId: d.instaId || '',
-            birthDate: d.birthDate || '',
+            birthDate: normalizeBirthDate(d.birthDate),
             height: d.height || '',
             weight: d.weight || '',
             residence: d.residence || '',
@@ -288,7 +288,7 @@ function MyPageContent() {
     if (!editForm.name) return toast.error('성함을 입력해주세요.');
     if (!editForm.gender) return toast.error('성별을 선택해주세요.');
     if (!editForm.birthDate) return toast.error('생년월일을 입력해주세요.');
-    if (!isValidBirthDate(editForm.birthDate)) return toast.error('생년월일을 다시 확인해 주세요. (ex. 940530)');
+    if (!isValidBirthDate(normalizeBirthDate(editForm.birthDate))) return toast.error('생년월일을 다시 확인해 주세요. (ex. 940530)');
     if (!editForm.workplace) return toast.error('회사명 / 직무를 입력해주세요.');
     
     // v7.8.5: 재직 증명 필수 검사 해제 (선택사항으로 변경)
@@ -339,6 +339,8 @@ function MyPageContent() {
         return acc;
       }, {});
       sanitizedForm.isJobReviewed = false;
+      // 저장 형식은 'YY-MM-DD'로 통일. 4자리 연도로 저장돼 있던 회원이 같은 생일로 저장해도 변경으로 기록하지 않기 위해 정규화한 값으로 비교한다.
+      sanitizedForm.birthDate = normalizeBirthDate(sanitizedForm.birthDate);
 
       // v8.15.3: 프로필 저장 시 항상 isJobReviewed=false → 관리자에게 알림/뱃지 표시
       // v9.1.0: 개인정보 수정 시 인증 상태 취소(승인 대기 전환) 및 변경 로깅 강화
@@ -363,7 +365,7 @@ function MyPageContent() {
         });
       }
 
-      if (userData?.birthDate !== sanitizedForm.birthDate) {
+      if (normalizeBirthDate(userData?.birthDate) !== sanitizedForm.birthDate) {
         newLogs.push({
           field: 'birthDate',
           oldValue: userData?.birthDate || '미입력',
