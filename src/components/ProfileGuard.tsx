@@ -34,6 +34,7 @@ export default function ProfileGuard() {
     }
 
     // 생년월일이 저장돼 있지만 형식이 깨진 회원에게는 이동을 강제하지 않고 안내만 한다 (세션당 1회)
+    // 비회원도 마이페이지의 '내 프로필 수정하기'에서 생년월일을 고칠 수 있으므로 회원/비회원 모두 안내
     const birthDate = userData?.birthDate;
     if (birthDate && pathname !== '/mypage' && !isValidBirthDate(normalizeBirthDate(birthDate))) {
       try {
@@ -43,9 +44,9 @@ export default function ProfileGuard() {
       toast((t) => (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <span style={{ fontWeight: 700 }}>생년월일이 올바르게 저장되어 있지 않아요.</span>
-          <span style={{ fontSize: '0.85rem' }}>마이페이지에서 프로필의 생년월일을 수정해 주세요.</span>
+          <span style={{ fontSize: '0.85rem' }}>아래 버튼을 눌러 프로필의 생년월일을 수정해 주세요.</span>
           <button
-            onClick={() => { toast.dismiss(t.id); router.push('/mypage'); }}
+            onClick={() => { toast.dismiss(t.id); router.push('/mypage?mode=edit'); }}
             style={{ alignSelf: 'flex-start', padding: '6px 14px', borderRadius: 8, background: '#FF7E7E', color: '#fff', fontWeight: 700, fontSize: '0.85rem' }}
           >
             수정하러 가기
