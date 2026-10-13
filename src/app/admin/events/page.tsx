@@ -1,5 +1,6 @@
 "use client";
 
+import KLSelect from '@/components/ui/Select';
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
@@ -2868,9 +2869,6 @@ ${chatLink}
                 {/* 기수 헤더 */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-5 sm:px-7 py-5 border-b border-slate-100 bg-white">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center shrink-0 border border-slate-100">
-                      <Calendar size={24} className="text-[#FF6F61]" />
-                    </div>
                     <div>
                       <div className="flex items-center gap-2 mb-0.5">
                         <h3 className="text-slate-900 text-xl font-black tracking-tight flex items-center gap-1.5">
@@ -4857,7 +4855,7 @@ ${chatLink}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-bold text-slate-500 mb-1.5">대상 참가자 선택</label>
-                      <select
+                      <KLSelect
                         value={reviewTargetUserId}
                         disabled={!!editingReviewUserId}
                         onChange={(e) => setReviewTargetUserId(e.target.value)}
@@ -4878,7 +4876,7 @@ ${chatLink}
                               {p.gender === 'male' ? '남' : '여'} {p.slotNumber}호 - {p.name} ({p.job})
                             </option>
                           ))}
-                      </select>
+                      </KLSelect>
                     </div>
                   </div>
 
@@ -5022,7 +5020,7 @@ ${chatLink}
                     <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">
                       지역 선택
                     </label>
-                    <select
+                    <KLSelect
                       value={formData.region}
                       onChange={(e) =>
                         setFormData(prev => ({ ...prev, region: e.target.value }))
@@ -5031,7 +5029,7 @@ ${chatLink}
                     >
                       <option value="busan">부산 (Busan)</option>
                       <option value="changwon">창원 (Changwon)</option>
-                    </select>
+                    </KLSelect>
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">
@@ -5103,7 +5101,7 @@ ${chatLink}
                     <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">
                       장소
                     </label>
-                    <select
+                    <KLSelect
                       value={formData.venue}
                       onChange={(e) =>
                         setFormData(prev => ({ ...prev, venue: e.target.value }))
@@ -5119,7 +5117,7 @@ ${chatLink}
                       <option value="추가 장소 필요시 입력">
                         추가 장소 필요시 입력...
                       </option>
-                    </select>
+                    </KLSelect>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>

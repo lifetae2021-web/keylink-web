@@ -1,5 +1,6 @@
 'use client';
 
+import KLSelect from '@/components/ui/Select';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { db, auth } from '@/lib/firebase';
 import { collection, query, orderBy, getDocs, updateDoc, setDoc, doc, Timestamp, onSnapshot, getDoc } from 'firebase/firestore';
@@ -32,7 +33,8 @@ const SCRIPT_META: Record<ScriptKey, { label: string; emoji: string; color: stri
 
 export default function AdminTimerPage() {
   const [isAdmin, setIsAdmin] = useState(false);
-  const [sessions, setSessions] = useState<Session[]>([]);
+  // hasEventDate: 행사 날짜가 실제로 저장된 기수인지 (날짜가 없는 기수를 '오늘'로 오판하지 않기 위한 표시)
+  const [sessions, setSessions] = useState<(Session & { hasEventDate?: boolean })[]>([]);
 
   // 4개 멘트 상태
   const [scripts, setScripts] = useState<Record<ScriptKey, string>>({
@@ -148,6 +150,7 @@ export default function AdminTimerPage() {
           region: data.region,
           episodeNumber: data.episodeNumber,
           eventDate: data.eventDate instanceof Timestamp ? data.eventDate.toDate() : new Date(),
+          hasEventDate: data.eventDate instanceof Timestamp,
           timerConfig: data.timerConfig,
           status: data.status,
         } as any;
@@ -210,14 +213,27 @@ export default function AdminTimerPage() {
 
       const lastSessionId = localStorage.getItem('lastAdminTimerSessionId');
 
-      // 저장된 세션이 있으면 해당 세션을 자동 선택, 없으면 모집 중인 세션 선택
-      if (savedSessionId && list.some(s => s.id === savedSessionId)) {
+      // 진행 기수 자동 선택 (타이머가 라이브 중이 아닐 때)
+      // 1) 오늘 진행하는 기수가 있으면 그 기수 (같은 날 여러 개면 현재 시각에 가장 가까운 것)
+      // 2) 없으면 가장 가까운 다가오는 기수 (취소/완료 제외)
+      // 3) 그래도 없으면 예전에 선택했던 기수
+      const nowDate = new Date();
+      const isSameDay = (a: Date, b: Date) =>
+        a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+      const todaysSessions = list
+        .filter((s: any) => s.hasEventDate && s.status !== 'cancelled' && isSameDay(s.eventDate, nowDate))
+        .sort((a: any, b: any) => Math.abs(a.eventDate.getTime() - nowDate.getTime()) - Math.abs(b.eventDate.getTime() - nowDate.getTime()));
+      const upcomingSessions = list
+        .filter((s: any) => s.hasEventDate && s.status !== 'cancelled' && s.status !== 'completed' && s.eventDate.getTime() >= nowDate.getTime())
+        .sort((a: any, b: any) => a.eventDate.getTime() - b.eventDate.getTime());
+      const autoSession = todaysSessions[0] || upcomingSessions[0];
+
+      if (autoSession) {
+        handleSelectSession(autoSession.id, list);
+      } else if (savedSessionId && list.some(s => s.id === savedSessionId)) {
         handleSelectSession(savedSessionId, list);
       } else if (lastSessionId && list.some(s => s.id === lastSessionId)) {
         handleSelectSession(lastSessionId, list);
-      } else {
-        const openSession = list.find((s: any) => s.status === 'open');
-        if (openSession) handleSelectSession(openSession.id, list);
       }
     }
     loadSessions();
@@ -229,6 +245,15 @@ export default function AdminTimerPage() {
       localStorage.setItem('lastAdminTimerSessionId', id);
     }
     const session = list.find(s => s.id === id);
+
+    // 라이브가 아닐 때는 시작 시각을 해당 기수의 행사 시간으로 자동 설정
+    const setStartTimeFromEvent = () => {
+      if (!session?.hasEventDate) return;
+      const hh = String(session.eventDate.getHours()).padStart(2, '0');
+      const mm = String(session.eventDate.getMinutes()).padStart(2, '0');
+      setCustomStartTime(`${hh}:${mm}`);
+    };
+
     if (session?.timerConfig) {
       setTotalRounds(session.timerConfig.totalRounds || 8);
       setTalkTime(session.timerConfig.talkTime || 15);
@@ -253,11 +278,13 @@ export default function AdminTimerPage() {
       } else {
         setEventStartMs(null);
         setIsLive(false);
+        setStartTimeFromEvent();
       }
     } else {
       setEventStartMs(null);
       setIsLive(false);
       setCustomDurations({});
+      setStartTimeFromEvent();
     }
   };
 
@@ -576,19 +603,23 @@ export default function AdminTimerPage() {
         <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
           <div className="mb-6">
             <label className="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">진행 대상 행사 (기수)</label>
-            <select
+            <KLSelect
               value={selectedSessionId}
               onChange={e => handleSelectSession(e.target.value)}
               className="w-full h-11 px-4 rounded-xl border border-slate-300 bg-slate-50 text-slate-800 font-bold focus:border-[#FF6F61] focus:ring-1 focus:ring-[#FF6F61] outline-none"
               disabled={isLive}
             >
               <option value="">-- 기수 선택 안함 (로컬 테스트) --</option>
-              {sessions.filter(s => !(s.episodeNumber >= 124 && s.episodeNumber <= 129)).map(s => (
+              {/* 진행할 기수만 표시: 완료/취소된 기수는 제외 (이미 선택돼 있는 기수는 목록에서 사라지지 않도록 유지) */}
+              {sessions
+                .filter(s => s.id === selectedSessionId || (s.status !== 'completed' && s.status !== 'cancelled'))
+                .sort((a, b) => a.eventDate.getTime() - b.eventDate.getTime()) // 가장 빠른 기수가 위로
+                .map(s => (
                 <option key={s.id} value={s.id}>
                   {s.region === 'busan' ? '부산' : '창원'} {s.episodeNumber}기 {s.status === 'open' ? '(모집 중)' : ''}
                 </option>
               ))}
-            </select>
+            </KLSelect>
           </div>
 
           <div className="flex gap-2">
@@ -682,13 +713,13 @@ export default function AdminTimerPage() {
                     <button onClick={() => playSound(warningSoundId, warningVolume)} className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-bold hover:bg-slate-200 flex items-center gap-1"><PlayCircle size={10} /> 테스트</button>
                   </div>
                   <div className="flex gap-2 items-center">
-                    <select value={warningSoundId} onChange={e => setWarningSoundId(e.target.value)} className="flex-1 text-xs font-bold border border-slate-200 rounded p-1 outline-none">
+                    <KLSelect value={warningSoundId} onChange={e => setWarningSoundId(e.target.value)} className="flex-1 min-w-0 w-full max-w-full text-xs font-bold border border-slate-200 rounded-lg px-2 py-1.5 bg-white outline-none truncate">
                       <option value="preset_chime">라디오 차임벨 (기본)</option>
                       <option value="preset_crystal">크리스탈 벨</option>
-                      <option value="custom_warning">📁 내 오디오 업로드 (IndexedDB)</option>
-                    </select>
+                      <option value="custom_warning">내 오디오 업로드</option>
+                    </KLSelect>
                     {warningSoundId === 'custom_warning' && (
-                      <label className="cursor-pointer text-[10px] bg-blue-50 text-blue-600 px-2 py-1 rounded font-bold border border-blue-200 hover:bg-blue-100 flex items-center gap-1">
+                      <label className="cursor-pointer shrink-0 whitespace-nowrap text-[10px] bg-blue-50 text-blue-600 px-2 py-1.5 rounded-lg font-bold border border-blue-200 hover:bg-blue-100 flex items-center gap-1">
                         <Upload size={10}/> 파일<input type="file" accept="audio/*, video/*" className="hidden" onChange={async (e) => {
                           if (e.target.files?.[0]) {
                             await saveCustomAudio('custom_warning', e.target.files[0]);
@@ -711,13 +742,13 @@ export default function AdminTimerPage() {
                     <button onClick={() => playSound(endSoundId, endVolume)} className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-bold hover:bg-slate-200 flex items-center gap-1"><PlayCircle size={10} /> 테스트</button>
                   </div>
                   <div className="flex gap-2 items-center">
-                    <select value={endSoundId} onChange={e => setEndSoundId(e.target.value)} className="flex-1 text-xs font-bold border border-slate-200 rounded p-1 outline-none">
+                    <KLSelect value={endSoundId} onChange={e => setEndSoundId(e.target.value)} className="flex-1 min-w-0 w-full max-w-full text-xs font-bold border border-slate-200 rounded-lg px-2 py-1.5 bg-white outline-none truncate">
                       <option value="preset_chime">라디오 차임벨</option>
                       <option value="preset_crystal">크리스탈 벨 (기본)</option>
-                      <option value="custom_end">📁 내 오디오 업로드 (IndexedDB)</option>
-                    </select>
+                      <option value="custom_end">내 오디오 업로드</option>
+                    </KLSelect>
                     {endSoundId === 'custom_end' && (
-                      <label className="cursor-pointer text-[10px] bg-blue-50 text-blue-600 px-2 py-1 rounded font-bold border border-blue-200 hover:bg-blue-100 flex items-center gap-1">
+                      <label className="cursor-pointer shrink-0 whitespace-nowrap text-[10px] bg-blue-50 text-blue-600 px-2 py-1.5 rounded-lg font-bold border border-blue-200 hover:bg-blue-100 flex items-center gap-1">
                         <Upload size={10}/> 파일<input type="file" accept="audio/*, video/*" className="hidden" onChange={async (e) => {
                           if (e.target.files?.[0]) {
                             await saveCustomAudio('custom_end', e.target.files[0]);
@@ -740,17 +771,19 @@ export default function AdminTimerPage() {
             {/* 수동 커스텀 배치 */}
             <div className="bg-orange-50/50 p-4 rounded-xl border border-orange-100">
               <label className="block text-xs font-bold text-orange-600 mb-3 flex items-center gap-1"><AlertCircle size={14}/> 남성 초기 배치 강제 오버라이드 (선택)</label>
-              <div className="flex gap-3 items-center">
-                <span className="text-sm font-bold text-slate-700">남성</span>
-                <input type="number" value={customMaleId} onChange={e => setCustomMaleId(e.target.value === '' ? '' : Number(e.target.value))} className="w-16 h-8 text-center rounded border border-orange-200 font-bold" placeholder="N" disabled={isLive}/>
-                <span className="text-sm font-bold text-slate-700">번을, 1회차때</span>
-                <input type="number" value={customTableId} onChange={e => setCustomTableId(e.target.value === '' ? '' : Number(e.target.value))} className="w-16 h-8 text-center rounded border border-orange-200 font-bold" placeholder="T" disabled={isLive}/>
-                <span className="text-sm font-bold text-slate-700">번 테이블에 배정</span>
+              <div className="grid grid-cols-[4.5rem_4rem_1fr] items-center gap-x-2 gap-y-2">
+                <span className="text-sm font-bold text-slate-700 whitespace-nowrap">남성</span>
+                <input type="number" value={customMaleId} onChange={e => setCustomMaleId(e.target.value === '' ? '' : Number(e.target.value))} className="w-full h-9 text-center rounded-lg border border-orange-200 font-bold bg-white" placeholder="N" disabled={isLive}/>
+                <span className="text-sm font-bold text-slate-700 whitespace-nowrap">번을</span>
+
+                <span className="text-sm font-bold text-slate-700 whitespace-nowrap">1회차 때</span>
+                <input type="number" value={customTableId} onChange={e => setCustomTableId(e.target.value === '' ? '' : Number(e.target.value))} className="w-full h-9 text-center rounded-lg border border-orange-200 font-bold bg-white" placeholder="T" disabled={isLive}/>
+                <span className="text-sm font-bold text-slate-700 whitespace-nowrap">번 테이블에 배정</span>
               </div>
-              <p className="text-[10px] text-orange-500 font-semibold mt-2 leading-relaxed">
-                * 입력 시 모든 남성의 번호 배열이 충돌 없이 자동 Shift 계산됩니다. <br/>
-                * 아무것도 입력하지 않으면 정상 순차 배정(남1-&gt;T1) 적용. 
-              </p>
+              <div className="text-[11px] text-orange-500 font-semibold mt-3 leading-relaxed space-y-1">
+                <p>* 입력하면 모든 남성의 번호 배열이 충돌 없이 자동으로 밀려서(Shift) 계산됩니다.</p>
+                <p>* 아무것도 입력하지 않으면 기본 순서(남1 → T1)로 배정됩니다.</p>
+              </div>
             </div>
 
           </div>
@@ -906,9 +939,8 @@ export default function AdminTimerPage() {
                   <button
                     key={key}
                     onClick={() => setScriptModal({ key, editing: false, draft: scripts[key] })}
-                    className={`flex items-center gap-2.5 px-4 py-3 rounded-xl border font-bold text-sm transition-all hover:scale-[1.02] active:scale-95 shadow-sm ${m.bg} ${m.border} ${m.color}`}
+                    className={`flex items-center justify-center px-3 py-3 rounded-xl border font-bold text-sm whitespace-nowrap transition-all hover:scale-[1.02] active:scale-95 shadow-sm ${m.bg} ${m.border} ${m.color}`}
                   >
-                    <span className="text-base">{m.emoji}</span>
                     {m.label}
                   </button>
                 );
@@ -1002,9 +1034,9 @@ export default function AdminTimerPage() {
         <div className="flex justify-center -my-3 relative z-20">
           <button 
             onClick={() => setViewMode(v => v === 'schedule' ? 'map' : 'schedule')}
-            className="flex items-center gap-3 px-12 py-5 bg-white border-2 border-slate-900 rounded-full shadow-[0_8px_0_0_rgba(15,23,42,1)] hover:shadow-none hover:translate-y-1 transition-all font-black text-xl active:scale-95 text-slate-900"
+            className="flex items-center justify-center gap-2 sm:gap-3 px-6 sm:px-12 py-4 sm:py-5 max-w-full whitespace-nowrap bg-white border-2 border-slate-900 rounded-full shadow-[0_8px_0_0_rgba(15,23,42,1)] hover:shadow-none hover:translate-y-1 transition-all font-black text-base sm:text-xl active:scale-95 text-slate-900"
           >
-            {viewMode === 'schedule' ? <RefreshCw size={24} /> : <Clock size={24} />}
+            {viewMode === 'schedule' ? <RefreshCw size={22} className="shrink-0" /> : <Clock size={22} className="shrink-0" />}
             {viewMode === 'schedule' ? '로테이션 배치표 즉시 전환' : '시간표 트래커 즉시 전환'}
           </button>
         </div>
