@@ -1322,7 +1322,7 @@ export default function UsersPage() {
                               />
                               <span className="text-[10px] font-black uppercase tracking-tight">직업승인</span>
                             </label>
-                            <ProofBadge user={u} onOpen={() => { setOpenProofDirect(true); setSelectedUserForProfile(u); }} />
+                            {filter === 'pending' && <ProofBadge user={u} onOpen={() => { setOpenProofDirect(true); setSelectedUserForProfile(u); }} />}
                           </div>
                         </td>
 
@@ -1747,7 +1747,7 @@ export default function UsersPage() {
                         />
                         <span className="text-[0.7rem] font-black">직업승인</span>
                       </label>
-                      <ProofBadge user={u} onOpen={() => { setOpenProofDirect(true); setSelectedUserForProfile(u); }} />
+                      {filter === 'pending' && <ProofBadge user={u} onOpen={() => { setOpenProofDirect(true); setSelectedUserForProfile(u); }} />}
                     </div>
 
                     {/* Action Buttons Row */}
