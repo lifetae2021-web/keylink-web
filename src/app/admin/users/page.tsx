@@ -6,7 +6,7 @@ import {
   Search, CheckCircle, XCircle,
   Download, ShieldCheck, ChevronLeft, ChevronRight, Loader2,
   Filter, ArrowUpDown, ArrowUp, ArrowDown, Ticket,
-  UserPlus, Award, AlertCircle, Edit3, Trash2, X, MessageSquare
+  UserPlus, Award, AlertCircle, Edit3, Trash2, X, MessageSquare, Paperclip
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { auth, db } from '@/lib/firebase';
@@ -42,6 +42,25 @@ const TABS: { key: Status; label: string }[] = [
   { key: 'dummy', label: '더미계정' },
 ];
 
+const hasProof = (u: any) => !!(u.employmentProof || u.verificationUrl);
+
+// 재직 인증 서류 첨부 뱃지: 미승인(검토 필요)은 강조, 승인 완료는 흐리게
+const ProofBadge = ({ user, onOpen }: { user: any; onOpen: () => void }) => {
+  if (!hasProof(user)) return null;
+  const needsReview = !user.isJobReviewed;
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      title="재직 인증 서류 보기"
+      className={`flex items-center gap-1 w-fit px-2 py-1 rounded-lg border transition-all hover:scale-105 active:scale-95 ${needsReview ? 'bg-violet-50 border-violet-200 text-violet-700 shadow-sm' : 'bg-slate-50 border-slate-100 text-slate-400'}`}
+    >
+      <Paperclip size={11} />
+      <span className="text-[10px] font-black tracking-tight whitespace-nowrap">{needsReview ? '서류첨부 · 검토필요' : '서류첨부'}</span>
+    </button>
+  );
+};
+
 const panel = { background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' };
 
 // Table Skeleton
@@ -69,6 +88,8 @@ export default function UsersPage() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<Status>('all');
   const [genderFilter, setGenderFilter] = useState<'all' | 'male' | 'female'>('all');
+  const [proofOnly, setProofOnly] = useState(false);
+  const [openProofDirect, setOpenProofDirect] = useState(false);
   const [sortConfig, setSortConfig] = useState<{ key: 'age' | 'createdAt', direction: 'asc' | 'desc' | null }>({ key: 'createdAt', direction: 'desc' });
 
   // Custom Pagination for performance
@@ -597,6 +618,7 @@ export default function UsersPage() {
       dummy: users.filter(u => isDummy(u)).length,
       guest: users.filter(u => isGuest(u)).length,
       waitpool: users.filter(u => isRegular(u) && Array.isArray(u.cancelledSessionHistory) && u.cancelledSessionHistory.length > 0).length,
+      pendingProof: users.filter(u => isRegular(u) && u.status !== 'rejected' && ((u.status || 'pending') === 'pending' || u.isJobReviewed === false) && hasProof(u)).length,
     };
   }, [users]);
 
@@ -612,7 +634,7 @@ export default function UsersPage() {
       if (filter === 'guest') return isGuest(u);
       if (filter === 'waitpool') return isRegular(u) && Array.isArray(u.cancelledSessionHistory) && u.cancelledSessionHistory.length > 0;
       if (filter === 'all') return !isDummy(u);
-      if (filter === 'pending') return isRegular(u) && u.status !== 'rejected' && ((u.status || 'pending') === 'pending' || u.isJobReviewed === false);
+      if (filter === 'pending') return isRegular(u) && u.status !== 'rejected' && ((u.status || 'pending') === 'pending' || u.isJobReviewed === false) && (!proofOnly || hasProof(u));
       if (filter === 'verified') return isRegular(u) && (u.status || 'pending') === 'verified' && u.isJobReviewed !== false;
       return isRegular(u) && (u.status || 'pending') === filter;
     });
@@ -621,7 +643,7 @@ export default function UsersPage() {
       male: baseUsers.filter(u => u.gender === 'male').length,
       female: baseUsers.filter(u => u.gender === 'female').length,
     };
-  }, [users, filter]);
+  }, [users, filter, proofOnly]);
 
   const filtered = useMemo(() => {
     const isDummy = (u: any) => u.isDummy === true || u.id?.startsWith('dummy') || u.id?.startsWith('user_m_') || u.id?.startsWith('user_f_');
@@ -652,7 +674,7 @@ export default function UsersPage() {
       } else if (filter === 'all') {
         matchFilter = !isDummy(u);
       } else if (filter === 'pending') {
-        matchFilter = isRegular(u) && u.status !== 'rejected' && ((u.status || 'pending') === 'pending' || u.isJobReviewed === false);
+        matchFilter = isRegular(u) && u.status !== 'rejected' && ((u.status || 'pending') === 'pending' || u.isJobReviewed === false) && (!proofOnly || hasProof(u));
       } else if (filter === 'verified') {
         matchFilter = isRegular(u) && (u.status || 'pending') === 'verified' && u.isJobReviewed !== false;
       } else {
@@ -722,7 +744,7 @@ export default function UsersPage() {
         return 0;
       }
     });
-  }, [users, search, filter, genderFilter, sortConfig]);
+  }, [users, search, filter, genderFilter, sortConfig, proofOnly]);
 
   const pagedItems = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
@@ -998,7 +1020,7 @@ export default function UsersPage() {
           return (
             <button
               key={t.key}
-              onClick={() => setFilter(t.key)}
+              onClick={() => { setFilter(t.key); setProofOnly(false); }}
               className="flex items-center gap-2 rounded-xl transition-all duration-200"
               style={{
                 padding: '8px 18px',
@@ -1023,6 +1045,27 @@ export default function UsersPage() {
               >
                 {counts[t.key]}
               </span>
+              {t.key === 'pending' && (
+                <span
+                  role="button"
+                  title="재직 인증 서류를 첨부한 회원만 보기"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setProofOnly(isActive ? !proofOnly : true);
+                    setFilter('pending');
+                  }}
+                  className="flex items-center gap-1 transition-all hover:scale-105"
+                  style={{
+                    fontSize: '0.65rem', fontWeight: 800,
+                    padding: '1px 7px', borderRadius: 10,
+                    background: isActive && proofOnly ? '#fff' : isActive ? 'rgba(255,255,255,0.25)' : '#EDE9FE',
+                    color: isActive && proofOnly ? '#7C3AED' : isActive ? '#fff' : '#6D28D9',
+                    boxShadow: isActive && proofOnly ? '0 0 0 2px rgba(124,58,237,0.5)' : 'none',
+                  }}
+                >
+                  <Paperclip size={10} /> {counts.pendingProof}
+                </span>
+              )}
             </button>
           );
         })}
@@ -1279,6 +1322,7 @@ export default function UsersPage() {
                               />
                               <span className="text-[10px] font-black uppercase tracking-tight">직업승인</span>
                             </label>
+                            <ProofBadge user={u} onOpen={() => { setOpenProofDirect(true); setSelectedUserForProfile(u); }} />
                           </div>
                         </td>
 
@@ -1703,6 +1747,7 @@ export default function UsersPage() {
                         />
                         <span className="text-[0.7rem] font-black">직업승인</span>
                       </label>
+                      <ProofBadge user={u} onOpen={() => { setOpenProofDirect(true); setSelectedUserForProfile(u); }} />
                     </div>
 
                     {/* Action Buttons Row */}
@@ -1806,7 +1851,8 @@ export default function UsersPage() {
       <UserProfileModal
         user={selectedUserForProfile}
         isOpen={!!selectedUserForProfile}
-        onClose={() => setSelectedUserForProfile(null)}
+        onClose={() => { setSelectedUserForProfile(null); setOpenProofDirect(false); }}
+        openProof={openProofDirect}
       />
 
       <VisitLogModal

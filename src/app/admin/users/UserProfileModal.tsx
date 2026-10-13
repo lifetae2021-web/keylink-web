@@ -16,6 +16,7 @@ interface UserProfileModalProps {
   isOpen: boolean;
   onClose: () => void;
   onUserUpdate?: (updatedUser: any) => void;
+  openProof?: boolean;
 }
 
 // ── 전화번호 액션 팝업
@@ -130,7 +131,7 @@ const TextBox = ({ label, value, icon: Icon, color }: { label: string; value?: s
   );
 };
 
-export default function UserProfileModal({ user: initialUser, isOpen, onClose, onUserUpdate }: UserProfileModalProps) {
+export default function UserProfileModal({ user: initialUser, isOpen, onClose, onUserUpdate, openProof }: UserProfileModalProps) {
   const [user, setUser] = useState(initialUser);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isResettingPw, setIsResettingPw] = useState(false);
@@ -148,6 +149,11 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
   // 재직증명서 업로드 (관리자)
   const [isUploadingProof, setIsUploadingProof] = useState(false);
   const proofInputRef = useRef<HTMLInputElement>(null);
+
+  // 목록의 "서류첨부" 뱃지에서 열면 재직 서류 팝업을 바로 표시
+  useEffect(() => {
+    setShowProofPopup(isOpen && !!openProof);
+  }, [isOpen, openProof]);
 
   // v11.2.0: user 로컬 상태 변화를 감지하여 부모 userMap도 실시간 갱신
   // 콜백 함수를 Ref로 관리하여 dependency 목록에서 제외함으로써 무한 렌더링 루프를 원천 방지합니다.
