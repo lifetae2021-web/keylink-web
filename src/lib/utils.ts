@@ -112,6 +112,16 @@ export const normalizeBirthDate = (val?: string): string => {
   return m ? `${m[1]}-${m[2]}-${m[3]}` : raw;
 };
 
+// 저장 형식이 섞여 있어도(YY-MM-DD / YYYY-MM-DD / YYYYMMDD / YYMMDD) 4자리 출생연도를 구한다. 해석 불가면 null.
+// 2자리 연도는 isValidBirthDate와 같은 기준(30 초과면 19xx, 이하면 20xx)을 쓴다.
+export const getBirthYear = (val?: string | null): number | null => {
+  const normalized = normalizeBirthDate(val || '');
+  const m = /^(\d{2})-(\d{2})-(\d{2})$/.exec(normalized);
+  if (!m) return null;
+  const yy = Number(m[1]);
+  return yy > 30 ? 1900 + yy : 2000 + yy;
+};
+
 // 'YY-MM-DD' 형식, 실제 존재하는 날짜, 나이 18~70세 범위인지 검사
 export const isValidBirthDate = (val: string): boolean => {
   const m = /^(\d{2})-(\d{2})-(\d{2})$/.exec(val.trim());

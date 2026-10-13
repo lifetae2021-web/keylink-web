@@ -15,7 +15,7 @@ import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import toast from 'react-hot-toast';
 import { auth, db, storage } from '@/lib/firebase';
-import { compressImage } from '@/lib/utils';
+import { compressImage, getBirthYear } from '@/lib/utils';
 import { User } from 'firebase/auth';
 import { doc, setDoc, deleteField, addDoc, collection, query, where, getDocs, Timestamp, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
@@ -452,13 +452,7 @@ export default function EventDetailPage() {
 
       // 4. applications 콜렉션에 신규 신청서 저장 (v5.0.0 핵심 연결)
       const now = Timestamp.now();
-      const birthYear = form.birthDate
-        ? (() => {
-          if (form.birthDate.includes('-')) return parseInt(form.birthDate.slice(0, 4));
-          const yy = parseInt(form.birthDate.slice(0, 2));
-          return yy > 30 ? 1900 + yy : 2000 + yy;
-        })()
-        : new Date().getFullYear();
+      const birthYear = getBirthYear(form.birthDate) ?? new Date().getFullYear();
       const age = new Date().getFullYear() - birthYear;
 
       await addDoc(collection(db, 'applications'), {

@@ -28,7 +28,7 @@ import {
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 const SMSPreviewModal = dynamic(() => import('@/components/admin/SMSPreviewModal'), { ssr: false });
-import { chosungIncludes } from '@/lib/utils';
+import { chosungIncludes, getBirthYear } from '@/lib/utils';
 import { buildDiscountSuffix } from '@/lib/utils/discountText';
 import { updateDoc } from 'firebase/firestore';
 import AdminApplicationList from '@/components/admin/AdminApplicationList'; // v8.12.7: 1:1 매칭 리스트 컴포넌트 추가
@@ -738,7 +738,7 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
       // 나이대 필터링
       let matchesAge = true;
       if (ageFilter !== 'all') {
-        const birthYear = user.birthDate ? parseInt(user.birthDate.includes('-') ? user.birthDate.slice(0, 4) : (user.birthDate.length === 6 ? '19' + user.birthDate.slice(0, 2) : user.birthDate.slice(0, 4))) : 0;
+        const birthYear = getBirthYear(user.birthDate) ?? 0;
         if (ageFilter === '90s') matchesAge = birthYear >= 1990 && birthYear <= 1999;
         else if (ageFilter === '80s') matchesAge = birthYear >= 1980 && birthYear <= 1989;
         else if (ageFilter === '00s') matchesAge = birthYear >= 2000 && birthYear <= 2009;
@@ -778,7 +778,7 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
       // v8.4.1: 나이 대별 필터링
       let matchesAge = true;
       if (ageFilter !== 'all') {
-        const birthYear = user.birthDate ? parseInt(user.birthDate.includes('-') ? user.birthDate.slice(0, 4) : (user.birthDate.length === 6 ? '19' + user.birthDate.slice(0, 2) : user.birthDate.slice(0, 4))) : 0;
+        const birthYear = getBirthYear(user.birthDate) ?? 0;
         if (ageFilter === '90s') matchesAge = birthYear >= 1990 && birthYear <= 1999;
         else if (ageFilter === '80s') matchesAge = birthYear >= 1980 && birthYear <= 1989;
         else if (ageFilter === '00s') matchesAge = birthYear >= 2000 && birthYear <= 2009;

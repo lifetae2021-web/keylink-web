@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getBirthYear } from '@/lib/utils';
 import { adminDb, adminAuth } from '@/lib/firebaseAdmin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { checkOverlap } from '@/lib/admin/overlap';
@@ -95,11 +96,8 @@ export async function POST(req: NextRequest) {
     // 나이 계산
     let age = userData.age;
     if (!age && userData.birthDate) {
-      const birthYearStr = userData.birthDate.includes('-') 
-        ? userData.birthDate.split('-')[0] 
-        : userData.birthDate.slice(0, 4);
-      const birthYear = parseInt(birthYearStr, 10);
-      if (!isNaN(birthYear)) {
+      const birthYear = getBirthYear(userData.birthDate);
+      if (birthYear) {
         age = new Date().getFullYear() - birthYear + 1;
       }
     }
