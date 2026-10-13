@@ -29,6 +29,7 @@ import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 const SMSPreviewModal = dynamic(() => import('@/components/admin/SMSPreviewModal'), { ssr: false });
 import { chosungIncludes } from '@/lib/utils';
+import { buildDiscountSuffix } from '@/lib/utils/discountText';
 import { updateDoc } from 'firebase/firestore';
 import AdminApplicationList from '@/components/admin/AdminApplicationList'; // v8.12.7: 1:1 매칭 리스트 컴포넌트 추가
 
@@ -351,9 +352,7 @@ export default function ApplicationsPage() {
     const finalPrice = app.price ?? genderPrice;
     const couponDiscount = app.couponDiscount && app.couponDiscount > 0 ? app.couponDiscount : 0;
     const isGroupDiscount = app.gender === 'female' && app.femaleOption === 'group';
-    const discountSuffix = couponDiscount > 0
-      ? ` (할인쿠폰 적용, ${couponDiscount.toLocaleString('ko-KR')}원 할인)`
-      : (isGroupDiscount ? ' (동반할인 적용)' : '');
+    const discountSuffix = buildDiscountSuffix({ basePrice: genderPrice, finalPrice, couponDiscount, isGroup: isGroupDiscount });
     const priceWithDiscount = `${finalPrice.toLocaleString('ko-KR')}원${discountSuffix}`;
 
     // v8.12.3: 저장된 템플릿 자동 적용 (v8.13.2: 타입에 따라 분기)

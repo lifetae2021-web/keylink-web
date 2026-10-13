@@ -66,6 +66,7 @@ import {
 import Link from "next/link";
 import { getVoteConfigTemplate } from "@/lib/firestore/cms";
 import { getAllVotesBySession } from "@/lib/firestore/votes";
+import { buildDiscountSuffix } from "@/lib/utils/discountText";
 // 평소엔 닫혀있는 모달이라 페이지 최초 로딩 시 번들에 끼워 넣지 않고 열릴 때만 불러옴
 const SMSPreviewModal = dynamic(() => import("@/components/admin/SMSPreviewModal"), { ssr: false });
 const UserProfileModal = dynamic(() => import("@/app/admin/users/UserProfileModal"), { ssr: false });
@@ -1284,9 +1285,13 @@ ${chatLink}`;
     const targetTemplate = smsTemplates.find(t => t.name === '입금 요청 (기본)');
     let defaultMsg = '';
 
-    const couponText = app.couponDiscount && app.couponDiscount > 0
-      ? ' (쿠폰 할인 적용)'
-      : (app.gender === 'female' && app.femaleOption === 'group' ? ' (동반할인 적용)' : '');
+    const isGroupDiscount = app.gender === 'female' && app.femaleOption === 'group';
+    const earlyBirdText = buildDiscountSuffix({ basePrice: genderPrice, finalPrice: app.price ?? genderPrice, couponDiscount: app.couponDiscount, isGroup: isGroupDiscount });
+    const couponText = earlyBirdText.includes('얼리버드')
+      ? earlyBirdText
+      : (app.couponDiscount && app.couponDiscount > 0
+        ? ' (쿠폰 할인 적용)'
+        : (isGroupDiscount ? ' (동반할인 적용)' : ''));
 
     if (targetTemplate) {
       const sessionName = session.episodeNumber
