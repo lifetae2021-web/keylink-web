@@ -9,6 +9,7 @@ import { doc, updateDoc, collection, query, where, getDocs } from 'firebase/fire
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import toast from 'react-hot-toast';
 import { useState, useEffect, useRef } from 'react';
+import AdminNotesSection from './AdminNotesSection';
 import { createPortal } from 'react-dom';
 
 interface UserProfileModalProps {
@@ -840,6 +841,9 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
                     </div>
                   </div>
                 </div>
+
+                {/* 관리자 전용 메모 */}
+                <AdminNotesSection userId={user.uid || user.id} />
 
                 {/* 7. 참가 이력 및 출석 관리 (v11.1.0) */}
                 <div className="pt-6 pb-2">

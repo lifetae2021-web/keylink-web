@@ -47,6 +47,10 @@ service cloud.firestore {
         allow read: if isUser(userId) || isAdmin();
         allow write: if isAdmin();
       }
+      // 관리자 전용 회원 메모 (본인에게도 비공개)
+      match /adminNotes/{noteId} {
+        allow read, write: if isAdmin();
+      }
     }
 
     // ─────────────────────────────────────

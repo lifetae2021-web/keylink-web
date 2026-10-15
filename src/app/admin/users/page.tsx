@@ -7,7 +7,7 @@ import {
   Search, CheckCircle, XCircle,
   Download, ShieldCheck, ChevronLeft, ChevronRight, Loader2,
   Filter, ArrowUpDown, ArrowUp, ArrowDown, Ticket,
-  UserPlus, Award, AlertCircle, Edit3, Trash2, X, MessageSquare, Paperclip
+  UserPlus, Award, AlertCircle, Edit3, Trash2, X, MessageSquare, Paperclip, StickyNote
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { auth, db } from '@/lib/firebase';
@@ -20,6 +20,7 @@ import { chosungIncludes } from '@/lib/utils';
 // 평소엔 닫혀있는 모달이라 페이지 최초 로딩 시 번들에 끼워 넣지 않고 열릴 때만 불러옴
 const UserProfileModal = dynamic(() => import('./UserProfileModal'), { ssr: false });
 const SMSPreviewModal = dynamic(() => import('@/components/admin/SMSPreviewModal'), { ssr: false });
+const AdminNotesModal = dynamic(() => import('./AdminNotesModal'), { ssr: false });
 const VisitLogModal = dynamic(() => import('./VisitLogModal'), { ssr: false });
 
 type Status = 'all' | 'pending' | 'verified' | 'rejected' | 'dummy' | 'waitpool' | 'guest';
@@ -106,6 +107,7 @@ export default function UsersPage() {
   const [tempJobValue, setTempJobValue] = useState<string>('');
 
   // 회원 삭제
+  const [notesTarget, setNotesTarget] = useState<any | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -1499,6 +1501,14 @@ export default function UsersPage() {
                             >
                               <UserPlus size={14} />
                             </button>
+                            <button
+                              onClick={() => setNotesTarget(u)}
+                              className="flex items-center justify-center rounded-lg hover:bg-amber-50 transition-all text-slate-400 hover:text-amber-500"
+                              style={{ width: 32, height: 32 }}
+                              title="회원 메모"
+                            >
+                              <StickyNote size={14} />
+                            </button>
                             {isSuperAdmin && u.role !== 'admin' && u.role !== 'super_admin' ? (
                             <button
                               onClick={() => setDeleteTarget(u)}
@@ -1785,6 +1795,14 @@ export default function UsersPage() {
                       >
                         <XCircle size={16} />
                       </button>
+                      <button
+                        onClick={() => setNotesTarget(u)}
+                        className="flex items-center justify-center rounded-xl bg-amber-50 text-amber-500 border border-amber-100 transition-all hover:bg-amber-100"
+                        style={{ width: 38, height: 38 }}
+                        title="회원 메모"
+                      >
+                        <StickyNote size={16} />
+                      </button>
                       {isSuperAdmin && u.role !== 'admin' && u.role !== 'super_admin' ? (
                       <button
                         onClick={() => setDeleteTarget(u)}
@@ -1892,6 +1910,8 @@ export default function UsersPage() {
           defaultMessage={`[키링크] 안녕하세요, {{이름}}님!`}
         />
       )}
+
+      {notesTarget && <AdminNotesModal user={notesTarget} onClose={() => setNotesTarget(null)} />}
 
       {/* 회원 삭제 확인 모달 */}
       {deleteTarget && (
