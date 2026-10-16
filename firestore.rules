@@ -75,6 +75,11 @@ service cloud.firestore {
       // 신규 신청: 본인 UID로만 생성 가능
       allow create: if isSignedIn() &&
         request.resource.data.userId == request.auth.uid;
+      // 비회원(익명) 신청서 → 정식 회원 소유권 이전: 현재 로그인한 UID로만, 게스트 신청서에 한해 허용
+      allow update: if isSignedIn() &&
+        resource.data.isGuestApply == true &&
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.isGuestApply == false;
     }
 
     // ─────────────────────────────────────
