@@ -29,6 +29,12 @@ function saveBackup(backup: { photos?: string[] } & Record<string, unknown>) {
   try { sessionStorage.setItem(key, JSON.stringify(backup)); return; } catch {}
   try { sessionStorage.setItem(key, JSON.stringify({ ...backup, photos: [] })); } catch {}
 }
+function readBackup(): string | null {
+  try { return sessionStorage.getItem('kl_fast_apply_backup'); } catch { return null; }
+}
+function clearBackup() {
+  try { sessionStorage.removeItem('kl_fast_apply_backup'); } catch {}
+}
 
 /* ─────────────────────────────────────────
    Types
@@ -282,11 +288,11 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
     if (kakaoDone !== '1') return;
 
     const autoSubmit = async () => {
-      const raw = sessionStorage.getItem('kl_fast_apply_backup');
+      const raw = readBackup();
       if (!raw) return;
 
       // CLEAR IMMEDIATELY to prevent React Strict Mode duplicate execution
-      sessionStorage.removeItem('kl_fast_apply_backup');
+      clearBackup();
 
       let backup: { formData: FormData; sessionIds: string[]; photos?: string[]; maleOption?: string; femaleOption?: string; groupPartnerName?: string; groupPartnerBirthYear?: string; couponDiscount?: number; selectedCouponId?: string; selectedCouponTitle?: string; };
       try { backup = JSON.parse(raw); } catch { return; }
@@ -1045,7 +1051,7 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
 
   /* ── Actually save non-member data to Firestore ── */
   const saveNonMemberApplication = async (customPin?: string, isBackground = false) => {
-    const backup = savedData || JSON.parse(sessionStorage.getItem('kl_fast_apply_backup') || '{}');
+    const backup = savedData || JSON.parse(readBackup() || '{}');
     if (!backup?.formData) return;
 
     try {
@@ -1167,7 +1173,7 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
       await batch.commit();
 
       if (!isBackground) {
-        sessionStorage.removeItem('kl_fast_apply_backup');
+        clearBackup();
         setFunnelModal(false);
         setSubmitted(true);
         toast.success('신청이 완료되었습니다!');
@@ -1288,7 +1294,7 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
 
       await batch.commit();
 
-      sessionStorage.removeItem('kl_fast_apply_backup');
+      clearBackup();
       setFunnelModal(false);
       setSubmitted(true);
       toast.success('✅ 구글 계정으로 신청 완료! 마이페이지에서 확인하세요.');
@@ -2597,7 +2603,7 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     <button
                       onClick={() => {
-                        sessionStorage.removeItem('kl_fast_apply_backup');
+                        clearBackup();
                         setFunnelModal(false);
                         setSubmitted(true);
                       }}
