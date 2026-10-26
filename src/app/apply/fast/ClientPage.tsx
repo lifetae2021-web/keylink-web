@@ -23,6 +23,13 @@ import InAppBrowserSheet from '@/components/InAppBrowserSheet';
 import { EventCalendar } from '@/components/EventsSection';
 import { KeylinkEvent } from '@/types';
 
+// sessionStorage can throw QuotaExceededError (large base64 photos, iOS private mode); a failed backup must never block submission.
+function saveBackup(backup: { photos?: string[] } & Record<string, unknown>) {
+  const key = 'kl_fast_apply_backup';
+  try { sessionStorage.setItem(key, JSON.stringify(backup)); return; } catch {}
+  try { sessionStorage.setItem(key, JSON.stringify({ ...backup, photos: [] })); } catch {}
+}
+
 /* ─────────────────────────────────────────
    Types
 ───────────────────────────────────────── */
@@ -840,7 +847,7 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
               existingUser.loginMethod === 'google' ? 'google' : 'email';
             setDupModal({ provider, phone });
             // Save form data to sessionStorage for post-login recovery
-            sessionStorage.setItem('kl_fast_apply_backup', JSON.stringify({
+            saveBackup({
               formData: form,
               sessionIds: Array.from(selectedSessionIds),
               maleOption,
@@ -850,7 +857,7 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
               selectedCouponId: selectedCoupon?.id || null,
               selectedCouponTitle: selectedCoupon?.title || null,
               couponDiscount: getCouponDiscount(),
-            }));
+            });
             setSubmitting(false);
             return;
           }
@@ -868,7 +875,7 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
           selectedCouponTitle: selectedCoupon?.title || null,
           couponDiscount: getCouponDiscount(),
         };
-        sessionStorage.setItem('kl_fast_apply_backup', JSON.stringify(backup));
+        saveBackup(backup);
         setSavedData(backup);
         
         // NEW: Submit as non-member automatically (Background)
@@ -1189,7 +1196,7 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
       // Backup current form before popup
       const backupForm = { ...form, employmentProof: uploadedProof };
       const backup = { formData: backupForm, sessionIds: Array.from(selectedSessionIds), photos: uploadedPhotos };
-      sessionStorage.setItem('kl_fast_apply_backup', JSON.stringify(backup));
+      saveBackup(backup);
 
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
@@ -1307,7 +1314,7 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
     // Backup form before redirect
     const backupForm = { ...form, employmentProof: uploadedProof };
     const backup = { formData: backupForm, sessionIds: Array.from(selectedSessionIds), photos: uploadedPhotos };
-    sessionStorage.setItem('kl_fast_apply_backup', JSON.stringify(backup));
+    saveBackup(backup);
 
     const clientId = process.env.NEXT_PUBLIC_KAKAO_CLIENT_ID;
     if (!clientId) { toast.error('카카오 설정 오류'); return; }
