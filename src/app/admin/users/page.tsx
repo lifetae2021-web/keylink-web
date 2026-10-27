@@ -2005,7 +2005,14 @@ export default function UsersPage() {
                 <label className="block text-xs font-bold text-slate-500">쿠폰 메시지(제목)</label>
                 <KLSelect
                   value={couponTitle}
-                  onChange={e => setCouponTitle(e.target.value)}
+                  onChange={e => {
+                    setCouponTitle(e.target.value);
+                    if (e.target.value === '오류 제보 감사 쿠폰') {
+                      setDiscountType('percent');
+                      setDiscountValue('50');
+                      setValidityPeriod(3);
+                    }
+                  }}
                   className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-400 outline-none transition-colors text-sm font-semibold text-slate-700 bg-white cursor-pointer shadow-sm"
                 >
                   <option value="웰컴 가입 축하 쿠폰">웰컴 가입 축하 쿠폰</option>
@@ -2014,6 +2021,7 @@ export default function UsersPage() {
                   <option value="파티 할인 쿠폰">파티 할인 쿠폰</option>
                   <option value="다음 만남 응원 쿠폰">다음 만남 응원 쿠폰</option>
                   <option value="VIP 전용 시크릿 쿠폰">VIP 전용 시크릿 쿠폰</option>
+                  <option value="오류 제보 감사 쿠폰">오류 제보 감사 쿠폰</option>
                   <option value="직접 입력">직접 입력...</option>
                 </KLSelect>
 

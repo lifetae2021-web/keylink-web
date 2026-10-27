@@ -122,6 +122,7 @@ export default function Navbar() {
       await signOut(auth);
       toast.success('로그아웃되었습니다.');
       setIsMenuOpen(false);
+      router.push('/login');
     } catch (error) {
       toast.error('로그아웃 중 오류가 발생했습니다.');
     }

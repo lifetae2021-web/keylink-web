@@ -652,7 +652,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           })}
           {/* 로그아웃 */}
           <button
-            onClick={() => auth.signOut()}
+            onClick={async () => { await auth.signOut(); router.replace('/admin/login'); }}
             title={collapsed ? '로그아웃' : undefined}
             className="w-full flex items-center rounded-lg mt-0.5 transition-all duration-150"
             style={{ padding: '0 10px', height: 40, justifyContent: 'flex-start', color: '#94A3B8', fontSize: '0.9rem', background: 'transparent' }}

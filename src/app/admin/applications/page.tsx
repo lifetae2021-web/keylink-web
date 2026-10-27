@@ -205,6 +205,38 @@ export default function ApplicationsPage() {
     return () => unsub();
   }, [isAdmin, selectedEventId]);
 
+  // 다른 기수에 이미 선발/확정된 회원 표시용 (userId -> 선발/확정된 신청 목록)
+  const [placedApps, setPlacedApps] = useState<Record<string, { sessionId: string; status: string }[]>>({});
+  useEffect(() => {
+    if (!isAdmin) return;
+    const q = query(collection(db, 'applications'), where('status', 'in', ['selected', 'confirmed']));
+    const unsub = onSnapshot(q, (snap) => {
+      const map: Record<string, { sessionId: string; status: string }[]> = {};
+      snap.docs.forEach(d => {
+        const a = d.data() as any;
+        if (!a.userId) return;
+        (map[a.userId] ||= []).push({ sessionId: a.sessionId, status: a.status });
+      });
+      setPlacedApps(map);
+    }, (err) => console.error('Error fetching placed applications:', err));
+    return () => unsub();
+  }, [isAdmin]);
+
+  // 이 신청과 다른 기수에 이미 선발/확정된 진행 예정 기수가 있으면 "141기 선발" 형태의 라벨 반환
+  const getOtherPlacement = (app: any): string | null => {
+    if (app.status === 'selected' || app.status === 'confirmed') return null;
+    const now = Date.now();
+    for (const p of placedApps[app.userId] || []) {
+      if (p.sessionId === app.sessionId) continue;
+      const ev = events.find(e => e.id === p.sessionId);
+      if (!ev || ev.status === 'cancelled') continue;
+      const date = ev.eventDate?.toDate?.();
+      if (date && now >= date.getTime() + 24 * 60 * 60 * 1000) continue;
+      return `${ev.episodeNumber}기 ${p.status === 'confirmed' ? '확정' : '선발'}`;
+    }
+    return null;
+  };
+
   // 필터 변경 시 다중 선택 상태 자동 초기화 (안전 장치)
   useEffect(() => {
     setSelectedAppIds([]);
@@ -1358,8 +1390,9 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                                           }
                                         }}
                                         disabled={!user.isJobReviewed && !app.id.startsWith('dummy')}
+                                        title={getOtherPlacement(app) ? `이미 ${getOtherPlacement(app)}된 회원입니다` : undefined}
                                         className={`px-3 py-2 rounded-xl text-[0.8rem] font-black transition-all whitespace-nowrap ${
-                                          isOverQuota ? 'bg-rose-500 text-white hover:bg-rose-600' : 'bg-[#FF6F61] text-white hover:bg-[#ff5a4a]'
+                                          isOverQuota ? 'bg-rose-500 text-white hover:bg-rose-600' : getOtherPlacement(app) ? 'bg-amber-500 text-white hover:bg-amber-600' : 'bg-[#FF6F61] text-white hover:bg-[#ff5a4a]'
                                         } shadow-md shadow-rose-100 disabled:opacity-50`}
                                       >
                                         {app.status === 'selected' ? '입금확인' : '선발'}
@@ -1593,6 +1626,14 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
 
 
 
+                                {getOtherPlacement(app) && (
+                      <div className="mb-2 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-[11px] font-black">
+                        ⚠️ 이미 {getOtherPlacement(app)}된 회원
+                      </div>
+                    )}
+
+
+
                                 <div className="flex gap-1.5">
                                    <button
                                      onClick={() => setGeneralSmsTarget(app)}
@@ -1634,7 +1675,7 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                                             handleOpenPreview(app, 'select');
                                           }
                                         }}
-                                        className={`flex-1 py-2.5 ${app.status === 'selected' ? 'bg-emerald-500' : 'bg-[#FF6F61]'} text-white rounded-xl font-black text-xs shadow-md active:scale-95 transition-all`}
+                                        className={`flex-1 py-2.5 ${app.status === 'selected' ? 'bg-emerald-500' : getOtherPlacement(app) ? 'bg-amber-500' : 'bg-[#FF6F61]'} text-white rounded-xl font-black text-xs shadow-md active:scale-95 transition-all`}
                                       >
                                         {app.status === 'selected' ? '입금확인' : '선발'}
                                       </button>
@@ -1944,6 +1985,12 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                       ) : null}
                     </div>
 
+                    {getOtherPlacement(app) && (
+                      <div className="mb-2 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-[11px] font-black">
+                        ⚠️ 이미 {getOtherPlacement(app)}된 회원
+                      </div>
+                    )}
+
                     <div className="flex gap-1.5">
                                    <button
                                      onClick={() => setGeneralSmsTarget(app)}
@@ -1965,7 +2012,7 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                                 handleOpenPreview(app, 'select');
                               }
                             }}
-                            className={`flex-1 py-2.5 ${app.status === 'selected' ? 'bg-emerald-500' : 'bg-[#FF6F61]'} text-white rounded-xl font-black text-xs shadow-md active:scale-95 transition-all`}
+                            className={`flex-1 py-2.5 ${app.status === 'selected' ? 'bg-emerald-500' : getOtherPlacement(app) ? 'bg-amber-500' : 'bg-[#FF6F61]'} text-white rounded-xl font-black text-xs shadow-md active:scale-95 transition-all`}
                           >
                             {app.status === 'selected' ? '입금확인' : '선발'}
                           </button>

@@ -2438,6 +2438,11 @@ ${chatLink}
       await updateDoc(doc(db, "sessions", session.id), {
         isForceHidden: true
       });
+      auth.currentUser?.getIdToken().then(token => fetch('/api/admin/sessions/group-coupons', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ sessionId: session.id }),
+      })).catch(() => {});
       toast.success("행사가 강제 종료되어 카드 목록에서 숨겨졌습니다.");
     } catch (err: any) {
       console.error(err);

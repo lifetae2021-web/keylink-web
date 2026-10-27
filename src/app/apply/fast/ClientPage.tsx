@@ -1464,31 +1464,40 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
                 transition: 'all 0.15s',
               }}
             >
-              <p style={{ fontSize: '0.7rem', fontWeight: '700', color: femaleOption === 'group' ? '#A98FD5' : '#94A3B8', marginBottom: '6px' }}>지인과 동반 참석</p>
+              <p style={{ fontSize: '0.85rem', fontWeight: '700', color: femaleOption === 'group' ? '#7C5CB8' : '#64748B', marginBottom: '6px' }}>지인과 동반 참석</p>
               <p style={{ fontSize: '1.15rem', fontWeight: '900', color: '#111', marginBottom: '4px' }}>
                 {(sessions.find(s => s.id === Array.from(selectedSessionIds)[0])?.femaleGroupPrice || 25000).toLocaleString()}원
               </p>
-              <p style={{ fontSize: '0.68rem', color: '#94A3B8', lineHeight: 1.4 }}>동반 할인 적용</p>
+              <p style={{ fontSize: '0.8rem', color: '#475569', lineHeight: 1.5, wordBreak: 'keep-all' }}>1만원 할인 적용<br /><span style={{ color: '#7C5CB8', fontWeight: 700 }}>참석 후<br />1만원 쿠폰 추가 지급</span></p>
             </button>
           </div>
           {femaleOption === 'group' && (
             <div style={{ marginTop: '16px', padding: '16px', borderRadius: '12px', background: '#F8FAFC', border: '1px solid #E2E8F0' }}>
-              <p style={{ fontSize: '0.8rem', fontWeight: '700', color: '#475569', marginBottom: '12px' }}>동반 참여자 정보</p>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                <input
-                  className="kl-input"
-                  style={{ background: '#fff', fontSize: '0.85rem' }}
-                  placeholder="이름"
-                  value={groupPartnerName}
-                  onChange={(e) => setGroupPartnerName(e.target.value)}
-                />
-                <input
-                  className="kl-input"
-                  style={{ background: '#fff', fontSize: '0.85rem' }}
-                  placeholder="년생 (ex. 98)"
-                  value={groupPartnerBirthYear}
-                  onChange={(e) => setGroupPartnerBirthYear(e.target.value)}
-                />
+              <p style={{ fontSize: '0.95rem', fontWeight: '800', color: '#334155', marginBottom: '4px' }}>동반 참여자 정보</p>
+              <p style={{ fontSize: '0.8rem', color: '#64748B', marginBottom: '14px', lineHeight: 1.5, wordBreak: 'keep-all' }}>함께 오시는 지인분의 정보를 적어주세요.<br />(지인분도 직접 신청해야 합니다)</p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '700', color: '#475569', marginBottom: '6px' }}>이름</label>
+                  <input
+                    className="kl-input"
+                    style={{ background: '#fff', fontSize: '1rem', width: '100%' }}
+                    placeholder="예: 김민지"
+                    value={groupPartnerName}
+                    onChange={(e) => setGroupPartnerName(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '700', color: '#475569', marginBottom: '6px' }}>출생연도 (2자리)</label>
+                  <input
+                    className="kl-input"
+                    style={{ background: '#fff', fontSize: '1rem', width: '100%' }}
+                    inputMode="numeric"
+                    maxLength={2}
+                    placeholder="예: 98"
+                    value={groupPartnerBirthYear}
+                    onChange={(e) => setGroupPartnerBirthYear(e.target.value)}
+                  />
+                </div>
               </div>
             </div>
           )}
@@ -1503,12 +1512,12 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
             <span style={{ fontWeight: '800', fontSize: '1rem', color: '#111' }}>쿠폰 적용</span>
           </div>
           {form.gender === 'female' && femaleOption === 'group' && (
-            <div style={{ marginBottom: '14px', padding: '12px 14px', background: '#FFF5F4', border: '1px solid #FFD1CC', borderRadius: '12px', fontSize: '0.8rem', color: '#D9381E', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span>⚠️</span> 지인 동반 특가 선택 시 쿠폰 중복 할인은 적용할 수 없습니다.
+            <div style={{ marginBottom: '14px', padding: '14px 16px', background: '#FFF5F4', border: '1px solid #FFD1CC', borderRadius: '12px', fontSize: '0.9rem', lineHeight: 1.6, color: '#B42318', fontWeight: '600', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+              <span>⚠️</span> <span>동반 참석은 쿠폰과 함께 쓸 수 없어요.<br />쿠폰을 쓰려면 <b>1인 참석</b>을 선택해 주세요.</span>
             </div>
           )}
           {userCoupons.length === 0 ? (
-            <p style={{ fontSize: '0.85rem', color: '#aaa', textAlign: 'center', padding: '12px 0' }}>사용 가능한 쿠폰이 없습니다.</p>
+            <p style={{ fontSize: '0.95rem', color: '#64748B', textAlign: 'center', padding: '12px 0' }}>사용 가능한 쿠폰이 없습니다.</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {userCoupons.map(coupon => {
@@ -2755,6 +2764,7 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
                 <ul style={{ paddingLeft: '16px', margin: '0 0 10px 0', display: 'flex', flexDirection: 'column', gap: '2px' }}>
                   <li>일반 신청: 35,000원</li>
                   <li>동반 신청 (지인과 함께 신청 시): 25,000원 (1만 원 할인 적용)</li>
+                  <li>동반 신청 후 참석을 완료하시면 행사 종료 후 다음 회차에 쓸 수 있는 1만 원 동반 쿠폰이 자동 발송됩니다. (신청자·동반자 각각, 회원가입 필수, 유효기간 3개월)</li>
                 </ul>
                 <p style={{ fontSize: '0.8rem', color: '#666', marginTop: '4px' }}>* 대관료, 음료, 다과 및 각종 혜택 비용이 모두 포함되어 있습니다.</p>
               </div>

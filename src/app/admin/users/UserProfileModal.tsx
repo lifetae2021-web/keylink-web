@@ -577,7 +577,7 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
                       유저가 본인의 프로필 정보를 수정했습니다. 아래 변경 내용을 확인해 주세요. '회사명/직무'가 바뀌었다면 라인업 화면에 공개할 마스터 직업에 편입시켜 주세요.
                     </p>
                     <div className="space-y-2 mb-4 max-h-80 overflow-y-auto pr-1">
-                      {[...changeLogs].reverse().slice(0, 15).map((log: any, idx: number) => (
+                      {[...changeLogs].sort((a: any, b: any) => String(b.changedAt || '').localeCompare(String(a.changedAt || ''))).slice(0, 15).map((log: any, idx: number) => (
                         <div key={idx} className="bg-white rounded-xl p-3 shadow-sm border border-rose-100">
                           <div className="flex items-center justify-between gap-2 mb-1.5">
                             <span className="text-[10px] font-bold text-slate-400">{log.changedAt ? new Date(log.changedAt).toLocaleString() : '최근'}</span>
@@ -623,22 +623,22 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
 
                 {/* 비밀번호 재설정 */}
                   <div className="flex items-center justify-between py-4 border-t border-slate-100 mt-1">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center shrink-0">
                         <KeyRound size={18} className="text-slate-400" />
                       </div>
-                      <div>
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">비밀번호 초기화</p>
-                        <p className="text-[0.75rem] font-bold text-slate-400 mt-0.5">임시 비밀번호 생성 후 전달</p>
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">비밀번호 초기화</p>
+                        <p className="text-[0.75rem] font-bold text-slate-400 mt-0.5 whitespace-nowrap">임시 비밀번호 발급</p>
                       </div>
                     </div>
                     <button
                       onClick={handleResetPassword}
                       disabled={isResettingPw}
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black transition-all bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-200 disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black whitespace-nowrap shrink-0 transition-all bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-200 disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                       <KeyRound size={13} />
-                      {isResettingPw ? '처리 중...' : '비밀번호 초기화'}
+                      {isResettingPw ? '처리 중...' : '초기화'}
                     </button>
                   </div>
 

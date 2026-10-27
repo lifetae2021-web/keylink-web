@@ -99,6 +99,17 @@ function MyPageContent() {
     drink: '', etc: '', employmentProof: '',
   });
 
+  // 서류 등록 안내에서 진입하면 수정 창을 열자마자 재직 증명 업로드 영역으로 스크롤
+  const [scrollToProof, setScrollToProof] = useState(false);
+  useEffect(() => {
+    if (!isEditing || !scrollToProof) return;
+    const t = setTimeout(() => {
+      document.getElementById('proof-upload-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setScrollToProof(false);
+    }, 150);
+    return () => clearTimeout(t);
+  }, [isEditing, scrollToProof]);
+
   const [verificationFile, setVerificationFile] = useState<File | null>(null);
   const [verificationPreview, setVerificationPreview] = useState<string>('');
   const [verificationFileName, setVerificationFileName] = useState<string>('');
@@ -230,6 +241,11 @@ function MyPageContent() {
     if (!authUser) return;
     const userId = authUser.uid;
 
+    // 행사 후 뒤늦게 가입한 비회원 등, 아직 지급되지 않은 동반 쿠폰 보정 (서버에서 중복 지급 차단)
+    authUser.getIdToken().then(token => fetch('/api/me/group-coupons', {
+      method: 'POST', headers: { Authorization: `Bearer ${token}` },
+    })).catch(() => {});
+
     const unsubApps = subscribeMyApplications(userId, (apps) => {
       setApplications(apps);
       apps.forEach((app) => {
@@ -339,7 +355,6 @@ function MyPageContent() {
         acc[key] = editForm[key] === undefined ? '' : editForm[key];
         return acc;
       }, {});
-      sanitizedForm.isJobReviewed = false;
       // 저장 형식은 'YY-MM-DD'로 통일. 4자리 연도로 저장돼 있던 회원이 같은 생일로 저장해도 변경으로 기록하지 않기 위해 정규화한 값으로 비교한다.
       sanitizedForm.birthDate = normalizeBirthDate(sanitizedForm.birthDate);
 
@@ -369,9 +384,8 @@ function MyPageContent() {
         });
       }
 
-      if (newLogs.length === 0) {
-        newLogs.push({ field: 'profile', oldValue: '', newValue: '', changedAt });
-      }
+      // 실제로 바뀐 항목이 있을 때만 재승인 대기(관리자 '정보수정' 알림)로 돌린다. 변경 없이 저장만 누른 경우는 기존 상태 유지.
+      const hasAnyChange = newLogs.length > 0;
 
       const updateData: any = {
         ...sanitizedForm,
@@ -391,10 +405,10 @@ function MyPageContent() {
         updatedAt: serverTimestamp()
       };
 
-      if (hasCoreInfoChanged) {
+      if (hasAnyChange) {
         updateData.isJobReviewed = false;
+        updateData.user_logs = arrayUnion(...newLogs);
       }
-      updateData.user_logs = arrayUnion(...newLogs);
 
       console.log('Saving profile. Revoking isVerified and isJobReviewed if core info changed.');
 
@@ -499,6 +513,46 @@ function MyPageContent() {
     ? `${userData?.height ? userData.height + 'cm' : '-'} / ${userData?.weight ? userData.weight + 'kg' : '-'}`
     : null;
 
+  /* ── 입금확정자 중 재직 증명 서류 미등록 안내 (D-day) ── */
+  const renderProofReminder = () => {
+    const hasProof = !!(userData?.employmentProof || userData?.verificationUrl);
+    if (hasProof) return null;
+    const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    const today = startOfDay(new Date());
+    const items = applications
+      .filter(a => a.status === 'confirmed' && !(a as any).employmentProof)
+      .map(a => {
+        const ed = sessionsMap[a.sessionId]?.eventDate as any;
+        const date: Date | null = ed ? (ed?.toDate?.() || new Date(ed)) : null;
+        if (!date) return null;
+        const days = Math.round((startOfDay(date) - today) / 86400000);
+        return days < 0 ? null : { id: a.id, title: sessionsMap[a.sessionId]?.title || '', days };
+      })
+      .filter((x): x is { id: string; title: string; days: number } => !!x)
+      .sort((a, b) => a.days - b.days);
+    if (items.length === 0) return null;
+    const next = items[0];
+    return (
+      <div style={{ background: '#FFF7ED', border: '1.5px solid #FDBA74', borderRadius: '20px', padding: '20px', marginBottom: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+          <span style={{ background: '#EA580C', color: '#fff', fontWeight: 900, fontSize: '0.85rem', padding: '4px 10px', borderRadius: '100px' }}>
+            {next.days === 0 ? 'D-DAY' : `D-${next.days}`}
+          </span>
+          <span style={{ fontWeight: 900, color: '#9A3412', fontSize: '1rem' }}>재직 증명 서류를 등록해 주세요</span>
+        </div>
+        <p style={{ fontSize: '0.88rem', color: '#7C2D12', lineHeight: 1.6, marginBottom: '14px', wordBreak: 'keep-all' }}>
+          {next.title ? `${next.title} ` : ''}참가가 확정되었어요. 원활한 진행을 위해 행사 전까지 재직 증명 서류를 꼭 등록해 주세요.
+        </p>
+        <button
+          onClick={() => { setScrollToProof(true); setIsEditing(true); }}
+          style={{ width: '100%', padding: '14px', borderRadius: '14px', border: 'none', background: '#EA580C', color: '#fff', fontWeight: 800, fontSize: '0.95rem', cursor: 'pointer' }}
+        >
+          서류 등록하러 가기 →
+        </button>
+      </div>
+    );
+  };
+
   /* ── 비회원 전용 간소 마이페이지 ── */
   const renderGuestView = () => (
     <div style={{ maxWidth: '480px', margin: '0 auto', padding: '0 16px' }}>
@@ -506,13 +560,15 @@ function MyPageContent() {
           {/* 비회원 안내 배너 */}
           <div style={{ background: 'linear-gradient(135deg, #FF6F61, #ff8a7a)', borderRadius: '20px', padding: '24px', marginBottom: '20px', textAlign: 'center', color: '#fff' }}>
             <p style={{ fontSize: '0.78rem', fontWeight: '700', opacity: 0.85, marginBottom: '6px' }}>비회원으로 신청하셨어요</p>
-            <h2 style={{ fontSize: '1.2rem', fontWeight: '900', marginBottom: '4px' }}>안녕하세요, {userData?.name || '회원'}님 👋</h2>
+            <h2 style={{ fontSize: '1.2rem', fontWeight: '900', marginBottom: '4px' }}>안녕하세요, {userData?.name || '회원'}님</h2>
             <p style={{ fontSize: '0.82rem', opacity: 0.8 }}>매칭 결과만 확인 가능합니다</p>
           </div>
 
+          {renderProofReminder()}
+
           {/* 매칭 결과 (성공/실패만) */}
           <div style={{ background: '#fff', borderRadius: '20px', padding: '24px', marginBottom: '16px', boxShadow: '0 2px 12px rgba(0,0,0,0.04)', border: '1px solid #f1f5f9' }}>
-            <h3 style={{ fontWeight: '900', color: '#111', marginBottom: '16px', fontSize: '1rem' }}>📋 내 신청 현황</h3>
+            <h3 style={{ fontWeight: '900', color: '#111', marginBottom: '16px', fontSize: '1rem' }}>내 신청 현황</h3>
             {applications.length === 0 ? (
               <p style={{ color: '#aaa', fontSize: '0.85rem', textAlign: 'center', padding: '20px 0' }}>신청 내역이 없습니다.</p>
             ) : (
@@ -528,7 +584,7 @@ function MyPageContent() {
                           background: app.status === 'confirmed' ? '#DCFCE7' : app.status === 'applied' || app.status === 'selected' ? '#FEF9C3' : '#f1f5f9',
                           color: app.status === 'confirmed' ? '#166534' : app.status === 'applied' || app.status === 'selected' ? '#92400e' : '#64748b',
                         }}>
-                          {app.status === 'confirmed' ? '✅ 신청확정' : app.status === 'applied' ? '⏳ 검토중' : app.status === 'selected' ? '⏳ 입금대기' : '취소됨'}
+                          {app.status === 'confirmed' ? '선발확정' : app.status === 'applied' ? '검토중' : app.status === 'selected' ? '입금대기' : '취소됨'}
                         </span>
                         {app.status === 'confirmed' && (() => {
                           const voteData = votedMap[app.sessionId];
@@ -872,6 +928,7 @@ function MyPageContent() {
             </EditRow>
 
              {/* v7.8.5 재직 증명 업로드 섹션 (미리보기 강화) */}
+             <div id="proof-upload-section" />
              <EditRow label="재직 증명 (선택)">
                <div style={{ background: '#F8FAFC', border: '1.5px solid #E2E8F0', borderRadius: '16px', padding: '20px', marginBottom: '24px' }}>
                  <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', lineHeight: 1.6, marginBottom: '16px' }}>
@@ -968,6 +1025,8 @@ function MyPageContent() {
 
       {isGuestUser ? renderGuestView() : (
         <div style={{ maxWidth: '460px', margin: '0 auto', padding: '0 16px' }}>
+
+        {renderProofReminder()}
 
         {/* ─── COUPON BOX ─── */}
         <div style={{ background: '#FFFFFF', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 10px 40px rgba(255,111,97,0.08)', border: '1px solid #FFE8E5', marginBottom: '16px', padding: '24px' }}>
@@ -1321,7 +1380,7 @@ function MyPageContent() {
         )}
 
         {/* ─── LOGOUT ─── */}
-        <button onClick={async () => { await auth.signOut(); router.push('/'); }}
+        <button onClick={async () => { await auth.signOut(); router.push('/login'); }}
           style={{ width: '100%', padding: '18px', borderRadius: '100px', border: '1.5px solid #FFDBE9', background: 'transparent', color: '#FF6F61', fontWeight: '800', fontSize: '1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', transition: 'all 0.2s' }}
           onMouseEnter={e => e.currentTarget.style.background = '#FFF5F4'}
           onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
@@ -1810,7 +1869,7 @@ function ApplicationStatusBlock({ application, session, userId, hasVoted, submit
                   </span>
                   {timeLeftMs > 0 && (
                     <span style={{ color: '#E11D48', fontWeight: '900', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '4px', background: '#FFF1F2', padding: '3px 10px', borderRadius: '100px', border: '1px solid #FFE4E6' }}>
-                      ⏱️ {formatTimeLeft(timeLeftMs)} 내 수정 가능
+                      {formatTimeLeft(timeLeftMs)} 내 수정 가능
                     </span>
                   )}
                 </div>
@@ -1855,7 +1914,7 @@ function ApplicationStatusBlock({ application, session, userId, hasVoted, submit
                 width: '100%'
               }}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  ✅ 투표를 최종 완료하셨습니다.
+                  투표를 최종 완료하셨습니다.
                 </span>
                 <span style={{ fontSize: '0.74rem', color: '#94A3B8', fontWeight: '600' }}>
                   제출 후 30분 초과로 투표가 마감되었습니다.
@@ -2183,7 +2242,7 @@ function CountdownTimer({ targetDate }: { targetDate: Date }) {
 
   return (
     <div style={{ marginTop: '12px', fontSize: '0.85rem', color: '#FF6F61', fontWeight: '800', background: '#FFF5F4', padding: '8px 16px', borderRadius: '100px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-      ⏳ 투표 오픈까지 {timeLeft}
+      투표 오픈까지 {timeLeft}
     </div>
   );
 }
