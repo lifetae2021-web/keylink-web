@@ -51,17 +51,33 @@ export async function POST(req: NextRequest) {
       const newSessionData = newSessionSnap.data()!;
       const counterField = gender === 'male' ? 'currentMale' : 'currentFemale';
 
-      // --- A. 기존 기수 대기자 조회 및 처리 (트랜잭션 내부) ---
-      let promoteeId: string | null = null;
+      // Firestore 트랜잭션은 모든 읽기가 쓰기보다 먼저 실행되어야 하므로 읽기를 먼저 모아서 수행한다.
+      // --- A. 읽기: 기존 기수 대기자 / 신청자 유저 / 새 기수 확정자 ---
       const freedSlot = appData.slotNumber ?? null;
-      if (freedSlot != null && (status === 'confirmed' || status === 'selected' || status === 'waitlisted')) {
-        const waitlistQuery = adminDb.collection('applications')
-          .where('sessionId', '==', oldSessionId)
-          .where('gender', '==', gender)
-          .where('status', '==', 'waitlisted');
-        const waitlistSnap = await transaction.get(waitlistQuery);
-        
-        if (!waitlistSnap.empty) {
+      const freesOldSlot = freedSlot != null && (status === 'confirmed' || status === 'selected' || status === 'waitlisted');
+      const needsNewSlot = status === 'confirmed' || status === 'selected';
+
+      const waitlistSnap = freesOldSlot
+        ? await transaction.get(adminDb.collection('applications')
+            .where('sessionId', '==', oldSessionId)
+            .where('gender', '==', gender)
+            .where('status', '==', 'waitlisted'))
+        : null;
+
+      const userSnapForApp = await transaction.get(adminDb.doc(`users/${appData.userId}`));
+      const isDummy = appData.id?.startsWith('dummy') || appData.userId?.startsWith('user_m_') || appData.userId?.startsWith('user_f_') || userSnapForApp.data()?.isDummy === true;
+
+      const confirmedSnap = needsNewSlot && !isDummy
+        ? await transaction.get(adminDb.collection('applications')
+            .where('sessionId', '==', targetSessionId)
+            .where('gender', '==', gender)
+            .where('status', '==', 'confirmed'))
+        : null;
+
+      // --- B. 기존 기수 대기자 승격 또는 정원 차감 ---
+      if (freesOldSlot) {
+        let promoteeId: string | null = null;
+        if (waitlistSnap && !waitlistSnap.empty) {
           const sorted = waitlistSnap.docs.sort((a, b) => 
             (a.data().appliedAt?.toMillis() || 0) - (b.data().appliedAt?.toMillis() || 0)
           );
@@ -83,50 +99,37 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // --- B. 새 기수 슬롯 계산 및 처리 (트랜잭션 내부) ---
+      // --- C. 새 기수 슬롯 계산 및 처리 ---
       let newSlot: number | null = null;
       let finalStatus = status;
 
-      const userSnapForApp = await transaction.get(adminDb.doc(`users/${appData.userId}`));
-      const isDummy = appData.id?.startsWith('dummy') || appData.userId?.startsWith('user_m_') || appData.userId?.startsWith('user_f_') || userSnapForApp.data()?.isDummy === true;
+      if (needsNewSlot && confirmedSnap) {
+        const maxCount = gender === 'male' ? (newSessionData.maxMale || 8) : (newSessionData.maxFemale || 8);
 
-      if (status === 'confirmed' || status === 'selected') {
-        if (isDummy) {
-          newSlot = null;
+        const usedSlots = new Set(confirmedSnap.docs
+          .filter(d => {
+            const data = d.data();
+            const dIsDummy = data.id?.startsWith('dummy') || data.userId?.startsWith('user_m_') || data.userId?.startsWith('user_f_');
+            return !dIsDummy;
+          })
+          .map(d => d.data().slotNumber)
+          .filter((n): n is number => n != null));
+          
+        let slot = 1;
+        while (slot <= maxCount && usedSlots.has(slot)) slot++;
+        
+        if (slot <= maxCount) {
+          newSlot = slot;
+          transaction.update(newSessionRef, {
+            [counterField]: FieldValue.increment(1),
+            updatedAt: FieldValue.serverTimestamp()
+          });
         } else {
-          const maxCount = gender === 'male' ? (newSessionData.maxMale || 8) : (newSessionData.maxFemale || 8);
-
-          const confirmedQuery = adminDb.collection('applications')
-            .where('sessionId', '==', targetSessionId)
-            .where('gender', '==', gender)
-            .where('status', '==', 'confirmed');
-          const confirmedSnap = await transaction.get(confirmedQuery);
-          
-          const usedSlots = new Set(confirmedSnap.docs
-            .filter(d => {
-              const data = d.data();
-              const dIsDummy = data.id?.startsWith('dummy') || data.userId?.startsWith('user_m_') || data.userId?.startsWith('user_f_');
-              return !dIsDummy;
-            })
-            .map(d => d.data().slotNumber)
-            .filter((n): n is number => n != null));
-            
-          let slot = 1;
-          while (slot <= maxCount && usedSlots.has(slot)) slot++;
-          
-          if (slot <= maxCount) {
-            newSlot = slot;
-            transaction.update(newSessionRef, {
-              [counterField]: FieldValue.increment(1),
-              updatedAt: FieldValue.serverTimestamp()
-            });
-          } else {
-            finalStatus = 'waitlisted';
-          }
+          finalStatus = 'waitlisted';
         }
       }
 
-      // --- C. 신청서 정보 업데이트 ---
+      // --- D. 신청서 정보 업데이트 ---
       transaction.update(appRef, {
         sessionId: targetSessionId,
         status: finalStatus,
