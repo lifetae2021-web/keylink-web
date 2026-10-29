@@ -18,6 +18,7 @@ import toast from 'react-hot-toast';
 import Link from 'next/link';
 import { compressImage, formatBirthDate, isValidBirthDate } from '@/lib/utils';
 import { buildProfileChangeLogs } from '@/lib/profileChangeLog';
+import { MIN_REDEEM_POINTS } from '@/lib/pointsConfig';
 import { detectInAppBrowser, InAppInfo } from '@/lib/inAppBrowser';
 import InAppBrowserSheet from '@/components/InAppBrowserSheet';
 import { EventCalendar } from '@/components/EventsSection';
@@ -200,6 +201,9 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
   // ── Coupon state ──
   const [userCoupons, setUserCoupons] = useState<any[]>([]);
   const [selectedCoupon, setSelectedCoupon] = useState<any>(null);
+  const [pointBalance, setPointBalance] = useState(0);
+  const [isPointMember, setIsPointMember] = useState(false);
+  const [usePoints, setUsePoints] = useState(false);
 
   // ── Duplicate account modal ──
   const [dupModal, setDupModal] = useState<{ provider: ProviderType; phone: string } | null>(null);
@@ -474,6 +478,8 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
             if (d.gender) {
               setIsGenderLocked(true);
             }
+            setPointBalance(d.points || 0);
+            setIsPointMember(!currentUser.isAnonymous && d.isRegistered !== false && d.loginMethod !== 'anonymous');
           }
 
           // 사용 가능한 쿠폰 로드
@@ -605,7 +611,14 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
     return value || amount || 0;
   };
 
-  const getFinalPrice = () => Math.max(0, getBasePrice() - getCouponDiscount());
+  // 포인트는 정식 회원이 1,000P 이상 보유 시 사용 가능, 쿠폰 적용 후 금액까지만 (실제 차감은 신청 후 서버에서)
+  const canUsePoints = isPointMember && pointBalance >= MIN_REDEEM_POINTS;
+  const getPointDiscount = () => {
+    if (!usePoints || !canUsePoints) return 0;
+    return Math.min(pointBalance, Math.max(0, getBasePrice() - getCouponDiscount()));
+  };
+
+  const getFinalPrice = () => Math.max(0, getBasePrice() - getCouponDiscount() - getPointDiscount());
 
   const visibleSessions = sessions.filter(s => {
     if (s.isTest && !isAdmin) return false;
@@ -939,6 +952,7 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
         }, { merge: true });
 
         // Create applications
+        const createdAppIds: string[] = [];
         for (const sessionId of Array.from(selectedSessionIds)) {
           const basePrice = getBasePrice(sessionId);
           const couponDiscount = getCouponDiscount();
@@ -982,6 +996,7 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
           }
 
           const appRef = doc(collection(db, 'applications'));
+          createdAppIds.push(appRef.id);
           batch.set(appRef, {
             userId: uid,
             sessionId,
@@ -1030,6 +1045,26 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
         }
 
         await batch.commit();
+
+        // 포인트 할인은 첫 번째 신청서에 서버에서 차감·적용 (실패해도 신청 자체는 유지)
+        const pointDiscount = getPointDiscount();
+        if (pointDiscount > 0 && createdAppIds.length > 0) {
+          try {
+            const token = await auth.currentUser?.getIdToken();
+            const res = await fetch('/api/points/redeem', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+              body: JSON.stringify({ applicationId: createdAppIds[0], amount: pointDiscount }),
+            });
+            if (!res.ok) {
+              const data = await res.json().catch(() => ({}));
+              throw new Error(data.error);
+            }
+          } catch (pointErr: any) {
+            console.error('[point redeem error]', pointErr);
+            toast.error(`신청은 완료됐지만 포인트 적용에 실패했어요.${pointErr?.message ? `\n(${pointErr.message})` : ''}\n포인트 없이 결제 금액이 안내됩니다.`, { duration: 6000 });
+          }
+        }
         
         setSubmitted(true);
         toast.success('신청이 완료되었습니다!');
@@ -1572,6 +1607,43 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
         </div>
       )}
 
+      {/* ─── 포인트 사용 (정식 회원만) ─── */}
+      {currentUser && isPointMember && (
+        <div style={{ marginTop: '12px', padding: '20px 24px', background: '#fff', borderRadius: '16px', border: '1px solid #E2E8F0', boxShadow: '0 4px 12px rgba(0,0,0,0.02)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '1.1rem' }}>🪙</span>
+                <span style={{ fontWeight: '800', fontSize: '1rem', color: '#111' }}>포인트 사용</span>
+              </div>
+              <p style={{ fontSize: '0.8rem', color: '#64748B', marginTop: '6px' }}>
+                보유 <b style={{ color: '#111' }}>{pointBalance.toLocaleString()}P</b>
+                {!canUsePoints && ` · ${MIN_REDEEM_POINTS.toLocaleString()}P부터 사용 가능`}
+              </p>
+            </div>
+            <button
+              type="button"
+              disabled={!canUsePoints}
+              onClick={() => setUsePoints(v => !v)}
+              style={{
+                flexShrink: 0, padding: '10px 16px', borderRadius: '100px', border: 'none',
+                cursor: canUsePoints ? 'pointer' : 'not-allowed',
+                background: usePoints && canUsePoints ? '#FF6F61' : '#F1F5F9',
+                color: usePoints && canUsePoints ? '#fff' : (canUsePoints ? '#334155' : '#94A3B8'),
+                fontWeight: '800', fontSize: '0.85rem',
+              }}
+            >
+              {usePoints && canUsePoints ? `${getPointDiscount().toLocaleString()}P 사용 중` : '전액 사용'}
+            </button>
+          </div>
+          {canUsePoints && Array.from(selectedSessionIds).length > 1 && (
+            <p style={{ fontSize: '0.72rem', color: '#aaa', marginTop: '10px', lineHeight: 1.5 }}>
+              * 포인트는 복수 기수 선택 시 첫 번째 기수에 적용됩니다.
+            </p>
+          )}
+        </div>
+      )}
+
       {/* ─── 최종 결제 금액 요약 ─── */}
       {form.gender && (
         <div style={{ marginTop: '12px', padding: '18px 20px', background: '#FFF5F4', borderRadius: '14px', border: '1px solid rgba(255,111,97,0.2)' }}>
@@ -1581,6 +1653,11 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
               {getCouponDiscount() > 0 && (
                 <span style={{ fontSize: '0.8rem', color: '#10B981', fontWeight: '700', marginRight: '8px' }}>
                   (-{getCouponDiscount().toLocaleString()}원 쿠폰)
+                </span>
+              )}
+              {getPointDiscount() > 0 && (
+                <span style={{ fontSize: '0.8rem', color: '#10B981', fontWeight: '700', marginRight: '8px' }}>
+                  (-{getPointDiscount().toLocaleString()}P)
                 </span>
               )}
               <span style={{ fontSize: '1.3rem', fontWeight: '900', color: '#FF6F61' }}>{getFinalPrice().toLocaleString()}원</span>

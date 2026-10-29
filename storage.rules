@@ -80,6 +80,15 @@ service firebase.storage {
     }
 
     // ─────────────────────────────────────
+    // 사이트 공용 이미지 (떨어지는 포인트 이미지 등): site_assets/...
+    // ─────────────────────────────────────
+    match /site_assets/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin() && request.resource.size < 2 * 1024 * 1024 &&
+        request.resource.contentType.matches('image/.*');
+    }
+
+    // ─────────────────────────────────────
     // 그 외 모든 경로: 기본 차단
     // ─────────────────────────────────────
     match /{allPaths=**} {

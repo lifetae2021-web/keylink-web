@@ -2,10 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { Save, Bell, Shield, Globe, Database, Key, Gift, Loader2, Flower2, Leaf, Snowflake } from 'lucide-react';
-import { auth, db } from '@/lib/firebase';
+import { auth, db, storage } from '@/lib/firebase';
+import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { getIdToken } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import toast from 'react-hot-toast';
+import { DEFAULT_DROP_ENABLED, DEFAULT_DROP_CHANCE_PERCENT, DEFAULT_DROP_DAILY_LIMIT } from '@/lib/pointsConfig';
+import PointDropImage, { POINT_DROP_PRESETS, DEFAULT_POINT_DROP_IMAGE } from '@/components/PointDropImage';
 
 const panel = { background: '#ffffff', border: '1px solid #f1f5f9', borderRadius: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' };
 
@@ -236,6 +239,9 @@ export default function SettingsPage() {
     snowStartDay: 1,
     snowEndMonth: 2,
     snowEndDay: 28,
+    pointDropEnabled: DEFAULT_DROP_ENABLED,
+    pointDropChance: DEFAULT_DROP_CHANCE_PERCENT,
+    pointDropDailyLimit: DEFAULT_DROP_DAILY_LIMIT,
   });
 
   const [openEffect, setOpenEffect] = useState<string | null>(null);
@@ -282,6 +288,58 @@ export default function SettingsPage() {
     }
   };
 
+  // 떨어지는 포인트 이미지: 기본 제공 + 업로드 이미지 중 여러 개 선택, 떨어질 때마다 선택된 것 중 무작위
+  // 선택/업로드/삭제는 즉시 저장 (하단 저장 버튼과 별개)
+  const [uploadingDropImage, setUploadingDropImage] = useState(false);
+  const selectedDropImages: string[] = Array.isArray(settings.pointDropImages) && settings.pointDropImages.length > 0
+    ? settings.pointDropImages : [DEFAULT_POINT_DROP_IMAGE];
+  const uploadedDropImages: string[] = Array.isArray(settings.pointDropUploads) ? settings.pointDropUploads : [];
+
+  const saveDropImages = async (updates: { pointDropImages?: string[]; pointDropUploads?: string[] }) => {
+    const prevSettings = settings;
+    setSettings((prev: any) => ({ ...prev, ...updates }));
+    try {
+      await setDoc(doc(db, 'settings', 'general'), { ...updates, updatedAt: new Date() }, { merge: true });
+    } catch (e) {
+      console.error(e);
+      setSettings(prevSettings);
+      toast.error('이미지 설정 저장 중 오류가 발생했습니다.');
+    }
+  };
+  const toggleDropImage = (image: string) => {
+    const isOn = selectedDropImages.includes(image);
+    if (isOn && selectedDropImages.length === 1) return toast.error('이미지는 최소 1개 선택되어 있어야 합니다.');
+    saveDropImages({ pointDropImages: isOn ? selectedDropImages.filter(i => i !== image) : [...selectedDropImages, image] });
+  };
+  const handleDropImageUpload = async (file: File | undefined) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) return toast.error('이미지 파일만 올릴 수 있습니다.');
+    if (file.size > 2 * 1024 * 1024) return toast.error('2MB 이하 이미지만 올릴 수 있습니다.');
+    setUploadingDropImage(true);
+    try {
+      const ext = file.name.split('.').pop()?.toLowerCase() || 'png';
+      const imgRef = storageRef(storage, `site_assets/point_drop/${Date.now()}.${ext}`);
+      await uploadBytes(imgRef, file, { contentType: file.type });
+      const url = await getDownloadURL(imgRef);
+      // 올린 이미지는 바로 선택 상태로 추가
+      await saveDropImages({ pointDropUploads: [...uploadedDropImages, url], pointDropImages: [...selectedDropImages, url] });
+      toast.success('이미지를 추가했습니다.');
+    } catch (e) {
+      console.error(e);
+      toast.error('이미지 업로드 중 오류가 발생했습니다.');
+    } finally {
+      setUploadingDropImage(false);
+    }
+  };
+  const removeUploadedDropImage = (url: string) => {
+    if (!confirm('이 이미지를 목록에서 삭제할까요?')) return;
+    const nextSelected = selectedDropImages.filter(i => i !== url);
+    saveDropImages({
+      pointDropUploads: uploadedDropImages.filter(i => i !== url),
+      pointDropImages: nextSelected.length > 0 ? nextSelected : [DEFAULT_POINT_DROP_IMAGE],
+    });
+  };
+
   const [savingEffectDates, setSavingEffectDates] = useState(false);
   const handleSaveEffectDates = async (fields: string[]) => {
     setSavingEffectDates(true);
@@ -323,6 +381,8 @@ export default function SettingsPage() {
         snowStartDay: Number(settings.snowStartDay),
         snowEndMonth: Number(settings.snowEndMonth),
         snowEndDay: Number(settings.snowEndDay),
+        pointDropChance: Math.min(100, Math.max(0, Number(settings.pointDropChance) || 0)),
+        pointDropDailyLimit: Math.max(0, Math.floor(Number(settings.pointDropDailyLimit) || 0)),
         updatedAt: new Date()
       };
       await setDoc(docRef, payload, { merge: true });
@@ -472,6 +532,68 @@ export default function SettingsPage() {
                     </div>
                   );
                 })()}
+              </div>
+              <div style={{ ...panel, padding: '24px' }}>
+                <h3 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: 4, color: '#334155' }}>떨어지는 포인트</h3>
+                <p style={{ fontSize: '0.78rem', color: '#666', marginBottom: 8 }}>
+                  하루 첫 입장 시 10초 안에 1개가 반드시 떨어지고, 이후 머무는 동안 3분마다 아래 확률로 떨어집니다. 누르면 10~50P(가끔 100P·500P)가 적립됩니다.
+                </p>
+                <Toggle label="떨어지는 포인트 사용" desc="끄면 모든 방문자에게 포인트 동전이 더 이상 떨어지지 않습니다." value={settings.pointDropEnabled !== false} onChange={v => handleChange('pointDropEnabled', v)} />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4" style={{ marginTop: 16 }}>
+                  <InputRow label="떨어질 확률 (%, 3분마다)" value={settings.pointDropChance} onChange={v => handleChange('pointDropChance', v)} type="number" />
+                  <InputRow label="1인당 하루 최대 개수" value={settings.pointDropDailyLimit} onChange={v => handleChange('pointDropDailyLimit', v)} type="number" />
+                </div>
+                <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid #f1f5f9' }}>
+                  <p style={{ fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>
+                    떨어지는 이미지 <span style={{ color: '#FF6F61' }}>{selectedDropImages.length}개 선택</span>
+                  </p>
+                  <p style={{ fontSize: '0.75rem', color: '#555', marginTop: 2, marginBottom: 12 }}>
+                    눌러서 선택/해제하세요. 떨어질 때마다 선택된 이미지 중 하나가 무작위로 나옵니다.
+                  </p>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(76px, 1fr))', gap: 8 }}>
+                    {[...POINT_DROP_PRESETS.map(p => ({ image: p.key, label: p.label, uploaded: false })),
+                      ...uploadedDropImages.map((url, i) => ({ image: url, label: `직접 올림 ${i + 1}`, uploaded: true }))].map(item => {
+                      const isOn = selectedDropImages.includes(item.image);
+                      return (
+                        <div key={item.image} style={{ position: 'relative' }}>
+                          <button type="button" onClick={() => toggleDropImage(item.image)}
+                            style={{
+                              width: '100%', padding: '10px 4px 8px', borderRadius: 12, cursor: 'pointer',
+                              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+                              background: isOn ? 'rgba(255,111,97,0.08)' : '#f8fafc',
+                              border: isOn ? '2px solid #FF6F61' : '2px solid #e2e8f0',
+                            }}>
+                            <PointDropImage image={item.image} size={36} />
+                            <span style={{ fontSize: '0.7rem', fontWeight: 600, color: isOn ? '#FF6F61' : '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
+                              {isOn ? '✓ ' : ''}{item.label}
+                            </span>
+                          </button>
+                          {item.uploaded && (
+                            <button type="button" aria-label="이미지 삭제" onClick={() => removeUploadedDropImage(item.image)}
+                              style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: '50%', background: '#475569', color: '#fff', fontSize: 12, lineHeight: '20px', textAlign: 'center' }}>
+                              ×
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                    <label style={{
+                      borderRadius: 12, border: '2px dashed #cbd5e1', display: 'flex', flexDirection: 'column',
+                      alignItems: 'center', justifyContent: 'center', gap: 4, minHeight: 76,
+                      cursor: uploadingDropImage ? 'wait' : 'pointer', opacity: uploadingDropImage ? 0.6 : 1,
+                      fontSize: '0.7rem', fontWeight: 600, color: '#64748b',
+                    }}>
+                      {uploadingDropImage ? <Loader2 size={18} className="animate-spin" /> : <span style={{ fontSize: 20, lineHeight: 1 }}>+</span>}
+                      {uploadingDropImage ? '업로드 중' : '이미지 추가'}
+                      <input type="file" accept="image/*" hidden disabled={uploadingDropImage}
+                        onChange={e => { handleDropImageUpload(e.target.files?.[0]); e.target.value = ''; }} />
+                    </label>
+                  </div>
+                  <p style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: 8 }}>직접 올리는 이미지는 정사각형 투명 배경 PNG 권장 (2MB 이하)</p>
+                </div>
+                <p style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: 10 }}>
+                  이미지 선택은 바로 저장되고, 확률·개수·사용 여부는 하단 저장 버튼을 눌러야 적용됩니다. 저장 후 최대 1분 안에 반영됩니다. 매일 방문 포인트(100P)는 이 설정과 별개로 계속 지급됩니다.
+                </p>
               </div>
               <div className="flex justify-end">
                 <button

@@ -23,6 +23,7 @@ import { subscribeSession } from '@/lib/firestore/sessions';
 import { getMyVote, getMyVotesMap, getVotesReceivedByMe } from '@/lib/firestore/votes';
 import { Application, Session, Vote } from '@/lib/types';
 import { useAuth } from '@/contexts/AuthContext';
+import MyPointsCard from '@/components/MyPointsCard';
 
 const EMPTY = '미입력';
 
@@ -1027,6 +1028,8 @@ function MyPageContent() {
         <div style={{ maxWidth: '460px', margin: '0 auto', padding: '0 16px' }}>
 
         {renderProofReminder()}
+
+        {authUser && <MyPointsCard uid={authUser.uid} balance={authUserData?.points || 0} />}
 
         {/* ─── COUPON BOX ─── */}
         <div style={{ background: '#FFFFFF', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 10px 40px rgba(255,111,97,0.08)', border: '1px solid #FFE8E5', marginBottom: '16px', padding: '24px' }}>

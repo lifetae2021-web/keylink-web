@@ -31,12 +31,15 @@ service cloud.firestore {
       // v8.8.9: 라인업 데이터 조회를 위해 public read 허용 (클라이언트에서 노출 필터링)
       allow read: if true;
       // v7.3.3: 신규 가입(create) 허용 - 본인 UID로 생성하되, role은 반드시 'user'여야 함
-      allow create: if isUser(userId) && request.resource.data.role in ['user', 'guest'];
+      // 포인트 잔액은 서버(Admin SDK)에서만 변경 - 본인이 생성/수정 시 points 필드를 넣거나 바꿀 수 없음
+      allow create: if isUser(userId) && request.resource.data.role in ['user', 'guest'] &&
+        !('points' in request.resource.data);
       // 기존 문서 수정: 관리자이거나, 본인일 때 (role 필드가 없거나 'user', 'guest'여야 함)
       // role은 본인이 올릴 수 없음: 기존 값 그대로(일반회원/VIP회원/제안 등 한글 등급 포함)이거나 user/guest일 때만 허용
       allow update: if isAdmin() || (isUser(userId) &&
         (request.resource.data.get('role', null) == resource.data.get('role', null) ||
-         request.resource.data.get('role', 'user') in ['user', 'guest']));
+         request.resource.data.get('role', 'user') in ['user', 'guest']) &&
+        request.resource.data.get('points', 0) == resource.data.get('points', 0));
       allow delete: if isSuperAdmin();
 
       // v8.15.9: 쿠폰 및 포인트 내역 서브 컬렉션 권한 추가

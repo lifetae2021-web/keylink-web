@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb, adminAuth } from '@/lib/firebaseAdmin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { refundApplicationPoints } from '@/lib/points';
 
 export async function POST(req: NextRequest) {
   try {
@@ -111,6 +112,15 @@ export async function POST(req: NextRequest) {
         });
       }
     });
+
+    // 신청 시 사용한 포인트 반환 (쿠폰 복구와 동일하게 삭제 시점에 처리)
+    if (appPreData.userId && appPreData.pointsUsed) {
+      try {
+        await refundApplicationPoints(appPreData.userId, applicationId);
+      } catch (e) {
+        console.error('Point refund failed:', e);
+      }
+    }
 
     return NextResponse.json({ success: true });
 

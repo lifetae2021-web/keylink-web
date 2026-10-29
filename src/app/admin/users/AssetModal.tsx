@@ -8,9 +8,7 @@ import {
 } from 'lucide-react';
 import { db, auth } from '@/lib/firebase';
 import { 
-  collection, addDoc, getDocs, query, orderBy, 
-  Timestamp, serverTimestamp, doc, updateDoc,
-  deleteDoc, increment
+  collection, getDocs, query, orderBy, doc, deleteDoc
 } from 'firebase/firestore';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
@@ -129,34 +127,36 @@ export default function AssetModal({ user, isOpen, onClose }: AssetModalProps) {
     if (pointAmount <= 0) return toast.error('금액을 입력해 주세요.');
     if (!pointReason) return toast.error('사유를 입력해 주세요.');
 
-    const adjustment = pointType === 'add' ? pointAmount : -pointAmount;
-
     try {
       setIsLoading(true);
-      const userRef = doc(db, 'users', user.id);
-      
-      // Update user balance
-      await updateDoc(userRef, {
-        points: increment(adjustment)
+      // 지급분은 1년 유효 적립 건으로, 차감은 먼저 만료되는 건부터 서버에서 처리
+      const token = await auth.currentUser?.getIdToken();
+      const res = await fetch('/api/admin/points/adjust', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          userId: user.id,
+          type: pointType === 'add' ? 'add' : 'deduct',
+          amount: pointAmount,
+          reason: pointReason,
+        }),
       });
-
-      // Log to history
-      await addDoc(collection(db, 'users', user.id, 'pointHistory'), {
-        type: pointType,
-        amount: pointAmount,
-        reason: pointReason,
-        createdAt: serverTimestamp(),
-        adminId: 'admin'
-      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || '포인트 처리 중 오류가 발생했습니다.');
+      }
 
       toast.success(`포인트가 ${pointType === 'add' ? '지급' : '차감'}되었습니다.`);
       fetchData();
       setView('list');
       setPointAmount(0);
       setPointReason('');
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      toast.error('포인트 처리 중 오류가 발생했습니다.');
+      toast.error(err?.message || '포인트 처리 중 오류가 발생했습니다.');
     } finally {
       setIsLoading(false);
     }
@@ -272,11 +272,13 @@ export default function AssetModal({ user, isOpen, onClose }: AssetModalProps) {
                             <span className="text-lg font-black text-[#FF6F61]">{user?.points?.toLocaleString() || 0} P</span>
                         </div>
                         <div className="space-y-2">
-                           {pointLogs.map(log => (
+                           {pointLogs.map(log => {
+                                const isPlus = ['add', 'earn', 'refund'].includes(log.type);
+                                return (
                                 <div key={log.id} className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/5 flex items-center justify-between">
                                     <div className="flex items-center gap-3">
-                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${log.type === 'add' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
-                                            {log.type === 'add' ? <ArrowUpRight size={14} /> : <ArrowDownLeft size={14} />}
+                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isPlus ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
+                                            {isPlus ? <ArrowUpRight size={14} /> : <ArrowDownLeft size={14} />}
                                         </div>
                                         <div>
                                             <div className="text-[13px] font-bold text-white">{log.reason}</div>
@@ -285,11 +287,12 @@ export default function AssetModal({ user, isOpen, onClose }: AssetModalProps) {
                                             </div>
                                         </div>
                                     </div>
-                                    <span className={`text-[13px] font-black ${log.type === 'add' ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                        {log.type === 'add' ? '+' : '-'}{log.amount?.toLocaleString()}
+                                    <span className={`text-[13px] font-black ${isPlus ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                        {isPlus ? '+' : '-'}{log.amount?.toLocaleString()}
                                     </span>
                                 </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </div>
                 )

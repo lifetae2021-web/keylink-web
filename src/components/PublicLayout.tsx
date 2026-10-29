@@ -9,6 +9,7 @@ import AutumnLeaves from './AutumnLeaves';
 import Snow from './Snow';
 import ProfileGuard from './ProfileGuard';
 import AnalyticsTracker from './AnalyticsTracker';
+import PointRewards from './PointRewards';
 import { AuthProvider } from '@/contexts/AuthContext';
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
@@ -38,6 +39,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
         <CherryBlossoms />
         <AutumnLeaves />
         <Snow />
+        <PointRewards />
         <Navbar />
         <main className="flex-grow">{children}</main>
         {shouldShowFooter && <Footer />}
