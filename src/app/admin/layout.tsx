@@ -6,7 +6,7 @@ import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { 
   collection, query, where, onSnapshot, doc, getDoc,
-  orderBy, limit, getDocs
+  orderBy, limit, getDocs, updateDoc
 } from 'firebase/firestore';
 import {
   LayoutDashboard, Users, Calendar, TrendingUp,
@@ -271,8 +271,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   useEffect(() => {
     if (authState !== 'admin' && authState !== 'super_admin') return;
 
-    const saved = localStorage.getItem('kl_admin_noti_viewed');
-    if (saved) setLastViewedNoti(Number(saved));
+    // 알림 읽음 시각은 관리자 계정 문서에 저장해 폰/PC 등 기기 간 동기화
+    const uid = auth.currentUser?.uid;
+    const unsubViewed = uid
+      ? onSnapshot(doc(db, 'users', uid), (snap) => {
+          const viewedAt = snap.data()?.adminNotiViewedAt;
+          if (typeof viewedAt === 'number') setLastViewedNoti(viewedAt);
+        }, (err) => {
+          console.error('Error syncing notification read state:', err);
+        })
+      : () => {};
 
     const safeDate = (d: any) => {
       if (!d) return new Date(0);
@@ -417,7 +425,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       }
     );
 
-    return () => { unsubUsers(); unsubApps(); unsubPrivate(); unsubCancelled(); };
+    return () => { unsubViewed(); unsubUsers(); unsubApps(); unsubPrivate(); unsubCancelled(); };
   }, [authState]);
 
   // 3. 알림 통합 및 정렬
@@ -445,7 +453,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const markAllRead = () => {
     const now = Date.now();
     setLastViewedNoti(now);
-    localStorage.setItem('kl_admin_noti_viewed', String(now));
+    const uid = auth.currentUser?.uid;
+    if (uid) {
+      updateDoc(doc(db, 'users', uid), { adminNotiViewedAt: now }).catch((err) => {
+        console.error('Error saving notification read state:', err);
+      });
+    }
   };
   const pageTitle   = PAGE_TITLE[pathname] ?? '관리자';
 
