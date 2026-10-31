@@ -1638,6 +1638,7 @@ export default function UsersPage() {
                               </>
                             )}
                           </div>
+                          {filter === 'pending' && <div className="mt-1.5"><ProofBadge user={u} onOpen={() => { setOpenProofDirect(true); setSelectedUserForProfile(u); }} /></div>}
                         </div>
                       </div>
 
@@ -1704,8 +1705,8 @@ export default function UsersPage() {
                     </div>
 
                     {/* Middle Row: Metrics & Job Review */}
-                    <div className="flex items-center justify-between bg-slate-50/80 rounded-xl p-3">
-                      <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex items-center justify-between gap-2 bg-slate-50/80 rounded-xl p-3">
+                      <div className="flex flex-nowrap items-center gap-2.5 min-w-0">
                         <div className="flex items-center gap-1">
                           <span className="text-sky-600 text-[9px] font-black">T</span>
                           <span className="text-slate-700 text-[0.8rem] font-extrabold">{u.participationCount || 0}</span>
@@ -1751,16 +1752,15 @@ export default function UsersPage() {
                           return null;
                         })()}
                       </div>
-                      <label className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all ${u.isJobReviewed ? 'bg-blue-100 border-blue-200 text-blue-700' : 'bg-white border-slate-200 text-slate-400 shadow-sm'}`}>
+                      <label className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all shrink-0 ${u.isJobReviewed ? 'bg-blue-100 border-blue-200 text-blue-700' : 'bg-white border-slate-200 text-slate-400 shadow-sm'}`}>
                         <input
                           type="checkbox"
                           checked={!!u.isJobReviewed}
                           onChange={(e) => toggleJobReviewed(u.id, e.target.checked)}
                           className="w-3.5 h-3.5 rounded"
                         />
-                        <span className="text-[0.7rem] font-black">직업승인</span>
+                        <span className="text-[0.7rem] font-black whitespace-nowrap">직업승인</span>
                       </label>
-                      {filter === 'pending' && <ProofBadge user={u} onOpen={() => { setOpenProofDirect(true); setSelectedUserForProfile(u); }} />}
                     </div>
 
                     {/* Action Buttons Row */}
