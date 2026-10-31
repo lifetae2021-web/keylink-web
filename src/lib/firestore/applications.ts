@@ -62,6 +62,13 @@ function fromDoc(snap: DocumentSnapshot): Application | null {
     birthDate: d.birthDate,
     height: d.height,
     isDarkTemplar: d.isDarkTemplar,
+    // 결제 정보 (마이페이지 입금 안내 금액)
+    price: d.price,
+    couponId: d.couponId,
+    couponTitle: d.couponTitle,
+    couponDiscount: d.couponDiscount,
+    maleOption: d.maleOption,
+    femaleOption: d.femaleOption,
   };
 }
 
