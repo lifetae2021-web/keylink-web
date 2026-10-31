@@ -1145,6 +1145,7 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                       const event = events.find(e => e.id === app.sessionId);
                       const regionName = !event ? '-' : event.region === 'busan' ? '부산' : event.region === 'changwon' ? '창원' : event.region;
                       const eventDateLabel = event?.eventDate ? format(event.eventDate.toDate(), 'MM.dd (E)', { locale: ko }) : '';
+                      const eventDateTimeLabel = event?.eventDate ? format(event.eventDate.toDate(), 'MM.dd (E) HH:mm', { locale: ko }) : '';
 
                       const isFull = (app.gender === 'male' && isMaleFull) || (app.gender === 'female' && isFemaleFull);
                       const canSelect = app.status === 'applied' || app.status === 'held';
@@ -1567,7 +1568,7 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                                       </div>
                                       <div className="text-[0.75rem] text-slate-500 font-bold mt-0.5">
                                         {(() => { const bd = user.birthDate || app.birthDate; return bd ? <span>{bd.includes('-') ? bd.split('-')[0].slice(-2) : (bd.length === 8 ? bd.slice(2, 4) : bd.slice(0, 2))}년생</span> : <span>??</span>; })()}
-                                        {' · '}{regionName} {event?.episodeNumber}기{eventDateLabel && ` · ${eventDateLabel}`}
+                                        {' · '}{regionName} {event?.episodeNumber}기{eventDateTimeLabel && ` · ${eventDateTimeLabel}`}
                                       </div>
                                     </div>
                                   </div>
@@ -1839,7 +1840,7 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                 const user = userMap[app.userId] || {};
                 const event = events.find(e => e.id === app.sessionId);
                 const regionName = event?.region === 'busan' ? '부산' : (event?.region === 'changwon' ? '창원' : '');
-                const eventDateLabel = event?.eventDate ? format(event.eventDate.toDate(), 'MM.dd (E)', { locale: ko }) : '';
+                const eventDateLabel = event?.eventDate ? format(event.eventDate.toDate(), 'MM.dd (E) HH:mm', { locale: ko }) : '';
                 const aStatus = APP_STATUS[app.status] || { label: app.status, color: '#64748B', bg: '#F1F5F9' };
                 const isFull = (app.gender === 'male' && isMaleFull) || (app.gender === 'female' && isFemaleFull);
                 const isOverQuota = overQuotaAppIds.has(app.id);
