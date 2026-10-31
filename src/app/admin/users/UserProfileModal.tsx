@@ -10,6 +10,7 @@ import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import toast from 'react-hot-toast';
 import { useState, useEffect, useRef } from 'react';
 import AdminNotesSection from './AdminNotesSection';
+import MagnifierImage from '@/components/ui/MagnifierImage';
 import { createPortal } from 'react-dom';
 
 interface UserProfileModalProps {
@@ -491,11 +492,11 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
               {/* Profile Image & Name Section */}
               <div className="relative h-96 bg-slate-100 border-b border-slate-100 overflow-hidden">
                 {currentPhoto && !brokenPhotos[photoIndex] ? (
-                  <img
+                  <MagnifierImage
+                    key={currentPhoto}
                     src={currentPhoto}
                     alt={user.name}
                     onError={() => setBrokenPhotos(prev => ({ ...prev, [photoIndex]: true }))}
-                    className="w-full h-full object-contain hover:scale-[1.4] transition-transform duration-500 cursor-zoom-in"
                   />
                 ) : (
                   <div className="w-full h-full flex flex-col items-center justify-center bg-slate-50 p-6 text-center break-all">
