@@ -1568,8 +1568,9 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                                       </div>
                                       <div className="text-[0.75rem] text-slate-500 font-bold mt-0.5">
                                         {(() => { const bd = user.birthDate || app.birthDate; return bd ? <span>{bd.includes('-') ? bd.split('-')[0].slice(-2) : (bd.length === 8 ? bd.slice(2, 4) : bd.slice(0, 2))}년생</span> : <span>??</span>; })()}
-                                        {' · '}{regionName} {event?.episodeNumber}기{eventDateTimeLabel && ` · ${eventDateTimeLabel}`}
+                                        {' · '}{regionName} {event?.episodeNumber}기
                                       </div>
+                                      {eventDateTimeLabel && <div className="text-[0.7rem] font-bold text-[#FF7E7E] mt-0.5">{eventDateTimeLabel}</div>}
                                     </div>
                                   </div>
                                     <div className="flex flex-col items-end gap-1.5">
@@ -1931,8 +1932,9 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                           </div>
                           <div className="text-[0.75rem] text-slate-500 font-bold mt-0.5">
                             {(() => { const bd = user.birthDate || app.birthDate; return bd ? <span>{bd.includes('-') ? bd.split('-')[0].slice(-2) : (bd.length === 8 ? bd.slice(2, 4) : bd.slice(0, 2))}년생</span> : <span>??</span>; })()}
-                            {' · '}{regionName} {event?.episodeNumber}기{eventDateLabel && ` · ${eventDateLabel}`}
+                            {' · '}{regionName} {event?.episodeNumber}기
                           </div>
+                          {eventDateLabel && <div className="text-[0.7rem] font-bold text-[#FF7E7E] mt-0.5">{eventDateLabel}</div>}
                         </div>
                       </div>
                       
