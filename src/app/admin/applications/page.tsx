@@ -46,12 +46,6 @@ const APP_STATUS: Record<string, { label: string; color: string; bg: string }> =
   cancelled: { label: '취소', color: '#DC2626', bg: '#FEF2F2' },
 };
 
-// 신청 일시 (Timestamp 또는 millis)
-const toAppliedDate = (v: any): Date | null => {
-  const d = v?.toDate ? v.toDate() : (typeof v === 'number' ? new Date(v) : null);
-  return d && !isNaN(d.getTime()) ? d : null;
-};
-
 const panel = { background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' };
 
 // Skeletons
@@ -1119,7 +1113,6 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                     </th>
                     <th style={{ padding: '14px 10px', textAlign: 'left', fontSize: '0.7rem', fontWeight: 700, color: '#94A3B8' }}>직업</th>
                     <th style={{ padding: '14px 10px', textAlign: 'center', fontSize: '0.7rem', fontWeight: 700, color: '#94A3B8' }}>거주지</th>
-                    <th style={{ padding: '14px 10px', textAlign: 'center', fontSize: '0.7rem', fontWeight: 700, color: '#94A3B8' }}>신청일</th>
                     <th style={{ padding: '14px 10px', textAlign: 'center', fontSize: '0.7rem', fontWeight: 700, color: '#94A3B8' }}>상태</th>
                     <th style={{ padding: '14px 16px', textAlign: 'center', fontSize: '0.7rem', fontWeight: 700, color: '#94A3B8' }}>선발 관리</th>
                     {isSuperAdmin && <th style={{ padding: '14px 10px', textAlign: 'center', fontSize: '0.7rem', fontWeight: 700, color: '#94A3B8' }}>삭제</th>}
@@ -1129,12 +1122,12 @@ ${user.name || '참가자'}님은 ${fDate} ${fDay} ${fTime} 소개팅 날짜가 
                   {isDataLoading ? (
                     [1, 2, 3, 4, 5, 6, 7, 8].map(i => (
                       <tr key={i} style={{ borderBottom: '1px solid #F1F5F9', height: '88px' }}>
-                        <td colSpan={9} style={{ padding: '0 20px' }}><Skeleton className="h-10 w-full" /></td>
+                        <td colSpan={8} style={{ padding: '0 20px' }}><Skeleton className="h-10 w-full" /></td>
                       </tr>
                     ))
                   ) : filtered.length === 0 ? (
                     <tr>
-                      <td colSpan={9} style={{ padding: '100px 20px', textAlign: 'center', color: '#555' }}>
+                      <td colSpan={8} style={{ padding: '100px 20px', textAlign: 'center', color: '#555' }}>
                         <div className="flex flex-col items-center gap-4">
                           <FileText size={48} className="opacity-10 text-slate-400" />
                           <p style={{ fontSize: '0.9rem', color: '#64748B' }}>검색 결과와 일치하는 신청 내역이 없습니다.</p>
@@ -1152,7 +1145,6 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                       const event = events.find(e => e.id === app.sessionId);
                       const regionName = !event ? '-' : event.region === 'busan' ? '부산' : event.region === 'changwon' ? '창원' : event.region;
                       const eventDateLabel = event?.eventDate ? format(event.eventDate.toDate(), 'MM.dd (E)', { locale: ko }) : '';
-                      const appliedDate = toAppliedDate(app.appliedAt);
 
                       const isFull = (app.gender === 'male' && isMaleFull) || (app.gender === 'female' && isFemaleFull);
                       const canSelect = app.status === 'applied' || app.status === 'held';
@@ -1306,15 +1298,6 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
 
                             <td style={{ padding: '0 16px', textAlign: 'center' }}>
                               <p className="text-[0.85rem] font-bold text-slate-700 whitespace-nowrap">{app.residence || user.residence || user.location || '-'}</p>
-                            </td>
-
-                            <td style={{ padding: '0 16px', textAlign: 'center' }}>
-                              {appliedDate ? (
-                                <div className="flex flex-col items-center">
-                                  <p className="text-[0.8rem] font-bold text-slate-700 whitespace-nowrap">{format(appliedDate, 'MM.dd (E)', { locale: ko })}</p>
-                                  <p className="text-[0.7rem] text-slate-400 mt-0.5">{format(appliedDate, 'HH:mm')}</p>
-                                </div>
-                              ) : <p className="text-[0.85rem] text-slate-400">-</p>}
                             </td>
 
                             <td style={{ padding: '0 16px', textAlign: 'center' }}>
@@ -1512,7 +1495,7 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
 
                           {/* Mobile View: Card Row */}
                           <tr className="md:hidden">
-                            <td colSpan={9} className="p-0 border-b border-slate-100">
+                            <td colSpan={8} className="p-0 border-b border-slate-100">
                               <div className="p-4 bg-white hover:bg-slate-50 transition-colors flex items-start gap-3">
                                 {/* 모바일 선택 체크박스 */}
                                 <div className="pt-4 shrink-0">
@@ -1585,7 +1568,6 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                                       <div className="text-[0.75rem] text-slate-500 font-bold mt-0.5">
                                         {(() => { const bd = user.birthDate || app.birthDate; return bd ? <span>{bd.includes('-') ? bd.split('-')[0].slice(-2) : (bd.length === 8 ? bd.slice(2, 4) : bd.slice(0, 2))}년생</span> : <span>??</span>; })()}
                                         {' · '}{regionName} {event?.episodeNumber}기
-                                        {appliedDate && <div className="text-[0.7rem] text-slate-400 font-medium">{format(appliedDate, 'MM.dd (E) HH:mm', { locale: ko })} 신청</div>}
                                       </div>
                                     </div>
                                   </div>
@@ -1857,7 +1839,6 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                 const user = userMap[app.userId] || {};
                 const event = events.find(e => e.id === app.sessionId);
                 const regionName = event?.region === 'busan' ? '부산' : (event?.region === 'changwon' ? '창원' : '');
-                const appliedDate = toAppliedDate(app.appliedAt);
                 const aStatus = APP_STATUS[app.status] || { label: app.status, color: '#64748B', bg: '#F1F5F9' };
                 const isFull = (app.gender === 'male' && isMaleFull) || (app.gender === 'female' && isFemaleFull);
                 const isOverQuota = overQuotaAppIds.has(app.id);
@@ -1949,7 +1930,6 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                           <div className="text-[0.75rem] text-slate-500 font-bold mt-0.5">
                             {(() => { const bd = user.birthDate || app.birthDate; return bd ? <span>{bd.includes('-') ? bd.split('-')[0].slice(-2) : (bd.length === 8 ? bd.slice(2, 4) : bd.slice(0, 2))}년생</span> : <span>??</span>; })()}
                             {' · '}{regionName} {event?.episodeNumber}기
-                            {appliedDate && <div className="text-[0.7rem] text-slate-400 font-medium">{format(appliedDate, 'MM.dd (E) HH:mm', { locale: ko })} 신청</div>}
                           </div>
                         </div>
                       </div>
