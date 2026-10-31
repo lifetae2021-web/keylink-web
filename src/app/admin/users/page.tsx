@@ -90,6 +90,9 @@ export default function UsersPage() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<Status>('all');
   const [genderFilter, setGenderFilter] = useState<'all' | 'male' | 'female'>('all');
+  // 이 화면에서 직업승인을 토글한 회원의 원래 값. 페이지를 떠나기 전까지는 목록 필터·정렬에 원래 값을 써서 바로 사라지지 않게 한다.
+  const [jobReviewedOrig, setJobReviewedOrig] = useState<Record<string, boolean | undefined>>({});
+  const listJobReviewed = (u: any) => (u.id in jobReviewedOrig ? jobReviewedOrig[u.id] : u.isJobReviewed);
   const [proofOnly, setProofOnly] = useState(false);
   const [openProofDirect, setOpenProofDirect] = useState(false);
   const [sortConfig, setSortConfig] = useState<{ key: 'age' | 'createdAt', direction: 'asc' | 'desc' | null }>({ key: 'createdAt', direction: 'desc' });
@@ -637,8 +640,8 @@ export default function UsersPage() {
       if (filter === 'guest') return isGuest(u);
       if (filter === 'waitpool') return isRegular(u) && Array.isArray(u.cancelledSessionHistory) && u.cancelledSessionHistory.length > 0;
       if (filter === 'all') return !isDummy(u);
-      if (filter === 'pending') return isRegular(u) && u.status !== 'rejected' && ((u.status || 'pending') === 'pending' || u.isJobReviewed === false) && (!proofOnly || hasProof(u));
-      if (filter === 'verified') return isRegular(u) && (u.status || 'pending') === 'verified' && u.isJobReviewed !== false;
+      if (filter === 'pending') return isRegular(u) && u.status !== 'rejected' && ((u.status || 'pending') === 'pending' || listJobReviewed(u) === false) && (!proofOnly || hasProof(u));
+      if (filter === 'verified') return isRegular(u) && (u.status || 'pending') === 'verified' && listJobReviewed(u) !== false;
       return isRegular(u) && (u.status || 'pending') === filter;
     });
     return {
@@ -646,7 +649,7 @@ export default function UsersPage() {
       male: baseUsers.filter(u => u.gender === 'male').length,
       female: baseUsers.filter(u => u.gender === 'female').length,
     };
-  }, [users, filter, proofOnly]);
+  }, [users, filter, proofOnly, jobReviewedOrig]);
 
   const filtered = useMemo(() => {
     const isDummy = (u: any) => u.isDummy === true || u.id?.startsWith('dummy') || u.id?.startsWith('user_m_') || u.id?.startsWith('user_f_');
@@ -677,9 +680,9 @@ export default function UsersPage() {
       } else if (filter === 'all') {
         matchFilter = !isDummy(u);
       } else if (filter === 'pending') {
-        matchFilter = isRegular(u) && u.status !== 'rejected' && ((u.status || 'pending') === 'pending' || u.isJobReviewed === false) && (!proofOnly || hasProof(u));
+        matchFilter = isRegular(u) && u.status !== 'rejected' && ((u.status || 'pending') === 'pending' || listJobReviewed(u) === false) && (!proofOnly || hasProof(u));
       } else if (filter === 'verified') {
-        matchFilter = isRegular(u) && (u.status || 'pending') === 'verified' && u.isJobReviewed !== false;
+        matchFilter = isRegular(u) && (u.status || 'pending') === 'verified' && listJobReviewed(u) !== false;
       } else {
         matchFilter = isRegular(u) && (u.status || 'pending') === filter;
       }
@@ -690,8 +693,8 @@ export default function UsersPage() {
       // 승인대기 탭에서는 "정보수정"으로 재승인 대기에 들어온 사람(isJobReviewed === false)을
       // 신규 미승인 가입자보다 항상 위에 노출 (재검토가 빠르고 급한 경우가 많음)
       if (filter === 'pending') {
-        const aEdited = a.isJobReviewed === false ? 0 : 1;
-        const bEdited = b.isJobReviewed === false ? 0 : 1;
+        const aEdited = listJobReviewed(a) === false ? 0 : 1;
+        const bEdited = listJobReviewed(b) === false ? 0 : 1;
         if (aEdited !== bEdited) return aEdited - bEdited;
 
         // 재직인증서류를 등록한 사람을 미등록자보다 위로 노출 (검토 가능한 사람 우선)
@@ -747,7 +750,7 @@ export default function UsersPage() {
         return 0;
       }
     });
-  }, [users, search, filter, genderFilter, sortConfig, proofOnly]);
+  }, [users, search, filter, genderFilter, sortConfig, proofOnly, jobReviewedOrig]);
 
   const pagedItems = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
@@ -854,6 +857,8 @@ export default function UsersPage() {
   };
 
   const toggleJobReviewed = async (userId: string, checked: boolean) => {
+    const prev = users.find(u => u.id === userId)?.isJobReviewed;
+    setJobReviewedOrig(m => (userId in m ? m : { ...m, [userId]: prev }));
     try {
       const userRef = doc(db, 'users', userId);
       await updateDoc(userRef, {
