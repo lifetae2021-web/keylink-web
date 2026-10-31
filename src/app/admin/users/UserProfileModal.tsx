@@ -1095,7 +1095,7 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
                           src={docUrl}
                           alt="재직 인증 서류"
                           onError={() => setImgError(true)}
-                          className="max-w-full max-h-[70vh] object-contain rounded-2xl shadow-sm bg-slate-50 hover:scale-[1.4] transition-transform duration-500 cursor-zoom-in"
+                          className="max-w-full max-h-[70vh] object-contain rounded-2xl shadow-sm bg-slate-50"
                         />
                       );
                     })()}
