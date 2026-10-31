@@ -14,7 +14,7 @@ type Props = {
  * object-contain 이미지 위에 마우스를 올리면 커서 위치를 동그란 돋보기로 확대해 보여준다.
  * 레터박스(이미지 바깥 여백) 위에서는 돋보기를 숨긴다. 터치 기기에서는 mousemove가 없어 동작하지 않는다.
  */
-export default function MagnifierImage({ src, alt, onError, zoom = 2.5, lensSize = 150 }: Props) {
+export default function MagnifierImage({ src, alt, onError, zoom = 2, lensSize = 220 }: Props) {
   const [lens, setLens] = useState<{ x: number; y: number; bgW: number; bgH: number; bgX: number; bgY: number } | null>(null);
 
   const handleMove = (e: MouseEvent<HTMLImageElement>) => {
