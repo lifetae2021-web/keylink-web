@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type MouseEvent } from 'react';
+import { useState, type PointerEvent } from 'react';
 
 type Props = {
   src: string;
@@ -12,12 +12,13 @@ type Props = {
 
 /**
  * object-contain 이미지 위에 마우스를 올리면 커서 위치를 동그란 돋보기로 확대해 보여준다.
- * 레터박스(이미지 바깥 여백) 위에서는 돋보기를 숨긴다. 터치 기기에서는 mousemove가 없어 동작하지 않는다.
+ * 레터박스(이미지 바깥 여백) 위에서는 돋보기를 숨긴다. 실제 마우스 포인터에서만 동작한다 (폰 탭 시 브라우저가 보내는 호환 마우스 이벤트는 무시).
  */
 export default function MagnifierImage({ src, alt, onError, zoom = 2, lensSize = 220 }: Props) {
   const [lens, setLens] = useState<{ x: number; y: number; bgW: number; bgH: number; bgX: number; bgY: number } | null>(null);
 
-  const handleMove = (e: MouseEvent<HTMLImageElement>) => {
+  const handleMove = (e: PointerEvent<HTMLImageElement>) => {
+    if (e.pointerType !== 'mouse') return;
     const img = e.currentTarget;
     if (!img.naturalWidth || !img.naturalHeight) return;
     const box = img.getBoundingClientRect();
@@ -49,8 +50,8 @@ export default function MagnifierImage({ src, alt, onError, zoom = 2, lensSize =
         src={src}
         alt={alt}
         onError={onError}
-        onMouseMove={handleMove}
-        onMouseLeave={() => setLens(null)}
+        onPointerMove={handleMove}
+        onPointerLeave={() => setLens(null)}
         className={`w-full h-full object-contain ${lens ? 'cursor-none' : ''}`}
       />
       {lens && (
