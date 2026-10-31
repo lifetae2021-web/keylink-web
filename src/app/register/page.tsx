@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, ArrowRight, CheckCircle, Heart, User, CheckSquare, Square, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { NO_SWIPE_TOAST } from '@/components/SwipeableToaster';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
 import { auth, db } from '@/lib/firebase';
@@ -232,7 +233,7 @@ function RegisterForm() {
             앗, 시스템에 문제가 생겼나요? 현재 화면을 캡처해서 <b>인스타 DM</b>으로 보내주시면, 죄송하고 감사한 마음을 담아 <b>50% 할인쿠폰</b>을 드립니다!<br /><br />
             <span style={{ fontSize: '0.8rem', color: '#EF4444' }}>[오류: {error.message}]</span>
           </span>,
-          { duration: 8000 }
+          { duration: 8000, className: NO_SWIPE_TOAST }
         );
       }
     } finally {

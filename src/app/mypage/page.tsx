@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
+import { NO_SWIPE_TOAST } from '@/components/SwipeableToaster';
 import { subscribeMyApplication, subscribeMyApplications } from '@/lib/firestore/applications';
 import { subscribeSession } from '@/lib/firestore/sessions';
 import { getMyVote, getMyVotesMap, getVotesReceivedByMe } from '@/lib/firestore/votes';
@@ -444,7 +445,7 @@ function MyPageContent() {
           앗, 시스템에 문제가 생겼나요? 현재 화면을 캡처해서 <b>인스타 DM</b>으로 보내주시면, 죄송하고 감사한 마음을 담아 <b>50% 할인쿠폰</b>을 드립니다!<br /><br />
           <span style={{ fontSize: '0.8rem', color: '#EF4444' }}>[오류: {errorMessage}]</span>
         </span>,
-        { duration: 8000 }
+        { duration: 8000, className: NO_SWIPE_TOAST }
       );
     } finally {
       setIsSaving(false);

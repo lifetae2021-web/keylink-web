@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import { Toaster } from "react-hot-toast";
+import SwipeableToaster from "@/components/SwipeableToaster";
 import PublicLayout from "@/components/PublicLayout";
 import InAppRedirect from "@/components/InAppRedirect";
 
@@ -42,7 +42,7 @@ export default function RootLayout({
       <body className="antialiased">
         <InAppRedirect />
         <PublicLayout>{children}</PublicLayout>
-<Toaster
+        <SwipeableToaster
           position="top-center"
           toastOptions={{
             duration: 3000,

@@ -15,6 +15,7 @@ import {
   ChevronLeft, ChevronRight, Check, Heart, Calendar, User, Phone, MapPin, Briefcase, Star, X, Loader2, ChevronDown, FileText, CheckCircle2, Upload, Eye, EyeOff, CheckSquare, Square, CheckCircle, ShieldCheck
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { NO_SWIPE_TOAST } from '@/components/SwipeableToaster';
 import Link from 'next/link';
 import { compressImage, formatBirthDate, isValidBirthDate } from '@/lib/utils';
 import { buildProfileChangeLogs } from '@/lib/profileChangeLog';
@@ -1077,7 +1078,7 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
           앗, 시스템에 문제가 생겼나요? 현재 화면을 캡처해서 <b>인스타 DM</b>으로 보내주시면, 죄송하고 감사한 마음을 담아 <b>50% 할인쿠폰</b>을 드립니다!<br /><br />
           <span style={{ fontSize: '0.8rem', color: '#EF4444' }}>[오류: {msg}]</span>
         </span>,
-        { duration: 8000 }
+        { duration: 8000, className: NO_SWIPE_TOAST }
       );
     } finally {
       setSubmitting(false);
@@ -1221,7 +1222,7 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
             앗, 시스템에 문제가 생겼나요? 현재 화면을 캡처해서 <b>인스타 DM</b>으로 보내주시면, 죄송하고 감사한 마음을 담아 <b>50% 할인쿠폰</b>을 드립니다!<br /><br />
             <span style={{ fontSize: '0.8rem', color: '#EF4444' }}>[오류: {(e instanceof Error ? e.message : String(e)) || '알 수 없는 오류'}]</span>
           </span>,
-          { duration: 8000 }
+          { duration: 8000, className: NO_SWIPE_TOAST }
         );
       }
     }
