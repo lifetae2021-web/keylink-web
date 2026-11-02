@@ -102,7 +102,7 @@ export default function AdminNotesSection({ userId }: { userId: string }) {
                 <span className="text-[10px] text-slate-400">{n.authorName} · {formatDate(n.createdAt)}</span>
                 <button
                   onClick={() => handleDelete(n.id)}
-                  className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-rose-500 transition-all"
+                  className="p-1 -m-1 text-slate-400 hover:text-rose-500 transition-colors"
                   title="메모 삭제"
                 >
                   <Trash2 size={13} />
