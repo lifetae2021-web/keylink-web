@@ -1391,7 +1391,8 @@ function MyPageContent() {
           <LogOut size={18} /> 안전하게 로그아웃
         </button>
 
-        <div style={{ textAlign: 'center', marginTop: '32px', color: '#BBB', fontSize: '0.8rem', fontWeight: '500' }}>
+        {/* 하단 여백: 떠 있는 '지금 바로 신청하기' 버튼이 로그아웃 버튼을 가리지 않도록 */}
+        <div style={{ textAlign: 'center', marginTop: '32px', paddingBottom: '100px', color: '#BBB', fontSize: '0.8rem', fontWeight: '500' }}>
           매칭을 위한 모든 정보는 암호화되어 보호됩니다.
         </div>
       </div>
@@ -1802,7 +1803,7 @@ function ApplicationStatusBlock({ application, session, userId, hasVoted, submit
                 ['은행', '카카오뱅크'],
                 ['계좌', '3333-35-9229548'],
                 ['예금주', '태영훈(키링크)'],
-                ['금액', `${(application.price || (application.gender === 'female' ? 29000 : 49000)).toLocaleString()}원`]
+                ['금액', `${(application.price ?? (application.gender === 'female' ? 29000 : 49000)).toLocaleString()}원`]
               ].map(([label, val]) => (
                 <div key={label} style={{ display: 'flex', gap: '12px' }}>
                   <span style={{ minWidth: '48px', color: '#9CA3AF', fontSize: '0.82rem', fontWeight: '700' }}>{label}</span>
