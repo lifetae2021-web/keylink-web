@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
-import { MIN_REDEEM_POINTS } from '@/lib/pointsConfig';
+import { MIN_REDEEM_POINTS, REDEEM_UNIT_POINTS } from '@/lib/pointsConfig';
 
 const PLUS_TYPES = ['earn', 'add', 'refund'];
 const COLLAPSED_COUNT = 3;
@@ -47,7 +47,7 @@ export default function MyPointsCard({ uid, balance }: { uid: string; balance: n
       </div>
       <p style={{ fontSize: '0.78rem', color: '#94A3B8', fontWeight: '600', lineHeight: 1.6, marginBottom: visibleLogs.length > 0 ? '14px' : 0 }}>
         매일 방문 시 100P · 사이트에 떨어지는 포인트를 주워보세요!<br />
-        {MIN_REDEEM_POINTS.toLocaleString()}P부터 신청 시 사용 가능 · 적립일로부터 1년간 유효
+        {MIN_REDEEM_POINTS.toLocaleString()}P부터 {REDEEM_UNIT_POINTS.toLocaleString()}P 단위로 신청 시 사용 가능 · 적립일로부터 1년간 유효
       </p>
       {visibleLogs.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>

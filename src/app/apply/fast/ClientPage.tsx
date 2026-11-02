@@ -19,7 +19,7 @@ import { NO_SWIPE_TOAST } from '@/components/SwipeableToaster';
 import Link from 'next/link';
 import { compressImage, formatBirthDate, isValidBirthDate } from '@/lib/utils';
 import { buildProfileChangeLogs } from '@/lib/profileChangeLog';
-import { MIN_REDEEM_POINTS } from '@/lib/pointsConfig';
+import { MIN_REDEEM_POINTS, REDEEM_UNIT_POINTS } from '@/lib/pointsConfig';
 import { detectInAppBrowser, InAppInfo } from '@/lib/inAppBrowser';
 import InAppBrowserSheet from '@/components/InAppBrowserSheet';
 import { EventCalendar } from '@/components/EventsSection';
@@ -612,11 +612,15 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
     return value || amount || 0;
   };
 
-  // 포인트는 정식 회원이 1,000P 이상 보유 시 사용 가능, 쿠폰 적용 후 금액까지만 (실제 차감은 신청 후 서버에서)
-  const canUsePoints = isPointMember && pointBalance >= MIN_REDEEM_POINTS;
+  // 포인트는 정식 회원이 1,000P 이상 보유 시 1,000P 단위로 사용 가능, 쿠폰 적용 후 금액까지만 (실제 차감은 신청 후 서버에서)
+  const getMaxPointDiscount = () => {
+    const cap = Math.min(pointBalance, Math.max(0, getBasePrice() - getCouponDiscount()));
+    return Math.floor(cap / REDEEM_UNIT_POINTS) * REDEEM_UNIT_POINTS;
+  };
+  const canUsePoints = isPointMember && pointBalance >= MIN_REDEEM_POINTS && getMaxPointDiscount() > 0;
   const getPointDiscount = () => {
     if (!usePoints || !canUsePoints) return 0;
-    return Math.min(pointBalance, Math.max(0, getBasePrice() - getCouponDiscount()));
+    return getMaxPointDiscount();
   };
 
   const getFinalPrice = () => Math.max(0, getBasePrice() - getCouponDiscount() - getPointDiscount());
@@ -1619,7 +1623,7 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
               </div>
               <p style={{ fontSize: '0.8rem', color: '#64748B', marginTop: '6px' }}>
                 보유 <b style={{ color: '#111' }}>{pointBalance.toLocaleString()}P</b>
-                {!canUsePoints && ` · ${MIN_REDEEM_POINTS.toLocaleString()}P부터 사용 가능`}
+                {` · ${REDEEM_UNIT_POINTS.toLocaleString()}P 단위로 사용 가능`}
               </p>
             </div>
             <button
@@ -1634,7 +1638,7 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
                 fontWeight: '800', fontSize: '0.85rem',
               }}
             >
-              {usePoints && canUsePoints ? `${getPointDiscount().toLocaleString()}P 사용 중` : '전액 사용'}
+              {usePoints && canUsePoints ? `${getPointDiscount().toLocaleString()}P 사용 중` : canUsePoints ? `${getMaxPointDiscount().toLocaleString()}P 사용` : '사용 불가'}
             </button>
           </div>
           {canUsePoints && Array.from(selectedSessionIds).length > 1 && (

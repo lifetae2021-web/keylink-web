@@ -3,7 +3,7 @@ import { randomUUID } from 'crypto';
 import { adminDb, adminAuth } from '@/lib/firebaseAdmin';
 import { FieldValue } from 'firebase-admin/firestore';
 import {
-  DAILY_VISIT_POINTS, MIN_REDEEM_POINTS, VISITOR_POINT_CAP,
+  DAILY_VISIT_POINTS, MIN_REDEEM_POINTS, REDEEM_UNIT_POINTS, VISITOR_POINT_CAP,
   DEFAULT_DROP_ENABLED, DEFAULT_DROP_CHANCE_PERCENT, DEFAULT_DROP_DAILY_LIMIT,
 } from '@/lib/pointsConfig';
 
@@ -336,7 +336,8 @@ export async function redeemForApplication(uid: string, applicationId: string, r
     const balance = lots.reduce((sum, d) => sum + d.data().remaining, 0);
     if (balance < MIN_REDEEM_POINTS) throw new Error(`포인트는 ${MIN_REDEEM_POINTS.toLocaleString()}P 이상부터 사용할 수 있습니다.`);
 
-    const amount = Math.min(Math.floor(requested), balance, app.price || 0);
+    const capped = Math.min(Math.floor(requested), balance, app.price || 0);
+    const amount = Math.floor(capped / REDEEM_UNIT_POINTS) * REDEEM_UNIT_POINTS;
     if (amount <= 0) return { used: 0 };
 
     spendFromLots(tx, uid, lots, amount, { type: 'use', reason: '로테이션 신청 할인', applicationId });

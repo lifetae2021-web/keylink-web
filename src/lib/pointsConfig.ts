@@ -1,6 +1,7 @@
 // 포인트 제도 공통 숫자 (서버/클라이언트 공용, 1P = 1원)
 export const DAILY_VISIT_POINTS = 100;
 export const MIN_REDEEM_POINTS = 1000;
+export const REDEEM_UNIT_POINTS = 1000; // 사용은 이 단위로만 (나머지는 잔액으로 남음)
 export const VISITOR_POINT_CAP = 1000;
 
 // 떨어지는 포인트 기본값 (관리자 설정 settings/general에 값이 없을 때)
