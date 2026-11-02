@@ -10,6 +10,7 @@ import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import toast from 'react-hot-toast';
 import { useState, useEffect, useRef } from 'react';
 import AdminNotesSection from './AdminNotesSection';
+import AdminPointsSection from './AdminPointsSection';
 import MagnifierImage from '@/components/ui/MagnifierImage';
 import { createPortal } from 'react-dom';
 
@@ -549,6 +550,14 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
               <div className="px-8 pt-6 pb-2 border-b border-slate-100">
                 <div className="flex items-center gap-3 mb-2">
                   <h3 className="text-3xl font-black text-slate-900 tracking-tight">{user.name || '이름 없음'}</h3>
+                  <button
+                    type="button"
+                    onClick={() => document.getElementById('admin-points-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                    className="inline-flex items-center gap-1 bg-orange-50 border border-orange-100 text-orange-500 rounded-full px-2.5 py-0.5 text-xs font-black hover:bg-orange-100 transition-colors"
+                    title="포인트 내역 보기"
+                  >
+                    🪙 {(user.points || 0).toLocaleString()}P
+                  </button>
                   {user.isVerified && (
                     <span className="inline-flex items-center gap-1 bg-emerald-500 text-white rounded-full px-2.5 py-0.5 text-[10px] font-bold shadow-sm">
                       <ShieldCheck size={11} fill="white" /> 인증 완료
@@ -842,6 +851,9 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
                     </div>
                   </div>
                 </div>
+
+                {/* 포인트 잔액 + 내역 */}
+                <AdminPointsSection userId={user.uid || user.id} />
 
                 {/* 관리자 전용 메모 */}
                 <AdminNotesSection userId={user.uid || user.id} />
