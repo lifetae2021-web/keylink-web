@@ -59,6 +59,11 @@ service cloud.firestore {
       }
     }
 
+    // 관리자 알림의 포인트 적립 피드 (collectionGroup 조회)
+    match /{path=**}/pointHistory/{logId} {
+      allow read: if isAdmin();
+    }
+
     // ─────────────────────────────────────
     // sessions (기수) 컬렉션
     // ─────────────────────────────────────

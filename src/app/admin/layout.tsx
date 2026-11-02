@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { 
-  collection, query, where, onSnapshot, doc, getDoc,
+  collection, collectionGroup, query, where, onSnapshot, doc, getDoc,
   orderBy, limit, getDocs, updateDoc
 } from 'firebase/firestore';
 import {
@@ -13,7 +13,7 @@ import {
   Settings, LogOut, Bell, Menu, X,
   ExternalLink, ChevronDown,
   FileText, Loader2, Timer, ChevronsLeft, ChevronsRight, MessageSquare,
-  UserPlus, ClipboardList, Clock, Zap, Lock, Crown, FileSpreadsheet
+  UserPlus, ClipboardList, Clock, Zap, Lock, Crown, FileSpreadsheet, Coins
 } from 'lucide-react';
 import Link from 'next/link';
 import { format } from 'date-fns';
@@ -49,7 +49,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 // v8.12.8: 리얼타임 알림 시스템 (더미데이터 제거)
 interface NotificationItem {
   id: string;
-  type: 'user' | 'app' | 'private';
+  type: 'user' | 'app' | 'private' | 'point';
   text: string;
   time: string;
   date: Date;
@@ -68,6 +68,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [appNotis, setAppNotis] = useState<NotificationItem[]>([]);
   const [privateNotis, setPrivateNotis] = useState<NotificationItem[]>([]);
   const [cancelledNotis, setCancelledNotis] = useState<NotificationItem[]>([]);
+  // 포인트 적립은 매일 방문 등으로 자주 쌓여 기본 알림과 분리 (탭에서만 보고 안 읽음 수에도 미포함)
+  const [pointNotis, setPointNotis] = useState<NotificationItem[]>([]);
+  const [notiTab, setNotiTab] = useState<'all' | 'point'>('all');
+  const pointUserNames = useRef<Record<string, string>>({});
   const [lastViewedNoti, setLastViewedNoti] = useState<number>(0);
   const [authState, setAuthState] = useState<'loading' | 'super_admin' | 'admin' | 'denied' | 'timeout'>('loading');
   const isSuperAdmin = authState === 'super_admin';
@@ -425,7 +429,36 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       }
     );
 
-    return () => { unsubViewed(); unsubUsers(); unsubApps(); unsubPrivate(); unsubCancelled(); };
+    // 2e. 포인트 적립 알림 (회원 pointHistory 전체에서 적립 건만)
+    const unsubPoints = onSnapshot(
+      query(collectionGroup(db, 'pointHistory'), where('type', '==', 'earn'), orderBy('createdAt', 'desc'), limit(30)),
+      async (snapshot) => {
+        const uids = [...new Set(snapshot.docs.map(d => d.ref.parent.parent?.id).filter(Boolean))] as string[];
+        await Promise.all(uids.filter(u => !(u in pointUserNames.current)).map(async u => {
+          const snap = await getDoc(doc(db, 'users', u)).catch(() => null);
+          pointUserNames.current[u] = snap?.data()?.name || '회원';
+        }));
+        const items = snapshot.docs.map(d => {
+          const data = d.data();
+          const ownerId = d.ref.parent.parent?.id || '';
+          const date = safeDate(data.createdAt);
+          return {
+            id: d.id + '_point',
+            type: 'point' as const,
+            text: `${pointUserNames.current[ownerId] || '회원'}님이\n${(data.amount || 0).toLocaleString()}P 적립 (${data.reason || '포인트'})`,
+            date,
+            time: formatTimeAgo(date),
+            path: '/admin/users'
+          };
+        });
+        setPointNotis(items);
+      },
+      (err) => {
+        console.error('Error syncing point notifications:', err);
+      }
+    );
+
+    return () => { unsubViewed(); unsubUsers(); unsubApps(); unsubPrivate(); unsubCancelled(); unsubPoints(); };
   }, [authState]);
 
   // 3. 알림 통합 및 정렬
@@ -744,18 +777,30 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                       모두 읽음
                     </button>
                   </div>
+                  <div className="flex gap-1.5 px-6 py-2.5" style={{ borderBottom: '1px solid #F1F5F9' }}>
+                    {([['all', '전체'], ['point', '포인트 적립']] as const).map(([key, label]) => (
+                      <button
+                        key={key}
+                        onClick={() => setNotiTab(key)}
+                        className="px-3 py-1 rounded-full text-[0.75rem] font-bold transition-colors border-none cursor-pointer"
+                        style={notiTab === key ? { background: '#0F172A', color: '#fff' } : { background: '#F1F5F9', color: '#64748B' }}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
                   <div style={{ maxHeight: 420, overflowY: 'auto' }} className="kl-scrollbar">
-                    {notifications.length === 0 ? (
+                    {(notiTab === 'point' ? pointNotis : notifications).length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
                         <div className="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center mb-4">
                           <Bell size={28} className="text-slate-200" />
                         </div>
-                        <p style={{ color: '#94A3B8', fontSize: '0.85rem', fontWeight: '700' }}>새로운 알림이 없습니다.</p>
+                        <p style={{ color: '#94A3B8', fontSize: '0.85rem', fontWeight: '700' }}>{notiTab === 'point' ? '포인트 적립 내역이 없습니다.' : '새로운 알림이 없습니다.'}</p>
                       </div>
-                    ) : notifications.map(n => {
-                      const isNew = n.date.getTime() > lastViewedNoti;
-                      const iconBg = n.type === 'user' ? '#ECFDF5' : n.type === 'app' ? '#EFF6FF' : '#F5F3FF';
-                      const iconColor = n.type === 'user' ? '#10B981' : n.type === 'app' ? '#3B82F6' : '#8B5CF6';
+                    ) : (notiTab === 'point' ? pointNotis : notifications).map(n => {
+                      const isNew = n.type !== 'point' && n.date.getTime() > lastViewedNoti;
+                      const iconBg = n.type === 'user' ? '#ECFDF5' : n.type === 'app' ? '#EFF6FF' : n.type === 'point' ? '#FFF7ED' : '#F5F3FF';
+                      const iconColor = n.type === 'user' ? '#10B981' : n.type === 'app' ? '#3B82F6' : n.type === 'point' ? '#F97316' : '#8B5CF6';
                       
                       return (
                         <div
@@ -777,7 +822,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                               color: iconColor,
                             }}
                           >
-                            {n.type === 'user' ? <UserPlus size={18} /> : n.type === 'app' ? <ClipboardList size={18} /> : <Zap size={18} />}
+                            {n.type === 'user' ? <UserPlus size={18} /> : n.type === 'app' ? <ClipboardList size={18} /> : n.type === 'point' ? <Coins size={18} /> : <Zap size={18} />}
                           </div>
                           <div className="flex-1 min-w-0">
                             <p style={{ fontSize: '0.88rem', lineHeight: 1.5, color: isNew ? '#0F172A' : '#64748B', fontWeight: isNew ? '800' : '600', letterSpacing: '-0.01em', whiteSpace: 'pre-line' }}>{n.text}</p>
@@ -789,7 +834,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                       );
                     })}
                   </div>
-                  {notifications.length > 0 && (
+                  {notiTab === 'all' && notifications.length > 0 && (
                     <Link 
                       href="/admin/notifications" 
                       onClick={() => setNotiOpen(false)} 
