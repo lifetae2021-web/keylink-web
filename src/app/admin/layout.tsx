@@ -222,11 +222,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   useEffect(() => {
     if (authState !== 'admin' && authState !== 'super_admin') return;
 
-    // 1-a. 활성 기수 동기화
-    // 신청 관리 뱃지 카운트용으로만 쓰이는 값이라 실시간 구독은 불필요 —
-    // 세션 컬렉션에 어떤 문서가 바뀌든 매번 전체를 재계산하던 상시 리스너를
-    // 관리자 로그인 시 1회성 조회로 변경 (기존 필터링 로직은 동일하게 유지)
+    // 1-a. 활성 기수 조회 (뱃지 카운트용이라 관리자 로그인 시 1회만)
+    // 1-b. 활성 기수의 신청서만 실시간 구독 — 예전에는 전 기수의 applied/selected 신청서(수백 건, 수 MB)를
+    //      매 페이지 받아서 휴대폰에서 관리자 페이지가 느려지고 멈추는 원인이 됐다
+    let cancelled = false;
+    const unsubs: (() => void)[] = [];
+
     getDocs(collection(db, 'sessions')).then((snap) => {
+      if (cancelled) return;
       const activeIds = new Set<string>();
       const now = new Date();
       snap.forEach(d => {
@@ -239,29 +242,32 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         if (!isEnded) activeIds.add(d.id);
       });
       setActiveSessionIds(activeIds);
+
+      // 'in' 조건은 최대 30개라 기수를 30개씩 나눠 구독
+      const ids = Array.from(activeIds);
+      const chunks: Record<number, any[]> = {};
+      for (let i = 0; i < ids.length; i += 30) {
+        const chunkIndex = i / 30;
+        const q = query(collection(db, 'applications'), where('sessionId', 'in', ids.slice(i, i + 30)));
+        unsubs.push(onSnapshot(q, (appSnap) => {
+          chunks[chunkIndex] = appSnap.docs.filter(d => {
+            const data = d.data();
+            const isDummy = d.id.startsWith('dummy') || data.userId?.startsWith('user_m_') || data.userId?.startsWith('user_f_') || data.isDummy === true;
+            return !isDummy && (data.status === 'applied' || data.status === 'selected');
+          }).map(d => d.data());
+          setPendingApps(Object.values(chunks).flat());
+        }, (err) => {
+          console.error('Error syncing pending apps:', err);
+        }));
+      }
+      if (ids.length === 0) setPendingApps([]);
     }).catch((err) => {
       console.error('Error syncing active sessions:', err);
     });
 
-    // 1-b. 대기 신청서 동기화
-    const q = query(
-      collection(db, 'applications'),
-      where('status', 'in', ['applied', 'selected'])
-    );
-
-    const unsubApps = onSnapshot(q, (snap) => {
-      const realDocs = snap.docs.filter(d => {
-        const data = d.data();
-        const isDummy = d.id.startsWith('dummy') || data.userId?.startsWith('user_m_') || data.userId?.startsWith('user_f_') || data.isDummy === true;
-        return !isDummy;
-      }).map(d => d.data());
-      setPendingApps(realDocs);
-    }, (err) => {
-      console.error('Error syncing pending apps:', err);
-    });
-
     return () => {
-      unsubApps();
+      cancelled = true;
+      unsubs.forEach(u => u());
     };
   }, [authState]);
 
@@ -499,9 +505,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const runAuthCheck = useCallback(async (user: User) => {
     setAuthState('loading');
     try {
-      // v12.1.0: 토큰 강제 갱신 후 role 확인 → Firestore 리스너 실행 전에 최신 인증 토큰 보장
-      // 네트워크 지연 시 응답도 실패도 없이 멈추는 것을 막기 위해 각 호출에 타임아웃 적용
-      await withTimeout(user.getIdToken(true), AUTH_CHECK_TIMEOUT_MS);
+      // role 확인 (네트워크 지연 시 응답도 실패도 없이 멈추는 것을 막기 위해 타임아웃 적용)
+      // 토큰은 SDK가 만료 전에 알아서 갱신하므로 매번 강제 갱신(getIdToken(true))하지 않는다 — 휴대폰에서 매 진입마다 지연되던 원인
       const snap = await withTimeout(getDoc(doc(db, 'users', user.uid)), AUTH_CHECK_TIMEOUT_MS);
       const role = snap.exists() ? snap.data().role : null;
       if (role === 'super_admin') {

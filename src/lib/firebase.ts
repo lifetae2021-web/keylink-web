@@ -1,6 +1,6 @@
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
+import { getFirestore, initializeFirestore, memoryLocalCache } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
 const firebaseConfig = {
@@ -18,16 +18,16 @@ export const auth = getAuth(app);
 let dbInstance: ReturnType<typeof getFirestore>;
 try {
   if (typeof window !== 'undefined') {
+    // 메모리 캐시 사용: IndexedDB 영구 캐시(persistentMultipleTabManager)는 휴대폰 크롬에서 백그라운드 복귀 후
+    // 저장소 잠금이 풀리지 않아 새로고침해도 데이터가 안 뜨고 브라우저를 껐다 켜야 풀리는 문제가 있었다
     dbInstance = initializeFirestore(app, {
-      localCache: persistentLocalCache({
-        tabManager: persistentMultipleTabManager()
-      })
+      localCache: memoryLocalCache(),
     });
   } else {
     dbInstance = getFirestore(app);
   }
 } catch {
-  // 이미 초기화된 경우(HMR/Fast Refresh) 또는 시크릿 모드 등 스토리지 제한 시 fallback
+  // 이미 초기화된 경우(HMR/Fast Refresh) fallback
   dbInstance = getFirestore(app);
 }
 export const db = dbInstance;
