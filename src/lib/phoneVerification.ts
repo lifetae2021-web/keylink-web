@@ -18,6 +18,12 @@ const MAX_SENDS_PER_PHONE_PER_DAY = 5;
 const MAX_SENDS_PER_IP_PER_DAY = 20;
 const MAX_ATTEMPTS = 5;
 
+// 테스트용 화이트리스트 번호: 하루 발송 횟수·IP 제한을 건너뛴다 (재발송 60초 간격은 유지).
+// .env.local / Vercel 환경변수 PHONE_OTP_WHITELIST 에 콤마로 구분해 등록 (예: 01012345678,01099998888)
+const OTP_WHITELIST = new Set(
+  (process.env.PHONE_OTP_WHITELIST || '').split(',').map((s) => s.replace(/\D/g, '')).filter(Boolean)
+);
+
 const OTP_SMS_DOMAIN = 'www.keylink.kr';
 const IS_MOCK = process.env.NODE_ENV !== 'production' && process.env.PHONE_OTP_LIVE !== '1';
 
@@ -45,14 +51,16 @@ export async function sendVerificationCode(rawPhone: string, ip: string): Promis
     const sends: number[] = (otpSnap.data()?.sends || []).filter((t: number) => now - t < DAY_MS);
     const ipSends: number[] = (ipSnap.data()?.sends || []).filter((t: number) => now - t < DAY_MS);
 
+    const whitelisted = OTP_WHITELIST.has(digits);
+
     const last = sends[sends.length - 1];
     if (last && now - last < RESEND_INTERVAL_MS) {
       throw new PhoneVerificationError(`${Math.ceil((RESEND_INTERVAL_MS - (now - last)) / 1000)}초 후에 다시 요청해 주세요.`, 429);
     }
-    if (sends.length >= MAX_SENDS_PER_PHONE_PER_DAY) {
+    if (!whitelisted && sends.length >= MAX_SENDS_PER_PHONE_PER_DAY) {
       throw new PhoneVerificationError('오늘 이 번호로 보낼 수 있는 인증번호 횟수를 넘었어요. 내일 다시 시도해 주세요.', 429);
     }
-    if (ipSends.length >= MAX_SENDS_PER_IP_PER_DAY) {
+    if (!whitelisted && ipSends.length >= MAX_SENDS_PER_IP_PER_DAY) {
       throw new PhoneVerificationError('인증 요청이 너무 많아요. 잠시 후 다시 시도해 주세요.', 429);
     }
 

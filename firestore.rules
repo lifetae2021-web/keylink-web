@@ -220,5 +220,16 @@ service cloud.firestore {
       allow read: if isAdmin();
     }
 
+    // ─────────────────────────────────────
+    // plazaProfiles (광장 3D 공간 회원 프로필) 컬렉션
+    // 캐릭터·지역·출생연도·직업·한줄소개 등 광장 표시용 정보.
+    // 쓰기는 서버(Admin SDK)만: 닉네임 중복 검사·검증을 거친다 (/api/plaza/join).
+    // 읽기도 본인·관리자만 (다른 회원 정보는 실시간 서버가 접속자끼리만 중계).
+    // ─────────────────────────────────────
+    match /plazaProfiles/{uid} {
+      allow read: if isUser(uid) || isAdmin();
+      allow write: if false;
+    }
+
   }
 }

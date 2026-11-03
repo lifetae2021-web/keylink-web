@@ -1,0 +1,63 @@
+import { NextResponse } from 'next/server';
+import { adminDb, adminAuth } from '@/lib/firebaseAdmin';
+import { FieldValue } from 'firebase-admin/firestore';
+
+// 광장(플라자) 회원 가입/프로필 저장
+// 로그인한 본인이 캐릭터·기본정보를 저장한다. 닉네임은 광장 내에서 중복 불가.
+// 서버(Admin SDK)에서만 쓰므로 Firestore 규칙은 plazaProfiles 클라이언트 쓰기를 막아둔다.
+
+const str = (v: unknown, n: number) => String(v ?? '').trim().slice(0, n);
+
+export async function POST(req: Request) {
+  try {
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const token = authHeader.split('Bearer ')[1];
+    const decoded = await adminAuth.verifyIdToken(token);
+    const uid = decoded.uid;
+
+    const body = await req.json().catch(() => ({}));
+
+    const nick = str(body.nick, 12);
+    const gender = body.gender === 'female' ? 'female' : 'male';
+    const region = str(body.region, 12);
+    const birthYear = str(body.birthYear, 4);
+    const job = str(body.job, 20);
+    const intro = str(body.intro, 40);
+    const look = (body.look && typeof body.look === 'object') ? {
+      face: str(body.look.face, 16),
+      hair: str(body.look.hair, 16),
+      hairColor: str(body.look.hairColor, 9),
+      eye: str(body.look.eye, 16),
+      clothes: str(body.look.clothes, 9),
+    } : {};
+
+    if (!nick) return NextResponse.json({ error: 'nick_required' }, { status: 400 });
+    if (!region) return NextResponse.json({ error: 'region_required' }, { status: 400 });
+    if (!/^(19|20)\d\d$/.test(birthYear)) return NextResponse.json({ error: 'birthYear_invalid' }, { status: 400 });
+
+    const nickLower = nick.toLowerCase();
+
+    // 닉네임 중복 검사: 다른 uid가 같은 닉을 쓰고 있으면 거절
+    const dup = await adminDb.collection('plazaProfiles')
+      .where('nickLower', '==', nickLower).limit(1).get();
+    if (!dup.empty && dup.docs[0].id !== uid) {
+      return NextResponse.json({ error: 'nickname_taken' }, { status: 409 });
+    }
+
+    const ref = adminDb.collection('plazaProfiles').doc(uid);
+    const existed = (await ref.get()).exists;
+    await ref.set({
+      uid, nick, nickLower, gender, region, birthYear, job, intro, look,
+      updatedAt: FieldValue.serverTimestamp(),
+      ...(existed ? {} : { createdAt: FieldValue.serverTimestamp() }),
+    }, { merge: true });
+
+    return NextResponse.json({ ok: true, profile: { nick, gender, region, birthYear, job, intro, look } });
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'error';
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
+}
