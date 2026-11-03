@@ -97,7 +97,6 @@ function KakaoCallbackContent() {
           const isComplete = userData && (userData.mergedTo || (userData.gender && userData.birthDate && userData.phone));
 
           if (isNew || !isComplete) {
-            toast.success('회원가입을 위해 추가 정보를 입력해 주세요!');
             router.replace('/register/social-profile');
           } else {
             toast.success('로그인에 성공했습니다!');
