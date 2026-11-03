@@ -220,6 +220,19 @@ export default function UsersPage() {
     fetchSessions();
   }, [sessionRegistrationTarget]);
 
+  // 제안 모달에서도 기수 선택지가 필요하므로 열릴 때 기수 목록을 불러온다
+  useEffect(() => {
+    if (!proposeTarget) return;
+    (async () => {
+      try {
+        const snap = await getDocs(query(collection(db, 'sessions'), orderBy('eventDate', 'desc')));
+        setSessions(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      } catch (e) {
+        console.error('기수 목록 조회 실패:', e);
+      }
+    })();
+  }, [proposeTarget]);
+
   const handleManualRegister = async (bypassOverlap?: boolean) => {
     if (!sessionRegistrationTarget || !selectedSessionId || !registrationStatus) {
       return toast.error('모든 정보를 채워주세요.');
