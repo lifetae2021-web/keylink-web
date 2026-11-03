@@ -147,6 +147,8 @@ export default function UsersPage() {
 
   // 기수 수동 등록 모달
   const [sessionRegistrationTarget, setSessionRegistrationTarget] = useState<any | null>(null);
+  const [proposeTarget, setProposeTarget] = useState<any | null>(null);
+  const [isProposing, setIsProposing] = useState(false);
   const [sessions, setSessions] = useState<any[]>([]);
   const [isFetchingSessions, setIsFetchingSessions] = useState(false);
   const [selectedSessionId, setSelectedSessionId] = useState('');
@@ -1473,6 +1475,22 @@ export default function UsersPage() {
                         {/* 관리 */}
                         <td style={{ padding: '0 20px', verticalAlign: 'middle', textAlign: 'right' }}>
                           <div className="flex items-center justify-end gap-1.5">
+                            {filter === 'waitpool' ? (
+                              <>
+                                {(u.proposalCount || 0) > 0 && (
+                                  <span style={{ fontSize: '0.7rem', fontWeight: 800, padding: '2px 8px', borderRadius: 8, background: '#FFFBEB', color: '#B45309', border: '1px solid #FDE68A' }}>
+                                    제안 {u.proposalCount}회
+                                  </span>
+                                )}
+                                <button
+                                  onClick={() => setProposeTarget(u)}
+                                  className="flex items-center gap-1.5 rounded-lg transition-all hover:brightness-95"
+                                  style={{ padding: '6px 14px', fontSize: '0.78rem', fontWeight: 800, background: '#F59E0B', color: '#fff', border: 'none' }}
+                                >
+                                  💌 제안
+                                </button>
+                              </>
+                            ) : (<>
                             {u.status !== 'rejected' && (
                               <button
                                 onClick={() => reject(u.id, u.name)}
@@ -1524,6 +1542,7 @@ export default function UsersPage() {
                               <Trash2 size={14} />
                             </button>
                             ) : null}
+                            </>)}
                           </div>
                         </td>
 
@@ -1770,6 +1789,22 @@ export default function UsersPage() {
 
                     {/* Action Buttons Row */}
                     <div className="flex items-center justify-end gap-1.5 pt-3 border-t border-slate-100">
+                      {filter === 'waitpool' ? (
+                        <>
+                          {(u.proposalCount || 0) > 0 && (
+                            <span className="mr-auto" style={{ fontSize: '0.72rem', fontWeight: 800, padding: '4px 10px', borderRadius: 10, background: '#FFFBEB', color: '#B45309', border: '1px solid #FDE68A' }}>
+                              제안 {u.proposalCount}회
+                            </span>
+                          )}
+                          <button
+                            onClick={() => setProposeTarget(u)}
+                            className="flex items-center gap-1.5 rounded-xl transition-all hover:brightness-95"
+                            style={{ padding: '9px 18px', fontSize: '0.82rem', fontWeight: 800, background: '#F59E0B', color: '#fff', border: 'none' }}
+                          >
+                            💌 제안하기
+                          </button>
+                        </>
+                      ) : (<>
                       <button
                         onClick={() => setGeneralSmsTargetUser(u)}
                         className="flex items-center justify-center rounded-xl bg-amber-50 text-amber-600 border border-amber-100 transition-all hover:bg-amber-100"
@@ -1818,6 +1853,7 @@ export default function UsersPage() {
                         <Trash2 size={16} />
                       </button>
                       ) : null}
+                      </>)}
                     </div>
                   </div>
                 );
@@ -2139,6 +2175,75 @@ export default function UsersPage() {
       )}
 
       {/* 기수 참여 등록 모달 */}
+      {/* 이상형 제안 모달 (우선 대기) */}
+      {proposeTarget && (() => {
+        const now = Date.now();
+        const upcoming = sessions
+          .filter(se => se.status === 'open' && !se.isTest)
+          .map(se => ({ ...se, _d: se.eventDate?.toDate ? se.eventDate.toDate() : se.eventDate ? new Date(se.eventDate) : null }))
+          .filter(se => se._d && se._d.getTime() > now - 12 * 60 * 60 * 1000)
+          .sort((a, b) => a._d.getTime() - b._d.getTime());
+        const sendPropose = async (sessionId: string) => {
+          if (isProposing) return;
+          setIsProposing(true);
+          try {
+            const token = await auth.currentUser?.getIdToken();
+            const res = await fetch('/api/admin/users/propose', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+              body: JSON.stringify({ userId: proposeTarget.id, sessionId }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || '발송 실패');
+            toast.success(`${proposeTarget.name}님에게 이상형 제안을 보냈어요. (누적 ${data.proposalCount}회)`);
+            setProposeTarget(null);
+          } catch (e: any) {
+            toast.error(e.message || '제안 발송 중 오류가 발생했습니다.');
+          } finally {
+            setIsProposing(false);
+          }
+        };
+        return (
+          <div onClick={() => !isProposing && setProposeTarget(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+            <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: '24px', width: '100%', maxWidth: '420px', padding: '28px' }} className="shadow-2xl animate-in zoom-in-95 duration-200">
+              <div className="flex justify-between items-center mb-5">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-xl">💌</div>
+                  <div>
+                    <h2 className="text-lg font-black text-slate-900 leading-tight">이상형 제안</h2>
+                    <p className="text-xs font-bold text-slate-400 mt-0.5">{proposeTarget.name}님 · 누적 {proposeTarget.proposalCount || 0}회</p>
+                  </div>
+                </div>
+                <button onClick={() => !isProposing && setProposeTarget(null)} className="p-2 text-slate-400 hover:bg-slate-100 rounded-full transition-colors"><X size={20} /></button>
+              </div>
+              <p className="text-xs font-bold text-slate-500 mb-3">어느 날 소개팅으로 제안할까요? 날짜를 누르면 바로 문자가 발송됩니다.</p>
+              {upcoming.length === 0 ? (
+                <div className="py-6 text-center text-sm font-bold text-slate-400 bg-slate-50 rounded-2xl">제안할 수 있는 모집중 기수가 없어요.</div>
+              ) : (
+                <div className="flex flex-col gap-2 max-h-[360px] overflow-y-auto">
+                  {upcoming.map(se => {
+                    const wd = new Intl.DateTimeFormat('ko-KR', { weekday: 'short', timeZone: 'Asia/Seoul' }).format(se._d);
+                    const dateStr = format(se._d, 'MM/dd');
+                    const regionLabel = se.region === 'busan' ? '부산' : se.region === 'changwon' ? '창원' : '';
+                    const ep = se.episodeNumber ? `${se.episodeNumber}기` : '';
+                    return (
+                      <button key={se.id} disabled={isProposing} onClick={() => sendPropose(se.id)}
+                        className="flex items-center justify-between px-4 py-3 rounded-2xl border border-slate-200 hover:border-amber-400 hover:bg-amber-50 transition-all text-left disabled:opacity-50">
+                        <div>
+                          <div className="text-sm font-extrabold text-slate-800">{dateStr}({wd})</div>
+                          <div className="text-[11px] font-bold text-slate-400">{[regionLabel, ep].filter(Boolean).join(' ')} {se.title || ''}</div>
+                        </div>
+                        <span className="text-xs font-black text-amber-500">{isProposing ? '발송 중…' : '제안 ▸'}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
       {sessionRegistrationTarget && (
         <div
           onClick={() => !isRegistering && setSessionRegistrationTarget(null)}

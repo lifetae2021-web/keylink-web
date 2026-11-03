@@ -162,6 +162,17 @@ export async function POST(req: NextRequest) {
     const userData = userDoc.data();
     const sessionData = sessionDoc.data();
 
+    // 우선 대기 해소: 확정(재참여)되면 이 회원의 취소 이력을 비워 우선 대기 목록에서 제거한다
+    try {
+      const freshApp = await adminDb.doc(`applications/${applicationId}`).get();
+      if (freshApp.data()?.status === 'confirmed'
+        && Array.isArray(userData?.cancelledSessionHistory) && userData.cancelledSessionHistory.length > 0) {
+        await adminDb.doc(`users/${userId}`).update({ cancelledSessionHistory: [] });
+      }
+    } catch (e) {
+      console.error('우선 대기 해소 실패:', e);
+    }
+
     if (!userData || !sessionData) {
       return NextResponse.json({ 
         success: true, 
