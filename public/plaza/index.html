@@ -42,12 +42,15 @@
   #stick { position:absolute; left:max(26px,calc(env(safe-area-inset-left,0px) + 20px)); bottom:calc(26px + env(safe-area-inset-bottom,0px));
     width:132px; height:132px; border-radius:50%; background:var(--stick); border:2px solid rgba(255,255,255,.7); pointer-events:auto; touch-action:none; box-shadow:0 6px 18px rgba(80,120,170,.2); }
   #knob { position:absolute; pointer-events:none; left:50%; top:50%; width:58px; height:58px; margin:-29px 0 0 -29px; border-radius:50%; background:var(--stick-knob); box-shadow:0 4px 10px rgba(255,120,60,.45); transition:transform .04s linear; }
+  #reticle { position:fixed; left:50%; top:50%; width:12px; height:12px; margin:-6px 0 0 -6px; border:2px solid rgba(255,255,255,.85); border-radius:50%; box-shadow:0 0 0 1.5px rgba(0,0,0,.28); pointer-events:none; z-index:23; transition:transform .08s, background .08s, border-color .08s; }
+  #reticle.on { background:var(--accent); border-color:#fff; transform:scale(1.35); }
   .hint { position:absolute; pointer-events:none; left:50%; bottom:8px; transform:translateX(-50%); font-size:.72rem; opacity:.7; white-space:nowrap; }
   #jumpBtn { position:absolute; right:max(26px,calc(env(safe-area-inset-right,0px) + 20px)); bottom:calc(30px + env(safe-area-inset-bottom,0px));
     width:96px; height:96px; border-radius:50%; pointer-events:auto; border:2px solid rgba(255,255,255,.75); cursor:pointer; background:rgba(255,255,255,.5); color:var(--accent-ink); font-family:inherit; font-size:1.05rem; box-shadow:0 6px 18px rgba(80,120,170,.2); }
   #jumpBtn:active { transform:scale(.93); background:rgba(255,255,255,.75); }
-  #card { position:fixed; inset:0; z-index:24; display:grid; place-items:center; background:rgba(40,60,90,.28); padding:16px; }
-  .card-box { position:relative; width:100%; max-width:340px; background:var(--card); border:1px solid var(--card-border); border-radius:22px; padding:22px 20px 20px; box-shadow:0 18px 50px rgba(40,70,120,.3); text-align:center; }
+  #card { position:fixed; inset:0; z-index:24; display:grid; place-items:center; background:rgba(40,60,90,.28);
+    padding:max(16px,env(safe-area-inset-top,0px)) 16px max(16px,env(safe-area-inset-bottom,0px)); }
+  .card-box { position:relative; width:100%; max-width:340px; max-height:calc(100dvh - 32px); overflow-y:auto; background:var(--card); border:1px solid var(--card-border); border-radius:22px; padding:22px 20px 20px; box-shadow:0 18px 50px rgba(40,70,120,.3); text-align:center; }
   .card-x { position:absolute; top:10px; right:12px; border:none; background:none; font-size:1.1rem; color:#9fb0c5; cursor:pointer; }
   .card-name { font-size:1.4rem; margin-top:4px; } .card-meta { font-size:.92rem; opacity:.75; margin-top:6px; }
   .card-box .btn.go { width:100%; margin-top:16px; }
@@ -56,7 +59,8 @@
   #req span { flex:1 1 auto; min-width:0; }
   #req button { border:none; font-family:inherit; font-size:.9rem; padding:8px 14px; border-radius:10px; cursor:pointer; }
   #req .yes { background:var(--accent); color:#fff; } #req .no { background:var(--pill); color:var(--pill-ink); }
-  #join { position:fixed; inset:0; z-index:27; display:grid; place-items:center; background:rgba(40,60,90,.3); padding:16px; }
+  #join { position:fixed; inset:0; z-index:27; display:grid; place-items:center; background:rgba(40,60,90,.3);
+    padding:max(16px,env(safe-area-inset-top,0px)) 16px max(16px,env(safe-area-inset-bottom,0px)); }
   .join-sum { text-align:left; background:var(--pill); border-radius:14px; padding:12px 14px; margin:14px 0 10px; font-size:.9rem; line-height:1.7; word-break:keep-all; }
   .join-note { font-size:.8rem; opacity:.7; margin-bottom:14px; word-break:keep-all; }
   #join .btn { width:100%; margin-top:0; }
@@ -83,10 +87,11 @@
 <body>
 <canvas id="c"></canvas>
 <div id="hud" hidden>
-  <div class="panel"><h1 id="hudNick">키링크 광장</h1><p>조이스틱·WASD로 이동 · 스페이스로 점프 · 사람을 탭</p></div>
+  <div class="panel"><h1 id="hudNick">키링크 광장</h1><p>WASD·조이스틱 이동 · 마우스로 시야 · 스페이스 점프 · 사람 클릭</p></div>
   <div id="net"><span class="dot off" id="netDot"></span><span id="netTxt">연결 중…</span></div>
   <div id="stick"><div id="knob"></div><div class="hint">드래그해서 이동</div></div>
   <button id="jumpBtn" aria-label="점프">점프</button>
+  <div id="reticle" hidden></div>
 </div>
 <div id="entry"><div id="sheet">
   <h2>캐릭터 만들기</h2>
@@ -110,10 +115,10 @@
 </div></div>
 <div id="join" hidden><div class="card-box">
   <button id="joinClose" class="card-x" aria-label="닫기">✕</button>
-  <div class="card-name">회원가입하고 계속하기</div>
-  <div class="card-meta">다른 분 정보 보기·1:1 대화는 회원만 가능해요</div>
+  <div class="card-name" id="joinTitle">회원가입하고 계속하기</div>
+  <div class="card-meta" id="joinMeta">다른 분 정보 보기·1:1 대화는 회원만 가능해요</div>
   <div class="join-sum" id="joinSum"></div>
-  <div class="join-note">카카오로 1초면 끝나요. 생년월일·연락처는 가입할 때 입력해요.</div>
+  <div class="join-note" id="joinNote">카카오로 1초면 끝나요. 생년월일·연락처는 가입할 때 입력해요.</div>
   <button class="btn kakao" id="joinKakao">💬 카카오로 1초만에 시작하기</button>
 </div></div>
 <div id="req" hidden><span id="reqTxt"></span><button class="yes" id="reqYes">수락</button><button class="no" id="reqNo">나중에</button></div>
@@ -205,7 +210,7 @@ function clearHero(){ for(const ch of [...hero.children]){ hero.remove(ch); ch.t
 function buildHero(o){ clearHero(); const root=new THREE.Group(); hero.add(root); rig.root=root; const r=makeBody(root,o); Object.assign(rig,r); }
 
 let shuttlePos=null; const BOUNDARY=20;
-new GLTFLoader().load('village.glb', (gltf)=>{
+new GLTFLoader().load('/plaza/village.glb', (gltf)=>{
   const v=gltf.scene; scene.add(v); v.updateMatrixWorld(true);
   v.traverse((o)=>{
     const role=o.userData&&o.userData.kl_role;
@@ -304,7 +309,7 @@ function sendPos(dt){ if(!ws||ws.readyState!==1) return; posTimer-=dt; if(posTim
 
 // ── 상대 카드 / 1:1 ──
 const card=document.getElementById('card'); let reqTarget=null;
-function openCard(profile){ reqTarget=profile; document.getElementById('cardName').textContent=profile.nick;
+function openCard(profile){ document.exitPointerLock?.(); reqTarget=profile; document.getElementById('cardName').textContent=profile.nick;
   const meta=document.getElementById('cardMeta');
   if(profile.bot) meta.innerHTML=`${profile.gender} · ${profile.age} · ${profile.region}<br>${profile.job?profile.job+'<br>':''}<span style="opacity:.85">“${profile.intro}”</span>`;
   else meta.textContent=(profile.gender?profile.gender+' · ':'')+'지금 광장에 접속 중';
@@ -315,7 +320,7 @@ document.getElementById('cardReq').onclick=()=>{ const p=reqTarget; card.hidden=
   if(p.bot){ toast(`${p.nick}님에게 1:1 신청!`); setTimeout(()=>{ toast(`💗 ${p.nick}님이 수락했어요!`); openChat({ nick:p.nick, bot:true }); },1600); }
   else if(ws&&ws.readyState===1&&p.id){ ws.send(JSON.stringify({ t:'req', to:p.id })); toast(`${p.nick}님에게 1:1 신청!`); } };
 let incoming=null; const reqBox=document.getElementById('req');
-function showReq(fromId, nick){ incoming={id:fromId,nick}; document.getElementById('reqTxt').textContent=`💌 ${nick}님이 1:1 대화를 신청했어요`; reqBox.hidden=false; }
+function showReq(fromId, nick){ document.exitPointerLock?.(); incoming={id:fromId,nick}; document.getElementById('reqTxt').textContent=`💌 ${nick}님이 1:1 대화를 신청했어요`; reqBox.hidden=false; }
 document.getElementById('reqYes').onclick=()=>{ if(incoming&&ws&&ws.readyState===1){ ws.send(JSON.stringify({ t:'accept', to:incoming.id })); openChat({ id:incoming.id, nick:incoming.nick, bot:false }); } reqBox.hidden=true; };
 document.getElementById('reqNo').onclick=()=>{ reqBox.hidden=true; };
 
@@ -323,7 +328,7 @@ document.getElementById('reqNo').onclick=()=>{ reqBox.hidden=true; };
 const chat=document.getElementById('chat'), chatMsgs=document.getElementById('chatMsgs'), chatText=document.getElementById('chatText');
 let currentChat=null;
 const BOT_REPLIES=['안녕하세요! 반가워요 😊','말 걸어주셔서 고마워요','무슨 요일에 주로 시간 괜찮으세요?','저도 그거 좋아해요!','혹시 어느 동네 사세요?','오프라인에서도 보면 좋겠어요 ㅎㅎ'];
-function openChat(p){ currentChat=p; document.getElementById('chatName').textContent='💬 '+p.nick; chatMsgs.innerHTML=''; chat.hidden=false; addMsg('them','1:1 대화가 연결됐어요! 인사 나눠보세요 🎉'); setTimeout(()=>chatText.focus(),60); }
+function openChat(p){ document.exitPointerLock?.(); currentChat=p; document.getElementById('chatName').textContent='💬 '+p.nick; chatMsgs.innerHTML=''; chat.hidden=false; addMsg('them','1:1 대화가 연결됐어요! 인사 나눠보세요 🎉'); setTimeout(()=>chatText.focus(),60); }
 function addMsg(who,text){ const d=document.createElement('div'); d.className='msg '+who; d.textContent=text; chatMsgs.appendChild(d); chatMsgs.scrollTop=chatMsgs.scrollHeight; }
 document.getElementById('chatClose').onclick=()=>{ chat.hidden=true; currentChat=null; };
 document.getElementById('chatForm').addEventListener('submit',(e)=>{ e.preventDefault(); const t=chatText.value.trim(); if(!t||!currentChat) return; addMsg('me',t); chatText.value='';
@@ -333,10 +338,16 @@ function onChatMsg(from,nick,text){ if(!currentChat||currentChat.id!==from) open
 // ── 손님 → 회원 전환 게이트 (실제 키링크 로그인 연동) ──
 let member=false, fbUser=null;
 const joinBox=document.getElementById('join'); let pendingAfterJoin=null;
-const PLAZA_PATH='/plaza/';
+const PLAZA_PATH='/plaza/index.html'; // 로그인 후 복귀 주소 (정적 파일 직접 경로 — 404 방지)
 function buildJoinBody(){ return { nick:opts.nick, gender:opts.gender, region:opts.region, birthYear:opts.age, job:opts.job, intro:opts.intro, look:{ face:opts.face, hair:opts.hair, hairColor:opts.hairColor, eye:opts.eye, clothes:opts.clothes } }; }
 function joinSumHTML(){ return `<b>닉네임</b> ${opts.nick} · <b>성별</b> ${opts.gender==='female'?'여성':'남성'}<br><b>지역</b> ${opts.region||'-'} · <b>출생</b> ${opts.age?opts.age+'년생':'-'}<br><b>직업</b> ${opts.job||'-'} · <b>소개</b> ${opts.intro||'(없음)'}`; }
-function openJoin(after){ pendingAfterJoin=after||null; document.getElementById('joinSum').innerHTML=joinSumHTML(); joinBox.hidden=false; }
+function openJoin(after){ document.exitPointerLock?.(); pendingAfterJoin=after||null;
+  document.getElementById('joinTitle').textContent='회원가입하고 계속하기';
+  document.getElementById('joinMeta').hidden=false;
+  document.getElementById('joinNote').hidden=false;
+  document.getElementById('joinKakao').hidden=false;
+  document.getElementById('joinSum').innerHTML=joinSumHTML();
+  joinBox.hidden=false; }
 document.getElementById('joinClose').onclick=()=>{ joinBox.hidden=true; pendingAfterJoin=null; };
 joinBox.addEventListener('pointerdown',(e)=>{ if(e.target===joinBox){ joinBox.hidden=true; pendingAfterJoin=null; } });
 
@@ -386,10 +397,15 @@ async function submitJoin(){
   }catch(e){ toast('네트워크 오류예요. 잠시 후 다시 시도해 주세요'); return false; }
 }
 
-// 닉네임 중복 → 다른 닉으로 바꿔 재시도
+// 닉네임 중복 → 카카오 버튼·안내는 숨기고 닉 입력만 깔끔히 노출
 function promptNickFix(){ joinBox.hidden=false;
-  document.getElementById('joinSum').innerHTML='<b>'+(opts.nick||'')+'</b> 닉네임은 이미 사용 중이에요.<br>다른 닉네임으로 바꿔주세요.'
-    +'<div style="margin-top:12px;display:flex;gap:8px"><input id="nickFix" maxlength="12" value="'+(opts.nick||'')+'" autocomplete="off" style="flex:1;min-width:0;box-sizing:border-box;font-family:inherit;font-size:1rem;padding:11px 14px;border:1px solid var(--card-border);border-radius:12px;background:rgba(255,255,255,.7);color:var(--ink)"><button id="nickFixBtn" class="btn email" style="flex:0 0 auto;padding:11px 16px">확인</button></div>';
+  document.getElementById('joinTitle').textContent='닉네임만 바꿔주세요';
+  document.getElementById('joinMeta').hidden=true;
+  document.getElementById('joinNote').hidden=true;
+  document.getElementById('joinKakao').hidden=true;
+  document.getElementById('joinSum').innerHTML='<div style="text-align:center;margin-bottom:10px"><b>'+(opts.nick||'')+'</b> 은(는) 이미 사용 중이에요.</div>'
+    +'<input id="nickFix" maxlength="12" value="'+(opts.nick||'')+'" autocomplete="off" placeholder="새 닉네임" style="display:block;width:100%;box-sizing:border-box;font-family:inherit;font-size:1rem;padding:11px 14px;border:1px solid var(--card-border);border-radius:12px;background:rgba(255,255,255,.7);color:var(--ink)">'
+    +'<button id="nickFixBtn" class="btn" style="width:100%;margin-top:10px;background:var(--accent);color:#fff">확인하고 가입</button>';
   const fix=document.getElementById('nickFix'), btn=document.getElementById('nickFixBtn');
   fix.focus(); try{ fix.select(); }catch(e){}
   btn.onclick=async()=>{ const v=fix.value.trim(); if(!v){ fix.focus(); return; } opts.nick=v; try{ nickInput.value=v; buildHero(opts); }catch(e){} await submitJoin(); };
@@ -398,11 +414,33 @@ function promptNickFix(){ joinBox.hidden=false;
 
 const raycaster=new THREE.Raycaster(); const ndc=new THREE.Vector2();
 let dragId=null, dragX=0, dragY=0, dragged=false;
-renderer.domElement.addEventListener('pointerdown',(e)=>{ if(mode!=='playing'||!card.hidden||!chat.hidden||!joinBox.hidden) return; dragId=e.pointerId; dragX=e.clientX; dragY=e.clientY; dragged=false; });
+const canvasEl=renderer.domElement, reticle=document.getElementById('reticle');
+let locked=false, aimTarget=null;
+const modalOpen=()=> !card.hidden || !chat.hidden || !joinBox.hidden;
+function pickProfile(prof){ if(!prof) return; if(member) openCard(prof); else openJoin(()=>openCard(prof)); }
+function raycastFromNDC(x,y){ ndc.set(x,y); raycaster.setFromCamera(ndc,camera); const groups=[...[...peers.values()].map(p=>p.group), ...bots]; const hits=raycaster.intersectObjects(groups,true); if(!hits.length) return null; let g=hits[0].object; while(g&&!g.userData.profile) g=g.parent; return g?g.userData.profile:null; }
+
+// ── 데스크톱: 배그식 마우스룩(Pointer Lock) ──
+canvasEl.addEventListener('pointerdown',(e)=>{
+  if(e.pointerType==='mouse'){
+    if(mode!=='playing'||modalOpen()) return;
+    if(!locked){ try{ canvasEl.requestPointerLock(); }catch(_){} }   // 커서를 가둬 마우스룩 시작
+    else if(aimTarget){ pickProfile(aimTarget); }                     // 조준점(가운데)에 있는 사람 선택
+    return;
+  }
+  // 터치/펜: 드래그로 시야 회전 + 탭 선택
+  if(mode!=='playing'||modalOpen()) return;
+  dragId=e.pointerId; dragX=e.clientX; dragY=e.clientY; dragged=false;
+});
+document.addEventListener('pointerlockchange',()=>{ locked=(document.pointerLockElement===canvasEl); reticle.hidden=!locked; if(!locked){ reticle.classList.remove('on'); aimTarget=null; } });
+// 마우스 이동량(movementX/Y)으로 카메라 회전 — 잠금 상태에서만
+// 마우스 위로 → 위를 본다(FPS 관례). 올려다보면 카메라가 낮아지며 하늘을 향하므로 camPitch를 낮춘다 → movementY와 같은 부호.
+addEventListener('mousemove',(e)=>{ if(!locked) return; const s=0.0022; camYaw-=e.movementX*s; camPitch=Math.min(camMaxPitch,Math.max(camMinPitch,camPitch+e.movementY*s)); });
+
 addEventListener('pointermove',(e)=>{ if(e.pointerId!==dragId) return; const dx=e.clientX-dragX, dy=e.clientY-dragY; if(!dragged && Math.hypot(dx,dy)>6) dragged=true; if(dragged){ camYaw-=dx*0.005; camPitch=Math.min(camMaxPitch,Math.max(camMinPitch,camPitch-dy*0.005)); dragX=e.clientX; dragY=e.clientY; } });
 addEventListener('pointerup',(e)=>{ if(e.pointerId!==dragId) return; const wasDrag=dragged; dragId=null;
-  if(!wasDrag && mode==='playing' && card.hidden && chat.hidden && joinBox.hidden){ ndc.x=(e.clientX/innerWidth)*2-1; ndc.y=-(e.clientY/innerHeight)*2+1; raycaster.setFromCamera(ndc,camera); const groups=[...[...peers.values()].map(p=>p.group), ...bots]; const hits=raycaster.intersectObjects(groups,true); if(hits.length){ let g=hits[0].object; while(g&&!g.userData.profile) g=g.parent; if(g){ const prof=g.userData.profile; if(member) openCard(prof); else openJoin(()=>openCard(prof)); } } } });
-renderer.domElement.addEventListener('wheel',(e)=>{ camDist=Math.min(24,Math.max(7,camDist+Math.sign(e.deltaY)*1.3)); },{passive:true});
+  if(!wasDrag && mode==='playing' && !modalOpen()){ pickProfile(raycastFromNDC((e.clientX/innerWidth)*2-1, -(e.clientY/innerHeight)*2+1)); } });
+canvasEl.addEventListener('wheel',(e)=>{ camDist=Math.min(24,Math.max(7,camDist+Math.sign(e.deltaY)*1.3)); },{passive:true});
 
 // ── 루프 ──
 const clock=new THREE.Clock();
@@ -423,6 +461,7 @@ function tick(){
     if(rig.root){ const walking=len>0.08&&grounded; if(walking) walkPhase+=dt*9; const s=walking?Math.sin(walkPhase):0; rig.legL.rotation.x=L(rig.legL.rotation.x,s*0.55,0.3); rig.legR.rotation.x=L(rig.legR.rotation.x,-s*0.55,0.3); rig.armL.rotation.x=L(rig.armL.rotation.x,-s*0.5,0.3); rig.armR.rotation.x=L(rig.armR.rotation.x,s*0.5,0.3); rig.root.position.y=walking?Math.abs(Math.sin(walkPhase))*0.05:L(rig.root.position.y,0,0.2); }
     if((keys['Space']||mobileJump)&&grounded){ vy=8; grounded=false; } mobileJump=false; vy-=22*dt; hero.position.y+=vy*dt; if(hero.position.y<=0){ hero.position.y=0; vy=0; grounded=true; }
     const target=hero.position.clone().add(camOff()); camera.position.lerp(target,1-Math.pow(0.0008,dt)); camera.lookAt(hero.position.x,hero.position.y+1.4,hero.position.z);
+    if(locked){ aimTarget=raycastFromNDC(0,0); reticle.classList.toggle('on', !!aimTarget); } // 화면 중앙 조준
     sendPos(dt);
   } else {
     const target=new THREE.Vector3(SPAWN.x,SPAWN.y+2.7,SPAWN.z+6.8); camera.position.lerp(target,1-Math.pow(0.004,dt)); camera.lookAt(SPAWN.x,SPAWN.y+1.2,SPAWN.z); hero.rotation.y=Math.sin(clock.elapsedTime*0.8)*0.5;

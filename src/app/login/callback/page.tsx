@@ -97,7 +97,9 @@ function KakaoCallbackContent() {
           const isComplete = userData && (userData.mergedTo || (userData.gender && userData.birthDate && userData.phone));
 
           if (isNew || !isComplete) {
-            router.replace('/register/social-profile');
+            // 가입 완료 후 돌아갈 곳(redirectUrl)을 소셜 프로필 페이지로 이어서 넘긴다 (예: /plaza/)
+            const q = (redirectUrl && redirectUrl !== '/') ? ('?redirect=' + encodeURIComponent(redirectUrl)) : '';
+            router.replace('/register/social-profile' + q);
           } else {
             toast.success('로그인에 성공했습니다!');
             router.replace(redirectUrl);

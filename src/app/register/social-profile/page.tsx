@@ -159,6 +159,10 @@ export default function SocialProfilePage() {
       }
 
       toast.success('가입이 완료되었습니다!');
+      // 가입을 광장(/plaza/ 등)에서 시작했으면 그쪽으로 돌아간다. 정적 경로라 하드 내비게이션으로 이동.
+      let dest = '/';
+      try { dest = new URLSearchParams(window.location.search).get('redirect') || '/'; } catch {}
+      if (dest !== '/') { window.location.href = dest; return; }
       router.push('/');
     } catch (err: any) {
       console.error('Registration Error:', err.code, err);
