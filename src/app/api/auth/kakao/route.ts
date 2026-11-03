@@ -113,6 +113,7 @@ async function getOrCreateFirebaseUser(kakaoId: string, nickname: string, email:
         provider: 'kakao',
         role: 'user',
         createdAt: now,
+        updatedAt: now,
         kakaoEmail: email,
       });
 

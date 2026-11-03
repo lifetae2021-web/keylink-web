@@ -347,6 +347,7 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
             provider: 'kakao',
             role: 'user',
             createdAt: Timestamp.now(),
+            updatedAt: Timestamp.now(),
           });
 
           // 웰컴 가입 축하 쿠폰 발급 (batch로 추가 불가능하므로 직접 추가, 단 batch 외부에 위치해야함)
@@ -1269,6 +1270,7 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
           photos: backup.photos || [],
           role: 'user',
           createdAt: Timestamp.now(),
+          updatedAt: Timestamp.now(),
         });
 
         // 웰컴 가입 축하 쿠폰 발급
