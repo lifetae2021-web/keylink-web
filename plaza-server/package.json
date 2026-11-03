@@ -1,0 +1,9 @@
+{
+  "name": "keylink-plaza-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "키링크 광장 실시간(WebSocket) 서버",
+  "scripts": { "start": "node server.mjs" },
+  "dependencies": { "ws": "^8.18.0" }
+}

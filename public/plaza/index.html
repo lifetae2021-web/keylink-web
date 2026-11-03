@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>키링크 광장</title>
+<style>
+  :root { --sky-top:#bfe3ff; --sky-bottom:#eaf7ff; --ink:#3a4a63; --card:rgba(255,255,255,.9); --card-border:rgba(140,170,210,.45);
+    --accent:#ff9a62; --accent-ink:#7a3c18; --stick:rgba(255,255,255,.5); --stick-knob:#ff9a62; --pill:rgba(120,160,210,.14); --pill-ink:#4a5a73; }
+  html, body { height:100%; margin:0; }
+  body { background:linear-gradient(var(--sky-top),var(--sky-bottom)); color:var(--ink); overflow:hidden;
+    font-family:"Jua",system-ui,-apple-system,sans-serif; -webkit-user-select:none; user-select:none; -webkit-tap-highlight-color:transparent; touch-action:none; }
+  #c { position:fixed; inset:0; width:100%; height:100%; display:block; }
+  #hud { position:fixed; inset:0; pointer-events:none; }
+  .panel { position:absolute; top:env(safe-area-inset-top,0px); left:max(16px,env(safe-area-inset-left,0px));
+    background:var(--card); border:1px solid var(--card-border); border-radius:18px; padding:10px 16px; margin-top:12px;
+    box-shadow:0 8px 24px rgba(80,120,170,.18); backdrop-filter:blur(6px); }
+  .panel h1 { margin:0; font-size:1.05rem; } .panel p { margin:3px 0 0; font-size:.78rem; opacity:.72; }
+  #net { position:absolute; top:env(safe-area-inset-top,0px); right:max(16px,env(safe-area-inset-right,0px)); margin-top:12px;
+    background:var(--card); border:1px solid var(--card-border); border-radius:14px; padding:7px 12px; font-size:.78rem; box-shadow:0 8px 24px rgba(80,120,170,.18); }
+  .dot { display:inline-block; width:8px; height:8px; border-radius:50%; background:#bbb; margin-right:6px; vertical-align:middle; }
+  .dot.on { background:#4ec36b; } .dot.off { background:#e06b5b; }
+  #loading { position:fixed; inset:0; display:grid; place-items:center; z-index:30; background:linear-gradient(var(--sky-top),var(--sky-bottom)); font-size:1.05rem; text-align:center; }
+  #entry { position:fixed; left:0; right:0; bottom:0; z-index:20; pointer-events:none; }
+  #sheet { pointer-events:auto; margin:0 auto; max-width:560px; background:var(--card); border:1px solid var(--card-border); border-bottom:none;
+    border-radius:22px 22px 0 0; box-shadow:0 -10px 30px rgba(80,120,170,.2); backdrop-filter:blur(8px);
+    padding:16px max(16px,env(safe-area-inset-left,0px)) calc(16px + env(safe-area-inset-bottom,0px)); max-height:44vh; overflow-y:auto; }
+  #sheet h2 { margin:2px 0 12px; font-size:1.25rem; text-align:center; }
+  .row { margin-bottom:12px; } .row > label { display:block; font-size:.8rem; opacity:.7; margin-bottom:6px; }
+  .opts { display:flex; flex-wrap:wrap; gap:8px; }
+  .pill { border:1px solid var(--card-border); background:var(--pill); color:var(--pill-ink); font-family:inherit; font-size:.9rem; padding:8px 14px; border-radius:12px; cursor:pointer; }
+  .pill[aria-pressed="true"] { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .sw { width:34px; height:34px; border-radius:50%; border:2px solid rgba(255,255,255,.8); cursor:pointer; box-shadow:0 2px 6px rgba(80,120,170,.2); }
+  .sw[aria-pressed="true"] { outline:3px solid var(--accent); outline-offset:2px; }
+  #nick { width:100%; box-sizing:border-box; font-family:inherit; font-size:1rem; padding:11px 14px; border:1px solid var(--card-border); border-radius:12px; background:rgba(255,255,255,.7); color:var(--ink); }
+  .sheet-btns { display:flex; gap:10px; margin-top:6px; }
+  .btn { flex:1; border:none; font-family:inherit; font-size:1.02rem; padding:14px; border-radius:14px; cursor:pointer; }
+  .btn.ghost { flex:0 0 auto; background:var(--pill); color:var(--pill-ink); }
+  .btn.go { background:var(--accent); color:#fff; box-shadow:0 8px 20px rgba(255,120,60,.4); }
+  .btn:active { transform:scale(.97); }
+  #stick { position:absolute; left:max(26px,calc(env(safe-area-inset-left,0px) + 20px)); bottom:calc(26px + env(safe-area-inset-bottom,0px));
+    width:132px; height:132px; border-radius:50%; background:var(--stick); border:2px solid rgba(255,255,255,.7); pointer-events:auto; touch-action:none; box-shadow:0 6px 18px rgba(80,120,170,.2); }
+  #knob { position:absolute; left:50%; top:50%; width:58px; height:58px; margin:-29px 0 0 -29px; border-radius:50%; background:var(--stick-knob); box-shadow:0 4px 10px rgba(255,120,60,.45); transition:transform .04s linear; }
+  .hint { position:absolute; left:50%; bottom:8px; transform:translateX(-50%); font-size:.72rem; opacity:.7; white-space:nowrap; }
+  #jumpBtn { position:absolute; right:max(26px,calc(env(safe-area-inset-right,0px) + 20px)); bottom:calc(30px + env(safe-area-inset-bottom,0px));
+    width:96px; height:96px; border-radius:50%; pointer-events:auto; border:2px solid rgba(255,255,255,.75); cursor:pointer; background:rgba(255,255,255,.5); color:var(--accent-ink); font-family:inherit; font-size:1.05rem; box-shadow:0 6px 18px rgba(80,120,170,.2); }
+  #jumpBtn:active { transform:scale(.93); background:rgba(255,255,255,.75); }
+  #card { position:fixed; inset:0; z-index:24; display:grid; place-items:center; background:rgba(40,60,90,.28); padding:16px; }
+  .card-box { position:relative; width:100%; max-width:340px; background:var(--card); border:1px solid var(--card-border); border-radius:22px; padding:22px 20px 20px; box-shadow:0 18px 50px rgba(40,70,120,.3); text-align:center; }
+  .card-x { position:absolute; top:10px; right:12px; border:none; background:none; font-size:1.1rem; color:#9fb0c5; cursor:pointer; }
+  .card-name { font-size:1.4rem; margin-top:4px; } .card-meta { font-size:.92rem; opacity:.75; margin-top:6px; }
+  .card-box .btn.go { width:100%; margin-top:16px; }
+  #toast { position:fixed; left:50%; bottom:calc(26px + env(safe-area-inset-bottom,0px)); transform:translateX(-50%); background:var(--accent-ink); color:#fff; padding:12px 18px; border-radius:14px; font-size:.9rem; z-index:25; box-shadow:0 8px 24px rgba(0,0,0,.25); max-width:94vw; text-align:center; white-space:nowrap; word-break:keep-all; }
+  #req { position:fixed; left:50%; top:calc(72px + env(safe-area-inset-top,0px)); transform:translateX(-50%); z-index:26; max-width:min(92vw,420px); background:var(--card); border:1px solid var(--card-border); border-radius:16px; padding:12px 16px; box-shadow:0 10px 30px rgba(40,70,120,.25); display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:center; font-size:.92rem; word-break:keep-all; }
+  #req span { flex:1 1 auto; min-width:0; }
+  #req button { border:none; font-family:inherit; font-size:.9rem; padding:8px 14px; border-radius:10px; cursor:pointer; }
+  #req .yes { background:var(--accent); color:#fff; } #req .no { background:var(--pill); color:var(--pill-ink); }
+  #join { position:fixed; inset:0; z-index:27; display:grid; place-items:center; background:rgba(40,60,90,.3); padding:16px; }
+  .join-sum { text-align:left; background:var(--pill); border-radius:14px; padding:12px 14px; margin:14px 0 10px; font-size:.9rem; line-height:1.7; word-break:keep-all; }
+  .join-note { font-size:.8rem; opacity:.7; margin-bottom:14px; word-break:keep-all; }
+  #join .btn { width:100%; margin-top:0; }
+  #join .kakao { background:#FEE500; color:#3c1e1e; margin-bottom:10px; }
+  #join .email { background:var(--pill); color:var(--pill-ink); }
+  #chat { position:fixed; left:0; right:0; bottom:0; z-index:28; pointer-events:none; }
+  .chat-box { pointer-events:auto; margin:0 auto; max-width:560px; height:min(56vh,440px); display:flex; flex-direction:column;
+    background:var(--card); border:1px solid var(--card-border); border-bottom:none; border-radius:20px 20px 0 0; box-shadow:0 -12px 34px rgba(40,70,120,.25); backdrop-filter:blur(8px); }
+  .chat-head { display:flex; align-items:center; justify-content:space-between; padding:14px 18px; border-bottom:1px solid var(--card-border); font-size:1.05rem; }
+  .chat-head button { border:none; background:none; font-size:1.1rem; color:#9fb0c5; cursor:pointer; }
+  .chat-msgs { flex:1; overflow-y:auto; padding:14px; display:flex; flex-direction:column; gap:8px; }
+  .msg { max-width:76%; padding:9px 13px; border-radius:14px; font-size:.95rem; line-height:1.4; }
+  .msg.them { align-self:flex-start; background:var(--pill); color:var(--ink); border-bottom-left-radius:5px; }
+  .msg.me { align-self:flex-end; background:var(--accent); color:#fff; border-bottom-right-radius:5px; }
+  .chat-input { display:flex; gap:8px; padding:12px 14px calc(12px + env(safe-area-inset-bottom,0px)); border-top:1px solid var(--card-border); }
+  .chat-input input { flex:1; min-width:0; font-family:inherit; font-size:1rem; padding:11px 14px; border:1px solid var(--card-border); border-radius:12px; background:rgba(255,255,255,.7); color:var(--ink); }
+  .chat-input button { border:none; background:var(--accent); color:#fff; font-family:inherit; font-size:.95rem; padding:0 18px; border-radius:12px; cursor:pointer; }
+  [hidden] { display:none !important; }
+  @media (prefers-reduced-motion: reduce) { * { transition:none !important; } }
+</style>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&display=swap">
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="hud" hidden>
+  <div class="panel"><h1 id="hudNick">키링크 광장</h1><p>조이스틱·WASD로 이동 · 스페이스로 점프 · 사람을 탭</p></div>
+  <div id="net"><span class="dot off" id="netDot"></span><span id="netTxt">연결 중…</span></div>
+  <div id="stick"><div id="knob"></div><div class="hint">드래그해서 이동</div></div>
+  <button id="jumpBtn" aria-label="점프">점프</button>
+</div>
+<div id="entry"><div id="sheet">
+  <h2>캐릭터 만들기</h2>
+  <div class="row"><label for="nick">닉네임</label><input id="nick" maxlength="8" placeholder="2~8자" autocomplete="off"></div>
+  <div class="row"><label>성별</label><div class="opts" id="opt-gender"></div></div>
+  <div class="row"><label>얼굴형</label><div class="opts" id="opt-face"></div></div>
+  <div class="row"><label>머리 모양</label><div class="opts" id="opt-hair"></div></div>
+  <div class="row"><label>머리 색</label><div class="opts" id="opt-hairColor"></div></div>
+  <div class="row"><label>눈</label><div class="opts" id="opt-eye"></div></div>
+  <div class="row"><label>옷 색</label><div class="opts" id="opt-clothes"></div></div>
+  <div class="row"><label>지역</label><div class="opts" id="opt-region"></div></div>
+  <div class="row"><label>나이대</label><div class="opts" id="opt-age"></div></div>
+  <div class="row"><label for="intro">한 줄 소개</label><input id="intro" maxlength="40" placeholder="예) 커피랑 산책 좋아해요" autocomplete="off"></div>
+  <div class="sheet-btns"><button class="btn ghost" id="randomBtn">🎲 랜덤</button><button class="btn go" id="enterBtn">입장하기</button></div>
+</div></div>
+<div id="card" hidden><div class="card-box">
+  <button id="cardClose" class="card-x" aria-label="닫기">✕</button>
+  <div class="card-name" id="cardName"></div><div class="card-meta" id="cardMeta"></div>
+  <button id="cardReq" class="btn go">💌 1:1 대화 신청</button>
+</div></div>
+<div id="join" hidden><div class="card-box">
+  <button id="joinClose" class="card-x" aria-label="닫기">✕</button>
+  <div class="card-name">회원가입하고 계속하기</div>
+  <div class="card-meta">다른 분 정보 보기·1:1 대화는 회원만 가능해요</div>
+  <div class="join-sum" id="joinSum"></div>
+  <div class="join-note">생년월일·연락처는 가입할 때 입력해요.</div>
+  <button class="btn kakao" id="joinKakao">💬 카카오로 계속하기</button>
+  <button class="btn email" id="joinEmail">이메일로 가입</button>
+</div></div>
+<div id="req" hidden><span id="reqTxt"></span><button class="yes" id="reqYes">수락</button><button class="no" id="reqNo">나중에</button></div>
+<div id="chat" hidden><div class="chat-box">
+  <div class="chat-head"><span id="chatName"></span><button id="chatClose" aria-label="닫기">✕</button></div>
+  <div class="chat-msgs" id="chatMsgs"></div>
+  <form class="chat-input" id="chatForm"><input id="chatText" placeholder="메시지 입력" autocomplete="off" maxlength="200"><button type="submit">전송</button></form>
+</div></div>
+<div id="loading">마을을 불러오는 중…</div>
+
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/" } }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias:true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0xbfe3ff); scene.fog = new THREE.Fog(0xcfeaff, 45, 95);
+const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 400); let camYaw=0, camPitch=0.5, camDist=15; const camMinPitch=0.14, camMaxPitch=1.25;
+function camOff(){ const cp=Math.cos(camPitch); return new THREE.Vector3(Math.sin(camYaw)*camDist*cp, Math.sin(camPitch)*camDist, Math.cos(camYaw)*camDist*cp); }
+scene.add(new THREE.HemisphereLight(0xffffff, 0x9fbf7f, 2.0));
+const sun = new THREE.DirectionalLight(0xfff4e0, 2.2); sun.position.set(18, 30, 12); scene.add(sun);
+function resize(){ const w=innerWidth,h=innerHeight; renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix(); }
+addEventListener('resize', resize); resize();
+
+const skinMat = new THREE.MeshStandardMaterial({ color:0xffe0c4, roughness:0.85 });
+const darkMat = new THREE.MeshStandardMaterial({ color:0x3a3a3a });
+function roundRect(g,x,y,w,h,r){ g.beginPath(); g.moveTo(x+r,y); g.arcTo(x+w,y,x+w,y+h,r); g.arcTo(x+w,y+h,x,y+h,r); g.arcTo(x,y+h,x,y,r); g.arcTo(x,y,x+w,y,r); g.closePath(); }
+function makeNickSprite(text, gender){
+  const label=(gender==='female'?'♀ ':gender==='male'?'♂ ':'')+text;
+  const cv=document.createElement('canvas'); cv.width=320; cv.height=90; const g=cv.getContext('2d'); g.textAlign='center'; g.textBaseline='middle';
+  let fs=44; do{ g.font='bold '+fs+'px Jua, sans-serif'; if(g.measureText(label).width<=250) break; fs-=2; } while(fs>16);
+  const tw=g.measureText(label).width, pw=Math.min(304, tw+44), ph=58, px=(320-pw)/2, py=16;
+  const bg = gender==='female' ? '#ff7fa8' : gender==='male' ? '#4e94e6' : '#8a9ab0';
+  g.fillStyle='rgba(255,255,255,.92)'; roundRect(g,px-3,py-3,pw+6,ph+6,32); g.fill();
+  g.fillStyle=bg; roundRect(g,px,py,pw,ph,29); g.fill();
+  g.fillStyle='#fff'; g.font='bold '+fs+'px Jua, sans-serif'; g.fillText(label,160,py+ph/2+1);
+  const tex=new THREE.CanvasTexture(cv); tex.colorSpace=THREE.SRGBColorSpace;
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({ map:tex, transparent:true, depthTest:false })); sp.scale.set(1.7,1.7*90/320,1); sp.position.y=2.4; return sp;
+}
+function limb(px,py,len,rad,mat){ const g=new THREE.Group(); g.position.set(px,py,0); const m=new THREE.Mesh(new THREE.CapsuleGeometry(rad,len,5,10),mat); m.position.y=-(len/2+rad); g.add(m); return g; }
+function makeBody(root,o){
+  const clothes=new THREE.MeshStandardMaterial({ color:o.clothes, roughness:0.7 });
+  const clothesD=new THREE.MeshStandardMaterial({ color:new THREE.Color(o.clothes).multiplyScalar(0.72), roughness:0.7 });
+  const hairMat=new THREE.MeshStandardMaterial({ color:o.hairColor, roughness:0.75 });
+  let legL, legR;
+  if(o.gender==='female'){ const skirt=new THREE.Mesh(new THREE.ConeGeometry(0.46,0.5,18),clothes); skirt.position.y=0.66; root.add(skirt);
+    legL=limb(-0.12,0.5,0.34,0.08,skinMat); root.add(legL); legR=limb(0.12,0.5,0.34,0.08,skinMat); root.add(legR); }
+  else { legL=limb(-0.17,0.62,0.42,0.12,clothesD); root.add(legL); legR=limb(0.17,0.62,0.42,0.12,clothesD); root.add(legR); }
+  const torso=new THREE.Mesh(new THREE.CapsuleGeometry(0.3,0.42,6,14),clothes); torso.position.y=1.0; root.add(torso);
+  const armL=limb(-0.38,1.28,0.38,0.1,clothes); root.add(armL); const armR=limb(0.38,1.28,0.38,0.1,clothes); root.add(armR);
+  for(const g of [armL,armR]){ const h=new THREE.Mesh(new THREE.SphereGeometry(0.1,10,8),skinMat); h.position.y=-0.52; g.add(h); }
+  const HY=1.74; let head;
+  if(o.face==='square') head=new THREE.Mesh(new THREE.BoxGeometry(0.62,0.6,0.6),skinMat);
+  else if(o.face==='triangle'){ head=new THREE.Mesh(new THREE.ConeGeometry(0.46,0.72,4),skinMat); head.rotation.x=Math.PI; head.rotation.y=Math.PI/4; }
+  else head=new THREE.Mesh(new THREE.SphereGeometry(0.37,20,16),skinMat);
+  head.position.y=HY; root.add(head);
+  const cap=new THREE.Mesh(new THREE.SphereGeometry(0.4,18,12,0,Math.PI*2,0,Math.PI*0.58),hairMat); cap.position.y=HY+0.06; root.add(cap);
+  if(o.hair==='long') for(const sx of [-0.36,0.36]){ const s=new THREE.Mesh(new THREE.CapsuleGeometry(0.1,0.34,4,8),hairMat); s.position.set(sx,HY-0.12,-0.02); root.add(s); }
+  if(o.hair==='spiky') for(let i=0;i<6;i++){ const s=new THREE.Mesh(new THREE.ConeGeometry(0.09,0.22,6),hairMat); const a=(i/6)*Math.PI*2; s.position.set(Math.cos(a)*0.2,HY+0.3,Math.sin(a)*0.2); s.rotation.z=-Math.cos(a)*0.4; s.rotation.x=Math.sin(a)*0.4; root.add(s); }
+  for(const sx of [-0.14,0.14]){ const e=o.eye==='line'?new THREE.Mesh(new THREE.BoxGeometry(0.12,0.035,0.04),darkMat):new THREE.Mesh(new THREE.SphereGeometry(0.055,10,8),darkMat); e.position.set(sx,HY+0.02,0.34); root.add(e); }
+  root.add(makeNickSprite(o.nick||'손님', o.gender));
+  return { legL, legR, armL, armR };
+}
+
+const SPAWN=new THREE.Vector3(0,0,11);
+const hero=new THREE.Group(); hero.position.copy(SPAWN); scene.add(hero);
+const rig={};
+const obstacles=[];
+function pushOut(obj){ for(const o of obstacles){ const dx=obj.position.x-o.x, dz=obj.position.z-o.z; const d=Math.hypot(dx,dz); if(d>1e-4 && d<o.r){ obj.position.x=o.x+dx/d*o.r; obj.position.z=o.z+dz/d*o.r; } } }
+function clearHero(){ for(const ch of [...hero.children]){ hero.remove(ch); ch.traverse?.(o=>o.geometry?.dispose?.()); } }
+function buildHero(o){ clearHero(); const root=new THREE.Group(); hero.add(root); rig.root=root; const r=makeBody(root,o); Object.assign(rig,r); }
+
+let shuttlePos=null; const BOUNDARY=20;
+new GLTFLoader().load('village.glb', (gltf)=>{
+  const v=gltf.scene; scene.add(v); v.updateMatrixWorld(true);
+  v.traverse((o)=>{
+    const role=o.userData&&o.userData.kl_role;
+    if(role==='collider'||role==='trigger'){ if(role==='trigger'){ shuttlePos=new THREE.Vector3(); o.getWorldPosition(shuttlePos); } o.visible=false; return; }
+    if(o.isMesh){ const n=o.name||'';
+      if((n.includes('cottage')&&n.includes('_body'))||n.includes('fountain_basin')||(n.includes('tree_')&&n.includes('trunk'))){
+        const bb=new THREE.Box3().setFromObject(o), c=bb.getCenter(new THREE.Vector3()), sz=bb.getSize(new THREE.Vector3());
+        obstacles.push({ x:c.x, z:c.z, r:Math.max(sz.x,sz.z)/2 + 0.45 });
+      }
+    }
+  });
+  document.getElementById('loading').remove();
+}, undefined, (err)=>{ document.getElementById('loading').textContent='마을을 불러오지 못했어요.'; console.error(err); });
+
+// ── 입장 UI ──
+const HAIR_COLORS=['#2a2018','#6b4423','#111111','#d9b36a','#d14b4b','#8a5bd1'];
+const CLOTHES=['#ff8f6b','#5bb0d1','#7bc67b','#d15b9e','#f0c04b','#9a8cff'];
+const CHOICES={ gender:[['남성','male'],['여성','female']], face:[['동그라미','round'],['네모','square'],['세모','triangle']], hair:[['짧은머리','short'],['단발','long'],['삐죽','spiky']], eye:[['동그란','round'],['일자','line']],
+  region:[['서울','서울'],['부산','부산'],['대구','대구'],['인천','인천'],['경기','경기'],['기타','기타']],
+  age:[['20대 초','20대 초반'],['20대 중','20대 중반'],['20대 후','20대 후반'],['30대 초','30대 초반'],['30대 중','30대 중반']] };
+const NICKS=['햇살','바다','구름','단비','별이','토리','보리','하루','살구','모찌'];
+let opts; try{ opts=JSON.parse(localStorage.getItem('kl_char')||'null'); }catch(e){}
+if(!opts) opts={ nick:'', gender:'male', face:'round', hair:'short', hairColor:HAIR_COLORS[1], eye:'round', clothes:CLOTHES[0], region:'', age:'', intro:'' };
+if(opts){ opts.gender=opts.gender||'male'; opts.region=opts.region||''; opts.age=opts.age||''; opts.intro=opts.intro||''; }
+const nickInput=document.getElementById('nick'); nickInput.value=opts.nick||'';
+nickInput.addEventListener('input',()=>{ opts.nick=nickInput.value.trim(); buildHero(opts); });
+const introInput=document.getElementById('intro'); introInput.value=opts.intro||''; introInput.addEventListener('input',()=>{ opts.intro=introInput.value.trim(); });
+function renderPills(id,key,list){ const el=document.getElementById(id); el.innerHTML=''; for(const [label,val] of list){ const b=document.createElement('button'); b.className='pill'; b.textContent=label; b.setAttribute('aria-pressed',String(opts[key]===val)); b.onclick=()=>{ opts[key]=val; renderPills(id,key,list); buildHero(opts); }; el.appendChild(b); } }
+function renderSw(id,key,cols){ const el=document.getElementById(id); el.innerHTML=''; for(const col of cols){ const b=document.createElement('button'); b.className='sw'; b.style.background=col; b.setAttribute('aria-pressed',String(opts[key]===col)); b.onclick=()=>{ opts[key]=col; renderSw(id,key,cols); buildHero(opts); }; el.appendChild(b); } }
+function renderAll(){ renderPills('opt-gender','gender',CHOICES.gender); renderPills('opt-face','face',CHOICES.face); renderPills('opt-hair','hair',CHOICES.hair); renderSw('opt-hairColor','hairColor',HAIR_COLORS); renderPills('opt-eye','eye',CHOICES.eye); renderSw('opt-clothes','clothes',CLOTHES); renderPills('opt-region','region',CHOICES.region); renderPills('opt-age','age',CHOICES.age); }
+document.getElementById('randomBtn').onclick=()=>{ const p=a=>a[Math.floor(Math.random()*a.length)]; opts.gender=p(CHOICES.gender)[1]; opts.face=p(CHOICES.face)[1]; opts.hair=p(CHOICES.hair)[1]; opts.eye=p(CHOICES.eye)[1]; opts.hairColor=p(HAIR_COLORS); opts.clothes=p(CLOTHES); if(!nickInput.value){ opts.nick=p(NICKS); nickInput.value=opts.nick; } if(!opts.region) opts.region=p(CHOICES.region)[1]; if(!opts.age) opts.age=p(CHOICES.age)[1]; renderAll(); buildHero(opts); };
+let mode='creating';
+document.getElementById('enterBtn').onclick=()=>{ if(!opts.region||!opts.age){ toast('지역과 나이대를 선택해 주세요'); return; } if(!opts.nick){ opts.nick=NICKS[Math.floor(Math.random()*NICKS.length)]; nickInput.value=opts.nick; buildHero(opts); } try{ localStorage.setItem('kl_char',JSON.stringify(opts)); }catch(e){} document.getElementById('entry').remove(); document.getElementById('hud').hidden=false; document.getElementById('hudNick').textContent=opts.nick+' 님'; mode='playing'; connect(); };
+renderAll(); buildHero(opts);
+
+// ── 가상 이웃(봇): 혼자서도 1:1 흐름을 테스트할 수 있게 ──
+const pickA=a=>a[Math.floor(Math.random()*a.length)];
+const REGIONS=['서울 강남','부산 해운대','서울 마포','부산 서면','대구 중구','인천 송도','경기 성남'];
+const AGES=['20대 초반','20대 중반','20대 후반','30대 초반','30대 중반'];
+const INTROS=['커피랑 산책 좋아해요 ☕','주말엔 등산 가요 ⛰️','맛집 탐방이 취미예요 🍜','강아지랑 살아요 🐶','영화 보는 거 좋아해요 🎬','운동 자주 해요 💪','여행 다니는 거 좋아해요 ✈️'];
+const BOT_NICKS=['보리','하루','살구','모찌','단비','별이','토리','구름'];
+const bots=[];
+function makeBot(i){ const gd=pickA(['male','female']); const o={ nick:BOT_NICKS[i%BOT_NICKS.length], gender:gd, face:pickA(['round','square','triangle']), hair:pickA(['short','long','spiky']), hairColor:pickA(HAIR_COLORS), eye:pickA(['round','line']), clothes:pickA(CLOTHES) };
+  const g=new THREE.Group(); const root=new THREE.Group(); g.add(root); const refs=makeBody(root,o);
+  const a=Math.random()*Math.PI*2, rad=5+Math.random()*11; g.position.set(Math.cos(a)*rad,0,Math.sin(a)*rad);
+  g.userData={ root, refs, phase:Math.random()*10, target:null, profile:{ nick:o.nick, gender:gd==='female'?'여':'남', region:pickA(REGIONS), age:pickA(AGES), intro:pickA(INTROS), bot:true } };
+  scene.add(g); bots.push(g); }
+for(let i=0;i<5;i++) makeBot(i);
+
+// ── 입력 ──
+const move=new THREE.Vector2(0,0); const keys={};
+addEventListener('keydown',(e)=>{ keys[e.code]=true; if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)) e.preventDefault(); });
+addEventListener('keyup',(e)=>keys[e.code]=false);
+let mobileJump=false, vy=0, grounded=true, walkPhase=0;
+const stick=document.getElementById('stick'), knob=document.getElementById('knob'); let touchId=null,cx=0,cy=0; const R=52;
+stick.addEventListener('pointerdown',(e)=>{ stick.setPointerCapture(e.pointerId); const r=stick.getBoundingClientRect(); cx=r.left+r.width/2; cy=r.top+r.height/2; touchId=e.pointerId; sMove(e.clientX,e.clientY); });
+stick.addEventListener('pointermove',(e)=>{ if(e.pointerId===touchId) sMove(e.clientX,e.clientY); });
+stick.addEventListener('pointerup',sEnd); stick.addEventListener('pointercancel',sEnd);
+function sMove(x,y){ let dx=x-cx,dy=y-cy; const d=Math.hypot(dx,dy); if(d>R){dx=dx/d*R;dy=dy/d*R;} knob.style.transform=`translate(${dx}px,${dy}px)`; move.set(dx/R,dy/R); }
+function sEnd(){ touchId=null; knob.style.transform='translate(0,0)'; move.set(0,0); }
+document.getElementById('jumpBtn').addEventListener('pointerdown',(e)=>{ e.preventDefault(); mobileJump=true; });
+let toastT; function toast(m){ let t=document.getElementById('toast'); if(!t){t=document.createElement('div');t.id='toast';document.body.appendChild(t);} t.textContent=m; clearTimeout(toastT); toastT=setTimeout(()=>t.remove(),2600); }
+
+// ── 네트워킹 ──
+const WS_URL = new URLSearchParams(location.search).get('ws')
+  || ((location.hostname==='localhost'||location.hostname==='127.0.0.1') ? 'ws://localhost:8787'
+      : (location.protocol==='https:'?'wss':'ws')+'://'+location.hostname+':8787');
+const peers=new Map(); // id -> { group, refs, target:{x,z,ry}, nick, phase, lastMove }
+let ws=null, myId=null;
+const netDot=document.getElementById('netDot'), netTxt=document.getElementById('netTxt');
+function setNet(on, n){ netDot.className='dot '+(on?'on':'off'); netTxt.textContent = on ? ('접속 '+(n)+'명') : '오프라인 (혼자)'; }
+function addPeer(p){ if(p.id===myId||peers.has(p.id)) return; const group=new THREE.Group(); const root=new THREE.Group(); group.add(root); const refs=makeBody(root, p.look||{clothes:'#5bb0d1',hairColor:'#6b4423',face:'round',hair:'short',eye:'round',nick:p.nick}); group.position.set(p.state?.x||0,0,p.state?.z||0); group.userData={ profile:{ nick:p.nick, id:p.id, gender:(p.look&&p.look.gender==='female')?'여':(p.look&&p.look.gender==='male')?'남':null } }; scene.add(group); peers.set(p.id,{ group, refs, root, target:{x:group.position.x,z:group.position.z,ry:0}, nick:p.nick, phase:Math.random()*10 }); updateCount(); }
+function updateCount(){ setNet(true, peers.size+1); }
+function connect(){
+  try{ ws=new WebSocket(WS_URL); }catch(e){ setNet(false); return; }
+  ws.onopen=()=>{ ws.send(JSON.stringify({ t:'hello', room:'plaza', nick:opts.nick, look:opts })); };
+  ws.onclose=()=>{ setNet(false); for(const [id,pr] of peers){ scene.remove(pr.group); } peers.clear(); setTimeout(()=>{ if(mode==='playing') connect(); }, 2500); };
+  ws.onerror=()=>{ setNet(false); };
+  ws.onmessage=(ev)=>{ let m; try{ m=JSON.parse(ev.data); }catch(e){ return; }
+    if(m.t==='welcome'){ myId=m.id; (m.peers||[]).forEach(addPeer); updateCount(); }
+    else if(m.t==='join'){ addPeer(m); }
+    else if(m.t==='peer'){ const pr=peers.get(m.id); if(pr) pr.target={x:m.x,z:m.z,ry:m.ry}; }
+    else if(m.t==='leave'){ const pr=peers.get(m.id); if(pr){ scene.remove(pr.group); peers.delete(m.id); updateCount(); } }
+    else if(m.t==='req'){ showReq(m.from, m.nick); }
+    else if(m.t==='accept'){ toast(`💗 ${m.nick}님과 매칭!`); openChat({ id:m.from, nick:m.nick, bot:false }); }
+    else if(m.t==='chat'){ onChatMsg(m.from, m.nick, m.text); }
+  };
+}
+let posTimer=0;
+function sendPos(dt){ if(!ws||ws.readyState!==1) return; posTimer-=dt; if(posTimer>0) return; posTimer=0.1; ws.send(JSON.stringify({ t:'pos', x:+hero.position.x.toFixed(2), z:+hero.position.z.toFixed(2), ry:+hero.rotation.y.toFixed(2) })); }
+
+// ── 상대 카드 / 1:1 ──
+const card=document.getElementById('card'); let reqTarget=null;
+function openCard(profile){ reqTarget=profile; document.getElementById('cardName').textContent=profile.nick;
+  const meta=document.getElementById('cardMeta');
+  if(profile.bot) meta.innerHTML=`${profile.gender} · ${profile.age} · ${profile.region}<br><span style="opacity:.85">“${profile.intro}”</span>`;
+  else meta.textContent=(profile.gender?profile.gender+' · ':'')+'지금 광장에 접속 중';
+  card.hidden=false; }
+document.getElementById('cardClose').onclick=()=>card.hidden=true;
+card.addEventListener('pointerdown',(e)=>{ if(e.target===card) card.hidden=true; });
+document.getElementById('cardReq').onclick=()=>{ const p=reqTarget; card.hidden=true;
+  if(p.bot){ toast(`${p.nick}님에게 1:1 신청!`); setTimeout(()=>{ toast(`💗 ${p.nick}님이 수락했어요!`); openChat({ nick:p.nick, bot:true }); },1600); }
+  else if(ws&&ws.readyState===1&&p.id){ ws.send(JSON.stringify({ t:'req', to:p.id })); toast(`${p.nick}님에게 1:1 신청!`); } };
+let incoming=null; const reqBox=document.getElementById('req');
+function showReq(fromId, nick){ incoming={id:fromId,nick}; document.getElementById('reqTxt').textContent=`💌 ${nick}님이 1:1 대화를 신청했어요`; reqBox.hidden=false; }
+document.getElementById('reqYes').onclick=()=>{ if(incoming&&ws&&ws.readyState===1){ ws.send(JSON.stringify({ t:'accept', to:incoming.id })); openChat({ id:incoming.id, nick:incoming.nick, bot:false }); } reqBox.hidden=true; };
+document.getElementById('reqNo').onclick=()=>{ reqBox.hidden=true; };
+
+// ── 1:1 대화창 ──
+const chat=document.getElementById('chat'), chatMsgs=document.getElementById('chatMsgs'), chatText=document.getElementById('chatText');
+let currentChat=null;
+const BOT_REPLIES=['안녕하세요! 반가워요 😊','말 걸어주셔서 고마워요','무슨 요일에 주로 시간 괜찮으세요?','저도 그거 좋아해요!','혹시 어느 동네 사세요?','오프라인에서도 보면 좋겠어요 ㅎㅎ'];
+function openChat(p){ currentChat=p; document.getElementById('chatName').textContent='💬 '+p.nick; chatMsgs.innerHTML=''; chat.hidden=false; addMsg('them','1:1 대화가 연결됐어요! 인사 나눠보세요 🎉'); setTimeout(()=>chatText.focus(),60); }
+function addMsg(who,text){ const d=document.createElement('div'); d.className='msg '+who; d.textContent=text; chatMsgs.appendChild(d); chatMsgs.scrollTop=chatMsgs.scrollHeight; }
+document.getElementById('chatClose').onclick=()=>{ chat.hidden=true; currentChat=null; };
+document.getElementById('chatForm').addEventListener('submit',(e)=>{ e.preventDefault(); const t=chatText.value.trim(); if(!t||!currentChat) return; addMsg('me',t); chatText.value='';
+  if(currentChat.bot){ setTimeout(()=>addMsg('them',pickA(BOT_REPLIES)),700+Math.random()*800); }
+  else if(ws&&ws.readyState===1){ ws.send(JSON.stringify({ t:'chat', to:currentChat.id, text:t })); } });
+function onChatMsg(from,nick,text){ if(!currentChat||currentChat.id!==from) openChat({ id:from, nick, bot:false }); addMsg('them',text); }
+// ── 손님 → 회원 전환 게이트 ──
+let member=false; try{ member=localStorage.getItem('kl_member')==='1'; }catch(e){}
+const joinBox=document.getElementById('join'); let pendingAfterJoin=null;
+function openJoin(after){ pendingAfterJoin=after||null;
+  document.getElementById('joinSum').innerHTML=`<b>닉네임</b> ${opts.nick} · <b>성별</b> ${opts.gender==='female'?'여성':'남성'}<br><b>지역</b> ${opts.region||'-'} · <b>나이대</b> ${opts.age||'-'}<br><b>소개</b> ${opts.intro||'(없음)'}`;
+  joinBox.hidden=false; }
+function finishJoin(){ member=true; try{ localStorage.setItem('kl_member','1'); }catch(e){} joinBox.hidden=true; toast('가입 완료! 환영해요 🎉'); const a=pendingAfterJoin; pendingAfterJoin=null; if(a) setTimeout(a,300); }
+document.getElementById('joinClose').onclick=()=>{ joinBox.hidden=true; pendingAfterJoin=null; };
+joinBox.addEventListener('pointerdown',(e)=>{ if(e.target===joinBox){ joinBox.hidden=true; pendingAfterJoin=null; } });
+document.getElementById('joinKakao').onclick=finishJoin;
+document.getElementById('joinEmail').onclick=finishJoin;
+
+const raycaster=new THREE.Raycaster(); const ndc=new THREE.Vector2();
+let dragId=null, dragX=0, dragY=0, dragged=false;
+renderer.domElement.addEventListener('pointerdown',(e)=>{ if(mode!=='playing'||!card.hidden||!chat.hidden||!joinBox.hidden) return; dragId=e.pointerId; dragX=e.clientX; dragY=e.clientY; dragged=false; });
+addEventListener('pointermove',(e)=>{ if(e.pointerId!==dragId) return; const dx=e.clientX-dragX, dy=e.clientY-dragY; if(!dragged && Math.hypot(dx,dy)>6) dragged=true; if(dragged){ camYaw-=dx*0.005; camPitch=Math.min(camMaxPitch,Math.max(camMinPitch,camPitch-dy*0.005)); dragX=e.clientX; dragY=e.clientY; } });
+addEventListener('pointerup',(e)=>{ if(e.pointerId!==dragId) return; const wasDrag=dragged; dragId=null;
+  if(!wasDrag && mode==='playing' && card.hidden && chat.hidden && joinBox.hidden){ ndc.x=(e.clientX/innerWidth)*2-1; ndc.y=-(e.clientY/innerHeight)*2+1; raycaster.setFromCamera(ndc,camera); const groups=[...[...peers.values()].map(p=>p.group), ...bots]; const hits=raycaster.intersectObjects(groups,true); if(hits.length){ let g=hits[0].object; while(g&&!g.userData.profile) g=g.parent; if(g){ const prof=g.userData.profile; if(member) openCard(prof); else openJoin(()=>openCard(prof)); } } } });
+renderer.domElement.addEventListener('wheel',(e)=>{ camDist=Math.min(24,Math.max(7,camDist+Math.sign(e.deltaY)*1.3)); },{passive:true});
+
+// ── 루프 ──
+const clock=new THREE.Clock();
+function tick(){
+  const dt=Math.min(clock.getDelta(),0.05); const L=THREE.MathUtils.lerp;
+  if(mode==='playing'){
+    let ix=move.x, iy=move.y;
+    if(keys['KeyA']||keys['ArrowLeft']) ix-=1; if(keys['KeyD']||keys['ArrowRight']) ix+=1;
+    if(keys['KeyW']||keys['ArrowUp']) iy-=1; if(keys['KeyS']||keys['ArrowDown']) iy+=1;
+    const len=Math.hypot(ix,iy);
+    if(len>0.08){ ix/=Math.max(len,1); iy/=Math.max(len,1);
+      const fwdX=-Math.sin(camYaw), fwdZ=-Math.cos(camYaw), rgtX=Math.cos(camYaw), rgtZ=-Math.sin(camYaw);
+      let vx=ix*rgtX+(-iy)*fwdX, vz=ix*rgtZ+(-iy)*fwdZ; const vl=Math.hypot(vx,vz)||1; vx/=vl; vz/=vl;
+      hero.position.x+=vx*7*dt; hero.position.z+=vz*7*dt;
+      const r=Math.hypot(hero.position.x,hero.position.z); if(r>BOUNDARY){ hero.position.x*=BOUNDARY/r; hero.position.z*=BOUNDARY/r; }
+      pushOut(hero);
+      hero.rotation.y=Math.atan2(vx,vz); }
+    if(rig.root){ const walking=len>0.08&&grounded; if(walking) walkPhase+=dt*9; const s=walking?Math.sin(walkPhase):0; rig.legL.rotation.x=L(rig.legL.rotation.x,s*0.55,0.3); rig.legR.rotation.x=L(rig.legR.rotation.x,-s*0.55,0.3); rig.armL.rotation.x=L(rig.armL.rotation.x,-s*0.5,0.3); rig.armR.rotation.x=L(rig.armR.rotation.x,s*0.5,0.3); rig.root.position.y=walking?Math.abs(Math.sin(walkPhase))*0.05:L(rig.root.position.y,0,0.2); }
+    if((keys['Space']||mobileJump)&&grounded){ vy=8; grounded=false; } mobileJump=false; vy-=22*dt; hero.position.y+=vy*dt; if(hero.position.y<=0){ hero.position.y=0; vy=0; grounded=true; }
+    const target=hero.position.clone().add(camOff()); camera.position.lerp(target,1-Math.pow(0.0008,dt)); camera.lookAt(hero.position.x,hero.position.y+1.4,hero.position.z);
+    sendPos(dt);
+  } else {
+    const target=new THREE.Vector3(SPAWN.x,SPAWN.y+2.7,SPAWN.z+6.8); camera.position.lerp(target,1-Math.pow(0.004,dt)); camera.lookAt(SPAWN.x,SPAWN.y+1.2,SPAWN.z); hero.rotation.y=Math.sin(clock.elapsedTime*0.8)*0.5;
+  }
+  // 다른 접속자 보간 + 걷기
+  for(const pr of peers.values()){
+    const g=pr.group, before=g.position.x+g.position.z;
+    g.position.x=L(g.position.x,pr.target.x,0.18); g.position.z=L(g.position.z,pr.target.z,0.18);
+    const moved=Math.abs((g.position.x+g.position.z)-before);
+    if(moved>0.002){ g.rotation.y=pr.target.ry; pr.phase+=dt*9; const s=Math.sin(pr.phase); pr.refs.legL.rotation.x=s*0.5; pr.refs.legR.rotation.x=-s*0.5; pr.refs.armL.rotation.x=-s*0.45; pr.refs.armR.rotation.x=s*0.45; pr.root.position.y=Math.abs(Math.sin(pr.phase))*0.045; }
+    else { pr.refs.legL.rotation.x=L(pr.refs.legL.rotation.x,0,0.2); pr.refs.legR.rotation.x=L(pr.refs.legR.rotation.x,0,0.2); pr.refs.armL.rotation.x=L(pr.refs.armL.rotation.x,0,0.2); pr.refs.armR.rotation.x=L(pr.refs.armR.rotation.x,0,0.2); pr.root.position.y=L(pr.root.position.y,0,0.2); }
+  }
+  // 가상 이웃 돌아다니기
+  for(const b of bots){ const u=b.userData;
+    if(!u.target||b.position.distanceTo(u.target)<0.7){ const a=Math.random()*Math.PI*2, rad=3+Math.random()*14; u.target=new THREE.Vector3(Math.cos(a)*rad,0,Math.sin(a)*rad); }
+    const dir=u.target.clone().sub(b.position); dir.y=0; const d=dir.length();
+    if(d>0.1){ dir.normalize(); b.position.addScaledVector(dir,2.2*dt); pushOut(b); b.rotation.y=Math.atan2(dir.x,dir.z); u.phase+=dt*8; const s=Math.sin(u.phase); u.refs.legL.rotation.x=s*0.5; u.refs.legR.rotation.x=-s*0.5; u.refs.armL.rotation.x=-s*0.45; u.refs.armR.rotation.x=s*0.45; u.root.position.y=Math.abs(Math.sin(u.phase))*0.045; } }
+  renderer.render(scene,camera); requestAnimationFrame(tick);
+}
+tick();
+</script>
+</body>
+</html>

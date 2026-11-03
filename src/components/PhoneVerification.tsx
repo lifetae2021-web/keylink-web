@@ -262,7 +262,7 @@ export function LinkAccountModal({ existing, token, onLinked, onClose }: {
           <p style={{ color: '#666', fontSize: '0.85rem', lineHeight: 1.7 }}>
             {existing.canLink
               ? <>지금 로그인한 계정을 기존 계정에 연결할게요.<br />지난 신청 내역·쿠폰·포인트를 그대로 쓸 수 있어요.</>
-              : <>이 계정은 자동으로 연결할 수 없어요.<br />고객센터로 문의해 주세요.</>}
+              : <>관리자 계정은 보안을 위해 자동으로 연결되지 않아요.<br />기존 아이디로 로그인해 주세요.</>}
           </p>
         </div>
         {existing.canLink && (
