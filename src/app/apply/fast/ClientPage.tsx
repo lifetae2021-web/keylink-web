@@ -149,9 +149,12 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
       }
     });
     
-    if (newProof && newProof.startsWith('data:image')) {
+    // 재직 증명은 이미지뿐 아니라 PDF도 받으므로 형식에 맞는 확장자로 Storage에 올린다
+    // (PDF를 문서에 그대로 넣으면 신청서가 수백 KB~1MB가 되어 관리자 화면이 느려지고, 1MB를 넘으면 저장이 실패한다)
+    if (newProof && newProof.startsWith('data:')) {
       promises.push((async () => {
-        const path = `applications/${uid}/proof_${Date.now()}.jpg`;
+        const ext = newProof.startsWith('data:application/pdf') ? 'pdf' : 'jpg';
+        const path = `applications/${uid}/proof_${Date.now()}.${ext}`;
         const storageRef = ref(storage, path);
         await uploadString(storageRef, newProof, 'data_url');
         newProof = await getDownloadURL(storageRef);
