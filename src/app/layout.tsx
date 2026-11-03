@@ -57,7 +57,8 @@ export default function RootLayout({
               boxShadow: '0 10px 25px rgba(0,0,0,0.08)',
             },
             success: {
-              iconTheme: { primary: '#4CAF50', secondary: '#FFFFFF' },
+              icon: null,
+              style: { whiteSpace: 'nowrap', maxWidth: 'none' },
             },
             error: {
               icon: '⚠️',
