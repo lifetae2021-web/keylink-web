@@ -666,6 +666,7 @@ export default function UsersPage() {
     };
   }, [users, filter, proofOnly, jobReviewedOrig]);
 
+
   const filtered = useMemo(() => {
     const isDummy = (u: any) => u.isDummy === true || u.id?.startsWith('dummy') || u.id?.startsWith('user_m_') || u.id?.startsWith('user_f_');
     const isMerged = (u: any) => !!u.mergedTo && u.mergedTo !== u.id;
@@ -1119,6 +1120,21 @@ export default function UsersPage() {
             </button>
           ))}
         </div>
+
+        {/* 나이순 정렬 토글 (모바일 전용 — PC는 표의 '나이' 헤더로 정렬) */}
+        <button
+          onClick={() => toggleSort('age')}
+          className="sm:hidden flex items-center gap-1.5 px-4 py-2 rounded-xl border text-[0.78rem] font-bold transition-all"
+          style={{
+            background: sortConfig.key === 'age' ? '#FFF7ED' : '#fff',
+            borderColor: sortConfig.key === 'age' ? '#FDBA74' : '#E2E8F0',
+            color: sortConfig.key === 'age' ? '#B45309' : '#64748B',
+          }}
+        >
+          {sortConfig.key === 'age'
+            ? (sortConfig.direction === 'asc' ? '나이 어린순 ↑' : '나이 많은순 ↓')
+            : '나이순 정렬'}
+        </button>
 
         {/* Search */}
         <div className="relative ml-auto w-full sm:w-auto mt-4 sm:mt-0 group">
@@ -2244,7 +2260,7 @@ export default function UsersPage() {
                         className="flex items-center justify-between px-4 py-3 rounded-2xl border border-slate-200 hover:border-amber-400 hover:bg-amber-50 transition-all text-left disabled:opacity-50">
                         <div>
                           <div className="text-sm font-extrabold text-slate-800">{dateStr}({wd})</div>
-                          <div className="text-[11px] font-bold text-slate-400">{[regionLabel, ep].filter(Boolean).join(' ')} {se.title || ''}</div>
+                          <div className="text-[11px] font-bold text-slate-400">{se.title || [regionLabel, ep].filter(Boolean).join(' ')}</div>
                         </div>
                         <span className="text-xs font-black text-amber-500">{isProposing ? '발송 중…' : '제안 ▸'}</span>
                       </button>
