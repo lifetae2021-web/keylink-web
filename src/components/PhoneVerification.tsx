@@ -239,7 +239,7 @@ export function LinkAccountModal({ existing, token, onLinked, onClose }: {
     setLinking(true);
     try {
       await linkToExistingAccount(token);
-      toast.success('기존 계정에 연결했어요! 앞으로 어느 방법으로 로그인해도 같은 계정이에요.');
+      toast.success('기존 계정에 연결했어요!');
       onLinked();
     } catch (err: any) {
       toast.error(err.message);

@@ -148,6 +148,7 @@ export default function UsersPage() {
   // 기수 수동 등록 모달
   const [sessionRegistrationTarget, setSessionRegistrationTarget] = useState<any | null>(null);
   const [proposeTarget, setProposeTarget] = useState<any | null>(null);
+  const [proposalHistoryTarget, setProposalHistoryTarget] = useState<any | null>(null);
   const [isProposing, setIsProposing] = useState(false);
   const [sessions, setSessions] = useState<any[]>([]);
   const [isFetchingSessions, setIsFetchingSessions] = useState(false);
@@ -901,6 +902,18 @@ export default function UsersPage() {
     }
   };
 
+  // 우선 대기에서 제외 (취소 이력을 비워 명단에서 뺌 — 계정은 삭제하지 않음)
+  const removeFromWaitpool = async (id: string, name: string) => {
+    if (!window.confirm(`${name}님을 우선 대기 명단에서 제외할까요?\n(계정은 삭제되지 않습니다)`)) return;
+    try {
+      await updateDoc(doc(db, 'users', id), { cancelledSessionHistory: [], updatedAt: Timestamp.now() });
+      toast.success(`${name}님 우선 대기 제외`);
+    } catch (error) {
+      console.error('Waitpool remove error:', error);
+      toast.error('제외 처리 중 오류가 발생했습니다.');
+    }
+  };
+
   const handleSendProfileRequestSms = async (message: string, _price?: number, _extra?: any, scheduledDate?: string) => {
     if (!smsTargetUser) return;
     try {
@@ -1507,9 +1520,9 @@ export default function UsersPage() {
                             {filter === 'waitpool' ? (
                               <>
                                 {(u.proposalCount || 0) > 0 && (
-                                  <span style={{ fontSize: '0.7rem', fontWeight: 800, padding: '2px 8px', borderRadius: 8, background: '#FFFBEB', color: '#B45309', border: '1px solid #FDE68A' }}>
+                                  <button onClick={() => setProposalHistoryTarget(u)} title="제안 내역 보기" style={{ fontSize: '0.7rem', fontWeight: 800, padding: '2px 8px', borderRadius: 8, background: '#FFFBEB', color: '#B45309', border: '1px solid #FDE68A', cursor: 'pointer' }}>
                                     제안 {u.proposalCount}회
-                                  </span>
+                                  </button>
                                 )}
                                 <button
                                   onClick={() => setProposeTarget(u)}
@@ -1517,6 +1530,14 @@ export default function UsersPage() {
                                   style={{ padding: '6px 14px', fontSize: '0.78rem', fontWeight: 800, background: '#F59E0B', color: '#fff', border: 'none' }}
                                 >
                                   💌 제안
+                                </button>
+                                <button
+                                  onClick={() => removeFromWaitpool(u.id, u.name)}
+                                  className="flex items-center justify-center rounded-lg hover:bg-rose-50 transition-all text-slate-400 hover:text-rose-500"
+                                  style={{ width: 32, height: 32 }}
+                                  title="우선 대기에서 제외"
+                                >
+                                  <Trash2 size={14} />
                                 </button>
                               </>
                             ) : (<>
@@ -1821,9 +1842,9 @@ export default function UsersPage() {
                       {filter === 'waitpool' ? (
                         <>
                           {(u.proposalCount || 0) > 0 && (
-                            <span className="mr-auto" style={{ fontSize: '0.72rem', fontWeight: 800, padding: '4px 10px', borderRadius: 10, background: '#FFFBEB', color: '#B45309', border: '1px solid #FDE68A' }}>
+                            <button onClick={() => setProposalHistoryTarget(u)} className="mr-auto" style={{ fontSize: '0.72rem', fontWeight: 800, padding: '4px 10px', borderRadius: 10, background: '#FFFBEB', color: '#B45309', border: '1px solid #FDE68A', cursor: 'pointer' }}>
                               제안 {u.proposalCount}회
-                            </span>
+                            </button>
                           )}
                           <button
                             onClick={() => setProposeTarget(u)}
@@ -1831,6 +1852,14 @@ export default function UsersPage() {
                             style={{ padding: '9px 18px', fontSize: '0.82rem', fontWeight: 800, background: '#F59E0B', color: '#fff', border: 'none' }}
                           >
                             💌 제안하기
+                          </button>
+                          <button
+                            onClick={() => removeFromWaitpool(u.id, u.name)}
+                            className="flex items-center justify-center rounded-xl bg-rose-50 text-rose-500 border border-rose-100 transition-all hover:bg-rose-100"
+                            style={{ width: 38, height: 38 }}
+                            title="우선 대기에서 제외"
+                          >
+                            <Trash2 size={16} />
                           </button>
                         </>
                       ) : (<>
@@ -2204,6 +2233,44 @@ export default function UsersPage() {
       )}
 
       {/* 기수 참여 등록 모달 */}
+      {/* 제안 내역 모달 */}
+      {proposalHistoryTarget && (() => {
+        const history = [...(proposalHistoryTarget.proposalHistory || [])].sort((a: any, b: any) => String(b.sentAt).localeCompare(String(a.sentAt)));
+        return (
+          <div onClick={() => setProposalHistoryTarget(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+            <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: '24px', width: '100%', maxWidth: '420px', padding: '28px' }} className="shadow-2xl animate-in zoom-in-95 duration-200">
+              <div className="flex justify-between items-center mb-5">
+                <div>
+                  <h2 className="text-lg font-black text-slate-900 leading-tight">제안 내역</h2>
+                  <p className="text-xs font-bold text-slate-400 mt-0.5">{proposalHistoryTarget.name}님 · 총 {proposalHistoryTarget.proposalCount || history.length}회</p>
+                </div>
+                <button onClick={() => setProposalHistoryTarget(null)} className="p-2 text-slate-400 hover:bg-slate-100 rounded-full transition-colors"><X size={20} /></button>
+              </div>
+              {history.length === 0 ? (
+                <div className="py-6 text-center text-sm font-bold text-slate-400 bg-slate-50 rounded-2xl">제안 내역이 없어요.</div>
+              ) : (
+                <div className="flex flex-col gap-2 max-h-[360px] overflow-y-auto">
+                  {history.map((h: any, i: number) => {
+                    const sent = h.sentAt ? new Date(h.sentAt) : null;
+                    const sentStr = sent ? format(sent, 'yyyy.MM.dd HH:mm') : '';
+                    const sessLabel = h.sessionTitle || (h.episodeNumber ? `${h.episodeNumber}기` : '기수');
+                    return (
+                      <div key={i} className="flex items-center justify-between px-4 py-3 rounded-2xl border border-slate-100 bg-slate-50">
+                        <div>
+                          <div className="text-sm font-extrabold text-slate-800">{sessLabel}{h.dateLabel ? ` (${h.dateLabel})` : ''}</div>
+                          <div className="text-[11px] font-bold text-slate-400">제안 발송 {sentStr}</div>
+                        </div>
+                        <span className="text-[11px] font-black text-amber-500">{history.length - i}회차</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* 이상형 제안 모달 (우선 대기) */}
       {proposeTarget && (() => {
         const now = Date.now();
@@ -2224,7 +2291,7 @@ export default function UsersPage() {
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || '발송 실패');
-            toast.success(`${proposeTarget.name}님에게 이상형 제안을 보냈어요. (누적 ${data.proposalCount}회)`);
+            toast.success(`${proposeTarget.name}님께 제안 발송 · 누적 ${data.proposalCount}회`);
             setProposeTarget(null);
           } catch (e: any) {
             toast.error(e.message || '제안 발송 중 오류가 발생했습니다.');
