@@ -236,12 +236,32 @@ export async function mergeVisitorIntoMember(uid: string, vid: string): Promise<
     if (!v || v.mergedTo) return 0;
 
     const now = Date.now();
-    const lots: Lot[] = (v.lots || []).filter((l: Lot) => l.remaining > 0 && l.expiresAt > now);
+    const today = seoulToday();
+    let lots: Lot[] = (v.lots || []).filter((l: Lot) => l.remaining > 0 && l.expiresAt > now);
+
+    // 하루 1회 방문 포인트는 사람 기준: 비회원으로 오늘 이미 받았으면 회원으로 또 주지 않고,
+    // 회원으로 오늘 이미 받았으면 비회원 쪽 오늘 방문 포인트는 옮기지 않는다.
+    const isTodayVisitLot = (l: Lot) => l.source === 'daily_visit' && new Date(l.createdAt).toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' }) === today;
+    const memberDaily = freshDaily(today, memberWallet.data()?.daily);
+    const visitorDaily = v.daily?.date === today ? (v.daily as DailyState) : null;
+    const visitorGotVisitToday = lots.some(isTodayVisitLot);
+    if (memberDaily.visit && visitorGotVisitToday) lots = lots.filter(l => !isTodayVisitLot(l));
+
     const total = lots.reduce((sum, l) => sum + l.remaining, 0);
     if (total === 0) return 0;
 
     lots.forEach(l => addMemberLot(tx, uid, l.remaining, 'visitor_merge', '비회원 적립 포인트 이전', l.expiresAt));
-    tx.set(memberWalletRef, { visitorMergedFrom: vid }, { merge: true });
+    tx.set(memberWalletRef, {
+      visitorMergedFrom: vid,
+      ...(visitorDaily ? {
+        daily: {
+          ...memberDaily,
+          visit: memberDaily.visit || visitorGotVisitToday,
+          drops: memberDaily.drops + (visitorDaily.drops || 0),
+          firstDrop: !!(memberDaily.firstDrop || visitorDaily.firstDrop),
+        },
+      } : {}),
+    }, { merge: true });
     tx.set(visitorWalletRef, { mergedTo: uid, lots: [], balance: 0 }, { merge: true });
     return total;
   });
