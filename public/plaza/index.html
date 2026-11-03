@@ -32,7 +32,8 @@
   .pill[aria-pressed="true"] { background:var(--accent); color:#fff; border-color:var(--accent); }
   .sw { width:34px; height:34px; border-radius:50%; border:2px solid rgba(255,255,255,.8); cursor:pointer; box-shadow:0 2px 6px rgba(80,120,170,.2); }
   .sw[aria-pressed="true"] { outline:3px solid var(--accent); outline-offset:2px; }
-  #nick { width:100%; box-sizing:border-box; font-family:inherit; font-size:1rem; padding:11px 14px; border:1px solid var(--card-border); border-radius:12px; background:rgba(255,255,255,.7); color:var(--ink); }
+  #nick, #intro, #birth, #job { width:100%; box-sizing:border-box; font-family:inherit; font-size:1rem; padding:11px 14px; border:1px solid var(--card-border); border-radius:12px; background:rgba(255,255,255,.7); color:var(--ink); }
+  #intro::placeholder, #birth::placeholder, #job::placeholder { color:#b6c2d2; }
   .sheet-btns { display:flex; gap:10px; margin-top:6px; }
   .btn { flex:1; border:none; font-family:inherit; font-size:1.02rem; padding:14px; border-radius:14px; cursor:pointer; }
   .btn.ghost { flex:0 0 auto; background:var(--pill); color:var(--pill-ink); }
@@ -40,8 +41,8 @@
   .btn:active { transform:scale(.97); }
   #stick { position:absolute; left:max(26px,calc(env(safe-area-inset-left,0px) + 20px)); bottom:calc(26px + env(safe-area-inset-bottom,0px));
     width:132px; height:132px; border-radius:50%; background:var(--stick); border:2px solid rgba(255,255,255,.7); pointer-events:auto; touch-action:none; box-shadow:0 6px 18px rgba(80,120,170,.2); }
-  #knob { position:absolute; left:50%; top:50%; width:58px; height:58px; margin:-29px 0 0 -29px; border-radius:50%; background:var(--stick-knob); box-shadow:0 4px 10px rgba(255,120,60,.45); transition:transform .04s linear; }
-  .hint { position:absolute; left:50%; bottom:8px; transform:translateX(-50%); font-size:.72rem; opacity:.7; white-space:nowrap; }
+  #knob { position:absolute; pointer-events:none; left:50%; top:50%; width:58px; height:58px; margin:-29px 0 0 -29px; border-radius:50%; background:var(--stick-knob); box-shadow:0 4px 10px rgba(255,120,60,.45); transition:transform .04s linear; }
+  .hint { position:absolute; pointer-events:none; left:50%; bottom:8px; transform:translateX(-50%); font-size:.72rem; opacity:.7; white-space:nowrap; }
   #jumpBtn { position:absolute; right:max(26px,calc(env(safe-area-inset-right,0px) + 20px)); bottom:calc(30px + env(safe-area-inset-bottom,0px));
     width:96px; height:96px; border-radius:50%; pointer-events:auto; border:2px solid rgba(255,255,255,.75); cursor:pointer; background:rgba(255,255,255,.5); color:var(--accent-ink); font-family:inherit; font-size:1.05rem; box-shadow:0 6px 18px rgba(80,120,170,.2); }
   #jumpBtn:active { transform:scale(.93); background:rgba(255,255,255,.75); }
@@ -97,7 +98,8 @@
   <div class="row"><label>눈</label><div class="opts" id="opt-eye"></div></div>
   <div class="row"><label>옷 색</label><div class="opts" id="opt-clothes"></div></div>
   <div class="row"><label>지역</label><div class="opts" id="opt-region"></div></div>
-  <div class="row"><label>나이대</label><div class="opts" id="opt-age"></div></div>
+  <div class="row"><label for="birth">출생연도</label><input id="birth" inputmode="numeric" maxlength="4" placeholder="예) 1996" autocomplete="off"></div>
+  <div class="row"><label for="job">직업</label><input id="job" maxlength="20" placeholder="예) 디자이너" autocomplete="off"></div>
   <div class="row"><label for="intro">한 줄 소개</label><input id="intro" maxlength="40" placeholder="예) 커피랑 산책 좋아해요" autocomplete="off"></div>
   <div class="sheet-btns"><button class="btn ghost" id="randomBtn">🎲 랜덤</button><button class="btn go" id="enterBtn">입장하기</button></div>
 </div></div>
@@ -210,34 +212,37 @@ new GLTFLoader().load('village.glb', (gltf)=>{
 const HAIR_COLORS=['#2a2018','#6b4423','#111111','#d9b36a','#d14b4b','#8a5bd1'];
 const CLOTHES=['#ff8f6b','#5bb0d1','#7bc67b','#d15b9e','#f0c04b','#9a8cff'];
 const CHOICES={ gender:[['남성','male'],['여성','female']], face:[['동그라미','round'],['네모','square'],['세모','triangle']], hair:[['짧은머리','short'],['단발','long'],['삐죽','spiky']], eye:[['동그란','round'],['일자','line']],
-  region:[['서울','서울'],['부산','부산'],['대구','대구'],['인천','인천'],['경기','경기'],['기타','기타']],
-  age:[['20대 초','20대 초반'],['20대 중','20대 중반'],['20대 후','20대 후반'],['30대 초','30대 초반'],['30대 중','30대 중반']] };
+  region:[['서울시','서울시'],['부산시','부산시'],['대구시','대구시'],['인천시','인천시'],['광주시','광주시'],['대전시','대전시'],['울산시','울산시'],['세종시','세종시']] };
 const NICKS=['햇살','바다','구름','단비','별이','토리','보리','하루','살구','모찌'];
 let opts; try{ opts=JSON.parse(localStorage.getItem('kl_char')||'null'); }catch(e){}
-if(!opts) opts={ nick:'', gender:'male', face:'round', hair:'short', hairColor:HAIR_COLORS[1], eye:'round', clothes:CLOTHES[0], region:'', age:'', intro:'' };
-if(opts){ opts.gender=opts.gender||'male'; opts.region=opts.region||''; opts.age=opts.age||''; opts.intro=opts.intro||''; }
+if(!opts) opts={ nick:'', gender:'male', face:'round', hair:'short', hairColor:HAIR_COLORS[1], eye:'round', clothes:CLOTHES[0], region:'', age:'', intro:'', job:'' };
+if(opts){ opts.gender=opts.gender||'male'; opts.region=opts.region||''; opts.age=opts.age||''; opts.intro=opts.intro||''; opts.job=opts.job||''; }
 const nickInput=document.getElementById('nick'); nickInput.value=opts.nick||'';
 nickInput.addEventListener('input',()=>{ opts.nick=nickInput.value.trim(); buildHero(opts); });
 const introInput=document.getElementById('intro'); introInput.value=opts.intro||''; introInput.addEventListener('input',()=>{ opts.intro=introInput.value.trim(); });
+const birthInput=document.getElementById('birth'); birthInput.value=(opts.age||'').replace('년생','');
+birthInput.addEventListener('input',()=>{ birthInput.value=birthInput.value.replace(/[^0-9]/g,'').slice(0,4); opts.age=birthInput.value; });
+const jobInput=document.getElementById('job'); jobInput.value=opts.job||''; jobInput.addEventListener('input',()=>{ opts.job=jobInput.value.trim(); });
 function renderPills(id,key,list){ const el=document.getElementById(id); el.innerHTML=''; for(const [label,val] of list){ const b=document.createElement('button'); b.className='pill'; b.textContent=label; b.setAttribute('aria-pressed',String(opts[key]===val)); b.onclick=()=>{ opts[key]=val; renderPills(id,key,list); buildHero(opts); }; el.appendChild(b); } }
 function renderSw(id,key,cols){ const el=document.getElementById(id); el.innerHTML=''; for(const col of cols){ const b=document.createElement('button'); b.className='sw'; b.style.background=col; b.setAttribute('aria-pressed',String(opts[key]===col)); b.onclick=()=>{ opts[key]=col; renderSw(id,key,cols); buildHero(opts); }; el.appendChild(b); } }
-function renderAll(){ renderPills('opt-gender','gender',CHOICES.gender); renderPills('opt-face','face',CHOICES.face); renderPills('opt-hair','hair',CHOICES.hair); renderSw('opt-hairColor','hairColor',HAIR_COLORS); renderPills('opt-eye','eye',CHOICES.eye); renderSw('opt-clothes','clothes',CLOTHES); renderPills('opt-region','region',CHOICES.region); renderPills('opt-age','age',CHOICES.age); }
-document.getElementById('randomBtn').onclick=()=>{ const p=a=>a[Math.floor(Math.random()*a.length)]; opts.gender=p(CHOICES.gender)[1]; opts.face=p(CHOICES.face)[1]; opts.hair=p(CHOICES.hair)[1]; opts.eye=p(CHOICES.eye)[1]; opts.hairColor=p(HAIR_COLORS); opts.clothes=p(CLOTHES); if(!nickInput.value){ opts.nick=p(NICKS); nickInput.value=opts.nick; } if(!opts.region) opts.region=p(CHOICES.region)[1]; if(!opts.age) opts.age=p(CHOICES.age)[1]; renderAll(); buildHero(opts); };
+function renderAll(){ renderPills('opt-gender','gender',CHOICES.gender); renderPills('opt-face','face',CHOICES.face); renderPills('opt-hair','hair',CHOICES.hair); renderSw('opt-hairColor','hairColor',HAIR_COLORS); renderPills('opt-eye','eye',CHOICES.eye); renderSw('opt-clothes','clothes',CLOTHES); renderPills('opt-region','region',CHOICES.region); }
+document.getElementById('randomBtn').onclick=()=>{ const p=a=>a[Math.floor(Math.random()*a.length)]; opts.gender=p(CHOICES.gender)[1]; opts.face=p(CHOICES.face)[1]; opts.hair=p(CHOICES.hair)[1]; opts.eye=p(CHOICES.eye)[1]; opts.hairColor=p(HAIR_COLORS); opts.clothes=p(CLOTHES); if(!nickInput.value){ opts.nick=p(NICKS); nickInput.value=opts.nick; } renderAll(); buildHero(opts); };
 let mode='creating';
-document.getElementById('enterBtn').onclick=()=>{ if(!opts.region||!opts.age){ toast('지역과 나이대를 선택해 주세요'); return; } if(!opts.nick){ opts.nick=NICKS[Math.floor(Math.random()*NICKS.length)]; nickInput.value=opts.nick; buildHero(opts); } try{ localStorage.setItem('kl_char',JSON.stringify(opts)); }catch(e){} document.getElementById('entry').remove(); document.getElementById('hud').hidden=false; document.getElementById('hudNick').textContent=opts.nick+' 님'; mode='playing'; connect(); };
+document.getElementById('enterBtn').onclick=()=>{ if(!opts.region){ toast('지역을 선택해 주세요'); return; } if(!/^(19|20)\d\d$/.test(opts.age)){ toast('출생연도를 네 자리로 입력해 주세요'); return; } if(!opts.nick){ opts.nick=NICKS[Math.floor(Math.random()*NICKS.length)]; nickInput.value=opts.nick; buildHero(opts); } try{ localStorage.setItem('kl_char',JSON.stringify(opts)); }catch(e){} document.getElementById('entry').remove(); document.getElementById('hud').hidden=false; document.getElementById('hudNick').textContent=opts.nick+' 님'; mode='playing'; connect(); };
 renderAll(); buildHero(opts);
 
 // ── 가상 이웃(봇): 혼자서도 1:1 흐름을 테스트할 수 있게 ──
 const pickA=a=>a[Math.floor(Math.random()*a.length)];
 const REGIONS=['서울 강남','부산 해운대','서울 마포','부산 서면','대구 중구','인천 송도','경기 성남'];
 const AGES=['20대 초반','20대 중반','20대 후반','30대 초반','30대 중반'];
+const JOBS=['디자이너','개발자','간호사','교사','마케터','바리스타','회사원','대학원생','PT 트레이너','요리사'];
 const INTROS=['커피랑 산책 좋아해요 ☕','주말엔 등산 가요 ⛰️','맛집 탐방이 취미예요 🍜','강아지랑 살아요 🐶','영화 보는 거 좋아해요 🎬','운동 자주 해요 💪','여행 다니는 거 좋아해요 ✈️'];
 const BOT_NICKS=['보리','하루','살구','모찌','단비','별이','토리','구름'];
 const bots=[];
 function makeBot(i){ const gd=pickA(['male','female']); const o={ nick:BOT_NICKS[i%BOT_NICKS.length], gender:gd, face:pickA(['round','square','triangle']), hair:pickA(['short','long','spiky']), hairColor:pickA(HAIR_COLORS), eye:pickA(['round','line']), clothes:pickA(CLOTHES) };
   const g=new THREE.Group(); const root=new THREE.Group(); g.add(root); const refs=makeBody(root,o);
   const a=Math.random()*Math.PI*2, rad=5+Math.random()*11; g.position.set(Math.cos(a)*rad,0,Math.sin(a)*rad);
-  g.userData={ root, refs, phase:Math.random()*10, target:null, profile:{ nick:o.nick, gender:gd==='female'?'여':'남', region:pickA(REGIONS), age:pickA(AGES), intro:pickA(INTROS), bot:true } };
+  g.userData={ root, refs, phase:Math.random()*10, target:null, profile:{ nick:o.nick, gender:gd==='female'?'여':'남', region:pickA(REGIONS), age:pickA(AGES), job:pickA(JOBS), intro:pickA(INTROS), bot:true } };
   scene.add(g); bots.push(g); }
 for(let i=0;i<5;i++) makeBot(i);
 
@@ -247,9 +252,11 @@ addEventListener('keydown',(e)=>{ keys[e.code]=true; if(['Space','ArrowUp','Arro
 addEventListener('keyup',(e)=>keys[e.code]=false);
 let mobileJump=false, vy=0, grounded=true, walkPhase=0;
 const stick=document.getElementById('stick'), knob=document.getElementById('knob'); let touchId=null,cx=0,cy=0; const R=52;
-stick.addEventListener('pointerdown',(e)=>{ stick.setPointerCapture(e.pointerId); const r=stick.getBoundingClientRect(); cx=r.left+r.width/2; cy=r.top+r.height/2; touchId=e.pointerId; sMove(e.clientX,e.clientY); });
-stick.addEventListener('pointermove',(e)=>{ if(e.pointerId===touchId) sMove(e.clientX,e.clientY); });
-stick.addEventListener('pointerup',sEnd); stick.addEventListener('pointercancel',sEnd);
+stick.addEventListener('pointerdown',(e)=>{ e.preventDefault(); const r=stick.getBoundingClientRect(); cx=r.left+r.width/2; cy=r.top+r.height/2; touchId=e.pointerId; sMove(e.clientX,e.clientY); });
+// 손가락이 조이스틱 밖으로 나가도 끝까지 추적하도록 window에서 받는다 (모바일 pointer-capture 유실 방지)
+addEventListener('pointermove',(e)=>{ if(touchId!==null && e.pointerId===touchId){ e.preventDefault(); sMove(e.clientX,e.clientY); } },{passive:false});
+addEventListener('pointerup',(e)=>{ if(touchId!==null && e.pointerId===touchId) sEnd(); });
+addEventListener('pointercancel',(e)=>{ if(touchId!==null && e.pointerId===touchId) sEnd(); });
 function sMove(x,y){ let dx=x-cx,dy=y-cy; const d=Math.hypot(dx,dy); if(d>R){dx=dx/d*R;dy=dy/d*R;} knob.style.transform=`translate(${dx}px,${dy}px)`; move.set(dx/R,dy/R); }
 function sEnd(){ touchId=null; knob.style.transform='translate(0,0)'; move.set(0,0); }
 document.getElementById('jumpBtn').addEventListener('pointerdown',(e)=>{ e.preventDefault(); mobileJump=true; });
@@ -287,7 +294,7 @@ function sendPos(dt){ if(!ws||ws.readyState!==1) return; posTimer-=dt; if(posTim
 const card=document.getElementById('card'); let reqTarget=null;
 function openCard(profile){ reqTarget=profile; document.getElementById('cardName').textContent=profile.nick;
   const meta=document.getElementById('cardMeta');
-  if(profile.bot) meta.innerHTML=`${profile.gender} · ${profile.age} · ${profile.region}<br><span style="opacity:.85">“${profile.intro}”</span>`;
+  if(profile.bot) meta.innerHTML=`${profile.gender} · ${profile.age} · ${profile.region}<br>${profile.job?profile.job+'<br>':''}<span style="opacity:.85">“${profile.intro}”</span>`;
   else meta.textContent=(profile.gender?profile.gender+' · ':'')+'지금 광장에 접속 중';
   card.hidden=false; }
 document.getElementById('cardClose').onclick=()=>card.hidden=true;
@@ -315,7 +322,7 @@ function onChatMsg(from,nick,text){ if(!currentChat||currentChat.id!==from) open
 let member=false; try{ member=localStorage.getItem('kl_member')==='1'; }catch(e){}
 const joinBox=document.getElementById('join'); let pendingAfterJoin=null;
 function openJoin(after){ pendingAfterJoin=after||null;
-  document.getElementById('joinSum').innerHTML=`<b>닉네임</b> ${opts.nick} · <b>성별</b> ${opts.gender==='female'?'여성':'남성'}<br><b>지역</b> ${opts.region||'-'} · <b>나이대</b> ${opts.age||'-'}<br><b>소개</b> ${opts.intro||'(없음)'}`;
+  document.getElementById('joinSum').innerHTML=`<b>닉네임</b> ${opts.nick} · <b>성별</b> ${opts.gender==='female'?'여성':'남성'}<br><b>지역</b> ${opts.region||'-'} · <b>출생</b> ${opts.age?opts.age+'년생':'-'}<br><b>직업</b> ${opts.job||'-'} · <b>소개</b> ${opts.intro||'(없음)'}`;
   joinBox.hidden=false; }
 function finishJoin(){ member=true; try{ localStorage.setItem('kl_member','1'); }catch(e){} joinBox.hidden=true; toast('가입 완료! 환영해요 🎉'); const a=pendingAfterJoin; pendingAfterJoin=null; if(a) setTimeout(a,300); }
 document.getElementById('joinClose').onclick=()=>{ joinBox.hidden=true; pendingAfterJoin=null; };
