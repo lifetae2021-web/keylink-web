@@ -131,43 +131,9 @@ export async function getUserMatchResult(userId: string, sessionId: string): Pro
   const inResults = isMatched || (summary.unmatchedUserIds || []).includes(userId) || summary.unmatchedUserIds === undefined;
   if (!inResults) return null;
 
-  let partnerProfile: any = undefined;
-  if (isMatched && partnerIds[0]) {
-    const partnerId = partnerIds[0];
-    const appQuery = query(
-      collection(db, 'applications'),
-      where('sessionId', '==', sessionId),
-      where('userId', '==', partnerId)
-    );
-
-    // v10.2.0: 이성 신청서 조회와 기수 세션 상세 조회를 동시에 병렬 처리
-    const [appSnap, sessionSnap] = await Promise.all([
-      getDocs(appQuery),
-      getDoc(doc(db, 'sessions', sessionId))
-    ]);
-
-    if (!appSnap.empty) {
-      const appData = appSnap.docs[0].data();
-      const batchTitle = sessionSnap.exists() ? `${sessionSnap.data().episodeNumber || ''}기` : '';
-      
-      let calculatedAge = '미입력';
-      if (appData.birthDate) {
-        calculatedAge = `${new Date().getFullYear() - new Date(appData.birthDate).getFullYear() + 1}세`;
-      } else if (appData.age) {
-        calculatedAge = `${appData.age}세`;
-      }
-
-      partnerProfile = {
-        number: appData.slotNumber ? String(appData.slotNumber) : '?',
-        gender: appData.gender,
-        age: calculatedAge,
-        job: appData.displayJob || appData.job || '미입력',
-        height: appData.height ? `${appData.height}cm` : '미입력',
-        residence: appData.residence || '미입력',
-        batch: batchTitle || '알 수 없음',
-      };
-    }
-  }
+  // 상대방 프로필은 화면에서 참가자 API(/api/sessions/[id]/participants) 결과로 만든다.
+  // 상대 신청서는 본인·관리자만 읽을 수 있으므로 여기서 직접 조회하지 않는다.
+  const partnerProfile: any = undefined;
 
   return {
     id: sessionId,

@@ -15,7 +15,6 @@ import toast from 'react-hot-toast';
 
 interface Candidate {
   userId: string;
-  name: string;
   age: number;
   job: string;
   residence: string;
@@ -129,46 +128,36 @@ export default function VotePage() {
       }
 
       const oppositeGender = app.gender === 'male' ? 'female' : 'male';
-      const q = query(
-        collection(db, 'applications'),
-        where('sessionId', '==', sessionId),
-        where('status', '==', 'confirmed'),
-        where('gender', '==', oppositeGender)
-      );
-      const snap = await getDocs(q);
+      // 2. 이성 후보 정보는 서버 API에서 화면에 필요한 항목만 받는다 (신청서·회원 문서를 직접 읽지 않음)
+      const participantsRes = await fetch(`/api/sessions/${sessionId}/participants`, {
+        headers: { Authorization: `Bearer ${await user.getIdToken()}` },
+      });
+      const { participants = [] } = participantsRes.ok ? await participantsRes.json() : {};
 
-      // 2. 이성 후보자들의 상세 유저 정보(사진 등)를 병렬로 한 번에 조회 (블로킹/순차 쿼리 제거하여 속도 극대화)
-      const candidateListRaw = await Promise.all(snap.docs.map(async (d) => {
-        const appData = d.data();
-        
+      const candidateListRaw = participants.map((appData: any) => {
+        if (appData.gender !== oppositeGender) return null;
+
         // v11.1.0: 노쇼(No-Show) 및 불참(excused) 참가자는 후보 리스트에서 원천적으로 필터링하여 노출 제외
         // 닼템(isDarkTemplar) 모드로 참여한 투명인간 참가자도 투표 대상에서 제외
         if (appData.attendanceStatus === 'no-show' || appData.attendanceStatus === 'excused' || appData.isDarkTemplar === true) {
           return null;
         }
 
-        const userSnap = await getDoc(doc(db, 'users', appData.userId));
-        const userData = userSnap.exists() ? userSnap.data() : null;
-
-        // v10.0.1: 생년월일로부터 '년생' 추출 로직
-        const rawBirth = appData.birthDate || userData?.birthDate || '';
-        const year = rawBirth.includes('-')
-          ? rawBirth.split('-')[0].slice(-2)
-          : (rawBirth.length >= 2 ? rawBirth.slice(0, 2) : '??');
-        const birthYear = year ? `${year}년생` : '??년생';
+        // v10.0.1: '년생' 표기 (서버가 생년월일 대신 두 자리 연도만 줌)
+        const year = appData.birthDate || '??';
+        const birthYear = `${year}년생`;
 
         return {
           userId: appData.userId,
-          name: appData.name,
           age: appData.age,
-          job: appData.displayJob || userData?.admin_job || userData?.job || appData.job || '미입력',
+          job: appData.displayJob || '미입력',
           residence: appData.residence,
           gender: appData.gender,
-          photos: userData?.photos || [],
+          photos: appData.photos || [],
           birthYear,
           slotNumber: appData.slotNumber || 999, // v10.1.0: DB 호수 사용
         };
-      }));
+      });
 
       // null 필터링 및 타입 확립
       const candidateList = candidateListRaw.filter(Boolean) as Candidate[];

@@ -4,7 +4,7 @@ import { use, useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc, collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { Heart, ArrowLeft, Trophy, Sparkles, ShieldCheck, Users, MapPin, Loader2, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import CherryBlossoms from '@/components/CherryBlossoms';
@@ -37,6 +37,11 @@ interface ResultData {
   }[];
 }
 
+interface LineupSide {
+  rows: { slotNumber: number | null; birthYear: string }[];
+  attrs: { job: string[]; height: string[]; smoking: string[]; drinking: string[]; religion: string[] } | null;
+}
+
 export default function MatchingResultDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: sessionId } = use(params);
   const [user, setUser] = useState<any>(null);
@@ -56,8 +61,8 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
   // 라인업 상태
   const [lineupTab, setLineupTab] = useState<'male' | 'female'>('male');
   const [shuffleSeed, setShuffleSeed] = useState(0);
-  const [lineupApps, setLineupApps] = useState<any[]>([]);
-  const [lineupUserMap, setLineupUserMap] = useState<Record<string, any>>({});
+  // 라인업은 /api/sessions/[id]/lineup에서 화면에 필요한 항목만 받는다
+  const [lineup, setLineup] = useState<{ male: LineupSide; female: LineupSide } | null>(null);
 
   const myGender = user ? participantMap[user.uid]?.gender : null;
 
@@ -72,18 +77,17 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
       setUser(currentUser);
       if (currentUser) {
         try {
-          const appsQuery = query(
-            collection(db, 'applications'),
-            where('sessionId', '==', sessionId),
-            where('status', '==', 'confirmed')
-          );
-
           // v10.2.0: 6가지 파이어스토어 요청을 병렬로 한 번에 처리하여 결과 페이지 로딩 600% 이상 단축
-          const [userSnap, sessionSnap, summarySnap, appsSnap, matchResult, stats, receivedVotes, myVote] = await Promise.all([
+          const [userSnap, sessionSnap, summarySnap, participantList, matchResult, stats, receivedVotes, myVote] = await Promise.all([
             getDoc(doc(db, 'users', currentUser.uid)).catch(e => { console.error(e); return { exists: () => false, data: () => ({}) } as any; }),
             getDoc(doc(db, 'sessions', sessionId)).catch(e => { console.error(e); return { exists: () => false, data: () => ({}) } as any; }),
             getDoc(doc(db, 'matchingSummaries', sessionId)).catch(e => { console.error(e); return { exists: () => false, data: () => ({}) } as any; }),
-            getDocs(appsQuery).catch(e => { console.error(e); return { docs: [], empty: true } as any; }),
+            // 참가자 정보는 서버 API에서 화면에 필요한 항목만 받는다 (신청서·회원 문서를 직접 읽지 않음)
+            currentUser.getIdToken().then(async token => {
+              const res = await fetch(`/api/sessions/${sessionId}/participants`, { headers: { Authorization: `Bearer ${token}` } });
+              if (!res.ok) return [];
+              return (await res.json()).participants || [];
+            }).catch(e => { console.error(e); return []; }),
             getUserMatchResult(currentUser.uid, sessionId).catch(e => { console.error(e); return null; }),
             getUserVoteStats(currentUser.uid, sessionId).catch(e => { console.error(e); return { receivedCount: 0, myChoices: [] }; }),
             currentUser.getIdToken().then(async token => {
@@ -129,36 +133,23 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
           // 세션당 신청서를 또 쿼리하지 않고 메모리에서 바로 조회하도록 재사용한다.
           const pMap: Record<string, any> = {};
           const appsByUserId = new Map<string, any>();
-          appsSnap.docs.forEach((d: any) => {
-            const data = d.data();
+          participantList.forEach((data: any) => {
             pMap[data.userId] = {
               gender: data.gender,
               slotNumber: data.slotNumber || 0,
-              name: data.name
             };
             appsByUserId.set(data.userId, data);
           });
           setParticipantMap(pMap);
 
-          // 5. 라인업용 데이터 세팅 (appsSnap 재활용)
-          const lineupAppList = appsSnap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
-          setLineupApps(lineupAppList);
-
-          // 라인업 유저 상세 정보 (키, 직업 등) 병렬 조회
-          const lineupUserSnaps = await Promise.all(
-            lineupAppList.map((a: any) => getDoc(doc(db, 'users', a.userId)))
-          );
+          // 5. 라인업은 공개 라인업 API (직업·키는 서버가 섞어서 줌), 직업 표시는 참가자 API 값 사용
           const luMap: Record<string, any> = {};
-          lineupUserSnaps.forEach((snap: any) => {
-            if (snap.exists()) luMap[snap.id] = snap.data();
-          });
-          setLineupUserMap(luMap);
 
           if (matchResult) {
             setIsParticipant(true);
 
             // Resolve all partner profiles for multi-match support
-            // v13.x: 파트너도 같은 세션의 confirmed 참가자이므로 appsByUserId/lineupUserMap(=luMap)에서
+            // v13.x: 파트너도 같은 세션의 confirmed 참가자이므로 appsByUserId(참가자 API 결과)에서
             // 바로 조회한다 — 파트너 수만큼 신청서·세션·유저 문서를 다시 읽지 않는다.
             const resolvedPartners = (matchResult.partnerIds || []).map((partnerId: any) => {
               try {
@@ -306,43 +297,15 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
           setIsLoading(false);
         }
       } else {
-        // 비로그인 상태에서도 세션 + 라인업 데이터는 공개 로드
+        // 비로그인 상태: 화면은 로그인 안내만 보여주므로 참가자 정보는 불러오지 않는다
         try {
-          const appsQuery = query(
-            collection(db, 'applications'),
-            where('sessionId', '==', sessionId),
-            where('status', '==', 'confirmed')
-          );
-          const [sessionSnap, summarySnap, appsSnap] = await Promise.all([
-            getDoc(doc(db, 'sessions', sessionId)).catch(e => { console.error(e); return { exists: () => false, data: () => ({}) } as any; }),
-            getDoc(doc(db, 'matchingSummaries', sessionId)).catch(e => { console.error(e); return { exists: () => false, data: () => ({}) } as any; }),
-            getDocs(appsQuery).catch(e => { console.error(e); return { docs: [], empty: true } as any; }),
-          ]);
-
+          const sessionSnap = await getDoc(doc(db, 'sessions', sessionId)).catch(e => { console.error(e); return { exists: () => false, data: () => ({}) } as any; });
           if (sessionSnap.exists()) {
             const sd = sessionSnap.data();
             if (!sd.isTest) {
               setSession({ id: sessionId, ...sd, eventDate: sd.eventDate?.toDate?.() || new Date() });
             }
           }
-          if (summarySnap.exists()) setSummary(summarySnap.data());
-
-          const lineupAppList = appsSnap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
-          setLineupApps(lineupAppList);
-
-          const lineupUserSnaps = await Promise.all(
-            lineupAppList.map((a: any) => getDoc(doc(db, 'users', (a as any).userId)))
-          );
-          const luMap: Record<string, any> = {};
-          lineupUserSnaps.forEach((snap: any) => { if (snap.exists()) luMap[snap.id] = snap.data(); });
-          setLineupUserMap(luMap);
-
-          const pMap: Record<string, any> = {};
-          appsSnap.docs.forEach((d: any) => {
-            const data = d.data();
-            pMap[data.userId] = { gender: data.gender, slotNumber: data.slotNumber || 0, name: data.name };
-          });
-          setParticipantMap(pMap);
         } catch (e) {
           console.error('비로그인 세션 로드 오류:', e);
         }
@@ -352,6 +315,15 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
 
     return () => unsubscribe();
   }, [sessionId]);
+
+  useEffect(() => {
+    if (!user) return;
+    user.getIdToken()
+      .then((token: string) => fetch(`/api/sessions/${sessionId}/lineup`, { headers: { Authorization: `Bearer ${token}` } }))
+      .then((res: Response) => (res.ok ? res.json() : null))
+      .then((data: any) => data && setLineup(data))
+      .catch((e: unknown) => console.error('라인업 조회 오류:', e));
+  }, [user, sessionId]);
 
   // 5초마다 셔플 (실시간 현황과 동일)
   useEffect(() => {
@@ -364,8 +336,7 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
   // 라인업 행 계산 (실시간 현황 status/[id] 로직 동일하게 적용)
   const lineupRows = useMemo(() => {
     if (!session) return [];
-    const isNotTestUser = (a: any) => !a.isDarkTemplar && !a.userId?.startsWith('user_m_') && !a.userId?.startsWith('user_f_') && !a.id?.startsWith('dummy');
-    const currentList = lineupApps.filter(a => a.gender === lineupTab && isNotTestUser(a));
+    const side = lineup?.[lineupTab];
     const maxSlots = lineupTab === 'male' ? (session.maxMale || 8) : (session.maxFemale || 8);
 
     const slots: any[] = Array.from({ length: maxSlots }, (_, i) => ({
@@ -376,21 +347,19 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
       height: '',
     }));
 
-    currentList.forEach((p: any) => {
-      const slotIdx = (p.slotNumber || 1) - 1;
+    // 직업·키는 서버가 섞어서 준 목록을 순서대로 채움 (2명 이하면 서버가 보내지 않아 '비공개')
+    let attrIdx = 0;
+    (side?.rows || []).forEach(r => {
+      const slotIdx = (r.slotNumber || 1) - 1;
       if (slotIdx >= 0 && slotIdx < maxSlots) {
-        const u = lineupUserMap[p.userId] || {};
-        const rawBirth = u.birthDate || p.birthDate || '';
-        const year = rawBirth.includes('-')
-          ? rawBirth.split('-')[0].slice(-2)
-          : rawBirth.length >= 2 ? rawBirth.slice(0, 2) : '??';
         slots[slotIdx] = {
-          slotNumber: p.slotNumber || (slotIdx + 1),
+          slotNumber: r.slotNumber || (slotIdx + 1),
           isFilled: true,
-          birthYear: `${year}`,
-          job: u.admin_job || u.job || p.job || '검토 중',
-          height: u.height ? `${u.height}` : p.height ? `${p.height}` : '비공개',
+          birthYear: `${r.birthYear}`,
+          job: side?.attrs?.job[attrIdx] ?? '비공개',
+          height: side?.attrs?.height[attrIdx] ?? '비공개',
         };
+        attrIdx++;
       }
     });
 
@@ -421,7 +390,7 @@ export default function MatchingResultDetailPage({ params }: { params: Promise<{
     });
 
     return slots;
-  }, [lineupTab, lineupApps, lineupUserMap, shuffleSeed, session]);
+  }, [lineupTab, lineup, shuffleSeed, session]);
 
   if (isLoading) {
     return (

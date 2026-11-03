@@ -8,7 +8,7 @@ import { buildProfileChangeLogs, CORE_PROFILE_FIELDS, ProfileChangeLog } from '@
 import { User, updatePassword } from 'firebase/auth';
 import {
   doc, getDoc, updateDoc, serverTimestamp, deleteField,
-  collection, query, where, getDocs, arrayUnion, documentId
+  collection, query, where, getDocs, arrayUnion
 } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import {
@@ -2100,31 +2100,17 @@ function ReceivedHeartsFeed({ session, userId }: { session: Session, userId: str
           return;
         }
 
-        // v13.x: 투표자마다 users/applications를 개별 조회하지 않고,
-        // 세션의 확정 신청서 전체 + 유저 문서를 배치로 한 번씩만 조회해서 매핑
-        const voterIds = Array.from(new Set(received.map(v => v.userId)));
-        const [confirmedAppsSnap, usersMap] = await Promise.all([
-          getDocs(query(collection(db, 'applications'), where('sessionId', '==', session.id), where('status', '==', 'confirmed'))),
-          (async () => {
-            const map = new Map<string, any>();
-            const chunks: string[][] = [];
-            for (let i = 0; i < voterIds.length; i += 30) chunks.push(voterIds.slice(i, i + 30));
-            await Promise.all(chunks.map(async (chunk) => {
-              const uSnap = await getDocs(query(collection(db, 'users'), where(documentId(), 'in', chunk)));
-              uSnap.docs.forEach(d => map.set(d.id, d.data()));
-            }));
-            return map;
-          })(),
-        ]);
-        const appByUserId = new Map<string, any>();
-        confirmedAppsSnap.docs.forEach(d => {
-          const data = d.data();
-          appByUserId.set(data.userId, data);
+        // 보낸 사람 정보(성별·호수·사진)는 서버 참가자 API에서 받는다 (신청서·회원 문서를 직접 읽지 않음)
+        const token = await auth.currentUser?.getIdToken();
+        const res = await fetch(`/api/sessions/${session.id}/participants`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
+        const { participants = [] } = res.ok ? await res.json() : {};
+        const byUserId = new Map<string, any>(participants.map((p: any) => [p.userId, p]));
 
         const profiles = received.map((v) => {
-          const appData = appByUserId.get(v.userId) || {};
-          return { id: v.userId, voteData: v, ...(usersMap.get(v.userId) || {}), gender: appData.gender, slotNumber: appData.slotNumber };
+          const p = byUserId.get(v.userId) || {};
+          return { id: v.userId, voteData: v, photos: p.photos || [], gender: p.gender, slotNumber: p.slotNumber };
         });
 
         setVoters(profiles);

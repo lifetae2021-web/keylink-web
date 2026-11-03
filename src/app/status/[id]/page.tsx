@@ -3,17 +3,23 @@
 import { use, useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { collection, getDocs, query, where, documentId } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Users, ShieldCheck, RefreshCcw, ArrowRight, Heart, Timer, MapPin, Sparkles, Loader2, Gauge } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getSession, getAllSessions } from '@/lib/firestore/sessions';
-import { getApplicationsBySession } from '@/lib/firestore/applications';
-import { Session, Application } from '@/lib/types';
+import { Session } from '@/lib/types';
 import { auth } from '@/lib/firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
 
-const statusDetailCache = new Map<string, { session: any; applicants: any[]; userMap: Record<string, any>; ts: number }>();
+// 라인업은 /api/sessions/[id]/lineup에서 화면에 필요한 항목만 받는다 (회원·신청서 문서를 직접 읽지 않음)
+interface LineupSide {
+  rows: { slotNumber: number | null; birthYear: string }[];
+  attrs: { job: string[]; height: string[]; smoking: string[]; drinking: string[]; religion: string[] } | null;
+}
+interface Lineup { male: LineupSide; female: LineupSide }
+const EMPTY_LINEUP: Lineup = { male: { rows: [], attrs: null }, female: { rows: [], attrs: null } };
+const statusDetailCache = new Map<string, { session: any; lineup: Lineup; ts: number }>();
 
 export default function StatusPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: sessionId } = use(params);
@@ -21,10 +27,10 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
   const [watchers, setWatchers] = useState(12);
   const [shuffleSeed, setShuffleSeed] = useState(0);
   const [session, setSession] = useState<Session | null>(null);
-  const [applicants, setApplicants] = useState<Application[]>([]);
+  const [lineup, setLineup] = useState<Lineup>(EMPTY_LINEUP);
+  const [myGender, setMyGender] = useState<'male' | 'female' | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const [userMap, setUserMap] = useState<Record<string, any>>({});
   const [selectedRow, setSelectedRow] = useState<any | null>(null);
 
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -44,8 +50,7 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
       const cached = statusDetailCache.get(sessionId);
       if (cached && Date.now() - cached.ts < 60000) {
         setSession(cached.session);
-        setApplicants(cached.applicants);
-        setUserMap(cached.userMap);
+        setLineup(cached.lineup);
         setIsLoading(false);
         hasCached = true;
       } else {
@@ -56,8 +61,7 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
             if (Date.now() - parsed.ts < 60000) {
               statusDetailCache.set(sessionId, parsed);
               setSession(parsed.session);
-              setApplicants(parsed.applicants);
-              setUserMap(parsed.userMap);
+              setLineup(parsed.lineup || EMPTY_LINEUP);
               setIsLoading(false);
               hasCached = true;
             } else {
@@ -85,24 +89,14 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
           return;
         }
 
-        const appData = await getApplicationsBySession(sessionData.id);
-        const confirmedApps = appData.filter(a => a.status === 'confirmed');
+        // 라인업은 확정 참가자만 받을 수 있다 (아니면 403 → 빈 라인업, 화면은 '시크릿 라인업' 안내)
+        const token = await auth.currentUser?.getIdToken();
+        const res = token ? await fetch(`/api/sessions/${sessionData.id}/lineup`, { headers: { Authorization: `Bearer ${token}` } }) : null;
+        const lineupData: Lineup = res?.ok ? await res.json() : EMPTY_LINEUP;
 
         setSession(sessionData);
-        setApplicants(appData);
-
-        // v13.x: 확정 신청자마다 users를 개별 조회하지 않고 배치로 한 번씩만 조회
-        const userIds = Array.from(new Set(confirmedApps.map(a => a.userId)));
-        const map: Record<string, any> = {};
-        const chunks: string[][] = [];
-        for (let i = 0; i < userIds.length; i += 30) chunks.push(userIds.slice(i, i + 30));
-        await Promise.all(chunks.map(async (chunk) => {
-          if (chunk.length === 0) return;
-          const uSnap = await getDocs(query(collection(db, 'users'), where(documentId(), 'in', chunk)));
-          uSnap.docs.forEach(snap => { map[snap.id] = snap.data(); });
-        }));
-        setUserMap(map);
-        const cachePayload = { session: sessionData, applicants: appData, userMap: map, ts: Date.now() };
+        setLineup(lineupData);
+        const cachePayload = { session: sessionData, lineup: lineupData, ts: Date.now() };
         statusDetailCache.set(sessionId, cachePayload);
         try { sessionStorage.setItem(`kl_status_detail_${sessionId}`, JSON.stringify(cachePayload)); } catch { }
 
@@ -122,26 +116,32 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
       setShuffleSeed(prev => prev + 1);
     }, 5000);
     return () => clearInterval(interval);
-  }, [sessionId]);
+  }, [sessionId, currentUser]);
 
-  const isNotTestUser = (p: any) => !p.isDarkTemplar && !p.userId?.startsWith('user_m_') && !p.userId?.startsWith('user_f_') && !p.id?.startsWith('dummy');
-  const maleApplicants = applicants.filter(p => p.gender === 'male' && p.status === 'confirmed' && isNotTestUser(p));
-  const femaleApplicants = applicants.filter(p => p.gender === 'female' && p.status === 'confirmed' && isNotTestUser(p));
-
-  const myApp = useMemo(() => {
-    if (!currentUser) return null;
-    return applicants.find(a => a.userId === currentUser.uid && a.status === 'confirmed') || null;
-  }, [currentUser, applicants]);
+  // 내가 이 기수 확정 참가자인지는 본인 신청서만 조회해서 확인
+  useEffect(() => {
+    if (!currentUser || !session?.id) { setMyGender(null); return; }
+    getDocs(query(
+      collection(db, 'applications'),
+      where('userId', '==', currentUser.uid),
+      where('sessionId', '==', session.id),
+      where('status', '==', 'confirmed'),
+    )).then(snap => {
+      const gender = snap.docs[0]?.data().gender;
+      setMyGender(gender === 'male' || gender === 'female' ? gender : null);
+    }).catch(() => setMyGender(null));
+  }, [currentUser, session?.id]);
+  const myApp = myGender ? { gender: myGender } : null;
 
   useEffect(() => {
-    if (myApp) {
-      setActiveTab(myApp.gender === 'male' ? 'female' : 'male');
+    if (myGender) {
+      setActiveTab(myGender === 'male' ? 'female' : 'male');
     }
-  }, [myApp]);
+  }, [myGender]);
 
   // v8.4.8: 라인업 데이터 바인딩 (이름/연락처 완전 배제, 실시간 호수 슬롯 동기화)
   const confirmedRows = useMemo(() => {
-    const currentList = activeTab === 'male' ? maleApplicants : femaleApplicants;
+    const side = lineup[activeTab];
     const maxSlots = activeTab === 'male' ? (session?.maxMale || 8) : (session?.maxFemale || 8);
 
     // 1. 최대 슬롯 크기만큼 빈 슬롯 배열 초기화
@@ -157,27 +157,24 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
       isBlind: false
     }));
 
-    // 2. 확정 참가자들을 각각의 slotNumber 자리에 매핑
-    currentList.forEach(p => {
-      const slotIdx = (p.slotNumber || 1) - 1;
+    // 2. 확정 참가자들을 각각의 slotNumber 자리에 매핑 (항목은 서버가 섞어서 준 목록을 순서대로 채움)
+    let attrIdx = 0;
+    side.rows.forEach(r => {
+      const slotIdx = (r.slotNumber || 1) - 1;
       if (slotIdx >= 0 && slotIdx < maxSlots) {
-        const u = userMap[p.userId] || {};
-        const rawBirth = u.birthDate || p.birthDate || '';
-        const year = rawBirth.includes('-')
-          ? rawBirth.split('-')[0].slice(-2)
-          : (rawBirth.length >= 2 ? rawBirth.slice(0, 2) : '??');
-
+        const a = side.attrs;
         slots[slotIdx] = {
-          slotNumber: p.slotNumber || (slotIdx + 1),
+          slotNumber: r.slotNumber || (slotIdx + 1),
           isFilled: true,
-          birthYear: `${year}년생`,
-          job: u.admin_job || u.job || p.job || '검토 중',
-          height: u.height ? `${u.height}` : p.height ? `${p.height}` : '비공개',
-          smoking: u.smoking || p.smoking || '비흡연',
-          drinking: u.drinking || p.drinking || '안 마심',
-          religion: u.religion || p.religion || '무교',
+          birthYear: `${r.birthYear}년생`,
+          job: a?.job[attrIdx] ?? '',
+          height: a?.height[attrIdx] ?? '',
+          smoking: a?.smoking[attrIdx] ?? '',
+          drinking: a?.drinking[attrIdx] ?? '',
+          religion: a?.religion[attrIdx] ?? '',
           isBlind: false
         };
+        attrIdx++;
       }
     });
 
@@ -228,7 +225,7 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
     });
 
     return slots;
-  }, [activeTab, maleApplicants, femaleApplicants, userMap, shuffleSeed, session]);
+  }, [activeTab, lineup, shuffleSeed, session]);
 
   const progressMale = session ? (session.currentMale / session.maxMale) : 0;
   const progressFemale = session ? (session.currentFemale / session.maxFemale) : 0;

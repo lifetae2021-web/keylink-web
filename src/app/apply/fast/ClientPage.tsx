@@ -136,6 +136,19 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
   const sessionListRef = useRef<HTMLDivElement>(null);
 
   // ── Helper: Upload Base64 to Storage ──
+  // 같은 기수에 이 번호로 낸 진행 중 신청서가 있는지 서버에서 확인 (다른 계정 신청서는 인증된 번호일 때만 서버가 내 계정으로 옮김)
+  const checkExistingApplications = async (sessionIds: string[], phone: string, profile?: Record<string, string>) => {
+    const token = await auth.currentUser?.getIdToken();
+    const res = await fetch('/api/applications/existing', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: JSON.stringify({ sessionIds, phone, profile }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || '신청 내역 확인에 실패했어요.');
+    return data.results as Record<string, 'none' | 'mine' | 'transferred' | 'taken'>;
+  };
+
   const uploadBase64Photos = async (uid: string, photosBase64: string[], proofBase64?: string) => {
     let newPhotos = [...photosBase64];
     let newProof = proofBase64 || '';
@@ -948,6 +961,9 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
 
         // Create applications
         const createdAppIds: string[] = [];
+        const existingResults = await checkExistingApplications(Array.from(selectedSessionIds), form.phone, {
+          name: form.name, gender: form.gender, birthDate: form.birthDate, job: form.workplace || '', residence: form.residence || '',
+        });
         for (const sessionId of Array.from(selectedSessionIds)) {
           const basePrice = getBasePrice(sessionId);
           const couponDiscount = getCouponDiscount();
@@ -956,39 +972,8 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
           const birthYear = form.birthDate ? parseBirthYear(form.birthDate) : new Date().getFullYear();
           const age = new Date().getFullYear() - birthYear;
 
-          // 중복 신청 방지 및 익명 계정 이관 로직 (전화번호 기준)
-          const existingSnap = await getDocs(query(
-            collection(db, 'applications'),
-            where('phone', '==', form.phone),
-            where('sessionId', '==', sessionId)
-          ));
-          
-          let existingActiveApp = null;
-          for (const docSnap of existingSnap.docs) {
-            if (['pending', 'applied', 'selected', 'confirmed'].includes(docSnap.data().status)) {
-              existingActiveApp = docSnap;
-              break;
-            }
-          }
-          
-          if (existingActiveApp) {
-            const data = existingActiveApp.data();
-            // 기존 신청서가 다른 UID(비회원 등)로 작성되었다면 현재 정식 회원 UID로 소유권 이전
-            if (data.userId !== uid) {
-              batch.update(existingActiveApp.ref, {
-                userId: uid,
-                isGuestApply: false,
-                name: form.name,
-                gender: form.gender,
-                birthDate: form.birthDate,
-                phone: form.phone,
-                job: form.workplace || '',
-                residence: form.residence || '',
-                updatedAt: Timestamp.now(),
-              });
-            }
-            continue; // 중복 생성 건너뜀
-          }
+          // 중복 신청 방지 및 비회원 신청서 이관은 서버에서 처리됨 (위 checkExistingApplications)
+          if (existingResults[sessionId] && existingResults[sessionId] !== 'none') continue; // 중복 생성 건너뜀
 
           const appRef = doc(collection(db, 'applications'));
           createdAppIds.push(appRef.id);
@@ -1134,6 +1119,7 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
       });
 
       // Create applications for each selected session
+      const existingResults = await checkExistingApplications(sessionIds, formData.phone);
       for (const sessionId of sessionIds) {
           const basePrice = getBasePrice(sessionId);
           const couponDiscount = backup.couponDiscount || 0;
@@ -1141,24 +1127,8 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
         const birthYear = formData.birthDate ? parseBirthYear(formData.birthDate) : new Date().getFullYear();
         const age = new Date().getFullYear() - birthYear;
 
-        // 중복 신청 방지 로직 추가 (전화번호 기준)
-        const existingSnap = await getDocs(query(
-          collection(db, 'applications'),
-          where('phone', '==', formData.phone),
-          where('sessionId', '==', sessionId)
-        ));
-        
-        let hasActive = false;
-        for (const docSnap of existingSnap.docs) {
-          if (['pending', 'applied', 'selected', 'confirmed'].includes(docSnap.data().status)) {
-            hasActive = true;
-            break;
-          }
-        }
-        
-        if (hasActive) {
-          continue; // 이미 동일 기수에 신청한 내역이 있으면 중복 생성 건너뜀
-        }
+        // 이미 동일 기수에 이 번호로 신청한 내역이 있으면 중복 생성 건너뜀 (서버에서 확인)
+        if (existingResults[sessionId] && existingResults[sessionId] !== 'none') continue;
 
         const appRef = doc(collection(db, 'applications'));
         batch.set(appRef, {

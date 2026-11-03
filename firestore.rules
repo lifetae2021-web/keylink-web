@@ -40,8 +40,9 @@ service cloud.firestore {
     // users 컬렉션
     // ─────────────────────────────────────
     match /users/{userId} {
-      // v8.8.9: 라인업 데이터 조회를 위해 public read 허용 (클라이언트에서 노출 필터링)
-      allow read: if true;
+      // 본인·관리자만 읽기 (전화번호·생년월일 등 개인정보 보호)
+      // 라인업·매칭 결과·투표처럼 다른 회원 정보가 필요한 화면은 서버 API(/api/sessions/[id]/...)가 필요한 항목만 준다
+      allow read: if isUser(userId) || isAdmin();
       // v7.3.3: 신규 가입(create) 허용 - 본인 UID로 생성하되, role은 반드시 'user'여야 함
       // 포인트 잔액은 서버(Admin SDK)에서만 변경 - 본인이 생성/수정 시 points 필드를 넣거나 바꿀 수 없음
       allow create: if isUser(userId) && request.resource.data.role in ['user', 'guest'] &&
@@ -92,18 +93,14 @@ service cloud.firestore {
     // applications (신청서) 컬렉션
     // ─────────────────────────────────────
     match /applications/{applicationId} {
-      // v8.8.9: 라인업(실시간 현황) 조회를 위해 public read 허용 (클라이언트에서 표출 필터링)
-      allow read: if true;
+      // 본인 신청서만 읽기 (다른 참가자 정보는 서버 API가 필요한 항목만 준다)
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
       // 관리자: 모든 신청서 읽기/쓰기
       allow read, write: if isAdmin();
       // 신규 신청: 본인 UID로만 생성 가능
       allow create: if isSignedIn() &&
         request.resource.data.userId == request.auth.uid;
-      // 비회원(익명) 신청서 → 정식 회원 소유권 이전: 현재 로그인한 UID로만, 게스트 신청서에 한해 허용
-      allow update: if isSignedIn() &&
-        resource.data.isGuestApply == true &&
-        request.resource.data.userId == request.auth.uid &&
-        request.resource.data.isGuestApply == false;
+      // 비회원 신청서 → 회원 계정 이전은 서버(/api/applications/existing)가 문자 인증된 번호를 확인하고 처리한다
     }
 
     // ─────────────────────────────────────
