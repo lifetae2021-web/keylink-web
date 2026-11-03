@@ -215,7 +215,7 @@ export default function SocialProfilePage() {
                 </div>
                 <div>
                   <p style={{ fontSize: '0.82rem', fontWeight: '800', color: '#92400E' }}>카카오 계정으로 회원가입</p>
-                  <p style={{ fontSize: '0.75rem', color: '#A16207', marginTop: '2px' }}>카카오톡으로 로그인이 가능한 계정입니다.</p>
+                  <p style={{ fontSize: '0.75rem', color: '#A16207', marginTop: '2px', wordBreak: 'keep-all' }}>카카오톡으로 바로 로그인돼요.</p>
                 </div>
               </div>
             ) : (
