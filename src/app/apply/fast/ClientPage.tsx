@@ -22,6 +22,7 @@ import { buildProfileChangeLogs } from '@/lib/profileChangeLog';
 import { MIN_REDEEM_POINTS, REDEEM_UNIT_POINTS } from '@/lib/pointsConfig';
 import { detectInAppBrowser, InAppInfo } from '@/lib/inAppBrowser';
 import InAppBrowserSheet from '@/components/InAppBrowserSheet';
+import { PhoneVerifyField, LinkAccountModal, claimVerifiedPhone, type ExistingAccount } from '@/components/PhoneVerification';
 import { EventCalendar } from '@/components/EventsSection';
 import { KeylinkEvent } from '@/types';
 
@@ -208,6 +209,13 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
 
   // ── Duplicate account modal ──
   const [dupModal, setDupModal] = useState<{ provider: ProviderType; phone: string } | null>(null);
+
+  // ── 휴대폰 인증 (계정에 이미 인증된 번호와 같으면 다시 인증하지 않음) ──
+  const [phoneToken, setPhoneToken] = useState<{ token: string; phone: string } | null>(null);
+  const phoneTokenRef = useRef<string | null>(null); // 비회원 신청 저장(비동기) 후 번호 기록용
+  const [accountVerifiedPhone, setAccountVerifiedPhone] = useState<string | null>(null);
+  const [linkInfo, setLinkInfo] = useState<{ existing: ExistingAccount; token: string } | null>(null);
+  const isPhoneVerified = (!!phoneToken && phoneToken.phone === form.phone) || (!!accountVerifiedPhone && accountVerifiedPhone === form.phone);
 
   // ── Signup funnel modal ──
   const [funnelModal, setFunnelModal] = useState(false);
@@ -481,6 +489,7 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
               setIsGenderLocked(true);
             }
             setPointBalance(d.points || 0);
+            setAccountVerifiedPhone(d.verifiedPhone || null);
             setIsPointMember(!currentUser.isAnonymous && d.isRegistered !== false && d.loginMethod !== 'anonymous');
           }
 
@@ -733,16 +742,6 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
     setField('birthDate', formatBirthDate(e.target.value));
   };
 
-  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let val = e.target.value.replace(/[^0-9]/g, '');
-    if (val.length > 3 && val.length <= 7) {
-      val = val.replace(/(\d{3})(\d{1,4})/, '$1-$2');
-    } else if (val.length > 7) {
-      val = val.replace(/(\d{3})(\d{4})(\d{1,4})/, '$1-$2-$3');
-    }
-    setField('phone', val.substring(0, 13));
-  };
-
   const checkField = (condition: boolean, msg: string, id: string) => {
     if (!condition) {
       toast.error(msg);
@@ -773,6 +772,7 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
     addError(!!form.birthDate.trim(), '생년월일을 입력해 주세요.', 'field-birthDate');
     if (form.birthDate.trim()) addError(isValidBirthDate(form.birthDate), '생년월일을 다시 확인해 주세요. (ex. 940530)', 'field-birthDate');
     addError(!!form.phone.trim(), '전화번호를 입력해 주세요.', 'field-phone');
+    if (form.phone.trim()) addError(isPhoneVerified, '휴대폰 인증을 완료해 주세요.', 'field-phone');
     addError(!!form.height.trim(), '키(cm)를 입력해 주세요.', 'field-height');
     addError(!!form.weight.trim(), '체중(kg)을 입력해 주세요.', 'field-weight');
     addError(!!form.residence.trim(), '거주지를 입력해 주세요.', 'field-residence');
@@ -860,34 +860,7 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
       }
 
       if (!currentUser || isGuest) {
-        // 1. Check phone duplicate in users collection for non-members
-        const phone = form.phone.replace(/\s/g, '');
-        const usersSnap = await getDocs(query(collection(db, 'users'), where('phone', '==', phone)));
-        if (!usersSnap.empty) {
-          const existingUser = usersSnap.docs[0].data();
-          // If the found user is NOT the currently logged-in user, show duplicate warning
-          if (!currentUser || currentUser.uid !== existingUser.uid) {
-            const provider: ProviderType =
-              existingUser.loginMethod === 'kakao' ? 'kakao' :
-              existingUser.loginMethod === 'google' ? 'google' : 'email';
-            setDupModal({ provider, phone });
-            // Save form data to sessionStorage for post-login recovery
-            saveBackup({
-              formData: form,
-              sessionIds: Array.from(selectedSessionIds),
-              maleOption,
-              femaleOption,
-              groupPartnerName,
-              groupPartnerBirthYear,
-              selectedCouponId: selectedCoupon?.id || null,
-              selectedCouponTitle: selectedCoupon?.title || null,
-              couponDiscount: getCouponDiscount(),
-            });
-            setSubmitting(false);
-            return;
-          }
-        }
-
+        // 이 번호로 가입된 회원 계정이 있으면 휴대폰 인증 단계에서 안내되므로 여기서는 바로 저장한다
         const backup = {
           formData: form,
           sessionIds: Array.from(selectedSessionIds),
@@ -910,6 +883,19 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
       } else {
         // 3. Current user is logged in, submit immediately
         const uid = currentUser.uid;
+
+        // 새로 인증한 번호를 계정에 기록 (다른 회원이 쓰는 번호면 여기서 막힘)
+        if (phoneToken && phoneToken.phone === form.phone && accountVerifiedPhone !== form.phone) {
+          try {
+            await claimVerifiedPhone(phoneToken.token);
+            setAccountVerifiedPhone(form.phone);
+            setPhoneToken(null);
+          } catch (claimErr: any) {
+            toast.error(claimErr.message);
+            setPhoneToken(null);
+            return;
+          }
+        }
         
         // Upload images to Firebase Storage
         const { uploadedPhotos, uploadedProof } = await uploadBase64Photos(uid, photos, form.employmentProof);
@@ -1212,6 +1198,13 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
       }
 
       await batch.commit();
+
+      // 인증한 번호를 비회원 계정에 기록 (나중에 카카오/구글 회원 전환 시 함께 옮겨짐)
+      if (phoneTokenRef.current) {
+        const token = phoneTokenRef.current;
+        phoneTokenRef.current = null;
+        claimVerifiedPhone(token).catch(err => console.error('[claim phone]', err));
+      }
 
       if (!isBackground) {
         clearBackup();
@@ -2174,13 +2167,21 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
           </FormField>
 
           <FormField errorFields={errorFields} id="field-phone" label="전화번호" required>
-            <input
-              className="kl-input"
-              type="tel"
-              placeholder="ex) 010-1234-5678"
-              value={form.phone}
-              onChange={handlePhoneChange}
-              style={inputStyle}
+            <PhoneVerifyField
+              phone={form.phone}
+              onPhoneChange={phone => { setField('phone', phone); setPhoneToken(null); phoneTokenRef.current = null; }}
+              verified={isPhoneVerified}
+              onVerified={({ token, phone, existing }) => {
+                if (existing) {
+                  // 회원으로 로그인한 상태면 기존 계정 연결, 아니면 기존 계정으로 로그인 안내
+                  if (currentUser && !currentUser.isAnonymous && isPointMember) setLinkInfo({ existing, token });
+                  else setDupModal({ provider: existing.method === 'id' ? 'email' : existing.method, phone });
+                  return;
+                }
+                setPhoneToken({ token, phone });
+                phoneTokenRef.current = token;
+              }}
+              inputStyle={inputStyle}
             />
           </FormField>
 
@@ -2536,6 +2537,15 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
             그래도 카카오로 계속하기
           </button>
         </InAppBrowserSheet>
+      )}
+
+      {linkInfo && (
+        <LinkAccountModal
+          existing={linkInfo.existing}
+          token={linkInfo.token}
+          onLinked={() => { setLinkInfo(null); toast('기존 계정 정보로 불러왔어요. 내용을 확인하고 신청하기를 눌러 주세요.', { duration: 5000 }); }}
+          onClose={() => setLinkInfo(null)}
+        />
       )}
 
       {/* ─── Duplicate Account Modal ─── */}

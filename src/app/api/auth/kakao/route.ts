@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
+import { resolveMergedAccount } from '@/lib/accountMerge';
 
 const KAKAO_TOKEN_URL = 'https://kauth.kakao.com/oauth/token';
 const KAKAO_USER_PROFILE_URL = 'https://kapi.kakao.com/v2/user/me';
@@ -173,6 +174,10 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // 휴대폰 인증으로 다른 계정에 연결된 카카오 계정이면 연결된 계정으로 로그인시킨다
+    const mergedTarget = isNewUser ? null : await resolveMergedAccount(firebaseUid);
+    const loginUid = mergedTarget || firebaseUid;
+
     // 비회원 -> 카카오 연동 처리
     let finalState = state;
     if (state.startsWith('upgrade_guest|')) {
@@ -189,7 +194,7 @@ export async function GET(request: NextRequest) {
           const sessionIds: string[] = [];
           appsSnap.forEach(appDoc => {
             sessionIds.push(appDoc.data().sessionId);
-            batch.update(appDoc.ref, { userId: firebaseUid });
+            batch.update(appDoc.ref, { userId: loginUid });
           });
           
           // 기존 투표 내역 완벽 이관 (내가 한 투표 + 남들이 나에게 한 투표)
@@ -204,17 +209,17 @@ export async function GET(request: NextRequest) {
               const newChoices = vData.choices?.map((c: any) => {
                 if (c.targetUserId === oldUid) {
                   choicesChanged = true;
-                  return { ...c, targetUserId: firebaseUid };
+                  return { ...c, targetUserId: loginUid };
                 }
                 return c;
               });
 
               if (isMyVote) {
                 // 내 투표는 새 문서(새 UID 기반)로 복사하고, 기존 문서는 삭제합니다.
-                const newVoteRef = adminDb.collection('votes').doc(`${sid}_${firebaseUid}`);
+                const newVoteRef = adminDb.collection('votes').doc(`${sid}_${loginUid}`);
                 batch.set(newVoteRef, { 
                   ...vData, 
-                  userId: firebaseUid,
+                  userId: loginUid,
                   choices: choicesChanged ? newChoices : vData.choices 
                 });
                 batch.delete(voteDoc.ref);
@@ -226,16 +231,23 @@ export async function GET(request: NextRequest) {
           }
           
           // 기존 비회원 정보를 새 카카오 계정에 병합
-          const mergedData: any = { ...oldData, uid: firebaseUid, isRegistered: true, loginMethod: 'kakao', provider: 'kakao', role: 'user', updatedAt: new Date() };
+          const mergedData: any = { ...oldData, uid: loginUid, isRegistered: true, loginMethod: 'kakao', provider: 'kakao', role: 'user', updatedAt: new Date() };
           // 기존 Kakao name 유지 (또는 oldData.name)
           if (oldData.name) mergedData.name = oldData.name;
           // 실수로 병합된 문서가 스스로를 숨기는 것을 방지
           delete mergedData.mergedTo;
+          // 연결된 기존 계정으로 합칠 때는 그 계정의 가입 방식·가입일·아이디를 유지
+          if (mergedTarget) {
+            delete mergedData.loginMethod;
+            delete mergedData.provider;
+            delete mergedData.createdAt;
+            delete mergedData.username;
+          }
           
-          batch.set(adminDb.collection('users').doc(firebaseUid), mergedData, { merge: true });
+          batch.set(adminDb.collection('users').doc(loginUid), mergedData, { merge: true });
           
           // 이전 문서는 병합됨 표시
-          batch.update(adminDb.collection('users').doc(oldUid), { mergedTo: firebaseUid });
+          batch.update(adminDb.collection('users').doc(oldUid), { mergedTo: loginUid });
           await batch.commit();
         }
       }
@@ -246,7 +258,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const customToken = await adminAuth.createCustomToken(firebaseUid);
+    const customToken = await adminAuth.createCustomToken(loginUid);
     const targetPath = isAdmin ? '/admin/callback' : '/login/callback';
     return NextResponse.redirect(`${origin}${targetPath}?token=${customToken}&state=${finalState}&isNew=${isNewUser}`);
 
@@ -275,7 +287,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const customToken = await adminAuth.createCustomToken(firebaseUid);
+    const mergedTarget = isNewUser ? null : await resolveMergedAccount(firebaseUid);
+    const customToken = await adminAuth.createCustomToken(mergedTarget || firebaseUid);
     return NextResponse.json({ token: customToken, isNewUser });
 
   } catch (error: any) {

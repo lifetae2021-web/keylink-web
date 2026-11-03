@@ -19,6 +19,18 @@ service cloud.firestore {
          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'super_admin');
     }
 
+    // 서버(Admin SDK)만 쓰는 필드: 클라이언트는 값을 새로 넣거나 바꿀 수 없고 지우는 것만 가능
+    // (verifiedPhone: 문자 인증된 번호, mergedTo/mergedFrom: 휴대폰 인증으로 연결된 계정 표시)
+    function serverOnlyFieldKept(field) {
+      return request.resource.data.get(field, null) == null ||
+        (resource != null && request.resource.data.get(field, null) == resource.data.get(field, null));
+    }
+
+    function serverOnlyFieldsKept() {
+      return serverOnlyFieldKept('verifiedPhone') && serverOnlyFieldKept('phoneVerifiedAt') &&
+        serverOnlyFieldKept('mergedTo') && serverOnlyFieldKept('mergedFrom');
+    }
+
     function isSuperAdmin() {
       return isSignedIn() &&
          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'super_admin';
@@ -33,13 +45,14 @@ service cloud.firestore {
       // v7.3.3: 신규 가입(create) 허용 - 본인 UID로 생성하되, role은 반드시 'user'여야 함
       // 포인트 잔액은 서버(Admin SDK)에서만 변경 - 본인이 생성/수정 시 points 필드를 넣거나 바꿀 수 없음
       allow create: if isUser(userId) && request.resource.data.role in ['user', 'guest'] &&
-        !('points' in request.resource.data);
+        !('points' in request.resource.data) && serverOnlyFieldsKept();
       // 기존 문서 수정: 관리자이거나, 본인일 때 (role 필드가 없거나 'user', 'guest'여야 함)
       // role은 본인이 올릴 수 없음: 기존 값 그대로(일반회원/VIP회원/제안 등 한글 등급 포함)이거나 user/guest일 때만 허용
       allow update: if isAdmin() || (isUser(userId) &&
         (request.resource.data.get('role', null) == resource.data.get('role', null) ||
          request.resource.data.get('role', 'user') in ['user', 'guest']) &&
-        request.resource.data.get('points', 0) == resource.data.get('points', 0));
+        request.resource.data.get('points', 0) == resource.data.get('points', 0) &&
+        serverOnlyFieldsKept());
       allow delete: if isSuperAdmin();
 
       // v8.15.9: 쿠폰 및 포인트 내역 서브 컬렉션 권한 추가

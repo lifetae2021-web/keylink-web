@@ -93,7 +93,8 @@ function KakaoCallbackContent() {
               console.error('getDoc failed completely, proceeding with default redirect:', docErr2);
             }
           }
-          const isComplete = userData && userData.gender && userData.birthDate && userData.phone;
+          // 다른 계정에 연결된 계정이면 AuthContext가 연결된 계정으로 전환하므로 프로필 입력이 필요 없다
+          const isComplete = userData && (userData.mergedTo || (userData.gender && userData.birthDate && userData.phone));
 
           if (isNew || !isComplete) {
             toast.success('회원가입을 위해 추가 정보를 입력해 주세요!');

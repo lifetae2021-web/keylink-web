@@ -25,6 +25,7 @@ import { getMyVote, getMyVotesMap, getVotesReceivedByMe } from '@/lib/firestore/
 import { Application, Session, Vote } from '@/lib/types';
 import { useAuth } from '@/contexts/AuthContext';
 import MyPointsCard from '@/components/MyPointsCard';
+import { PhoneVerifyField, claimVerifiedPhone } from '@/components/PhoneVerification';
 
 const EMPTY = '미입력';
 
@@ -77,6 +78,7 @@ function MyPageContent() {
 
   const [user, setUser] = useState<User | null>(null);
   const [userData, setUserData] = useState<any>(null);
+  const [phoneToken, setPhoneToken] = useState<{ token: string; phone: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -317,6 +319,8 @@ function MyPageContent() {
 
     // v5.1.0 추가 필수 항목 검사
     if (!editForm.phone) return toast.error('연락처를 입력해주세요.');
+    const phoneChanged = editForm.phone !== (userData?.phone || '');
+    if (phoneChanged && phoneToken?.phone !== editForm.phone) return toast.error('바꾼 연락처의 휴대폰 인증을 완료해 주세요.');
     if (!editForm.height) return toast.error('키를 입력해주세요.');
     if (!editForm.weight) return toast.error('몸무게를 입력해주세요.');
     if (!editForm.residence) return toast.error('거주지를 입력해주세요.');
@@ -327,6 +331,17 @@ function MyPageContent() {
     // 본인 사진 1장 이상 필수 검사
     if (photos.length === 0) {
       return toast.error('본인 사진을 최소 1장 이상 등록해주세요.');
+    }
+
+    // 새로 인증한 번호를 서버에서 기록 (다른 회원이 쓰는 번호면 저장하지 않음)
+    if (phoneChanged) {
+      try {
+        await claimVerifiedPhone(phoneToken!.token);
+        setPhoneToken(null);
+      } catch (claimErr: any) {
+        setPhoneToken(null);
+        return toast.error(claimErr.message);
+      }
     }
 
     setIsSaving(true);
@@ -453,12 +468,6 @@ function MyPageContent() {
   };
 
 
-  const formatPhone = (v: string) => {
-    const d = v.replace(/\D/g, '').slice(0, 11);
-    if (d.length <= 3) return d;
-    if (d.length <= 7) return `${d.slice(0,3)}-${d.slice(3)}`;
-    return `${d.slice(0,3)}-${d.slice(3,7)}-${d.slice(7)}`;
-  };
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
@@ -757,7 +766,17 @@ function MyPageContent() {
             </EditRow>
 
             <EditRow label="연락처" required>
-              <input style={inputStyle} type="tel" value={editForm.phone} onChange={e => setEditForm((p: any) => ({ ...p, phone: formatPhone(e.target.value) }))} placeholder="010-0000-0000" />
+              <PhoneVerifyField
+                phone={editForm.phone}
+                onPhoneChange={phone => { setEditForm((p: any) => ({ ...p, phone })); setPhoneToken(null); }}
+                verified={editForm.phone === (userData?.phone || '') || phoneToken?.phone === editForm.phone}
+                onVerified={({ token, phone, existing }) => {
+                  if (existing) { toast.error('이미 다른 계정에서 사용 중인 번호예요.'); return; }
+                  setPhoneToken({ token, phone });
+                }}
+                inputClassName=""
+                inputStyle={inputStyle}
+              />
             </EditRow>
 
             <EditRow label="인스타그램 계정">

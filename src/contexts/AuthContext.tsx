@@ -1,8 +1,8 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, ReactNode } from 'react';
 import { auth, db } from '@/lib/firebase';
-import { onAuthStateChanged, User } from 'firebase/auth';
+import { onAuthStateChanged, signInWithCustomToken, User } from 'firebase/auth';
 import { doc, onSnapshot, collection, query, where } from 'firebase/firestore';
 
 interface AuthContextValue {
@@ -43,6 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [coupons, setCoupons] = useState<any[]>([]);
   const [authLoading, setAuthLoading] = useState(true);
   const [profileLoading, setProfileLoading] = useState(true);
+  const followedMergeFor = useRef<string | null>(null);
 
   useEffect(() => {
     const unsubAuth = onAuthStateChanged(auth, (u) => {
@@ -83,6 +84,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => { unsubUser(); unsubCoupons(); };
   }, [user]);
+
+  // 다른 계정에 연결된(합쳐진) 계정으로 로그인했으면 연결된 계정으로 갈아탄다 (uid당 1회만 시도)
+  useEffect(() => {
+    if (!user || user.isAnonymous || !userData?.mergedTo || followedMergeFor.current === user.uid) return;
+    followedMergeFor.current = user.uid;
+    (async () => {
+      try {
+        const res = await fetch('/api/auth/follow-merge', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${await user.getIdToken()}` },
+        });
+        if (!res.ok) return;
+        const { token } = await res.json();
+        await signInWithCustomToken(auth, token);
+      } catch (err) {
+        console.error('[follow-merge]', err);
+      }
+    })();
+  }, [user, userData?.mergedTo]);
 
   const isAdmin = userData?.role === 'admin' || userData?.role === 'super_admin';
 

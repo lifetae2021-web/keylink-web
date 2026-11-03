@@ -10,6 +10,7 @@ import { auth, db } from '@/lib/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { formatBirthDate, isValidBirthDate } from '@/lib/utils';
+import { PhoneVerifyField, ExistingAccountModal, claimVerifiedPhone, type ExistingAccount } from '@/components/PhoneVerification';
 
 function RegisterForm() {
   const router = useRouter();
@@ -40,13 +41,12 @@ function RegisterForm() {
     name: '',
     gender: '',
     phone: '',
-    phoneConfirm: '',
     birthDate: '',
   });
 
   const [idChecked, setIdChecked] = useState(false);
-  const [phoneChecked, setPhoneChecked] = useState(false);
-  const [phoneError, setPhoneError] = useState('');
+  const [phoneToken, setPhoneToken] = useState<string | null>(null);
+  const [existingAccount, setExistingAccount] = useState<ExistingAccount | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
 
@@ -68,13 +68,6 @@ function RegisterForm() {
     }
   }, [nameError]);
 
-  const formatPhone = (val: string) => {
-    const digits = val.replace(/\D/g, '').slice(0, 11);
-    if (digits.length <= 3) return digits;
-    if (digits.length <= 7) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
-    return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
-  };
-
   const update = (key: string, value: string) => {
     let formattedValue = value;
 
@@ -92,8 +85,6 @@ function RegisterForm() {
       formattedValue = filtered;
     }
 
-    if (key === 'phone') formattedValue = formatPhone(value);
-    if (key === 'phoneConfirm') formattedValue = formatPhone(value);
     if (key === 'birthDate') formattedValue = formatBirthDate(value);
     setForm(f => ({ ...f, [key]: formattedValue }));
   };
@@ -101,7 +92,7 @@ function RegisterForm() {
   const validateAll = () => {
     if (!isAllAgreed) { toast.error('모든 필수 약관에 동의해 주세요.'); return false; }
     if (!form.phone) { toast.error('연락처를 입력해 주세요.'); return false; }
-    if (!phoneChecked) { toast.error('연락처 중복확인을 진행해 주세요.'); return false; }
+    if (!phoneToken) { toast.error('휴대폰 인증을 완료해 주세요.'); return false; }
     if (!form.username || form.username.length < 5 || form.username.length > 15) { toast.error('아이디는 5자 이상 15자 이하로 입력해 주세요.'); return false; }
     if (!idChecked) { toast.error('아이디 중복확인을 진행해 주세요.'); return false; }
     if (!form.password || form.password !== form.passwordConfirm) {
@@ -112,7 +103,6 @@ function RegisterForm() {
     if (!form.name || form.name.length < 2) { toast.error('이름은 2자 이상 입력해 주세요.'); return false; }
     if (!form.birthDate) { toast.error('생년월일을 입력해 주세요.'); return false; }
     if (!isValidBirthDate(form.birthDate)) { toast.error('생년월일을 다시 확인해 주세요. (ex. 940530)'); return false; }
-    if (form.phone !== form.phoneConfirm) { toast.error('연락처 재확인이 일치하지 않습니다.'); return false; }
     return true;
   };
 
@@ -147,47 +137,12 @@ function RegisterForm() {
     }
   };
 
-  const handlePhoneCheck = async () => {
-    if (!form.phone) return;
-    if (form.phone.length < 12) {
-      setPhoneError('올바른 연락처를 입력해주세요.');
-      setPhoneChecked(false);
-      return;
-    }
-
-    try {
-      const res = await fetch('/api/auth/check-phone', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: form.phone }),
-      });
-      const data = await res.json();
-
-      if (!res.ok) {
-        setPhoneError(data.error || '중복확인 중 오류가 발생했습니다.');
-        setPhoneChecked(false);
-        return;
-      }
-
-      if (data.available) {
-        setPhoneChecked(true);
-        setPhoneError('');
-      } else {
-        setPhoneChecked(false);
-        setPhoneError(data.message || '이미 가입된 연락처입니다. 고객센터로 문의해주세요.');
-      }
-    } catch (error) {
-      console.error('Phone check error:', error);
-      setPhoneError('중복확인 중 오류가 발생했습니다.');
-    }
-  };
-
   const handleSubmit = async () => {
     if (!validateAll()) return;
     setIsSubmitting(true);
 
     try {
-      // 중복 검증은 이미 앞에서 진행함 (phoneChecked 상태가 true일 때만 넘어옴)
+      // 번호 중복은 휴대폰 인증 단계에서 확인함 (기존 계정이 있으면 인증이 완료되지 않음)
 
       // 1. Firebase Auth - 내부 가상 이메일 사용 (구글/카카오 충돌 방지)
       const internalEmail = `${form.username}@keylink.user`;
@@ -219,6 +174,13 @@ function RegisterForm() {
         expireAt: expireAt,
         isUsed: false,
       });
+
+      // 4. 인증된 번호 기록 (실패해도 가입은 유지)
+      try {
+        await claimVerifiedPhone(phoneToken!);
+      } catch (claimErr) {
+        console.error('[claim phone]', claimErr);
+      }
 
       toast.success('회원가입이 완료되었습니다!');
       // Auto-login happens in background. Redirect immediately to improve UX.
@@ -263,23 +225,19 @@ function RegisterForm() {
 
             {/* Form Fields Section */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
-              {/* Phone (Main) - Moved to top, Auto-check on blur */}
+              {/* Phone (Main) - 문자 인증 */}
               <div>
                 <label className="kl-label" style={{ fontWeight: '800', marginBottom: '10px' }}>연락처</label>
-                <input
-                  className="kl-input"
-                  style={{ borderRadius: '12px', height: '54px', border: phoneError ? '1px solid #EF4444' : '1px solid var(--color-border)' }}
-                  type="tel"
-                  placeholder="ex. 010-0000-0000"
-                  value={form.phone}
-                  onChange={e => { update('phone', e.target.value); setPhoneChecked(false); setPhoneError(''); }}
-                  onBlur={handlePhoneCheck}
+                <PhoneVerifyField
+                  phone={form.phone}
+                  onPhoneChange={phone => { setForm(f => ({ ...f, phone })); setPhoneToken(null); }}
+                  verified={!!phoneToken}
+                  onVerified={({ token, existing }) => {
+                    if (existing) { setExistingAccount(existing); return; }
+                    setPhoneToken(token);
+                  }}
+                  inputStyle={{ borderRadius: '12px', height: '54px' }}
                 />
-                {phoneError && (
-                  <div style={{ color: '#EF4444', fontSize: '0.8rem', marginTop: '6px', fontWeight: '600' }}>
-                    {phoneError}
-                  </div>
-                )}
               </div>
 
               {/* ID */}
@@ -397,25 +355,6 @@ function RegisterForm() {
                 <input className="kl-input" style={{ borderRadius: '12px', height: '54px' }} type="text" placeholder="ex. 940530" value={form.birthDate} onChange={e => update('birthDate', e.target.value)} />
               </div>
 
-              {/* Phone Confirm (Re-verification) */}
-              <div>
-                <label className="kl-label" style={{ fontWeight: '800', marginBottom: '4px', display: 'flex', alignItems: 'center' }}>
-                  연락처 재확인
-                </label>
-                <div style={{ fontSize: '0.8rem', color: '#6B7280', marginBottom: '10px', fontWeight: '500' }}>* 번호 오기입으로 인한 재확인</div>
-                <input className="kl-input" style={{ borderRadius: '12px', height: '54px' }} type="tel" value={form.phoneConfirm} onChange={e => update('phoneConfirm', e.target.value)} />
-                {form.phone && form.phoneConfirm && (
-                  <div style={{
-                    fontSize: '0.8rem',
-                    marginTop: '8px',
-                    fontWeight: '600',
-                    color: form.phone === form.phoneConfirm ? '#22C55E' : '#EF4444'
-                  }}>
-                    {form.phone === form.phoneConfirm ? '✓ 연락처가 일치합니다' : '✕ 연락처가 일치하지 않습니다'}
-                  </div>
-                )}
-              </div>
-
               {/* Terms Section (Relocated) */}
               <div style={{ marginTop: '12px', padding: '20px', background: 'var(--color-surface-2)', borderRadius: '16px' }}>
                 <button onClick={toggleAllAgreements} style={{
@@ -479,6 +418,7 @@ function RegisterForm() {
           </div>
         )}
       </div>
+      {existingAccount && <ExistingAccountModal existing={existingAccount} onClose={() => setExistingAccount(null)} />}
       <style>{`
         @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }

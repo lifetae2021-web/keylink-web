@@ -10,6 +10,7 @@ import { onAuthStateChanged, User, updateEmail } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp, getDoc, collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 import { getAuthErrorMessage } from '@/lib/auth-errors';
 import { formatBirthDate, isValidBirthDate } from '@/lib/utils';
+import { PhoneVerifyField, LinkAccountModal, claimVerifiedPhone, type ExistingAccount } from '@/components/PhoneVerification';
 
 export default function SocialProfilePage() {
   const router = useRouter();
@@ -18,6 +19,8 @@ export default function SocialProfilePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
+  const [phoneToken, setPhoneToken] = useState<string | null>(null);
+  const [linkInfo, setLinkInfo] = useState<{ existing: ExistingAccount; token: string } | null>(null);
 
   const [agreements, setAgreements] = useState({
     terms: false,
@@ -44,7 +47,7 @@ export default function SocialProfilePage() {
     form.name.length >= 2 &&
     form.gender &&
     isValidBirthDate(form.birthDate) && // 94-05-30 format (hyphened)
-    form.phone.length >= 12;
+    !!phoneToken;
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
@@ -57,7 +60,8 @@ export default function SocialProfilePage() {
       const userSnap = await getDoc(doc(db, 'users', u.uid));
       if (userSnap.exists()) {
         const data = userSnap.data();
-        const isComplete = data && data.gender && data.birthDate && data.phone;
+        // 다른 계정에 연결된 계정이면 AuthContext가 연결된 계정으로 전환한다
+        const isComplete = data && (data.mergedTo || (data.gender && data.birthDate && data.phone));
         if (isComplete) {
           router.replace('/');
           return;
@@ -74,18 +78,10 @@ export default function SocialProfilePage() {
     return () => unsub();
   }, [router]);
 
-  const formatPhone = (val: string) => {
-    const digits = val.replace(/\D/g, '').slice(0, 11);
-    if (digits.length <= 3) return digits;
-    if (digits.length <= 7) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
-    return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
-  };
-
   const update = (key: string, value: string) => {
     if (error) setError(null); // Clear error on any input
     if (key === 'email' && emailError) setEmailError(null); // Clear email-specific error
     let formattedValue = value;
-    if (key === 'phone') formattedValue = formatPhone(value);
     if (key === 'birthDate') formattedValue = formatBirthDate(value);
     setForm(f => ({ ...f, [key]: formattedValue }));
   };
@@ -104,16 +100,12 @@ export default function SocialProfilePage() {
     setEmailError(null);
 
     try {
-      // 휴대폰 번호 중복 확인
-      const phoneRes = await fetch('/api/auth/check-phone', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: form.phone, excludeUid: user.uid }),
-      });
-      const phoneData = await phoneRes.json();
-      if (!phoneData.available) {
-        toast.error(phoneData.message || '이미 가입된 연락처입니다.');
-        setIsSubmitting(false);
+      // 인증된 번호를 먼저 기록 (다른 계정이 쓰는 번호면 여기서 막힘)
+      try {
+        await claimVerifiedPhone(phoneToken!);
+      } catch (claimErr: any) {
+        toast.error(claimErr.message);
+        setPhoneToken(null);
         return;
       }
 
@@ -274,10 +266,19 @@ export default function SocialProfilePage() {
               <input className="kl-input" style={{ borderRadius: '12px', height: '54px' }} type="text" placeholder="ex. 940530" value={form.birthDate} onChange={e => update('birthDate', e.target.value)} />
             </div>
 
-            {/* 5. Phone */}
+            {/* 5. Phone - 문자 인증. 예전에 가입한 계정이 있으면 연결 안내 */}
             <div>
               <label className="kl-label" style={{ fontWeight: '800', marginBottom: '10px' }}>연락처</label>
-              <input className="kl-input" style={{ borderRadius: '12px', height: '54px' }} type="tel" placeholder="ex. 010-0000-0000" value={form.phone} onChange={e => update('phone', e.target.value)} />
+              <PhoneVerifyField
+                phone={form.phone}
+                onPhoneChange={phone => { setForm(f => ({ ...f, phone })); setPhoneToken(null); }}
+                verified={!!phoneToken}
+                onVerified={({ token, existing }) => {
+                  if (existing) { setLinkInfo({ existing, token }); return; }
+                  setPhoneToken(token);
+                }}
+                inputStyle={{ borderRadius: '12px', height: '54px' }}
+              />
             </div>
 
             {/* Agreements */}
@@ -323,6 +324,14 @@ export default function SocialProfilePage() {
           </div>
         </div>
       </div>
+      {linkInfo && (
+        <LinkAccountModal
+          existing={linkInfo.existing}
+          token={linkInfo.token}
+          onLinked={() => router.replace('/')}
+          onClose={() => setLinkInfo(null)}
+        />
+      )}
     </div>
   );
 }
