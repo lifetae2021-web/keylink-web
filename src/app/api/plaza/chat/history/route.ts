@@ -22,8 +22,8 @@ export async function GET(req: Request) {
       .collection('messages').orderBy('createdAt', 'asc').limitToLast(limit).get();
 
     const messages = snap.docs.map((d) => {
-      const x = d.data() as { from?: string; text?: string; createdAt?: { toMillis?: () => number } };
-      return { id: d.id, from: x.from, text: x.text, at: x.createdAt?.toMillis?.() || null, mine: x.from === me };
+      const x = d.data() as { from?: string; text?: string; cta?: string; createdAt?: { toMillis?: () => number } };
+      return { id: d.id, from: x.from, text: x.text, at: x.createdAt?.toMillis?.() || null, mine: x.from === me, cta: x.cta || null }; // cta: 큐피드 답의 '신청하러 가기' 버튼
     });
     return NextResponse.json({ messages });
   } catch (e: unknown) {

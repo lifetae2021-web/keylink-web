@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import PointDropImage, { DEFAULT_POINT_DROP_IMAGE } from './PointDropImage';
@@ -25,6 +25,7 @@ interface Drop {
  */
 export default function PointRewards() {
   const pathname = usePathname();
+  const router = useRouter();
   const { user, authLoading } = useAuth();
   const [drop, setDrop] = useState<Drop | null>(null);
   const claimingRef = useRef(false);
@@ -87,6 +88,42 @@ export default function PointRewards() {
     return () => { clearTimeout(first); clearInterval(interval); };
   }, [authLoading, dropsAllowed, callPoints]);
 
+  // 비회원이 포인트를 주웠을 때: 적립 결과 + 가입하면 쓸 수 있다는 안내 + 가입 버튼
+  const guestClaimToast = (earned: number, balance: number, cap: number) => {
+    const capped = !(earned > 0);
+    const perks = ['모은 포인트가 그대로 옮겨져요', '신청할 때 할인으로 쓸 수 있어요', '가입 쿠폰 5,000원도 드려요'];
+    toast((t) => (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', minWidth: '250px', maxWidth: '300px', wordBreak: 'keep-all' }}>
+        <div>
+          <div style={{ fontSize: capped ? '1rem' : '1.25rem', fontWeight: 900, color: capped ? '#333' : '#FF6F61', lineHeight: 1.35 }}>
+            {capped ? `비회원은 ${cap.toLocaleString()}P까지 모을 수 있어요` : `${earned >= 500 ? '🎉 ' : '🪙 '}+${earned.toLocaleString()}P 적립!`}
+          </div>
+          {typeof balance === 'number' && balance > 0 && (
+            <div style={{ fontSize: '0.85rem', color: '#777', marginTop: '4px' }}>
+              지금까지 <b style={{ color: '#333' }}>{balance.toLocaleString()}P</b> 모았어요
+            </div>
+          )}
+        </div>
+        <div style={{ background: '#FFF4F2', borderRadius: '12px', padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#FF6F61' }}>회원가입하면</div>
+          {perks.map((p, i) => (
+            <div key={p} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.88rem', color: '#333', lineHeight: 1.4 }}>
+              <span aria-hidden style={{ flex: '0 0 auto' }}>{i === perks.length - 1 ? '🎁' : '✅'}</span>
+              <span>{p}</span>
+            </div>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={() => { toast.dismiss(t.id); router.push('/login'); }}
+          style={{ border: 'none', borderRadius: '100px', background: '#FF6F61', color: '#fff', fontWeight: 800, fontSize: '0.92rem', padding: '11px 14px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(255,111,97,0.3)' }}
+        >
+          가입하고 포인트 받기
+        </button>
+      </div>
+    ), { duration: 7000 });
+  };
+
   const claim = async () => {
     if (!drop || claimingRef.current) return;
     claimingRef.current = true;
@@ -94,12 +131,12 @@ export default function PointRewards() {
     setDrop(null);
     try {
       const data = await callPoints({ action: 'claim', dropId });
-      if (data.earned >= 500) {
+      if (!data.isMember) {
+        guestClaimToast(data.earned, data.balance, data.visitorCap);
+      } else if (data.earned >= 500) {
         toast.success(`🎉 대박! +${data.earned}P 적립!`, { duration: 4000 });
       } else if (data.earned > 0) {
         toast.success(`+${data.earned}P 적립!`);
-      } else if (!data.isMember) {
-        toast(`비회원은 ${data.visitorCap.toLocaleString()}P까지 모을 수 있어요.\n가입하고 계속 모아보세요!`);
       }
     } catch {
       toast.error('포인트를 줍지 못했어요. 잠시 후 다시 시도해주세요.');

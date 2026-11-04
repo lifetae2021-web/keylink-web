@@ -56,10 +56,17 @@
   .card-name { font-size:1.4rem; margin-top:4px; } .card-meta { font-size:.92rem; opacity:.75; margin-top:6px; }
   .card-box .btn.go { width:100%; margin-top:16px; }
   #toast { position:fixed; left:50%; bottom:calc(26px + env(safe-area-inset-bottom,0px)); transform:translateX(-50%); background:var(--accent-ink); color:#fff; padding:12px 18px; border-radius:14px; font-size:.9rem; z-index:25; box-shadow:0 8px 24px rgba(0,0,0,.25); max-width:94vw; text-align:center; white-space:nowrap; word-break:keep-all; }
-  #req { position:fixed; left:50%; top:calc(72px + env(safe-area-inset-top,0px)); transform:translateX(-50%); z-index:26; max-width:min(92vw,420px); background:var(--card); border:1px solid var(--card-border); border-radius:16px; padding:12px 16px; box-shadow:0 10px 30px rgba(40,70,120,.25); display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:center; font-size:.92rem; word-break:keep-all; }
-  #req span { flex:1 1 auto; min-width:0; }
-  #req button { border:none; font-family:inherit; font-size:.9rem; padding:8px 14px; border-radius:10px; cursor:pointer; }
-  #req .yes { background:var(--accent); color:#fff; } #req .no { background:var(--pill); color:var(--pill-ink); }
+  /* 1:1 신청 알림: HUD 아래 가운데 카드 — 이름은 한 줄로 크게, 안내는 그 아래, 버튼은 가로 꽉 차게 */
+  #req, #notice { position:fixed; left:50%; top:calc(36% + env(safe-area-inset-top,0px)); transform:translate(-50%,-50%); z-index:26; width:min(88vw,340px); background:#fff; border:1px solid var(--card-border); border-radius:20px; padding:20px 18px 16px; box-shadow:0 16px 40px rgba(40,70,120,.28); text-align:center; word-break:keep-all; animation:reqIn .22s ease-out; }
+  @keyframes reqIn { from { opacity:0; transform:translate(-50%,-46%); } to { opacity:1; transform:translate(-50%,-50%); } }
+  #notice { z-index:27; } #notice .req-btns button { flex:1; }
+  #req .req-label, #notice .req-label { display:inline-block; font-size:.74rem; letter-spacing:.04em; color:var(--accent); background:rgba(255,143,107,.12); padding:3px 10px; border-radius:999px; margin-bottom:10px; }
+  #req .req-nick, #notice .req-nick { font-size:1.25rem; color:var(--ink); line-height:1.3; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #notice .req-sub { line-height:1.55; }
+  #req .req-sub, #notice .req-sub { font-size:.9rem; color:#6b7a90; margin:4px 0 16px; }
+  #req .req-btns, #notice .req-btns { display:flex; gap:8px; }
+  #req button, #notice button { flex:1; border:none; font-family:inherit; font-size:.95rem; padding:12px 0; border-radius:12px; cursor:pointer; }
+  #req .yes, #notice .yes { background:var(--accent); color:#fff; } #req .no { background:var(--pill); color:var(--pill-ink); }
   #join { position:fixed; inset:0; z-index:27; display:grid; place-items:center; background:rgba(40,60,90,.3);
     padding:max(16px,env(safe-area-inset-top,0px)) 16px max(16px,env(safe-area-inset-bottom,0px)); }
   .join-sum { text-align:left; background:var(--pill); border-radius:14px; padding:12px 14px; margin:14px 0 10px; font-size:.9rem; line-height:1.7; word-break:keep-all; }
@@ -78,6 +85,8 @@
   .msg.me { align-self:flex-end; background:var(--accent); color:#fff; border-bottom-right-radius:5px; }
   .nick-hint { margin-top:6px; font-size:.78rem; color:#8a98ab; word-break:keep-all; }
   #nick[readonly] { background:rgba(120,160,210,.10); color:#8a98ab; cursor:not-allowed; }
+  .hud-links { display:flex; gap:6px; flex-wrap:wrap; } a.hud-link { text-decoration:none; display:inline-block; }
+  .sheet-home { float:right; font-size:.8rem; color:#5b6f8c; text-decoration:none; padding:4px 10px; border-radius:999px; background:rgba(120,160,210,.14); }
   .hud-link { pointer-events:auto; margin-top:6px; border:none; background:rgba(120,160,210,.14); color:#5b6f8c; font-family:inherit; font-size:.76rem; padding:4px 10px; border-radius:999px; cursor:pointer; }
   #blockList { position:fixed; inset:0; z-index:29; display:grid; place-items:center; background:rgba(40,60,90,.32); padding:max(16px,env(safe-area-inset-top,0px)) 16px max(16px,env(safe-area-inset-bottom,0px)); }
   .block-items { margin-top:14px; text-align:left; display:flex; flex-direction:column; gap:8px; }
@@ -97,6 +106,7 @@
   #reportDetail { width:100%; box-sizing:border-box; font-family:inherit; font-size:.95rem; padding:10px 12px; border:1px solid var(--card-border); border-radius:12px; background:rgba(255,255,255,.7); color:var(--ink); resize:none; }
   .confirm-btns { display:flex; gap:10px; margin-top:16px; } .confirm-btns .btn { flex:1; }
   .msg.typing { opacity:.6; font-style:italic; }
+  .msg-cta { align-self:flex-start; margin-top:-2px; display:inline-block; text-decoration:none; background:var(--accent); color:#fff; font-size:.9rem; padding:9px 16px; border-radius:999px; box-shadow:0 4px 12px rgba(255,154,98,.35); word-break:keep-all; }
   .msg.them, .msg.me { white-space:pre-wrap; word-break:keep-all; overflow-wrap:anywhere; }
   .msg.sys { align-self:center; max-width:90%; background:transparent; color:#8a98ab; font-size:.82rem; text-align:center; padding:4px 8px; word-break:keep-all; }
   .chat-input { display:flex; gap:8px; padding:12px 14px calc(12px + env(safe-area-inset-bottom,0px)); border-top:1px solid var(--card-border); }
@@ -111,14 +121,14 @@
 <body>
 <canvas id="c"></canvas>
 <div id="hud" hidden>
-  <div class="panel"><h1 id="hudNick">키링크 광장</h1><p id="hudHelp">WASD·조이스틱 이동 · 마우스로 시야 · 스페이스 점프 · 사람 클릭</p><button type="button" id="blockListBtn" class="hud-link" hidden>🚫 차단 목록</button></div>
+  <div class="panel"><h1 id="hudNick">키링크 광장</h1><p id="hudHelp">WASD·조이스틱 이동 · 마우스로 시야 · 스페이스 점프 · 사람 클릭</p><div class="hud-links"><a class="hud-link" href="/">🏠 키링크 홈</a><button type="button" id="blockListBtn" class="hud-link" hidden>🚫 차단 목록</button></div></div>
   <div id="net"><span class="dot off" id="netDot"></span><span id="netTxt">연결 중…</span></div>
   <div id="stick"><div id="knob"></div><div class="hint">드래그해서 이동</div></div>
   <button id="jumpBtn" aria-label="점프">점프</button>
   <div id="reticle" hidden></div>
 </div>
 <div id="entry"><div id="sheet">
-  <h2>캐릭터 만들기</h2>
+  <a class="sheet-home" href="/">← 키링크 홈</a><h2>캐릭터 만들기</h2>
   <div class="row"><label for="nick">닉네임</label><input id="nick" maxlength="8" placeholder="2~8자" autocomplete="off"><div id="nickLockHint" class="nick-hint" hidden></div></div>
   <div class="row"><label>성별</label><div class="opts" id="opt-gender"></div></div>
   <div class="row"><label>얼굴형</label><div class="opts" id="opt-face"></div></div>
@@ -146,7 +156,8 @@
   <div class="join-note" id="joinNote">카카오로 1초면 끝나요. 생년월일·연락처는 가입할 때 입력해요.</div>
   <button class="btn kakao" id="joinKakao">💬 카카오로 1초만에 시작하기</button>
 </div></div>
-<div id="req" hidden><span id="reqTxt"></span><button class="yes" id="reqYes">수락</button><button class="no" id="reqNo">나중에</button></div>
+<div id="notice" hidden><div class="req-label" id="noticeLabel"></div><div class="req-nick" id="noticeNick"></div><div class="req-sub" id="noticeSub"></div><div class="req-btns"><button class="yes" id="noticeOk">확인</button></div></div>
+<div id="req" hidden><div class="req-label">1:1 대화 신청</div><div class="req-nick" id="reqNick"></div><div class="req-sub">님이 대화를 신청했어요</div><div class="req-btns"><button class="no" id="reqNo">나중에</button><button class="yes" id="reqYes">수락</button></div></div>
 <div id="report" hidden><div class="card-box">
   <button id="reportClose" class="card-x" aria-label="닫기">✕</button>
   <div class="card-name" id="reportTitle">신고하기</div>
@@ -432,13 +443,16 @@ function connect(){
   ws.onmessage=(ev)=>{ let m; try{ m=JSON.parse(ev.data); }catch(e){ return; }
     if(m.t==='full'){ roomFullUntil=Date.now()+30000; toast('광장이 꽉 찼어요. 잠시 후 다시 연결할게요'); return; }
     if(m.t==='banned'){ showBanned(m.until, m.reason); return; }
-    if(m.t==='welcome'){ myId=m.id; if(m.nick && m.nick!==opts.nick) document.getElementById('hudNick').textContent=m.nick+' 님'; (m.peers||[]).forEach(addPeer); updateCount(); }
-    else if(m.t==='join'){ addPeer(m); }
+    if(m.t==='welcome'){ myId=m.id; if(m.nick && m.nick!==opts.nick) document.getElementById('hudNick').textContent=m.nick+' 님'; (m.peers||[]).forEach(addPeer); updateCount(); tryPendingAccept(); }
+    else if(m.t==='join'){ addPeer(m); tryPendingAccept(); }
     else if(m.t==='peer'){ const pr=peers.get(m.id); if(pr) pr.target={x:m.x,z:m.z,ry:m.ry}; else { const h=hiddenPeers.get(m.id); if(h) h.state={x:m.x,z:m.z,ry:m.ry}; } }
     else if(m.t==='leave'){ hiddenPeers.delete(m.id); const pr=peers.get(m.id); if(pr){ scene.remove(pr.group); peers.delete(m.id); updateCount(); } if(currentChat && currentChat.id===m.id){ addMsg('sys', (currentChat.nick||'상대')+'님이 대화방을 나가셨습니다.'); } }
-    else if(((m.key && blocked.has(m.key)) || blockedIds.has(m.from)) && (m.t==='req'||m.t==='accept'||m.t==='chat'||m.t==='chatbye')){ return; } // 차단한 사람
+    else if(((m.key && blocked.has(m.key)) || blockedIds.has(m.from)) && (m.t==='req'||m.t==='accept'||m.t==='acceptwait'||m.t==='chat'||m.t==='chatbye')){ return; } // 차단한 사람
     else if(m.t==='req'){ showReq(m.from, m.nick, m.uid, m.key); }
-    else if(m.t==='accept'){ toast(`💗 ${m.nick}님과 매칭!`); openChat({ id:m.from, nick:m.nick, uid:m.uid, key:m.key, bot:false }); }
+    else if(m.t==='acceptwait'){ waitingAccept={ nick:m.nick, at:Date.now() }; showNotice('수락 완료 · 가입 대기', m.nick, '님이 대화 신청을 수락했어요.<br>비회원이라 가입을 마치면<br>바로 대화가 열려요.'); }
+    else if(m.t==='accept'){ const waited=waitingAccept && Date.now()-waitingAccept.at<PENDING_ACCEPT_TTL; waitingAccept=null;
+      if(waited){ showNotice('가입 완료', m.nick, '님이 가입을 마쳤어요.<br>지금 바로 대화할 수 있어요.'); } else toast(`${m.nick}님과 매칭!`);
+      openChat({ id:m.from, nick:m.nick, uid:m.uid, key:m.key, bot:false }); }
     else if(m.t==='chat'){ onChatMsg(m.from, m.nick, m.text, m.uid); }
     else if(m.t==='chatbye'){ if(currentChat && currentChat.id===m.from){ addMsg('sys', (currentChat.nick||'상대')+'님이 대화방을 나가셨습니다.'); currentChat.left=true; } }
   };
@@ -461,8 +475,24 @@ document.getElementById('cardReq').onclick=()=>{ const p=reqTarget; card.hidden=
   if(p.npc){ openNpcChat(); } // 큐피드는 손님도 대화 가능
   else if(ws&&ws.readyState===1&&p.id){ ws.send(JSON.stringify({ t:'req', to:p.id })); toast(`${p.nick}님에게 1:1 신청!`); } };
 let incoming=null; const reqBox=document.getElementById('req');
-function showReq(fromId, nick, uid, key){ document.exitPointerLock?.(); incoming={id:fromId,nick,uid,key}; document.getElementById('reqTxt').textContent=`💌 ${nick}님이 1:1 대화를 신청했어요`; reqBox.hidden=false; }
-document.getElementById('reqYes').onclick=()=>{ if(!member){ reqBox.hidden=true; openJoin(); return; } if(incoming&&ws&&ws.readyState===1){ ws.send(JSON.stringify({ t:'accept', to:incoming.id })); openChat({ id:incoming.id, nick:incoming.nick, uid:incoming.uid, key:incoming.key, bot:false }); } reqBox.hidden=true; };
+function showReq(fromId, nick, uid, key){ document.exitPointerLock?.(); incoming={id:fromId,nick,uid,key}; document.getElementById('reqNick').textContent=nick; reqBox.hidden=false; }
+// 알림 카드(가입 대기·가입 완료 안내)
+const noticeBox=document.getElementById('notice');
+function showNotice(label,nick,sub){ document.exitPointerLock?.(); document.getElementById('noticeLabel').textContent=label; document.getElementById('noticeNick').textContent=nick; document.getElementById('noticeSub').innerHTML=sub; noticeBox.hidden=false; }
+document.getElementById('noticeOk').onclick=()=>{ noticeBox.hidden=true; };
+// 비회원이 수락한 경우: 가입(카카오 이동으로 페이지가 새로 열릴 수 있음)을 마치면 자동으로 수락을 보내 대화를 연다
+const PENDING_ACCEPT_KEY='kl_plaza_pending_accept', PENDING_ACCEPT_TTL=15*60*1000;
+let waitingAccept=null; // 신청한 쪽: 상대가 가입 중일 때
+function savePendingAccept(v){ try{ v?localStorage.setItem(PENDING_ACCEPT_KEY,JSON.stringify(v)):localStorage.removeItem(PENDING_ACCEPT_KEY); }catch(e){} }
+function loadPendingAccept(){ try{ const v=JSON.parse(localStorage.getItem(PENDING_ACCEPT_KEY)||'null'); if(v && Date.now()-v.at<PENDING_ACCEPT_TTL) return v; }catch(e){} savePendingAccept(null); return null; }
+function tryPendingAccept(){ if(!member || !ws || ws.readyState!==1 || !myId) return; const v=loadPendingAccept(); if(!v) return;
+  let to=null; for(const [id,pr] of peers){ if(v.key && pr.key===v.key){ to=id; break; } } if(!to && v.id && peers.has(v.id)) to=v.id;
+  if(!to) return; // 상대가 아직 안 보이면 다음 접속 소식(join) 때 다시 시도
+  savePendingAccept(null); ws.send(JSON.stringify({ t:'accept', to }));
+  openChat({ id:to, nick:v.nick, uid:v.uid, key:v.key, bot:false }); toast(v.nick+'님과 대화가 열렸어요'); }
+document.getElementById('reqYes').onclick=()=>{ if(!member){ reqBox.hidden=true;
+    if(incoming){ savePendingAccept({ id:incoming.id, nick:incoming.nick, uid:incoming.uid||null, key:incoming.key||null, at:Date.now() }); if(ws&&ws.readyState===1){ try{ ws.send(JSON.stringify({ t:'acceptwait', to:incoming.id })); }catch(e){} } }
+    openJoin(tryPendingAccept); return; } if(incoming&&ws&&ws.readyState===1){ ws.send(JSON.stringify({ t:'accept', to:incoming.id })); openChat({ id:incoming.id, nick:incoming.nick, uid:incoming.uid, key:incoming.key, bot:false }); } reqBox.hidden=true; };
 document.getElementById('reqNo').onclick=()=>{ reqBox.hidden=true; };
 
 // ── 1:1 대화창 ──
@@ -475,9 +505,11 @@ async function openChat(p){ document.exitPointerLock?.(); currentChat=p; documen
   if(!loaded) addMsg('them', p.npc ? '안녕하세요! 저는 키링크 광장의 AI 안내원 큐피드예요 😊 광장 사용법, 소개팅 일정이 궁금하거나 소개팅 대화 연습을 하고 싶으면 편하게 말해 주세요.' : '1:1 대화가 연결됐어요! 인사 나눠보세요 🎉');
   if(p.npc){ addMsg('sys', fbUser ? '큐피드는 AI예요 · 하루 100번까지 대화할 수 있어요' : '큐피드는 AI예요 · 손님은 하루 30번, 회원은 100번까지 대화할 수 있어요'); }
   else { if(!fbUser) addMsg('sys','로그인하지 않아 이 대화는 저장되지 않아요'); else if(!p.uid) addMsg('sys','상대가 회원 로그인 전이라 이 대화는 저장되지 않아요'); } }
-async function loadNpcGuestHistory(){ if(!DEV_ID) return false; try{ const r=await fetch('/api/plaza/npc?dev='+encodeURIComponent(DEV_ID)); const j=await r.json().catch(()=>({})); const msgs=j.messages||[]; if(!msgs.length) return false; for(const m of msgs) addMsg(m.mine?'me':'them', m.text); return true; }catch(e){ return false; } }
-async function loadChatHistory(uid){ try{ const t=await fbUser.getIdToken(); const r=await fetch('/api/plaza/chat/history?with='+encodeURIComponent(uid),{ headers:{ Authorization:'Bearer '+t } }); const j=await r.json().catch(()=>({})); const msgs=j.messages||[]; if(!msgs.length) return false; for(const m of msgs) addMsg(m.mine?'me':'them', m.text); return true; }catch(e){ return false; } }
-function addMsg(who,text){ const d=document.createElement('div'); d.className='msg '+who; d.textContent=text; chatMsgs.appendChild(d); chatMsgs.scrollTop=chatMsgs.scrollHeight; }
+async function loadNpcGuestHistory(){ if(!DEV_ID) return false; try{ const r=await fetch('/api/plaza/npc?dev='+encodeURIComponent(DEV_ID)); const j=await r.json().catch(()=>({})); const msgs=j.messages||[]; if(!msgs.length) return false; for(const m of msgs) addMsg(m.mine?'me':'them', m.text, m.cta); return true; }catch(e){ return false; } }
+async function loadChatHistory(uid){ try{ const t=await fbUser.getIdToken(); const r=await fetch('/api/plaza/chat/history?with='+encodeURIComponent(uid),{ headers:{ Authorization:'Bearer '+t } }); const j=await r.json().catch(()=>({})); const msgs=j.messages||[]; if(!msgs.length) return false; for(const m of msgs) addMsg(m.mine?'me':'them', m.text, m.cta); return true; }catch(e){ return false; } }
+function addMsg(who,text,cta){ const d=document.createElement('div'); d.className='msg '+who; d.textContent=text; chatMsgs.appendChild(d);
+  if(cta==='apply'){ const a=document.createElement('a'); a.className='msg-cta'; a.href='/#apply'; a.target='_blank'; a.rel='noopener'; a.textContent='신청하러 가기 →'; chatMsgs.appendChild(a); } // 큐피드 답 아래 신청 버튼(새 탭: 광장은 그대로)
+  chatMsgs.scrollTop=chatMsgs.scrollHeight; }
 document.getElementById('chatClose').onclick=()=>{ if(currentChat && !currentChat.npc && ws && ws.readyState===1){ try{ ws.send(JSON.stringify({ t:'chatbye', to:currentChat.id })); }catch(e){} } chat.hidden=true; currentChat=null; };
 async function persistChat(toUid,toNick,text){ if(!toUid||!fbUser) return; try{ const t=await fbUser.getIdToken(); const r=await fetch('/api/plaza/chat/send',{ method:'POST', headers:{ 'Content-Type':'application/json', Authorization:'Bearer '+t }, body:JSON.stringify({ toUid, toNick, myNick:opts.nick, text }) }); if(!r.ok){ const j=await r.json().catch(()=>({})); toast('대화 저장 실패: '+(j.error||r.status)); } }catch(e){ toast('대화 저장 실패: 네트워크'); } }
 document.getElementById('chatForm').addEventListener('submit',(e)=>{ e.preventDefault(); const t=chatText.value.trim(); if(!t||!currentChat) return; addMsg('me',t); chatText.value='';
@@ -490,7 +522,7 @@ async function sendToNpc(text){ if(npcBusy) return; npcBusy=true; chatText.disab
   try{ const init={ method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ text, myNick:opts.nick, dev:DEV_ID }) };
     const r=fbUser ? await authFetch('/api/plaza/npc',init) : await fetch('/api/plaza/npc',init);
     const j=await r.json().catch(()=>({})); typing.remove();
-    if(r.ok && j.reply){ if(currentChat?.npc) addMsg('them', j.reply); }
+    if(r.ok && j.reply){ if(currentChat?.npc) addMsg('them', j.reply, j.cta); }
     else if(r.status===429 && j.error==='daily_limit'){ addMsg('sys', j.guest ? '손님 대화 횟수('+j.limit+'번)를 다 썼어요. 회원이 되면 하루 100번까지 대화할 수 있어요' : '오늘 큐피드와의 대화 횟수('+(j.limit||100)+'번)를 다 썼어요. 내일 다시 만나요!'); }
     else { addMsg('sys','큐피드가 잠깐 자리를 비웠어요. 잠시 후 다시 말해 주세요'); }
   }catch(e){ typing.remove(); addMsg('sys','네트워크 오류예요. 잠시 후 다시 시도해 주세요'); }
@@ -608,7 +640,7 @@ onAuthStateChanged(fbAuth, async (u)=>{
     const token=await fbUser.getIdToken();
     const r=await fetch('/api/plaza/me',{ headers:{ Authorization:'Bearer '+token } });
     const j=await r.json().catch(()=>({}));
-    if(j && j.profile){ member=true; applyProfile(j.profile); try{ localStorage.removeItem('kl_plaza_pending'); }catch(e){} return; }
+    if(j && j.profile){ member=true; applyProfile(j.profile); try{ localStorage.removeItem('kl_plaza_pending'); }catch(e){} tryPendingAccept(); return; }
     let pending=false; try{ pending=localStorage.getItem('kl_plaza_pending')==='1'; }catch(e){}
     if(pending) await submitJoin();
   }catch(e){}
@@ -620,7 +652,7 @@ async function submitJoin(){
     const token=await fbUser.getIdToken();
     const r=await fetch('/api/plaza/join',{ method:'POST', headers:{ 'Content-Type':'application/json', Authorization:'Bearer '+token }, body:JSON.stringify(buildJoinBody()) });
     const j=await r.json().catch(()=>({}));
-    if(r.ok && j.ok){ member=true; if(j.profile){ profileNick=j.profile.nick; nickLockedUntil=j.profile.nickLockedUntil||null; updateNickLock(); } try{ localStorage.removeItem('kl_plaza_pending'); }catch(e){} joinBox.hidden=true; toast('가입 완료! 환영해요 🎉'); const a=pendingAfterJoin; pendingAfterJoin=null; if(a) setTimeout(a,300); return true; }
+    if(r.ok && j.ok){ member=true; if(j.profile){ profileNick=j.profile.nick; nickLockedUntil=j.profile.nickLockedUntil||null; updateNickLock(); } try{ localStorage.removeItem('kl_plaza_pending'); }catch(e){} joinBox.hidden=true; toast('가입 완료! 환영해요 🎉'); tryPendingAccept(); const a=pendingAfterJoin; pendingAfterJoin=null; if(a) setTimeout(a,300); return true; }
     if(r.status===429 && j.nick){ opts.nick=j.nick; nickInput.value=j.nick; profileNick=j.nick; nickLockedUntil=j.nickLockedUntil||null; return submitJoin(); }
     if(r.status===409){ promptNickFix(); return false; }
     if(j.error==='nick_bad'||j.error==='nick_jamo'){ promptNickFix(NICK_MSG[j.error==='nick_bad'?'bad':'jamo']+'.'); return false; }
@@ -661,7 +693,7 @@ const raycaster=new THREE.Raycaster(); const ndc=new THREE.Vector2();
 let dragId=null, dragX=0, dragY=0, dragged=false;
 const canvasEl=renderer.domElement, reticle=document.getElementById('reticle');
 let locked=false, aimTarget=null;
-const modalOpen=()=> !card.hidden || !chat.hidden || !joinBox.hidden || !reportBox.hidden || !confirmBox.hidden || !blockListBox.hidden;
+const modalOpen=()=> !noticeBox.hidden || !card.hidden || !chat.hidden || !joinBox.hidden || !reportBox.hidden || !confirmBox.hidden || !blockListBox.hidden;
 function pickProfile(prof){ if(!prof) return; if(prof.animal){ reactAnimal(prof); return; } if(member || prof.npc) openCard(prof); else openJoin(()=>openCard(prof)); }
 function raycastFromNDC(x,y){ ndc.set(x,y); raycaster.setFromCamera(ndc,camera); const groups=[...[...peers.values()].map(p=>p.group), ...animals, npcGroup]; const hits=raycaster.intersectObjects(groups,true); if(!hits.length) return null; let g=hits[0].object; while(g&&!g.userData.profile) g=g.parent; return g?g.userData.profile:null; }
 

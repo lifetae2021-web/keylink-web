@@ -12,7 +12,7 @@ import { shortHash } from './hash.js';
 import { verifyFirebaseIdToken } from './firebaseToken.js';
 
 // 도배 방지: 연결마다 종류별 초당 허용량(토큰 버킷). 넘치면 조용히 버린다.
-const RATE = { pos: [15, 20], chat: [2, 6], req: [0.5, 3], accept: [1, 5], chatbye: [1, 5], report: [0.2, 3], hello: [0.5, 3] };
+const RATE = { pos: [15, 20], chat: [2, 6], req: [0.5, 3], accept: [1, 5], acceptwait: [1, 5], chatbye: [1, 5], report: [0.2, 3], hello: [0.5, 3] };
 const buckets = new WeakMap(); // ws → { type: { t, at } } (재우면 초기화돼도 무방)
 function allow(ws, type) {
   const [rate, burst] = RATE[type] || [5, 10];
@@ -158,14 +158,14 @@ export class PlazaRoom {
         } catch (e) {}
         break;
       }
-    } else if (m.t === 'req' || m.t === 'accept' || m.t === 'chat' || m.t === 'chatbye') {
+    } else if (m.t === 'req' || m.t === 'accept' || m.t === 'acceptwait' || m.t === 'chat' || m.t === 'chatbye') {
       const to = this.clean(m.to, 12);
       for (const p of this.state.getWebSockets()) {
         const pa = this.attach(p);
         if (pa && pa.id === to) {
           // uid는 1:1 상대에게만 실어 보낸다(영속 DM 대화방 매칭용). 방 전체엔 노출 안 함.
           if (m.t === 'chat') this.send(p, { t: 'chat', from: a.id, nick: a.nick, uid: a.uid, key: a.key || null, text: this.clean(m.text, 1000) });
-          else this.send(p, { t: m.t, from: a.id, nick: a.nick, uid: a.uid, key: a.key || null }); // req / accept / chatbye(대화방 나감)
+          else this.send(p, { t: m.t, from: a.id, nick: a.nick, uid: a.uid, key: a.key || null }); // req / accept / acceptwait(비회원이 수락 — 가입 대기) / chatbye(대화방 나감)
           break;
         }
       }

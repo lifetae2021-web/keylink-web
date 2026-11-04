@@ -13,14 +13,20 @@ const version = APP_VERSION;
 // v8.1.7: Premium Navigation Bar
 
 // '진행 과정' → /#process, '참여 신청' → /#apply 로 스무스 스크롤
-const navLinks = [
+// isNew: NEW 뱃지 · plain: Next 라우터가 아닌 일반 이동(/plaza 는 정적 3D 페이지)
+type NavLink = { href: string; label: string; anchor: string | null; isNew?: boolean; plain?: boolean };
+const navLinks: NavLink[] = [
   { href: '/', label: 'HOME', anchor: 'top' },
   { href: '/notices', label: '협업사 & 공지', anchor: null },
   { href: '/', label: '진행 과정', anchor: 'process' },
   { href: '/', label: '참여 신청', anchor: 'apply' },
+  { href: '/plaza', label: '온라인 소개팅', anchor: null, isNew: true, plain: true },
   { href: '/status', label: '실시간 현황', anchor: null },
   { href: '/matching/result', label: '매칭 결과', anchor: null },
 ];
+const NewBadge = () => (
+  <span style={{ marginLeft: '5px', padding: '1px 6px', borderRadius: '100px', background: '#FF6F61', color: '#fff', fontSize: '0.62rem', fontWeight: 900, verticalAlign: 'middle', letterSpacing: '0.02em' }}>NEW</span>
+);
 
 export default function Navbar() {
   const { user, isAdmin, coupons } = useAuth();
@@ -128,7 +134,7 @@ export default function Navbar() {
     }
   };
 
-  const isLinkActive = (link: typeof navLinks[0]) => {
+  const isLinkActive = (link: NavLink) => {
     // Anchor links: active when on homepage AND anchor matches
     if (link.anchor) {
       if (link.anchor === 'top') return pathname === '/' && !activeAnchor;
@@ -176,7 +182,7 @@ export default function Navbar() {
                 const activeColor = isConversionMenu ? '#FF4D3D' : '#FF6F61';
                 const activeBg = isConversionMenu ? 'rgba(255, 77, 61, 0.12)' : 'rgba(255, 111, 97, 0.1)';
 
-                return link.anchor ? (
+                return link.anchor || link.plain ? (
                   <a
                     key={link.label}
                     href={link.href}
@@ -190,7 +196,7 @@ export default function Navbar() {
                     onMouseEnter={(e) => { e.currentTarget.style.color = '#FF6F61'; e.currentTarget.style.background = 'rgba(255, 111, 97, 0.15)'; }}
                     onMouseLeave={(e) => { e.currentTarget.style.color = active ? activeColor : '#333333'; e.currentTarget.style.background = active ? activeBg : 'transparent'; }}
                   >
-                    {link.label}
+                    {link.label}{link.isNew && <NewBadge />}
                   </a>
                 ) : (
                   <Link
@@ -374,18 +380,18 @@ export default function Navbar() {
             const activeColor = isConversionMenu ? '#FF4D3D' : '#FF6F61';
             const activeBg = isConversionMenu ? 'rgba(255, 77, 61, 0.08)' : 'rgba(255, 111, 97, 0.08)';
 
-            return link.anchor ? (
+            return link.anchor || link.plain ? (
               <a
                 key={link.label}
                 href={link.href}
-                onClick={(e) => handleAnchorClick(e, link.anchor)}
+                onClick={(e) => { setIsMenuOpen(false); handleAnchorClick(e, link.anchor); }}
                 style={{
                   display: 'block', padding: '14px 16px', fontSize: '1rem', fontWeight: active ? '800' : '500',
                   color: active ? activeColor : '#444', textDecoration: 'none',
                   borderRadius: '12px', marginBottom: '4px', background: active ? activeBg : 'transparent',
                 }}
               >
-                {link.label}
+                {link.label}{link.isNew && <NewBadge />}
               </a>
             ) : (
               <Link

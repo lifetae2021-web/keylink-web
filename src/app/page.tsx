@@ -10,6 +10,7 @@ import {
 import { POLICIES } from '@/lib/constants/policies';
 import { getReviews, ReviewItem } from '@/lib/firestore/cms';
 import { EventsSection } from '@/components/EventsSection';
+import { PlazaBanner } from '@/components/PlazaBanner';
 import { Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import { db } from '@/lib/firebase';
@@ -227,6 +228,8 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* ── 온라인 소개팅(3D 광장) 진입 ── */}
+      <PlazaBanner />
 
       {/* ── CALENDAR ONLY (no event cards) ── */}
       <div id="apply" style={{ scrollMarginTop: '100px' }}>

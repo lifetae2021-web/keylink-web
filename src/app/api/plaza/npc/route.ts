@@ -51,8 +51,8 @@ export async function GET(req: Request) {
   const snap = await adminDb.collection('plazaChats').doc(convOf(who.id, NPC_ID))
     .collection('messages').orderBy('createdAt', 'asc').limitToLast(100).get();
   const messages = snap.docs.map((d) => {
-    const x = d.data() as { from?: string; text?: string };
-    return { text: x.text, mine: x.from !== NPC_ID };
+    const x = d.data() as { from?: string; text?: string; cta?: string };
+    return { text: x.text, mine: x.from !== NPC_ID, cta: x.cta || null };
   });
   return NextResponse.json({ messages, limit: who.guest ? NPC_GUEST_DAILY_LIMIT : NPC_DAILY_LIMIT });
 }
@@ -114,12 +114,16 @@ export async function POST(req: Request) {
       for (const block of response.content) if (block.type === 'text') reply += block.text;
       reply = reply.trim() || '앗, 잠깐 말이 막혔어요. 다시 한 번 말해 주시겠어요?';
     }
+    // [신청버튼] 표시 → 화면에 '신청하러 가기' 버튼. 채팅창은 링크를 못 누르므로 웹 주소는 지운다(주소가 있었으면 버튼으로 대신)
+    let cta = /\[신청버튼\]/.test(reply) || /keylink\.kr/i.test(reply);
+    reply = reply.replace(/\[신청버튼\]/g, '').replace(/\(?\s*https?:\/\/[^\s)]+\s*\)?/g, '').replace(/[ \t]{2,}/g, ' ').replace(/ +([.,!?])/g, '$1').trim();
+    if (!reply) { reply = '아래 버튼으로 신청할 수 있어요.'; cta = true; }
 
     // 저장(회원 1:1과 같은 구조 → 기록 이어짐, 관리자 열람 가능)
     const myNick = String(b.myNick ?? '').trim().slice(0, 12);
     const now = FieldValue.serverTimestamp();
     await convRef.collection('messages').add({ from: uid, text, createdAt: now });
-    await convRef.collection('messages').add({ from: NPC_ID, text: reply, createdAt: FieldValue.serverTimestamp(), model: response.model });
+    await convRef.collection('messages').add({ from: NPC_ID, text: reply, createdAt: FieldValue.serverTimestamp(), model: response.model, ...(cta ? { cta: 'apply' } : {}) });
     await convRef.set({
       participants: [uid, NPC_ID].sort(),
       nicks: { [NPC_ID]: NPC_NICK + ' (AI)', ...(myNick ? { [uid]: who.guest ? myNick + ' (손님)' : myNick } : {}) },
@@ -131,7 +135,7 @@ export async function POST(req: Request) {
     // 응답을 보낸 뒤 오래된 대화를 요약 메모로 접는다(사용자 대기시간에 영향 없음)
     after(() => foldOldMessagesIntoMemory(client, model, convId).catch((e) => console.error('[plaza npc] memory', e)));
 
-    return NextResponse.json({ reply, model: response.model, usage: process.env.NODE_ENV === 'development' ? response.usage : undefined });
+    return NextResponse.json({ reply, cta: cta ? 'apply' : null, model: response.model, usage: process.env.NODE_ENV === 'development' ? response.usage : undefined });
   } catch (e: unknown) {
     if (e instanceof Anthropic.RateLimitError) return NextResponse.json({ error: 'busy' }, { status: 503 });
     if (e instanceof Anthropic.APIError) {
