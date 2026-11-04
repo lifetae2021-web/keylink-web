@@ -289,54 +289,60 @@ function makeBody(root,o){
   return { legL, legR, armL, armR };
 }
 
-const SPAWN=new THREE.Vector3(0,0,11);
+const SPAWN=new THREE.Vector3(0,0,13);
 const hero=new THREE.Group(); hero.position.copy(SPAWN); scene.add(hero);
 const rig={};
 const obstacles=[];
 // 동물 목표 지점: 건물·분수·나무 안쪽은 피해서 고른다
-function pickWanderTarget(minR=3,maxR=17){ for(let i=0;i<12;i++){ const a=Math.random()*Math.PI*2, rad=minR+Math.random()*(maxR-minR); const x=Math.cos(a)*rad, z=Math.sin(a)*rad;
+function pickWanderTarget(minR=3,maxR=22){ for(let i=0;i<12;i++){ const a=Math.random()*Math.PI*2, rad=minR+Math.random()*(maxR-minR); const x=Math.cos(a)*rad, z=Math.sin(a)*rad;
   if(obstacles.every(o=>Math.hypot(x-o.x,z-o.z)>o.r+0.6)) return new THREE.Vector3(x,0,z); } return new THREE.Vector3(0,0,8); }
 function pushOut(obj){ for(const o of obstacles){ const dx=obj.position.x-o.x, dz=obj.position.z-o.z; const d=Math.hypot(dx,dz); if(d>1e-4 && d<o.r){ obj.position.x=o.x+dx/d*o.r; obj.position.z=o.z+dz/d*o.r; } } }
 function clearHero(){ for(const ch of [...hero.children]){ hero.remove(ch); ch.traverse?.(o=>o.geometry?.dispose?.()); } }
 function buildHero(o){ clearHero(); const root=new THREE.Group(); hero.add(root); rig.root=root; const r=makeBody(root,o); Object.assign(rig,r); }
 
-let shuttlePos=null; const BOUNDARY=20;
+let shuttlePos=null; const BOUNDARY=32; // 2026-11: 광장 확장(20→32) — 길 끝마다 구역을 둘 공간
+// 마을 넓히기: village.glb는 그대로 두고, 불러올 때 위치만 바깥으로 옮긴다(크기는 유지)
+const PLAZA_K=1.45, OUT_K=1.6;
+function expandVillage(v){
+  const ax=(o,k)=>{ o.position.x*=k; o.position.z*=k; };
+  v.traverse((o)=>{ const n=o.name||'';
+    if(/^BLD_cottage_\d+_body$|^PRP_tree_\d+_(canopy|trunk)$|^ENV_hill_\d+$|^PRP_shuttle_stop_post$|^trigger_shuttle$/.test(n)) ax(o,OUT_K);
+    else if(/^PRP_lamp_\d+_pole$/.test(n)) ax(o,PLAZA_K);
+    else if(/^PRP_bench_\d+$/.test(n)) ax(o,1.9);
+    else if(n==='ENV_plaza'){ o.scale.x*=PLAZA_K; o.scale.z*=PLAZA_K; }
+    else if(n==='ENV_ground'){ o.scale.x*=2; o.scale.z*=2; } });
+  // 길: 광장 끝(넓어진 반지름)부터 새 경계 바깥까지 늘린다
+  v.updateMatrixWorld(true);
+  v.traverse((o)=>{ if(!/^ENV_path_\d+$/.test(o.name||'')) return;
+    const bb=new THREE.Box3().setFromObject(o), sz=bb.getSize(new THREE.Vector3()), axis=sz.x>sz.z?'x':'z';
+    const lo=Math.min(Math.abs(bb.min[axis]),Math.abs(bb.max[axis])), hi=Math.max(Math.abs(bb.min[axis]),Math.abs(bb.max[axis])), sign=Math.sign(o.position[axis])||1;
+    const inner=lo*PLAZA_K, outer=BOUNDARY+4, f=(outer-inner)/(hi-lo);
+    for(const la of ['x','y','z']){ const s0=o.scale[la]; o.scale[la]=s0*f; o.updateMatrixWorld(true); const s2=new THREE.Box3().setFromObject(o).getSize(new THREE.Vector3());
+      if(Math.abs(s2[axis]-sz[axis]*f)<0.05*sz[axis]*f && Math.abs(s2[axis==='x'?'z':'x']-sz[axis==='x'?'z':'x'])<0.05) break; o.scale[la]=s0; }
+    o.position[axis]=sign*(inner+outer)/2; });
+}
 // 택시(지역 이동): 아직 준비 중 — 누르면 안내 카드. 택시 몸체·정류장 표지판을 누를 수 있게 한다
 const TAXI_PROFILE={ taxi:true, nick:'택시' }; const taxiParts=[];
 function textTexture(w,h,draw){ const cv=document.createElement('canvas'); cv.width=w; cv.height=h; draw(cv.getContext('2d'),w,h); const t=new THREE.CanvasTexture(cv); t.colorSpace=THREE.SRGBColorSpace; return t; }
-// 로우폴리 한국 택시: 주황 차체 + 창문 + 바퀴 + 지붕 'TAXI' 표시등 + 문짝 '키링 월드 택시'
+// 키링 월드 택시: 2D 횡스크롤 게임 느낌의 통통한 만화 택시(오리지널 디자인). 시동 걸린 듯 부르르 떨고 가끔 통 튄다.
+let taxiSprite=null;
 function buildTaxi(){
-  const g=new THREE.Group(), M=(c,o={})=>new THREE.MeshStandardMaterial({ color:c, roughness:0.45, ...o });
-  const paint=M('#f2a33a'), dark=M('#2f3440',{ roughness:0.8 }), glass=M('#a9d4f0',{ roughness:0.15, metalness:0.1 }), chrome=M('#d8dde4',{ metalness:0.5, roughness:0.3 });
-  const box=(w,h,d,m,x,y,z)=>{ const b=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m); b.position.set(x,y,z); g.add(b); return b; };
-  box(4.0,0.62,1.8,paint,0,0.62,0);                 // 차체 아래
-  box(1.0,0.12,1.7,paint,1.45,0.98,0);              // 보닛 끝 살짝
-  box(2.3,0.62,1.62,glass,-0.2,1.24,0);             // 창문(캐빈)
-  box(2.36,0.1,1.68,paint,-0.2,1.58,0);             // 지붕
-  for(const x of [-1.32,-0.2,0.92]) for(const z of [-0.79,0.79]) box(0.1,0.62,0.08,paint,x,1.24,z); // 창틀 기둥(양옆 모서리만 → 앞·뒤 유리가 보이게)
-  box(0.2,0.2,1.86,dark,2.05,0.45,0); box(0.2,0.2,1.86,dark,-2.05,0.45,0); // 범퍼
-  for(const z of [-0.6,0.6]){ box(0.06,0.16,0.34,M('#fff7d1',{ emissive:'#ffe9a0', emissiveIntensity:0.6 }),2.02,0.72,z); box(0.06,0.14,0.3,M('#e0453a',{ emissive:'#a01810', emissiveIntensity:0.4 }),-2.02,0.72,z); }
-  for(const [x,z] of [[1.3,0.86],[1.3,-0.86],[-1.3,0.86],[-1.3,-0.86]]){
-    const w=new THREE.Mesh(new THREE.CylinderGeometry(0.36,0.36,0.28,18),dark); w.rotation.x=Math.PI/2; w.position.set(x,0.36,z); g.add(w);
-    const hub=new THREE.Mesh(new THREE.CylinderGeometry(0.16,0.16,0.3,12),chrome); hub.rotation.x=Math.PI/2; hub.position.set(x,0.36,z); g.add(hub); }
-  // 지붕 표시등
-  const signTex=textTexture(256,96,(c,w,h)=>{ c.fillStyle='#fffbe8'; c.fillRect(0,0,w,h); c.fillStyle='#1f2a3d'; c.font='bold 64px Jua, sans-serif'; c.textAlign='center'; c.textBaseline='middle'; c.fillText('TAXI',w/2,h/2+3); });
-  const signSide=M('#fffbe8',{ emissive:'#fff1b8', emissiveIntensity:0.35 }), signFace=new THREE.MeshStandardMaterial({ map:signTex, emissive:'#fff1b8', emissiveIntensity:0.25, emissiveMap:signTex });
-  const sign=new THREE.Mesh(new THREE.BoxGeometry(0.34,0.3,0.86),[signFace,signFace,signSide,signSide,signFace,signFace]); sign.position.set(-0.2,1.79,0); sign.rotation.y=Math.PI/2; g.add(sign);
-  // 문짝 글씨(양쪽)
-  const doorTex=textTexture(512,96,(c,w,h)=>{ c.fillStyle='#1f2a3d'; c.font='bold 54px Jua, sans-serif'; c.textAlign='center'; c.textBaseline='middle'; c.fillText('키링 월드 택시',w/2,h/2+2); });
-  for(const z of [0.905,-0.905]){ const d=new THREE.Mesh(new THREE.PlaneGeometry(1.9,0.36),new THREE.MeshBasicMaterial({ map:doorTex, transparent:true })); d.position.set(-0.1,0.66,z); if(z<0) d.rotation.y=Math.PI; g.add(d); }
-  box(4.02,0.06,1.82,dark,0,0.92,0);               // 허리 라인
-  // 위에 '택시 · 준비 중' 표시
+  const g=new THREE.Group(); g.position.set(19.0,0,3.4); scene.add(g);   // 동쪽 꽃길 입구 옆(길을 막지 않게), 정류장 표지판 옆
+  const mat=new THREE.SpriteMaterial({ transparent:true, alphaTest:0.5 }); const sp=new THREE.Sprite(mat); sp.center.set(0.5,0); sp.scale.set(2.9,2.0,1); g.add(sp);
+  new THREE.TextureLoader().load('/plaza/assets/taxi_cab.webp',(t)=>{ t.colorSpace=THREE.SRGBColorSpace; mat.map=t; mat.needsUpdate=true; sp.userData.w=2.0*t.image.width/t.image.height; });
+  sp.userData.w=2.9; taxiSprite=sp;
   const tag=new THREE.Sprite(new THREE.SpriteMaterial({ map:textTexture(320,96,(c)=>{ c.fillStyle='rgba(255,255,255,.95)'; roundRect(c,10,8,300,70,35); c.fill(); c.fillStyle='#5b6f8c'; c.font='bold 36px Jua, sans-serif'; c.textAlign='center'; c.textBaseline='middle'; c.fillText('택시 · 준비 중',160,44); }), transparent:true, depthTest:false }));
   tag.scale.set(1.6,0.48,1); tag.position.y=2.55; g.add(tag);
-  g.position.set(12.6,0,-0.2); g.rotation.y=Math.PI; // 동쪽 길 위, 정류장 옆 — 앞이 광장 쪽을 보게
-  g.userData.profile=TAXI_PROFILE; taxiParts.push(g); scene.add(g);
-  obstacles.push({ x:11.5, z:-0.2, r:1.05 }, { x:13.7, z:-0.2, r:1.05 }); // 차를 뚫고 지나가지 않게
+  g.userData.profile=TAXI_PROFILE; taxiParts.push(g);
+  obstacles.push({ x:18.2, z:3.4, r:0.9 }, { x:19.8, z:3.4, r:0.9 });   // 차를 뚫고 지나가지 않게
   return g; }
 buildTaxi();
+function animTaxi(t){ if(!taxiSprite) return; const sp=taxiSprite, w=sp.userData.w, cyc=t%3.2;
+  const hop = cyc<0.35 ? Math.sin(cyc/0.35*Math.PI)*0.12 : 0;            // 3초마다 '통'
+  const rumble = Math.sin(t*38)*0.012;                                  // 시동 떨림
+  sp.position.y=hop; sp.scale.set(w*(1-rumble*0.6),2.0*(1+rumble),1); }
 new GLTFLoader().load('/plaza/village.glb', (gltf)=>{
-  const v=gltf.scene; scene.add(v); v.updateMatrixWorld(true);
+  const v=gltf.scene; expandVillage(v); scene.add(v); v.updateMatrixWorld(true);
   v.traverse((o)=>{
     const role=o.userData&&o.userData.kl_role;
     if(role==='collider'||role==='trigger'){ if(role==='trigger'){ shuttlePos=new THREE.Vector3(); o.getWorldPosition(shuttlePos); } o.visible=false; return; }
@@ -375,7 +381,7 @@ document.getElementById('randomBtn').onclick=()=>{ const p=a=>a[Math.floor(Math.
 let mode='creating';
 document.getElementById('enterBtn').onclick=async()=>{ if(!consent){ consentBox.hidden=false; return; } { const np=nickProblem(opts.nick); if(np){ toast(NICK_MSG[np]); nickInput.focus(); return; } } if(!opts.region){ toast('지역을 선택해 주세요'); return; } if(!/^(19|20)\d\d$/.test(opts.age)){ toast('출생연도를 네 자리로 입력해 주세요'); return; } if(!opts.nick){ opts.nick=NICKS[Math.floor(Math.random()*NICKS.length)]; nickInput.value=opts.nick; buildHero(opts); }
   if(member && fbUser && profileNick && opts.nick!==profileNick){ if(!(await saveNickChange())) return; }
-  try{ localStorage.setItem('kl_char',JSON.stringify(opts)); }catch(e){} document.getElementById('entry').remove(); document.getElementById('hud').hidden=false; document.getElementById('hudNick').textContent=opts.nick+' 님'; mode='playing'; connect(); };
+  try{ localStorage.setItem('kl_char',JSON.stringify(opts)); }catch(e){} document.getElementById('entry').remove(); document.getElementById('hud').hidden=false; document.getElementById('hudNick').textContent=opts.nick+' 님'; mode='playing'; connect(); setTimeout(loadCafeProps,800); };
 renderAll(); buildHero(opts);
 
 // ── 광장 동물: 강아지·고양이·비둘기 (분위기용, 누르면 반응) ──
@@ -414,15 +420,27 @@ function makeRoundQuad(kind,color,accent,name){
   g.scale.setScalar(cat?0.85:1);
   g.userData={ root, legs, tail, head, kind, style:'round', phase:Math.random()*10, rest:Math.random()*3, target:null, profile:{ animal:true, kind, nick:name } };
   return g; }
-// 도트·2D: 이미지 한 장을 항상 카메라를 보는 판(빌보드)으로 세운다. 도트는 픽셀이 뭉개지지 않게 NearestFilter
-function makeSpriteAnimal(kind,url,height,name,pixel){
+// 도트·2D·실사(영상): 카메라를 보는 판(빌보드). 쉴 때는 앉은 그림(idle), 걸을 때는 걷기 프레임(walk 아틀라스)을 넘겨
+// 다리가 실제로 움직인다. walk 프레임은 오른쪽을 보고 있으므로, 화면 기준 왼쪽으로 갈 때 좌우 반전.
+const texLoader=new THREE.TextureLoader();
+function loadTex(url,pixel,cb){ texLoader.load(url,(t)=>{ t.colorSpace=THREE.SRGBColorSpace; if(pixel){ t.magFilter=THREE.NearestFilter; t.minFilter=THREE.NearestFilter; t.generateMipmaps=false; } cb(t); }); }
+function makeSpriteAnimal(kind,opt,height,name){
   const g=new THREE.Group(), root=new THREE.Group(); g.add(root);
-  const mat=new THREE.SpriteMaterial({ transparent:true, alphaTest:0.5 }); const sp=new THREE.Sprite(mat); sp.center.set(0.5,0); root.add(sp);
-  new THREE.TextureLoader().load(url,(t)=>{ t.colorSpace=THREE.SRGBColorSpace; if(pixel){ t.magFilter=THREE.NearestFilter; t.minFilter=THREE.NearestFilter; t.generateMipmaps=false; }
-    mat.map=t; mat.needsUpdate=true; const asp=t.image.width/t.image.height; sp.scale.set(height*asp,height,1); g.userData.w=height*asp; });
-  sp.scale.set(height*0.8,height,1);
-  g.userData={ root, sprite:sp, kind, style:'sprite', w:height*0.8, phase:Math.random()*10, rest:Math.random()*3, target:null, bubbleY:height+0.35, profile:{ animal:true, kind, nick:name } };
-  return g; }
+  const mat=new THREE.SpriteMaterial({ transparent:true, alphaTest:0.5 }); const sp=new THREE.Sprite(mat); sp.center.set(0.5,0); root.add(sp); sp.scale.set(height*0.8,height,1);
+  const u={ root, sprite:sp, mat, kind, style:'sprite', h:height, frame:0, ft:0, mode:'idle', anims:{},
+    phase:Math.random()*10, rest:Math.random()*3, target:null, state:'ground', bubbleY:height+0.35, profile:{ animal:true, kind, nick:kind==='pigeon'?'비둘기':name } };
+  loadTex(opt.idle,opt.pixel,(t)=>{ u.idleTex=t; u.idleAsp=t.image.width/t.image.height; if(u.mode==='idle') showIdle(u); });
+  // anim: { walk:[url, 프레임수, 초당프레임, 높이], fly:[...] }
+  for(const [name,[url,frames,fps,h]] of Object.entries(opt.anims||{})) loadTex(url,opt.pixel,(t)=>{ t.repeat.set(1/frames,1); u.anims[name]={ tex:t, frames, fps, h, asp:(t.image.width/frames)/t.image.height }; });
+  u.walkTex=null; Object.defineProperty(u,'walkTex',{ get(){ return u.anims.walk?.tex||null; } });
+  g.userData=u; return g; }
+function showIdle(u){ if(!u.idleTex) return; u.mode='idle'; u.mat.map=u.idleTex; u.mat.needsUpdate=true; u.sprite.scale.set(u.h*u.idleAsp,u.h,1); }
+function playAnim(u,name,dt,flip){ const a=u.anims[name]; if(!a) return false;
+  if(u.mode!==name){ u.mode=name; u.mat.map=a.tex; u.mat.needsUpdate=true; u.frame=0; u.ft=0; }
+  u.ft+=dt; if(u.ft>1/a.fps){ u.ft=0; u.frame=(u.frame+1)%a.frames; a.tex.offset.x=u.frame/a.frames; }
+  u.sprite.scale.set(a.h*a.asp*(flip?-1:1),a.h,1); return true; }
+const showWalk=(u,dt,flip)=>playAnim(u,'walk',dt,flip);
+const camRightVec=()=>new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld,0); // 화면 기준 오른쪽
 // 실사: AI로 만든 고화질 3D 모델(GLB). 네 발 동물은 자동 뼈대가 어색해서 한자리에서 자는 연출 + 숨쉬기
 function makeModelAnimal(kind,url,size,name,says){
   const g=new THREE.Group(), root=new THREE.Group(); g.add(root);
@@ -463,16 +481,19 @@ function makePigeon(){
   return g; }
 function addAnimal(g,pos){ g.position.copy(pos); g.rotation.y=Math.random()*Math.PI*2; scene.add(g); animals.push(g); }
 addAnimal(makeQuad('dog','#c98b4f','#8a5a2b','보리'), new THREE.Vector3(-6,0,6));
-addAnimal(makeQuad('dog','#f3efe6','#d9c3a5','콩이'), new THREE.Vector3(7,0,-4));
 addAnimal(makeQuad('cat','#f0a35a','#f0a35a','치즈'), new THREE.Vector3(-8,0,-6));
-addAnimal(makeQuad('cat','#8e949c','#8e949c','회색이'), new THREE.Vector3(5,0,12));
 addAnimal(makeVoxelQuad('cat','#e8a35a','#e8a35a','블록냥'), new THREE.Vector3(-4,0,-9));
-addAnimal(makeVoxelQuad('dog','#d8c3a0','#9c7a4f','블록멍'), new THREE.Vector3(9,0,7));
 addAnimal(makeRoundQuad('cat','#fff1e6','#fff1e6','동글이'), new THREE.Vector3(-6,0,1));
-addAnimal(makeSpriteAnimal('cat','/plaza/assets/cat_pixel.png',0.85,'도트냥',true), new THREE.Vector3(6,0,2));
-addAnimal(makeSpriteAnimal('cat','/plaza/assets/cat_toon.webp',0.9,'구름이',false), new THREE.Vector3(-3,0,8));
+const A='/plaza/assets/';
+addAnimal(makeSpriteAnimal('cat',{ idle:A+'cat_pixel.png', pixel:true, anims:{ walk:[A+'cat_pixel_walk.png',6,9,0.72] } },0.85,'도트냥'), new THREE.Vector3(6,0,2));
+addAnimal(makeSpriteAnimal('cat',{ idle:A+'cat_real_idle.webp', anims:{ walk:[A+'cat_real_walk.webp',12,11,0.5] } },0.5,'노을이'), new THREE.Vector3(3,0,-6)); // 실사: AI 영상에서 뽑은 걷기 프레임
+addAnimal(makeSpriteAnimal('dog',{ idle:A+'dog_toon.webp', anims:{ walk:[A+'dog_toon_walk.webp',6,10,0.78] } },0.9,'솜사탕'), new THREE.Vector3(4,0,9));
+addAnimal(makeSpriteAnimal('dog',{ idle:A+'dog_real_idle.webp', anims:{ walk:[A+'dog_real_walk.webp',12,7,0.62] } },0.62,'골디'), new THREE.Vector3(-8,0,8)); // 실사 리트리버(AI 영상 → 걷기 프레임)
+for(let i=0;i<2;i++){ const a=Math.random()*Math.PI*2, r=4.5+Math.random()*3; const px=i%2===0;
+  addAnimal(makeSpriteAnimal('pigeon', px ? { idle:A+'pigeon_pixel.png', pixel:true, anims:{ walk:[A+'pigeon_pixel_walk.png',6,8,0.36], fly:[A+'pigeon_pixel_fly.png',4,10,0.5] } }
+                                         : { idle:A+'pigeon_toon.webp', anims:{ walk:[A+'pigeon_toon_walk.webp',6,8,0.38], fly:[A+'pigeon_toon_fly.webp',4,10,0.52] } }, 0.38, '비둘기'), new THREE.Vector3(Math.cos(a)*r,0,Math.sin(a)*r)); }
 { const sleepy=makeModelAnimal('cat','/plaza/assets/cat_real.glb',1.0,'치즈냥',['쿨쿨… zZ','골골골…','(꼬리만 살랑)']); sleepy.position.set(-2.1,0,4.7); sleepy.rotation.y=0.6; scene.add(sleepy); animals.push(sleepy); }
-for(let i=0;i<5;i++){ const a=Math.random()*Math.PI*2, r=4.5+Math.random()*3; addAnimal(makePigeon(), new THREE.Vector3(Math.cos(a)*r,0,Math.sin(a)*r)); }
+for(let i=0;i<2;i++){ const a=Math.random()*Math.PI*2, r=4.5+Math.random()*3; addAnimal(makePigeon(), new THREE.Vector3(Math.cos(a)*r,0,Math.sin(a)*r)); }
 // 누르면 말풍선 + 반응(강아지는 잠깐 따라옴, 고양이는 쳐다봄, 비둘기는 날아감)
 const ANIMAL_SAYS={ dog:['멍멍!','왈왈!','헥헥'], cat:['야옹~','냐아','골골골…'], pigeon:['구구구','푸드덕!'] };
 function animalBubble(g,text){ const u=g.userData; if(u.bubble){ u.root.remove(u.bubble); u.bubble.material.map.dispose(); }
@@ -481,12 +502,87 @@ function animalBubble(g,text){ const u=g.userData; if(u.bubble){ u.root.remove(u
   c.fillStyle='#4a3a2a'; c.font='bold 40px Jua, sans-serif'; c.textAlign='center'; c.textBaseline='middle'; c.fillText(text,150,48);
   const tex=new THREE.CanvasTexture(cv); tex.colorSpace=THREE.SRGBColorSpace;
   const sp=new THREE.Sprite(new THREE.SpriteMaterial({ map:tex, transparent:true, depthTest:false })); sp.scale.set(1.1,0.4,1); sp.position.y=u.bubbleY||(u.kind==='pigeon'?0.8:1.35); u.root.add(sp); u.bubble=sp; u.bubbleT=1.8; }
-function pigeonFly(g){ const u=g.userData; u.state='fly'; u.from=g.position.clone(); u.to=pickWanderTarget(4,15); u.t=0; u.dur=1.6+Math.random()*0.6; g.rotation.y=Math.atan2(u.to.x-u.from.x,u.to.z-u.from.z); }
+function pigeonFly(g){ const u=g.userData; u.state='fly'; u.from=g.position.clone(); u.to=pickWanderTarget(4,20); u.t=0; u.dur=1.6+Math.random()*0.6; g.rotation.y=Math.atan2(u.to.x-u.from.x,u.to.z-u.from.z); }
 function reactAnimal(prof){ const g=animals.find(a=>a.userData.profile===prof); if(!g) return; const u=g.userData;
   if(u.kind==='pigeon'){ animalBubble(g,'푸드덕!'); for(const p of animals) if(p.userData.kind==='pigeon' && p.userData.state==='ground' && p.position.distanceTo(g.position)<3) pigeonFly(p); return; }
   if(u.style==='model'){ animalBubble(g,pickA(u.says)); return; } // 자는 고양이는 깨지 않는다
   animalBubble(g,pickA(ANIMAL_SAYS[u.kind])); u.rest=0; u.target=null; if(u.style==='sprite'){ u.rest=2.5; u.hop=0.0001; return; } g.rotation.y=Math.atan2(hero.position.x-g.position.x, hero.position.z-g.position.z);
   if(u.kind==='dog'){ u.follow=6; u.hop=0.0001; } else { u.rest=2.5; } }
+
+// ── 키링 월드 구역: 길 끝마다 그림체가 다른 공간 (북 도트 골목 · 서 블록 정원 · 동 그림책 꽃길 · 남 실사 카페 테라스) ──
+const ZONES={ pixel:new THREE.Vector3(0,0,-25), block:new THREE.Vector3(-25,0,0), book:new THREE.Vector3(26,0,0), cafe:new THREE.Vector3(0,0,25) };
+function zoneFloor(center,size,tex,repeat){ tex.wrapS=tex.wrapT=THREE.RepeatWrapping; tex.repeat.set(repeat,repeat);
+  const m=new THREE.Mesh(new THREE.PlaneGeometry(size,size),new THREE.MeshStandardMaterial({ map:tex, roughness:0.9 })); m.rotation.x=-Math.PI/2; m.position.set(center.x,0.02,center.z); scene.add(m); return m; }
+function canvasTex(w,h,draw,pixel){ const t=textTexture(w,h,draw); if(pixel){ t.magFilter=THREE.NearestFilter; t.minFilter=THREE.NearestFilter; t.generateMipmaps=false; } return t; }
+// 판 소품(도트·2D): 바닥 기준으로 세우고 항상 카메라를 본다
+function propSprite(url,h,pos,pixel,block){ const mat=new THREE.SpriteMaterial({ transparent:true, alphaTest:0.5 }); const sp=new THREE.Sprite(mat); sp.center.set(0.5,0); sp.position.copy(pos); sp.scale.set(h,h,1); scene.add(sp);
+  texLoader.load(url,(t)=>{ t.colorSpace=THREE.SRGBColorSpace; if(pixel){ t.magFilter=THREE.NearestFilter; t.minFilter=THREE.NearestFilter; t.generateMipmaps=false; } mat.map=t; mat.needsUpdate=true; sp.scale.set(h*t.image.width/t.image.height,h,1); });
+  if(block) obstacles.push({ x:pos.x, z:pos.z, r:block }); return sp; }
+// 구역 표지판: 구역마다 다른 그림체
+function zoneSign(pos,ry,title,sub,style){ const g=new THREE.Group(); g.position.copy(pos); g.rotation.y=ry; scene.add(g);
+  const S={ pixel:{ post:'#5a3e8a', board:'#1d1240', ink:'#ff6ec7', sub:'#7ef9ff', px:true },
+            block:{ post:'#7a5230', board:'#b98b55', ink:'#3a2a12', sub:'#2f5d1f', px:true },
+            book:{ post:'#c9a27a', board:'#fff6e8', ink:'#e0678c', sub:'#5b8c5a', px:false },
+            cafe:{ post:'#3b2a20', board:'#2b211b', ink:'#f3e2c7', sub:'#c9a77c', px:false } }[style];
+  const L=(c)=>new THREE.MeshLambertMaterial({ color:c });
+  for(const x of [-1.05,1.05]){ const p=new THREE.Mesh(style==='block'?new THREE.BoxGeometry(0.18,1.6,0.18):new THREE.CylinderGeometry(0.06,0.07,1.6,10),L(S.post)); p.position.set(x,0.8,0); g.add(p); }
+  const W=512,H=200, tex=canvasTex(S.px?128:W,S.px?50:H,(c,w,h)=>{
+    c.fillStyle=S.board; if(style==='book'){ roundRect(c,4,4,w-8,h-8,h*0.3); c.fill(); c.strokeStyle='#e7b8c8'; c.lineWidth=6; c.stroke(); } else c.fillRect(0,0,w,h);
+    if(style==='pixel'){ c.strokeStyle=S.ink; c.lineWidth=2; c.strokeRect(2,2,w-4,h-4); }
+    c.textAlign='center'; c.textBaseline='middle'; c.fillStyle=S.ink; c.font=`bold ${Math.round(h*0.36)}px ${S.px?'monospace':'Jua, sans-serif'}`; c.fillText(title,w/2,h*0.4);
+    c.fillStyle=S.sub; c.font=`${Math.round(h*0.2)}px ${S.px?'monospace':'Jua, sans-serif'}`; c.fillText(sub,w/2,h*0.76); },S.px);
+  const board=new THREE.Mesh(new THREE.BoxGeometry(2.6,1.0,0.1),[L(S.board),L(S.board),L(S.board),L(S.board),new THREE.MeshBasicMaterial({ map:tex }),new THREE.MeshBasicMaterial({ map:tex })]);
+  board.position.y=1.85; g.add(board); obstacles.push({ x:pos.x, z:pos.z, r:0.5 }); return g; }
+
+// 북: 도트 골목 — 픽셀 타일 바닥 + 도트 소품 + 네온 간판
+zoneFloor(ZONES.pixel,10,canvasTex(16,16,(c)=>{ for(let y=0;y<16;y+=4) for(let x=0;x<16;x+=4){ c.fillStyle=((x+y)/4)%2?'#3d2b6b':'#5b3f99'; c.fillRect(x,y,4,4); } c.fillStyle='#ff6ec7'; c.fillRect(0,0,1,1); },true),5);
+zoneSign(new THREE.Vector3(2.4,0,-19.6),0,'도트 골목','8BIT ALLEY','pixel');
+{ const c=ZONES.pixel, V=(dx,dz)=>new THREE.Vector3(c.x+dx,0,c.z+dz);
+  propSprite(A+'zone_arcade.png',1.9,V(-3.2,-2.6),true,0.5); propSprite(A+'zone_arcade.png',1.9,V(-2.0,-3.0),true,0.5);
+  propSprite(A+'zone_vending.png',2.0,V(3.0,-2.8),true,0.55);
+  propSprite(A+'zone_sakura.png',4.2,V(-3.6,1.8),true,0.6); propSprite(A+'zone_sakura.png',3.6,V(3.8,2.4),true,0.6);
+  propSprite(A+'zone_planter.png',0.8,V(1.2,-3.6),true,0.4); propSprite(A+'zone_planter.png',0.8,V(-0.6,3.8),true,0.4); }
+// 블록 정원·꽃길·카페의 AI 소품은 아래 ZONE_PROPS에서 파일이 준비된 것만 배치
+const ZONE_PROPS=[];
+// 서: 블록 정원 — 잔디 블록 바닥 + 블록 나무·꽃·울타리·아치(코드로 생성)
+zoneFloor(ZONES.block,10,canvasTex(16,16,(c)=>{ c.fillStyle='#6fbf4a'; c.fillRect(0,0,16,16); for(let i=0;i<40;i++){ c.fillStyle=['#5aa83a','#82d15c','#4f9932'][i%3]; c.fillRect((i*7)%16,(i*11)%16,2,2); } c.strokeStyle='#4a8a2c'; c.strokeRect(0,0,16,16); },true),10);
+zoneSign(new THREE.Vector3(-19.6,0,2.4),Math.PI/2,'블록 정원','BLOCK GARDEN','block');
+{ const L=(c)=>new THREE.MeshLambertMaterial({ color:c }), B=(w,h,d,m,x,y,z,parent=scene)=>{ const b=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m); b.position.set(x,y,z); parent.add(b); return b; };
+  const bc=ZONES.block, trunk=L('#7a5230'), leaf=[L('#3f9a3a'),L('#4fb048'),L('#5cc455')];
+  for(const [dx,dz,hh] of [[-3,-3,3],[3,-3.5,4],[-3.5,3,3.5],[2.5,3.5,3]]){ const x=bc.x+dx, z=bc.z+dz;   // 블록 나무
+    for(let y=0;y<hh;y++) B(0.6,0.6,0.6,trunk,x,0.3+y*0.6,z);
+    for(let ix=-1;ix<=1;ix++) for(let iz=-1;iz<=1;iz++) for(let iy=0;iy<2;iy++) if(!(Math.abs(ix)+Math.abs(iz)===2&&iy===1)) B(0.6,0.6,0.6,leaf[(ix+iz+iy+3)%3],x+ix*0.6,hh*0.6+0.3+iy*0.6,z+iz*0.6);
+    obstacles.push({ x, z, r:0.6 }); }
+  const petals=['#ff5d8f','#ffd23f','#9b5de5','#ff8c42','#f15bb5'];
+  for(let i=0;i<18;i++){ const a=i*2.4, r=1.6+((i*37)%10)/4; const x=bc.x+Math.cos(a)*r, z=bc.z+Math.sin(a)*r;   // 블록 꽃
+    B(0.08,0.4,0.08,L('#3b8c2a'),x,0.2,z); B(0.22,0.22,0.22,L(petals[i%petals.length]),x,0.5,z); }
+  const fence=L('#9c6b3d'); for(let i=-4;i<=4;i++){ B(0.15,0.8,0.15,fence,bc.x-4.8,0.4,bc.z+i*1.1); B(0.15,0.8,0.15,fence,bc.x+i*1.1,0.4,bc.z-4.8); B(0.15,0.8,0.15,fence,bc.x+i*1.1,0.4,bc.z+4.8); }  // 울타리
+  for(const side of [-1,1]) B(0.1,0.12,9.6,fence,bc.x-4.8,0.65,bc.z), B(9.6,0.12,0.1,fence,bc.x,0.65,bc.z+side*4.8);
+  const stone=L('#b8b8b8'), stone2=L('#9d9d9d'); for(let y=0;y<5;y++){ B(0.6,0.6,0.6,(y%2?stone:stone2),bc.x+4.4,0.3+y*0.6,bc.z-1.5); B(0.6,0.6,0.6,(y%2?stone2:stone),bc.x+4.4,0.3+y*0.6,bc.z+1.5); }  // 블록 아치(광장 쪽 입구)
+  for(let i=-2;i<=2;i++) B(0.6,0.6,0.6,(i%2?stone:stone2),bc.x+4.4,3.3,bc.z+i*0.6);
+  obstacles.push({ x:bc.x+4.4, z:bc.z-1.5, r:0.45 }, { x:bc.x+4.4, z:bc.z+1.5, r:0.45 }); }
+// 동: 그림책 꽃길 — 파스텔 흙길 바닥
+zoneFloor(ZONES.book,10,canvasTex(256,256,(c,w,h)=>{ c.fillStyle='#fbe7c6'; c.fillRect(0,0,w,h); for(let i=0;i<60;i++){ c.fillStyle=['#f7d3e0','#d8ecc7','#fff3b0'][i%3]; c.beginPath(); c.arc((i*53)%w,(i*97)%h,4+(i%3)*2,0,Math.PI*2); c.fill(); } }),3);
+zoneSign(new THREE.Vector3(21.2,0,-2.6),-Math.PI/2,'그림책 꽃길','PICTURE BOOK','book');
+{ const c=ZONES.book, V=(dx,dz)=>new THREE.Vector3(c.x+dx,0,c.z+dz);
+  for(const [dx,dz,h] of [[2.5,-3.5,2.3],[3.6,-2.2,2.0],[3.2,3.4,2.4],[-1.5,4.0,2.1]]) propSprite(A+'zone_sunflower.webp',h,V(dx,dz),false,0.3);
+  propSprite(A+'zone_signpost.webp',2.3,V(0.5,0.4),false,0.35); propSprite(A+'zone_mailbox.webp',1.5,V(-2.2,-2.6),false,0.35);
+  for(const [dx,dz] of [[-3.4,1.6],[1.5,-4.0],[4.0,0.8],[-0.8,-4.2]]) propSprite(A+'zone_hydrangea.webp',1.0,V(dx,dz),false,0.5); }
+// 남: 실사 카페 테라스 — 나무 데크(텍스처 준비되면 교체)
+texLoader.load(A+'zone_deck.jpg',(t)=>{ t.colorSpace=THREE.SRGBColorSpace; zoneFloor(ZONES.cafe,10,t,3); });   // 실사 나무 데크(AI 텍스처)
+zoneSign(new THREE.Vector3(-2.6,0,20.4),Math.PI,'카페 테라스','CAFE TERRACE','cafe');
+// 실사 소품(AI 3D): 무거워서 입장한 뒤에 불러온다. 같은 모델은 한 번만 받고 복제
+function loadCafeProps(){ if(loadCafeProps.done) return; loadCafeProps.done=true;
+  const c=ZONES.cafe, place=(file,height,list)=>new GLTFLoader().load(A+file,(gltf)=>{
+    const base=gltf.scene, bb=new THREE.Box3().setFromObject(base), sz=bb.getSize(new THREE.Vector3()), k=height/sz.y;
+    for(const [dx,dz,ry,block] of list){ const m=base.clone(); m.scale.setScalar(k); m.rotation.y=ry||0; scene.add(m);
+      const b2=new THREE.Box3().setFromObject(m), ctr=b2.getCenter(new THREE.Vector3()); m.position.set(c.x+dx-ctr.x, -b2.min.y, c.z+dz-ctr.z);
+      if(block) obstacles.push({ x:c.x+dx, z:c.z+dz, r:block }); } });
+  place('cafe_cart.glb',2.3,[[3.0,2.6,-Math.PI/2,1.2]]);
+  place('cafe_table.glb',0.95,[[-2.6,-1.2,0.3,0.9],[0.6,1.0,1.2,0.9],[-2.0,2.8,2.1,0.9]]);
+  place('cafe_parasol.glb',2.7,[[-2.6,-1.2,0,0],[-2.0,2.8,0,0]]);
+  place('cafe_olive.glb',1.7,[[4.0,-3.8,0,0.5],[-4.1,-3.8,0,0.5]]);
+  place('cafe_bike.glb',1.05,[[4.0,-0.6,Math.PI/2,0.6]]); }
 
 // ── AI NPC "키키": 광장 안내 + 소개팅 대화 연습 (대화는 /api/plaza/npc, 비회원도 가능) ──
 const NPC_PROFILE={ nick:'키키', id:'npc', npc:true };
@@ -900,6 +996,7 @@ function tick(){
     if(moved>0.002){ g.rotation.y=pr.target.ry; pr.phase+=dt*9; const s=Math.sin(pr.phase); pr.refs.legL.rotation.x=s*0.5; pr.refs.legR.rotation.x=-s*0.5; pr.refs.armL.rotation.x=-s*0.45; pr.refs.armR.rotation.x=s*0.45; pr.root.position.y=Math.abs(Math.sin(pr.phase))*0.045; }
     else { pr.refs.legL.rotation.x=L(pr.refs.legL.rotation.x,0,0.2); pr.refs.legR.rotation.x=L(pr.refs.legR.rotation.x,0,0.2); pr.refs.armL.rotation.x=L(pr.refs.armL.rotation.x,0,0.2); pr.refs.armR.rotation.x=L(pr.refs.armR.rotation.x,0,0.2); pr.root.position.y=L(pr.root.position.y,0,0.2); }
   }
+  animTaxi(clock.elapsedTime);
   // 키키(AI): 둥실둥실 + 가까이 오면 쳐다보기
   { const u=npcGroup.userData; u.phase+=dt; u.root.position.y=Math.sin(u.phase*2)*0.04; u.halo.rotation.y=Math.sin(u.phase*1.3)*0.6; u.halo.children[1].rotation.z=Math.sin(u.phase*2.2)*0.3;
     u.bubble.position.y=3.05+Math.sin(u.phase*2.4)*0.08; u.glow.material.opacity=0.35+Math.sin(u.phase*3)*0.2;
@@ -910,23 +1007,23 @@ function tick(){
     u.phase+=dt;
     if(u.kind==='pigeon'){
       if(u.state==='fly'){ u.t+=dt/u.dur; const k=Math.min(1,u.t); g.position.lerpVectors(u.from,u.to,k); g.position.y=Math.sin(Math.PI*k)*3;
+        if(u.style==='sprite'){ playAnim(u,'fly',dt,u.to.clone().sub(u.from).dot(camRightVec())<0); if(k>=1){ u.state='ground'; g.position.y=0; u.rest=1; } continue; }
         const f=Math.sin(u.phase*28)*0.9; u.wings[0].rotation.z=f; u.wings[1].rotation.z=-f; if(k>=1){ u.state='ground'; g.position.y=0; u.rest=1; u.wings[0].rotation.z=u.wings[1].rotation.z=0; } continue; }
       if(mode==='playing' && g.position.distanceTo(hero.position)<1.8){ pigeonFly(g); continue; } // 사람이 다가오면 날아감
-      if(u.rest>0){ u.rest-=dt; u.head.rotation.x=Math.max(0,Math.sin(u.phase*5))*0.9; continue; } // 콕콕 쪼기
+      if(u.rest>0){ u.rest-=dt; if(u.style==='sprite'){ if(u.mode!=='idle') showIdle(u); } else u.head.rotation.x=Math.max(0,Math.sin(u.phase*5))*0.9; continue; } // 콕콕 쪼기
       if(!u.target||g.position.distanceTo(u.target)<0.15){ u.target=g.position.clone().add(new THREE.Vector3((Math.random()-0.5)*2.4,0,(Math.random()-0.5)*2.4)); u.rest=0.6+Math.random()*2; continue; }
-      const dir=u.target.clone().sub(g.position); dir.y=0; dir.normalize(); g.position.addScaledVector(dir,0.7*dt); pushOut(g); g.rotation.y=Math.atan2(dir.x,dir.z);
-      u.head.rotation.x=0; u.root.position.y=Math.abs(Math.sin(u.phase*14))*0.03; continue; }
+      const dir=u.target.clone().sub(g.position); dir.y=0; dir.normalize(); g.position.addScaledVector(dir,0.7*dt); pushOut(g);
+      if(u.style==='sprite'){ playAnim(u,'walk',dt,dir.dot(camRightVec())<0); continue; }
+      g.rotation.y=Math.atan2(dir.x,dir.z); u.head.rotation.x=0; u.root.position.y=Math.abs(Math.sin(u.phase*14))*0.03; continue; }
     if(u.style==='model'){ u.root.scale.y=1+Math.sin(u.phase*1.7)*0.025; u.root.scale.x=u.root.scale.z=1-Math.sin(u.phase*1.7)*0.01; continue; }
     if(u.style==='sprite'){
       if(u.hop){ u.hop+=dt; u.root.position.y=Math.max(0,Math.sin(u.hop*Math.PI/0.35)*0.3); if(u.hop>0.35){ u.hop=0; u.root.position.y=0; } }
-      if(u.rest>0){ u.rest-=dt; if(!u.hop) u.root.position.y=L(u.root.position.y,0,0.2); continue; }
+      if(u.rest>0){ u.rest-=dt; if(u.mode!=='idle') showIdle(u); continue; }
       if(!u.target||g.position.distanceTo(u.target)<0.5){ if(u.target){ u.target=null; u.rest=3+Math.random()*5; continue; } u.target=pickWanderTarget(); u.stuck=0; }
       const dir=u.target.clone().sub(g.position); dir.y=0; dir.normalize(); const px=g.position.x, pz=g.position.z, sp=1.3*dt;
       g.position.addScaledVector(dir,sp); pushOut(g);
       u.stuck = Math.hypot(g.position.x-px, g.position.z-pz) < sp*0.3 ? (u.stuck||0)+dt : 0; if(u.stuck>0.6){ u.target=pickWanderTarget(); u.stuck=0; }
-      const camRight=new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld,0); // 화면 기준 오른쪽으로 가면 그림 그대로, 왼쪽이면 좌우 반전
-      u.sprite.scale.x=Math.abs(u.w)*(dir.dot(camRight)<0?-1:1);
-      if(!u.hop) u.root.position.y=Math.abs(Math.sin(u.phase*9))*0.07; continue; }
+      if(!showWalk(u,dt,dir.dot(camRightVec())<0)) u.root.position.y=Math.abs(Math.sin(u.phase*9))*0.07; continue; } // 화면 기준 왼쪽으로 가면 좌우 반전
     // 강아지·고양이(로우폴리·블록·동글이)
     if(u.hop){ u.hop+=dt; g.position.y=Math.max(0,Math.sin(u.hop*Math.PI/0.35)*0.35); if(u.hop>0.35){ u.hop=0; g.position.y=0; } }
     u.tail.rotation.z=Math.sin(u.phase*(u.kind==='dog'?(u.follow>0?18:8):2))*(u.kind==='dog'?0.5:0.25);
