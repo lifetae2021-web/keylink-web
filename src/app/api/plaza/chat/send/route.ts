@@ -20,6 +20,7 @@ export async function POST(req: Request) {
     const myNick = str(b.myNick, 12);
     const toNick = str(b.toNick, 12);
     if (!toUid || toUid === me) return NextResponse.json({ error: 'bad_target' }, { status: 400 });
+    if (toUid === 'npc') return NextResponse.json({ error: 'bad_target' }, { status: 400 }); // AI 대화는 /api/plaza/npc 로만
     if (!text) return NextResponse.json({ error: 'empty' }, { status: 400 });
 
     const convId = convOf(me, toUid);

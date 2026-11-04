@@ -96,6 +96,8 @@
   .report-reasons { justify-content:center; margin:14px 0 10px; }
   #reportDetail { width:100%; box-sizing:border-box; font-family:inherit; font-size:.95rem; padding:10px 12px; border:1px solid var(--card-border); border-radius:12px; background:rgba(255,255,255,.7); color:var(--ink); resize:none; }
   .confirm-btns { display:flex; gap:10px; margin-top:16px; } .confirm-btns .btn { flex:1; }
+  .msg.typing { opacity:.6; font-style:italic; }
+  .msg.them, .msg.me { white-space:pre-wrap; word-break:keep-all; overflow-wrap:anywhere; }
   .msg.sys { align-self:center; max-width:90%; background:transparent; color:#8a98ab; font-size:.82rem; text-align:center; padding:4px 8px; word-break:keep-all; }
   .chat-input { display:flex; gap:8px; padding:12px 14px calc(12px + env(safe-area-inset-bottom,0px)); border-top:1px solid var(--card-border); }
   .chat-input input { flex:1; min-width:0; font-family:inherit; font-size:1rem; padding:11px 14px; border:1px solid var(--card-border); border-radius:12px; background:rgba(255,255,255,.7); color:var(--ink); }
@@ -209,11 +211,11 @@ const skinMat = new THREE.MeshStandardMaterial({ color:0xffe0c4, roughness:0.85 
 const darkMat = new THREE.MeshStandardMaterial({ color:0x3a3a3a });
 function roundRect(g,x,y,w,h,r){ g.beginPath(); g.moveTo(x+r,y); g.arcTo(x+w,y,x+w,y+h,r); g.arcTo(x+w,y+h,x,y+h,r); g.arcTo(x,y+h,x,y,r); g.arcTo(x,y,x+w,y,r); g.closePath(); }
 function makeNickSprite(text, gender){
-  const label=(gender==='female'?'♀ ':gender==='male'?'♂ ':'')+text;
+  const label=(gender==='female'?'♀ ':gender==='male'?'♂ ':gender==='npc'?'🤖 ':'')+text;
   const cv=document.createElement('canvas'); cv.width=320; cv.height=90; const g=cv.getContext('2d'); g.textAlign='center'; g.textBaseline='middle';
   let fs=44; do{ g.font='bold '+fs+'px Jua, sans-serif'; if(g.measureText(label).width<=250) break; fs-=2; } while(fs>16);
   const tw=g.measureText(label).width, pw=Math.min(304, tw+44), ph=58, px=(320-pw)/2, py=16;
-  const bg = gender==='female' ? '#ff7fa8' : gender==='male' ? '#4e94e6' : '#8a9ab0';
+  const bg = gender==='female' ? '#ff7fa8' : gender==='male' ? '#4e94e6' : gender==='npc' ? '#8b6cf0' : '#8a9ab0';
   g.fillStyle='rgba(255,255,255,.92)'; roundRect(g,px-3,py-3,pw+6,ph+6,32); g.fill();
   g.fillStyle=bg; roundRect(g,px,py,pw,ph,29); g.fill();
   g.fillStyle='#fff'; g.font='bold '+fs+'px Jua, sans-serif'; g.fillText(label,160,py+ph/2+1);
@@ -315,6 +317,24 @@ function makeBot(i){ const gd=pickA(['male','female']); const o={ nick:BOT_NICKS
   scene.add(g); bots.push(g); }
 for(let i=0;i<5;i++) makeBot(i);
 
+// ── AI NPC "큐피드": 광장 안내 + 소개팅 대화 연습 (대화는 /api/plaza/npc, 회원 전용) ──
+const NPC_PROFILE={ nick:'큐피드', id:'npc', npc:true };
+const npcGroup=(()=>{ const g=new THREE.Group(); const root=new THREE.Group(); g.add(root);
+  const refs=makeBody(root,{ nick:'큐피드 AI', gender:'npc', face:'round', hair:'short', hairColor:'#f6a6c1', eye:'round', clothes:'#f2b84b' });
+  const halo=new THREE.Mesh(new THREE.TorusGeometry(0.3,0.045,8,28), new THREE.MeshStandardMaterial({ color:'#ffd65a', emissive:'#ffb800', emissiveIntensity:0.6 }));
+  halo.rotation.x=Math.PI/2; halo.position.y=2.3; root.add(halo);
+  // 눈에 띄게: 발밑 빛나는 원 + 머리 위 "눌러서 대화" 말풍선
+  const glow=new THREE.Mesh(new THREE.RingGeometry(0.55,0.95,40), new THREE.MeshBasicMaterial({ color:'#a98bff', transparent:true, opacity:0.55, side:THREE.DoubleSide, depthWrite:false }));
+  glow.rotation.x=-Math.PI/2; glow.position.y=0.03; g.add(glow);
+  const cv=document.createElement('canvas'); cv.width=360; cv.height=120; const c=cv.getContext('2d');
+  c.fillStyle='#ffffff'; roundRect(c,20,10,320,78,39); c.fill(); c.beginPath(); c.moveTo(165,86); c.lineTo(180,110); c.lineTo(195,86); c.fill();
+  c.fillStyle='#6b4fd8'; c.font='bold 40px Jua, sans-serif'; c.textAlign='center'; c.textBaseline='middle'; c.fillText('💬 눌러서 대화',180,50);
+  const tex=new THREE.CanvasTexture(cv); tex.colorSpace=THREE.SRGBColorSpace;
+  const bubble=new THREE.Sprite(new THREE.SpriteMaterial({ map:tex, transparent:true, depthTest:false })); bubble.scale.set(1.5,0.5,1); bubble.position.y=3.05; root.add(bubble);
+  g.scale.setScalar(1.15);
+  g.position.set(2.6,0,8.2); g.rotation.y=Math.PI*0.15;
+  g.userData={ root, refs, halo, glow, bubble, phase:0, profile:NPC_PROFILE }; scene.add(g); return g; })();
+
 // ── 입력 ──
 const move=new THREE.Vector2(0,0); const keys={};
 // 입력칸(채팅·닉네임 등)에 포커스돼 있으면 이동키로 새지 않게 (한글 'ㅇ'=물리 d키 등)
@@ -391,14 +411,17 @@ function sendPos(dt){ if(!ws||ws.readyState!==1) return; posTimer-=dt; if(posTim
 const card=document.getElementById('card'); let reqTarget=null;
 function openCard(profile){ document.exitPointerLock?.(); reqTarget=profile; document.getElementById('cardName').textContent=profile.nick;
   const meta=document.getElementById('cardMeta');
-  if(profile.bot) meta.innerHTML=`<span class="npc-tag">🤖 가상 이웃 · 실제 회원이 아니에요</span><br>${profile.gender} · ${profile.age} · ${profile.region}<br>${profile.job?profile.job+'<br>':''}<span style="opacity:.85">“${profile.intro}”</span>`;
-  else meta.textContent=(profile.gender?profile.gender+' · ':'')+'지금 광장에 접속 중';
-  document.getElementById('cardSafety').hidden=!!profile.bot;
+  const reqBtn=document.getElementById('cardReq');
+  if(profile.npc){ meta.innerHTML='<span class="npc-tag">🤖 AI 안내원 · 실제 회원이 아니에요</span><br>광장 사용법과 키링크 소개팅을 안내하고,<br>소개팅 대화 연습도 도와드려요.'; reqBtn.textContent='💬 큐피드와 대화하기'; reqBtn.hidden=false; }
+  else if(profile.bot){ meta.innerHTML=`<span class="npc-tag">🤖 가상 이웃 · 실제 회원이 아니에요</span><br>${profile.gender} · ${profile.age} · ${profile.region}<br>${profile.job?profile.job+'<br>':''}<span style="opacity:.85">“${profile.intro}”</span>`; reqBtn.hidden=true; } // 가상 이웃은 분위기용(1:1 없음)
+  else { meta.textContent=(profile.gender?profile.gender+' · ':'')+'지금 광장에 접속 중'; reqBtn.textContent='💌 1:1 대화 신청'; reqBtn.hidden=false; }
+  document.getElementById('cardSafety').hidden=!!(profile.bot||profile.npc);
   card.hidden=false; }
 document.getElementById('cardClose').onclick=()=>card.hidden=true;
 card.addEventListener('pointerdown',(e)=>{ if(e.target===card) card.hidden=true; });
 document.getElementById('cardReq').onclick=()=>{ const p=reqTarget; card.hidden=true;
-  if(p.bot){ toast(`${p.nick}님에게 1:1 신청!`); setTimeout(()=>{ toast(`💗 ${p.nick}님이 수락했어요!`); openChat({ nick:p.nick, bot:true }); },1600); }
+  if(p.npc){ if(!member || !fbUser){ openJoin(openNpcChat); return; } openNpcChat(); }
+  else if(p.bot){ return; }
   else if(ws&&ws.readyState===1&&p.id){ ws.send(JSON.stringify({ t:'req', to:p.id })); toast(`${p.nick}님에게 1:1 신청!`); } };
 let incoming=null; const reqBox=document.getElementById('req');
 function showReq(fromId, nick, uid, key){ document.exitPointerLock?.(); incoming={id:fromId,nick,uid,key}; document.getElementById('reqTxt').textContent=`💌 ${nick}님이 1:1 대화를 신청했어요`; reqBox.hidden=false; }
@@ -409,18 +432,32 @@ document.getElementById('reqNo').onclick=()=>{ reqBox.hidden=true; };
 const chat=document.getElementById('chat'), chatMsgs=document.getElementById('chatMsgs'), chatText=document.getElementById('chatText');
 let currentChat=null;
 const BOT_REPLIES=['안녕하세요! 반가워요 😊','말 걸어주셔서 고마워요','무슨 요일에 주로 시간 괜찮으세요?','저도 그거 좋아해요!','혹시 어느 동네 사세요?','오프라인에서도 보면 좋겠어요 ㅎㅎ'];
-async function openChat(p){ document.exitPointerLock?.(); currentChat=p; document.getElementById('chatReport').hidden=document.getElementById('chatBlock').hidden=!!p.bot; document.getElementById('chatName').textContent='💬 '+p.nick; chatMsgs.innerHTML=''; chat.hidden=false; setTimeout(()=>chatText.focus(),60);
+async function openChat(p){ document.exitPointerLock?.(); currentChat=p; document.getElementById('chatReport').hidden=document.getElementById('chatBlock').hidden=!!(p.bot||p.npc); document.getElementById('chatName').textContent='💬 '+p.nick; chatMsgs.innerHTML=''; chat.hidden=false; setTimeout(()=>chatText.focus(),60);
   let loaded=false;
   if(p.uid && fbUser && !p.bot){ loaded=await loadChatHistory(p.uid); }
-  if(!loaded) addMsg('them','1:1 대화가 연결됐어요! 인사 나눠보세요 🎉');
-  if(!p.bot){ if(!fbUser) addMsg('sys','로그인하지 않아 이 대화는 저장되지 않아요'); else if(!p.uid) addMsg('sys','상대가 회원 로그인 전이라 이 대화는 저장되지 않아요'); } }
+  if(!loaded) addMsg('them', p.npc ? '안녕하세요! 저는 키링크 광장의 AI 안내원 큐피드예요 😊 광장 사용법, 소개팅 일정이 궁금하거나 소개팅 대화 연습을 하고 싶으면 편하게 말해 주세요.' : '1:1 대화가 연결됐어요! 인사 나눠보세요 🎉');
+  if(p.npc){ addMsg('sys','큐피드는 AI예요 · 하루 100번까지 대화할 수 있어요'); }
+  else if(!p.bot){ if(!fbUser) addMsg('sys','로그인하지 않아 이 대화는 저장되지 않아요'); else if(!p.uid) addMsg('sys','상대가 회원 로그인 전이라 이 대화는 저장되지 않아요'); } }
 async function loadChatHistory(uid){ try{ const t=await fbUser.getIdToken(); const r=await fetch('/api/plaza/chat/history?with='+encodeURIComponent(uid),{ headers:{ Authorization:'Bearer '+t } }); const j=await r.json().catch(()=>({})); const msgs=j.messages||[]; if(!msgs.length) return false; for(const m of msgs) addMsg(m.mine?'me':'them', m.text); return true; }catch(e){ return false; } }
 function addMsg(who,text){ const d=document.createElement('div'); d.className='msg '+who; d.textContent=text; chatMsgs.appendChild(d); chatMsgs.scrollTop=chatMsgs.scrollHeight; }
-document.getElementById('chatClose').onclick=()=>{ if(currentChat && !currentChat.bot && ws && ws.readyState===1){ try{ ws.send(JSON.stringify({ t:'chatbye', to:currentChat.id })); }catch(e){} } chat.hidden=true; currentChat=null; };
+document.getElementById('chatClose').onclick=()=>{ if(currentChat && !currentChat.bot && !currentChat.npc && ws && ws.readyState===1){ try{ ws.send(JSON.stringify({ t:'chatbye', to:currentChat.id })); }catch(e){} } chat.hidden=true; currentChat=null; };
 async function persistChat(toUid,toNick,text){ if(!toUid||!fbUser) return; try{ const t=await fbUser.getIdToken(); const r=await fetch('/api/plaza/chat/send',{ method:'POST', headers:{ 'Content-Type':'application/json', Authorization:'Bearer '+t }, body:JSON.stringify({ toUid, toNick, myNick:opts.nick, text }) }); if(!r.ok){ const j=await r.json().catch(()=>({})); toast('대화 저장 실패: '+(j.error||r.status)); } }catch(e){ toast('대화 저장 실패: 네트워크'); } }
 document.getElementById('chatForm').addEventListener('submit',(e)=>{ e.preventDefault(); const t=chatText.value.trim(); if(!t||!currentChat) return; addMsg('me',t); chatText.value='';
-  if(currentChat.bot){ setTimeout(()=>addMsg('them',pickA(BOT_REPLIES)),700+Math.random()*800); }
+  if(currentChat.npc){ sendToNpc(t); }
+  else if(currentChat.bot){ setTimeout(()=>addMsg('them',pickA(BOT_REPLIES)),700+Math.random()*800); }
   else if(ws&&ws.readyState===1){ ws.send(JSON.stringify({ t:'chat', to:currentChat.id, text:t })); persistChat(currentChat.uid, currentChat.nick, t); } });
+function openNpcChat(){ openChat({ id:'npc', nick:'큐피드 (AI)', uid:'npc', npc:true }); }
+let npcBusy=false;
+async function sendToNpc(text){ if(npcBusy) return; npcBusy=true; chatText.disabled=true;
+  const typing=document.createElement('div'); typing.className='msg them typing'; typing.textContent='큐피드가 입력 중…'; chatMsgs.appendChild(typing); chatMsgs.scrollTop=chatMsgs.scrollHeight;
+  try{ const r=await authFetch('/api/plaza/npc',{ method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ text, myNick:opts.nick }) });
+    const j=await r.json().catch(()=>({})); typing.remove();
+    if(r.ok && j.reply){ if(currentChat?.npc) addMsg('them', j.reply); }
+    else if(r.status===429 && j.error==='daily_limit'){ addMsg('sys','오늘 큐피드와의 대화 횟수('+(j.limit||100)+'번)를 다 썼어요. 내일 다시 만나요!'); }
+    else if(r.status===401){ addMsg('sys','로그인이 필요해요'); }
+    else { addMsg('sys','큐피드가 잠깐 자리를 비웠어요. 잠시 후 다시 말해 주세요'); }
+  }catch(e){ typing.remove(); addMsg('sys','네트워크 오류예요. 잠시 후 다시 시도해 주세요'); }
+  finally{ npcBusy=false; chatText.disabled=false; chatText.focus(); } }
 function onChatMsg(from,nick,text,uid){
   if(currentChat && currentChat.id===from){ currentChat.left=false; addMsg('them',text); return; }
   toast('💬 '+nick+'님이 메시지를 보냈어요'); // 강제로 열지 않음. 상대를 눌러 1:1을 다시 열면 기록이 보임
@@ -590,8 +627,8 @@ let dragId=null, dragX=0, dragY=0, dragged=false;
 const canvasEl=renderer.domElement, reticle=document.getElementById('reticle');
 let locked=false, aimTarget=null;
 const modalOpen=()=> !card.hidden || !chat.hidden || !joinBox.hidden || !reportBox.hidden || !confirmBox.hidden || !blockListBox.hidden;
-function pickProfile(prof){ if(!prof) return; if(member) openCard(prof); else openJoin(()=>openCard(prof)); }
-function raycastFromNDC(x,y){ ndc.set(x,y); raycaster.setFromCamera(ndc,camera); const groups=[...[...peers.values()].map(p=>p.group), ...bots]; const hits=raycaster.intersectObjects(groups,true); if(!hits.length) return null; let g=hits[0].object; while(g&&!g.userData.profile) g=g.parent; return g?g.userData.profile:null; }
+function pickProfile(prof){ if(!prof) return; if(member || prof.npc) openCard(prof); else openJoin(()=>openCard(prof)); }
+function raycastFromNDC(x,y){ ndc.set(x,y); raycaster.setFromCamera(ndc,camera); const groups=[...[...peers.values()].map(p=>p.group), ...bots, npcGroup]; const hits=raycaster.intersectObjects(groups,true); if(!hits.length) return null; let g=hits[0].object; while(g&&!g.userData.profile) g=g.parent; return g?g.userData.profile:null; }
 
 // ── 데스크톱: 배그식 마우스룩(Pointer Lock) ──
 canvasEl.addEventListener('pointerdown',(e)=>{
@@ -648,6 +685,10 @@ function tick(){
     else { pr.refs.legL.rotation.x=L(pr.refs.legL.rotation.x,0,0.2); pr.refs.legR.rotation.x=L(pr.refs.legR.rotation.x,0,0.2); pr.refs.armL.rotation.x=L(pr.refs.armL.rotation.x,0,0.2); pr.refs.armR.rotation.x=L(pr.refs.armR.rotation.x,0,0.2); pr.root.position.y=L(pr.root.position.y,0,0.2); }
   }
   // 가상 이웃 돌아다니기
+  { const u=npcGroup.userData; u.phase+=dt; u.root.position.y=Math.sin(u.phase*2)*0.04; u.halo.rotation.z+=dt*0.8;
+    u.bubble.position.y=3.05+Math.sin(u.phase*2.4)*0.08; u.glow.material.opacity=0.35+Math.sin(u.phase*3)*0.2;
+    const dx=hero.position.x-npcGroup.position.x, dz=hero.position.z-npcGroup.position.z;
+    if(mode==='playing' && dx*dx+dz*dz<49){ const want=Math.atan2(dx,dz); let d=want-npcGroup.rotation.y; d=Math.atan2(Math.sin(d),Math.cos(d)); npcGroup.rotation.y+=d*Math.min(1,dt*4); } }
   for(const b of bots){ const u=b.userData;
     // 도착하면 잠깐 서서 쉬기 → 다음 목표
     if(u.rest>0){ u.rest-=dt; botIdlePose(u); continue; }
