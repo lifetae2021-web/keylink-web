@@ -1,6 +1,14 @@
 // 광장의 방 하나 = PlazaRoom DO 하나.
 // WebSocket Hibernation API를 써서, 소켓이 조용할 때 메모리에서 재워 과금을 아낀다.
 // 접속자별 메타데이터(닉/룩/위치)는 소켓 attachment에 저장해 재우기/깨우기 후에도 유지한다.
+import { nickProblem } from '../../public/plaza/badwords.js';
+
+// 회원 uid → 익명 키(되돌려서 uid를 알 수 없는 해시). 차단·신고에서 사람을 구분하는 데 쓴다.
+async function anonKey(uid) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('kl-plaza:' + uid));
+  return [...new Uint8Array(buf)].slice(0, 8).map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
 export class PlazaRoom {
   constructor(state, env) {
     this.state = state;
@@ -38,7 +46,11 @@ export class PlazaRoom {
     }
     // 방이 꽉 찼으면 거절 (워커가 이미 빈 방을 골라주지만, 동시 접속 레이스 방어)
     if (this.state.getWebSockets().length >= cap) {
-      return new Response('room full', { status: 409 });
+      const full = new WebSocketPair();
+      full[1].accept();
+      full[1].send(JSON.stringify({ t: 'full', room, cap }));
+      full[1].close(4000, 'room full');
+      return new Response(null, { status: 101, webSocket: full[0] });
     }
 
     const pair = new WebSocketPair();
@@ -60,18 +72,20 @@ export class PlazaRoom {
 
     if (m.t === 'hello') {
       a.nick = this.clean(m.nick || '손님', 12);
+      if (nickProblem(a.nick)) a.nick = '손님'; // 비속어·자음만 닉네임 차단
       a.look = (m.look && typeof m.look === 'object') ? m.look : {};
       a.uid = m.uid ? this.clean(m.uid, 128) : null; // 회원 uid(영속 DM 대화방 키용). 1:1 상대에게만 전달, 브로드캐스트 안 함.
+      a.key = a.uid ? await anonKey(a.uid) : null;  // 익명 키: 모두에게 보여도 uid는 알 수 없음(차단·신고용)
       this.save(ws, a);
       // 나에게는 기존 접속자 목록, 남들에게는 내 입장 알림
       const peers = [];
       for (const p of this.state.getWebSockets()) {
         if (p === ws) continue;
         const pa = this.attach(p);
-        if (pa) peers.push({ id: pa.id, nick: pa.nick, look: pa.look, state: pa.st });
+        if (pa) peers.push({ id: pa.id, nick: pa.nick, look: pa.look, state: pa.st, key: pa.key || null });
       }
-      this.send(ws, { t: 'welcome', id: a.id, room: a.room, peers });
-      this.broadcast(ws, { t: 'join', id: a.id, nick: a.nick, look: a.look, state: a.st });
+      this.send(ws, { t: 'welcome', id: a.id, room: a.room, nick: a.nick, peers });
+      this.broadcast(ws, { t: 'join', id: a.id, nick: a.nick, look: a.look, state: a.st, key: a.key || null });
     } else if (m.t === 'pos') {
       a.st = { x: +m.x || 0, z: +m.z || 0, ry: +m.ry || 0 };
       this.save(ws, a);
@@ -82,8 +96,8 @@ export class PlazaRoom {
         const pa = this.attach(p);
         if (pa && pa.id === to) {
           // uid는 1:1 상대에게만 실어 보낸다(영속 DM 대화방 매칭용). 방 전체엔 노출 안 함.
-          if (m.t === 'chat') this.send(p, { t: 'chat', from: a.id, nick: a.nick, uid: a.uid, text: this.clean(m.text, 1000) });
-          else this.send(p, { t: m.t, from: a.id, nick: a.nick, uid: a.uid }); // req / accept / chatbye(대화방 나감)
+          if (m.t === 'chat') this.send(p, { t: 'chat', from: a.id, nick: a.nick, uid: a.uid, key: a.key || null, text: this.clean(m.text, 1000) });
+          else this.send(p, { t: m.t, from: a.id, nick: a.nick, uid: a.uid, key: a.key || null }); // req / accept / chatbye(대화방 나감)
           break;
         }
       }

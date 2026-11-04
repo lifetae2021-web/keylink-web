@@ -78,6 +78,15 @@
   .msg.me { align-self:flex-end; background:var(--accent); color:#fff; border-bottom-right-radius:5px; }
   .nick-hint { margin-top:6px; font-size:.78rem; color:#8a98ab; word-break:keep-all; }
   #nick[readonly] { background:rgba(120,160,210,.10); color:#8a98ab; cursor:not-allowed; }
+  .safety-row { display:flex; justify-content:center; gap:14px; margin-top:12px; }
+  .safety-row button { border:none; background:none; color:#8a98ab; font-family:inherit; font-size:.85rem; cursor:pointer; padding:4px 6px; }
+  .chat-tools { display:flex; align-items:center; gap:4px; }
+  .chat-head .tool { font-size:.8rem !important; color:#8a98ab; padding:4px 6px; }
+  #report, #confirmBox { position:fixed; inset:0; z-index:29; display:grid; place-items:center; background:rgba(40,60,90,.32);
+    padding:max(16px,env(safe-area-inset-top,0px)) 16px max(16px,env(safe-area-inset-bottom,0px)); }
+  .report-reasons { justify-content:center; margin:14px 0 10px; }
+  #reportDetail { width:100%; box-sizing:border-box; font-family:inherit; font-size:.95rem; padding:10px 12px; border:1px solid var(--card-border); border-radius:12px; background:rgba(255,255,255,.7); color:var(--ink); resize:none; }
+  .confirm-btns { display:flex; gap:10px; margin-top:16px; } .confirm-btns .btn { flex:1; }
   .msg.sys { align-self:center; max-width:90%; background:transparent; color:#8a98ab; font-size:.82rem; text-align:center; padding:4px 8px; word-break:keep-all; }
   .chat-input { display:flex; gap:8px; padding:12px 14px calc(12px + env(safe-area-inset-bottom,0px)); border-top:1px solid var(--card-border); }
   .chat-input input { flex:1; min-width:0; font-family:inherit; font-size:1rem; padding:11px 14px; border:1px solid var(--card-border); border-radius:12px; background:rgba(255,255,255,.7); color:var(--ink); }
@@ -116,6 +125,7 @@
   <button id="cardClose" class="card-x" aria-label="닫기">✕</button>
   <div class="card-name" id="cardName"></div><div class="card-meta" id="cardMeta"></div>
   <button id="cardReq" class="btn go">💌 1:1 대화 신청</button>
+  <div class="safety-row" id="cardSafety"><button type="button" id="cardReport">🚨 신고</button><button type="button" id="cardBlock">🚫 차단</button></div>
 </div></div>
 <div id="join" hidden><div class="card-box">
   <button id="joinClose" class="card-x" aria-label="닫기">✕</button>
@@ -126,8 +136,21 @@
   <button class="btn kakao" id="joinKakao">💬 카카오로 1초만에 시작하기</button>
 </div></div>
 <div id="req" hidden><span id="reqTxt"></span><button class="yes" id="reqYes">수락</button><button class="no" id="reqNo">나중에</button></div>
+<div id="report" hidden><div class="card-box">
+  <button id="reportClose" class="card-x" aria-label="닫기">✕</button>
+  <div class="card-name" id="reportTitle">신고하기</div>
+  <div class="card-meta">사유를 골라주세요. 관리자가 확인해요.</div>
+  <div class="opts report-reasons" id="reportReasons"></div>
+  <textarea id="reportDetail" maxlength="500" rows="3" placeholder="자세한 내용 (선택)"></textarea>
+  <button id="reportSend" class="btn go">신고 접수</button>
+</div></div>
+<div id="confirmBox" hidden><div class="card-box">
+  <div class="card-name" id="confirmTitle"></div>
+  <div class="card-meta" id="confirmMsg"></div>
+  <div class="confirm-btns"><button type="button" class="btn ghost" id="confirmNo">취소</button><button type="button" class="btn go" id="confirmYes">확인</button></div>
+</div></div>
 <div id="chat" hidden><div class="chat-box">
-  <div class="chat-head"><span id="chatName"></span><button id="chatClose" aria-label="닫기">✕</button></div>
+  <div class="chat-head"><span id="chatName"></span><span class="chat-tools"><button type="button" id="chatReport" class="tool">신고</button><button type="button" id="chatBlock" class="tool">차단</button><button id="chatClose" aria-label="닫기">✕</button></span></div>
   <div class="chat-msgs" id="chatMsgs"></div>
   <form class="chat-input" id="chatForm"><input id="chatText" placeholder="메시지 입력" autocomplete="off" maxlength="200"><button type="submit">전송</button></form>
 </div></div>
@@ -141,6 +164,8 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import { nickProblem } from '/plaza/badwords.js';
+const NICK_MSG={ jamo:'자음·모음만으로는 닉네임을 만들 수 없어요', bad:'사용할 수 없는 단어가 들어간 닉네임이에요' };
 
 // 키링크 Firebase (공개 설정값 — 클라이언트 번들에 이미 노출되는 값과 동일)
 const fbApp = initializeApp({
@@ -250,7 +275,7 @@ function renderSw(id,key,cols){ const el=document.getElementById(id); el.innerHT
 function renderAll(){ renderPills('opt-gender','gender',CHOICES.gender); renderPills('opt-face','face',CHOICES.face); renderPills('opt-hair','hair',CHOICES.hair); renderSw('opt-hairColor','hairColor',HAIR_COLORS); renderPills('opt-eye','eye',CHOICES.eye); renderSw('opt-clothes','clothes',CLOTHES); renderPills('opt-region','region',CHOICES.region); }
 document.getElementById('randomBtn').onclick=()=>{ const p=a=>a[Math.floor(Math.random()*a.length)]; opts.gender=p(CHOICES.gender)[1]; opts.face=p(CHOICES.face)[1]; opts.hair=p(CHOICES.hair)[1]; opts.eye=p(CHOICES.eye)[1]; opts.hairColor=p(HAIR_COLORS); opts.clothes=p(CLOTHES); if(!nickInput.value){ opts.nick=p(NICKS); nickInput.value=opts.nick; } renderAll(); buildHero(opts); };
 let mode='creating';
-document.getElementById('enterBtn').onclick=async()=>{ if(!opts.region){ toast('지역을 선택해 주세요'); return; } if(!/^(19|20)\d\d$/.test(opts.age)){ toast('출생연도를 네 자리로 입력해 주세요'); return; } if(!opts.nick){ opts.nick=NICKS[Math.floor(Math.random()*NICKS.length)]; nickInput.value=opts.nick; buildHero(opts); }
+document.getElementById('enterBtn').onclick=async()=>{ { const np=nickProblem(opts.nick); if(np){ toast(NICK_MSG[np]); nickInput.focus(); return; } } if(!opts.region){ toast('지역을 선택해 주세요'); return; } if(!/^(19|20)\d\d$/.test(opts.age)){ toast('출생연도를 네 자리로 입력해 주세요'); return; } if(!opts.nick){ opts.nick=NICKS[Math.floor(Math.random()*NICKS.length)]; nickInput.value=opts.nick; buildHero(opts); }
   if(member && fbUser && profileNick && opts.nick!==profileNick){ if(!(await saveNickChange())) return; }
   try{ localStorage.setItem('kl_char',JSON.stringify(opts)); }catch(e){} document.getElementById('entry').remove(); document.getElementById('hud').hidden=false; document.getElementById('hudNick').textContent=opts.nick+' 님'; mode='playing'; connect(); };
 renderAll(); buildHero(opts);
@@ -298,24 +323,29 @@ const _wsBase = new URLSearchParams(location.search).get('ws')
 const _wsRoom = new URLSearchParams(location.search).get('room');
 const WS_URL = _wsBase ? (_wsBase.replace(/\/+$/,'') + '/ws' + (_wsRoom ? ('?room=' + encodeURIComponent(_wsRoom)) : '')) : '';
 const peers=new Map(); // id -> { group, refs, target:{x,z,ry}, nick, phase, lastMove }
+const blocked=new Set();    // 내가 차단한 사람의 익명 키(회원) — 서버에 저장돼 다음에도 유지
+const blockedIds=new Set();  // 키가 없는 상대(손님)는 이번 접속 동안만 차단
+let roomFullUntil=0;
 let ws=null, myId=null;
 const netDot=document.getElementById('netDot'), netTxt=document.getElementById('netTxt');
 function setNet(on, n){ netDot.className='dot '+(on?'on':'off'); netTxt.textContent = on ? ('접속 '+(n)+'명') : '오프라인 (혼자)'; }
-function addPeer(p){ if(p.id===myId||peers.has(p.id)) return; const group=new THREE.Group(); const root=new THREE.Group(); group.add(root); const refs=makeBody(root, p.look||{clothes:'#5bb0d1',hairColor:'#6b4423',face:'round',hair:'short',eye:'round',nick:p.nick}); group.position.set(p.state?.x||0,0,p.state?.z||0); group.userData={ profile:{ nick:p.nick, id:p.id, gender:(p.look&&p.look.gender==='female')?'여':(p.look&&p.look.gender==='male')?'남':null } }; scene.add(group); peers.set(p.id,{ group, refs, root, target:{x:group.position.x,z:group.position.z,ry:0}, nick:p.nick, phase:Math.random()*10 }); updateCount(); }
+function addPeer(p){ if(p.id===myId||peers.has(p.id)) return; if((p.key && blocked.has(p.key)) || blockedIds.has(p.id)) return; /* 차단한 사람은 안 보임 */ const group=new THREE.Group(); const root=new THREE.Group(); group.add(root); const refs=makeBody(root, p.look||{clothes:'#5bb0d1',hairColor:'#6b4423',face:'round',hair:'short',eye:'round',nick:p.nick}); group.position.set(p.state?.x||0,0,p.state?.z||0); group.userData={ profile:{ nick:p.nick, id:p.id, key:p.key||null, gender:(p.look&&p.look.gender==='female')?'여':(p.look&&p.look.gender==='male')?'남':null } }; scene.add(group); peers.set(p.id,{ group, refs, root, key:p.key||null, target:{x:group.position.x,z:group.position.z,ry:0}, nick:p.nick, phase:Math.random()*10 }); updateCount(); }
 function updateCount(){ setNet(true, peers.size+1); }
 function connect(){
   if(!WS_URL){ setNet(false); return; } // 운영 실시간 서버 주소 미설정 → 혼자 모드(봇만)
   try{ ws=new WebSocket(WS_URL); }catch(e){ setNet(false); return; }
   ws.onopen=()=>{ ws.send(JSON.stringify({ t:'hello', room:'plaza', nick:opts.nick, look:opts, uid: myUid })); };
-  ws.onclose=()=>{ setNet(false); for(const [id,pr] of peers){ scene.remove(pr.group); } peers.clear(); setTimeout(()=>{ if(mode==='playing') connect(); }, 2500); };
+  ws.onclose=()=>{ setNet(false); for(const [id,pr] of peers){ scene.remove(pr.group); } peers.clear(); const wait=Date.now()<roomFullUntil?30000:2500; setTimeout(()=>{ if(mode==='playing') connect(); }, wait); };
   ws.onerror=()=>{ setNet(false); };
   ws.onmessage=(ev)=>{ let m; try{ m=JSON.parse(ev.data); }catch(e){ return; }
-    if(m.t==='welcome'){ myId=m.id; (m.peers||[]).forEach(addPeer); updateCount(); }
+    if(m.t==='full'){ roomFullUntil=Date.now()+30000; toast('광장이 꽉 찼어요. 잠시 후 다시 연결할게요'); return; }
+    if(m.t==='welcome'){ myId=m.id; if(m.nick && m.nick!==opts.nick) document.getElementById('hudNick').textContent=m.nick+' 님'; (m.peers||[]).forEach(addPeer); updateCount(); }
     else if(m.t==='join'){ addPeer(m); }
     else if(m.t==='peer'){ const pr=peers.get(m.id); if(pr) pr.target={x:m.x,z:m.z,ry:m.ry}; }
     else if(m.t==='leave'){ const pr=peers.get(m.id); if(pr){ scene.remove(pr.group); peers.delete(m.id); updateCount(); } if(currentChat && !currentChat.bot && currentChat.id===m.id){ addMsg('sys', (currentChat.nick||'상대')+'님이 대화방을 나가셨습니다.'); } }
-    else if(m.t==='req'){ showReq(m.from, m.nick, m.uid); }
-    else if(m.t==='accept'){ toast(`💗 ${m.nick}님과 매칭!`); openChat({ id:m.from, nick:m.nick, uid:m.uid, bot:false }); }
+    else if(((m.key && blocked.has(m.key)) || blockedIds.has(m.from)) && (m.t==='req'||m.t==='accept'||m.t==='chat'||m.t==='chatbye')){ return; } // 차단한 사람
+    else if(m.t==='req'){ showReq(m.from, m.nick, m.uid, m.key); }
+    else if(m.t==='accept'){ toast(`💗 ${m.nick}님과 매칭!`); openChat({ id:m.from, nick:m.nick, uid:m.uid, key:m.key, bot:false }); }
     else if(m.t==='chat'){ onChatMsg(m.from, m.nick, m.text, m.uid); }
     else if(m.t==='chatbye'){ if(currentChat && !currentChat.bot && currentChat.id===m.from){ addMsg('sys', (currentChat.nick||'상대')+'님이 대화방을 나가셨습니다.'); currentChat.left=true; } }
   };
@@ -329,6 +359,7 @@ function openCard(profile){ document.exitPointerLock?.(); reqTarget=profile; doc
   const meta=document.getElementById('cardMeta');
   if(profile.bot) meta.innerHTML=`${profile.gender} · ${profile.age} · ${profile.region}<br>${profile.job?profile.job+'<br>':''}<span style="opacity:.85">“${profile.intro}”</span>`;
   else meta.textContent=(profile.gender?profile.gender+' · ':'')+'지금 광장에 접속 중';
+  document.getElementById('cardSafety').hidden=!!profile.bot;
   card.hidden=false; }
 document.getElementById('cardClose').onclick=()=>card.hidden=true;
 card.addEventListener('pointerdown',(e)=>{ if(e.target===card) card.hidden=true; });
@@ -336,15 +367,15 @@ document.getElementById('cardReq').onclick=()=>{ const p=reqTarget; card.hidden=
   if(p.bot){ toast(`${p.nick}님에게 1:1 신청!`); setTimeout(()=>{ toast(`💗 ${p.nick}님이 수락했어요!`); openChat({ nick:p.nick, bot:true }); },1600); }
   else if(ws&&ws.readyState===1&&p.id){ ws.send(JSON.stringify({ t:'req', to:p.id })); toast(`${p.nick}님에게 1:1 신청!`); } };
 let incoming=null; const reqBox=document.getElementById('req');
-function showReq(fromId, nick, uid){ document.exitPointerLock?.(); incoming={id:fromId,nick,uid}; document.getElementById('reqTxt').textContent=`💌 ${nick}님이 1:1 대화를 신청했어요`; reqBox.hidden=false; }
-document.getElementById('reqYes').onclick=()=>{ if(!member){ reqBox.hidden=true; openJoin(); return; } if(incoming&&ws&&ws.readyState===1){ ws.send(JSON.stringify({ t:'accept', to:incoming.id })); openChat({ id:incoming.id, nick:incoming.nick, uid:incoming.uid, bot:false }); } reqBox.hidden=true; };
+function showReq(fromId, nick, uid, key){ document.exitPointerLock?.(); incoming={id:fromId,nick,uid,key}; document.getElementById('reqTxt').textContent=`💌 ${nick}님이 1:1 대화를 신청했어요`; reqBox.hidden=false; }
+document.getElementById('reqYes').onclick=()=>{ if(!member){ reqBox.hidden=true; openJoin(); return; } if(incoming&&ws&&ws.readyState===1){ ws.send(JSON.stringify({ t:'accept', to:incoming.id })); openChat({ id:incoming.id, nick:incoming.nick, uid:incoming.uid, key:incoming.key, bot:false }); } reqBox.hidden=true; };
 document.getElementById('reqNo').onclick=()=>{ reqBox.hidden=true; };
 
 // ── 1:1 대화창 ──
 const chat=document.getElementById('chat'), chatMsgs=document.getElementById('chatMsgs'), chatText=document.getElementById('chatText');
 let currentChat=null;
 const BOT_REPLIES=['안녕하세요! 반가워요 😊','말 걸어주셔서 고마워요','무슨 요일에 주로 시간 괜찮으세요?','저도 그거 좋아해요!','혹시 어느 동네 사세요?','오프라인에서도 보면 좋겠어요 ㅎㅎ'];
-async function openChat(p){ document.exitPointerLock?.(); currentChat=p; document.getElementById('chatName').textContent='💬 '+p.nick; chatMsgs.innerHTML=''; chat.hidden=false; setTimeout(()=>chatText.focus(),60);
+async function openChat(p){ document.exitPointerLock?.(); currentChat=p; document.getElementById('chatReport').hidden=document.getElementById('chatBlock').hidden=!!p.bot; document.getElementById('chatName').textContent='💬 '+p.nick; chatMsgs.innerHTML=''; chat.hidden=false; setTimeout(()=>chatText.focus(),60);
   let loaded=false;
   if(p.uid && fbUser && !p.bot){ loaded=await loadChatHistory(p.uid); }
   if(!loaded) addMsg('them','1:1 대화가 연결됐어요! 인사 나눠보세요 🎉');
@@ -360,6 +391,37 @@ function onChatMsg(from,nick,text,uid){
   if(currentChat && currentChat.id===from){ currentChat.left=false; addMsg('them',text); return; }
   toast('💬 '+nick+'님이 메시지를 보냈어요'); // 강제로 열지 않음. 상대를 눌러 1:1을 다시 열면 기록이 보임
 }
+// ── 신고 · 차단 ──
+const REPORT_REASONS=['욕설·비하','음란·성희롱','스팸·광고','사기·금전요구','기타'];
+const reportBox=document.getElementById('report'), confirmBox=document.getElementById('confirmBox');
+let reportTarget=null, reportReason=REPORT_REASONS[0], confirmYesFn=null;
+async function authFetch(url,init={}){ const t=await fbUser.getIdToken(); return fetch(url,{ ...init, headers:{ ...(init.headers||{}), Authorization:'Bearer '+t } }); }
+async function loadBlocks(){ try{ const r=await authFetch('/api/plaza/block'); const j=await r.json().catch(()=>({})); (j.blocks||[]).forEach(b=>blocked.add(b.key)); for(const [id,pr] of [...peers]){ if(pr.key && blocked.has(pr.key)) removePeer(id); } }catch(e){} }
+function removePeer(id){ const pr=peers.get(id); if(pr){ scene.remove(pr.group); peers.delete(id); updateCount(); } }
+function renderReasons(){ const el=document.getElementById('reportReasons'); el.innerHTML=''; for(const r of REPORT_REASONS){ const b=document.createElement('button'); b.type='button'; b.className='pill'; b.textContent=r; b.setAttribute('aria-pressed',String(r===reportReason)); b.onclick=()=>{ reportReason=r; renderReasons(); }; el.appendChild(b); } }
+function openReport(t){ if(!t||t.bot) return; if(!fbUser){ openJoin(); return; } document.exitPointerLock?.(); reportTarget=t; reportReason=REPORT_REASONS[0]; document.getElementById('reportTitle').textContent=t.nick+'님 신고'; document.getElementById('reportDetail').value=''; renderReasons(); reportBox.hidden=false; }
+document.getElementById('reportClose').onclick=()=>{ reportBox.hidden=true; };
+reportBox.addEventListener('pointerdown',(e)=>{ if(e.target===reportBox) reportBox.hidden=true; });
+document.getElementById('reportSend').onclick=async()=>{ const t=reportTarget; if(!t) return;
+  try{ const r=await authFetch('/api/plaza/report',{ method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ targetKey:t.key||null, targetUid:t.uid||null, targetNick:t.nick, reason:reportReason, detail:document.getElementById('reportDetail').value }) });
+    if(r.ok){ reportBox.hidden=true; toast('신고가 접수됐어요. 확인 후 조치할게요'); } else { const j=await r.json().catch(()=>({})); toast(j.error==='no_target'?'손님은 신고할 수 없어요. 차단을 이용해 주세요':'신고 접수 실패'); }
+  }catch(e){ toast('네트워크 오류예요'); } };
+function askConfirm(title,msg,yes){ document.exitPointerLock?.(); document.getElementById('confirmTitle').textContent=title; document.getElementById('confirmMsg').textContent=msg; confirmYesFn=yes; confirmBox.hidden=false; }
+document.getElementById('confirmNo').onclick=()=>{ confirmBox.hidden=true; confirmYesFn=null; };
+document.getElementById('confirmYes').onclick=()=>{ confirmBox.hidden=true; const f=confirmYesFn; confirmYesFn=null; if(f) f(); };
+function blockPerson(t){ if(!t) return;
+  askConfirm(t.nick+'님 차단','차단하면 서로 보이지 않고, 1:1 신청과 메시지도 받지 않아요.', async()=>{
+    if(t.key){ blocked.add(t.key); if(fbUser){ try{ await authFetch('/api/plaza/block',{ method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ key:t.key, nick:t.nick }) }); }catch(e){} } }
+    if(t.id) blockedIds.add(t.id);
+    if(t.bot){ const g=bots.find(b=>b.userData.profile===t); if(g) g.visible=false; }
+    for(const [id,pr] of [...peers]){ if((t.key && pr.key===t.key) || id===t.id) removePeer(id); }
+    if(currentChat && (currentChat.id===t.id || (t.key && currentChat.key===t.key))){ chat.hidden=true; currentChat=null; }
+    card.hidden=true; toast(t.nick+'님을 차단했어요');
+  }); }
+document.getElementById('cardReport').onclick=()=>{ const t=reqTarget; card.hidden=true; openReport(t); };
+document.getElementById('cardBlock').onclick=()=>blockPerson(reqTarget);
+document.getElementById('chatReport').onclick=()=>openReport(currentChat);
+document.getElementById('chatBlock').onclick=()=>blockPerson(currentChat);
 // ── 손님 → 회원 전환 게이트 (실제 키링크 로그인 연동) ──
 let member=false, fbUser=null, myUid=null;
 const joinBox=document.getElementById('join'); let pendingAfterJoin=null;
@@ -411,6 +473,7 @@ onAuthStateChanged(fbAuth, async (u)=>{
   // 로그인 확정이 입장보다 늦었을 때, uid를 서버에 다시 알려 1:1 대화 저장이 되게 한다
   if(fbUser && ws && ws.readyState===1 && mode==='playing'){ try{ ws.send(JSON.stringify({ t:'hello', room:'plaza', nick:opts.nick, look:opts, uid:myUid })); }catch(e){} }
   if(!fbUser){ member=false; return; }
+  loadBlocks();
   try{
     const token=await fbUser.getIdToken();
     const r=await fetch('/api/plaza/me',{ headers:{ Authorization:'Bearer '+token } });
@@ -430,6 +493,7 @@ async function submitJoin(){
     if(r.ok && j.ok){ member=true; if(j.profile){ profileNick=j.profile.nick; nickLockedUntil=j.profile.nickLockedUntil||null; updateNickLock(); } try{ localStorage.removeItem('kl_plaza_pending'); }catch(e){} joinBox.hidden=true; toast('가입 완료! 환영해요 🎉'); const a=pendingAfterJoin; pendingAfterJoin=null; if(a) setTimeout(a,300); return true; }
     if(r.status===429 && j.nick){ opts.nick=j.nick; nickInput.value=j.nick; profileNick=j.nick; nickLockedUntil=j.nickLockedUntil||null; return submitJoin(); }
     if(r.status===409){ promptNickFix(); return false; }
+    if(j.error==='nick_bad'||j.error==='nick_jamo'){ promptNickFix(NICK_MSG[j.error==='nick_bad'?'bad':'jamo']+'.'); return false; }
     if(j.error==='region_required'||j.error==='birthYear_invalid'||j.error==='nick_required'){ toast('기본 정보를 먼저 입력해 주세요'); return false; }
     toast('가입 처리 중 문제가 생겼어요. 다시 시도해 주세요'); return false;
   }catch(e){ toast('네트워크 오류예요. 잠시 후 다시 시도해 주세요'); return false; }
@@ -444,21 +508,22 @@ async function saveNickChange(){
     if(r.ok && j.ok){ profileNick=j.profile.nick; nickLockedUntil=j.profile.nickLockedUntil||null; toast('닉네임을 '+profileNick+'(으)로 바꿨어요'); return true; }
     if(r.status===429){ nickLockedUntil=j.nickLockedUntil||nickLockedUntil; if(j.nick) profileNick=j.nick; updateNickLock(); toast('닉네임은 '+lockLeftText(nickLockedUntil-Date.now())+' 후 바꿀 수 있어요'); return false; }
     if(r.status===409){ toast('이미 사용 중인 닉네임이에요'); nickInput.focus(); return false; }
+    if(j.error==='nick_bad'||j.error==='nick_jamo'){ toast(NICK_MSG[j.error==='nick_bad'?'bad':'jamo']); nickInput.focus(); return false; }
     toast('닉네임 저장 실패: '+(j.error||r.status)); return false;
   }catch(e){ toast('네트워크 오류예요'); return false; }
 }
 // 닉네임 중복 → 카카오 버튼·안내는 숨기고 닉 입력만 깔끔히 노출
-function promptNickFix(){ joinBox.hidden=false;
+function promptNickFix(why){ joinBox.hidden=false;
   document.getElementById('joinTitle').textContent='닉네임만 바꿔주세요';
   document.getElementById('joinMeta').hidden=true;
   document.getElementById('joinNote').hidden=true;
   document.getElementById('joinKakao').hidden=true;
-  document.getElementById('joinSum').innerHTML='<div style="text-align:center;margin-bottom:10px"><b>'+(opts.nick||'')+'</b> 은(는) 이미 사용 중이에요.</div>'
+  document.getElementById('joinSum').innerHTML='<div style="text-align:center;margin-bottom:10px">'+(why||('<b>'+(opts.nick||'')+'</b> 은(는) 이미 사용 중이에요.'))+'</div>'
     +'<input id="nickFix" maxlength="12" value="'+(opts.nick||'')+'" autocomplete="off" placeholder="새 닉네임" style="display:block;width:100%;box-sizing:border-box;font-family:inherit;font-size:1rem;padding:11px 14px;border:1px solid var(--card-border);border-radius:12px;background:rgba(255,255,255,.7);color:var(--ink)">'
     +'<button id="nickFixBtn" class="btn" style="width:100%;margin-top:10px;background:var(--accent);color:#fff">확인하고 가입</button>';
   const fix=document.getElementById('nickFix'), btn=document.getElementById('nickFixBtn');
   fix.focus(); try{ fix.select(); }catch(e){}
-  btn.onclick=async()=>{ const v=fix.value.trim(); if(!v){ fix.focus(); return; } opts.nick=v; try{ nickInput.value=v; buildHero(opts); }catch(e){} await submitJoin(); };
+  btn.onclick=async()=>{ const v=fix.value.trim(); if(!v){ fix.focus(); return; } { const np=nickProblem(v); if(np){ toast(NICK_MSG[np]); fix.focus(); return; } } opts.nick=v; try{ nickInput.value=v; buildHero(opts); }catch(e){} await submitJoin(); };
   fix.addEventListener('keydown',(e)=>{ if(e.key==='Enter') btn.click(); });
 }
 

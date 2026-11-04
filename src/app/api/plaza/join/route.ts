@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { adminDb, adminAuth } from '@/lib/firebaseAdmin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { nickProblem } from '../../../../../public/plaza/badwords.js';
+import { plazaKey } from '@/lib/plazaKey';
 
 // 광장(플라자) 회원 가입/프로필 저장
 // 로그인한 본인이 캐릭터·기본정보를 저장한다. 닉네임은 광장 내에서 중복 불가.
@@ -36,6 +38,9 @@ export async function POST(req: Request) {
     } : {};
 
     if (!nick) return NextResponse.json({ error: 'nick_required' }, { status: 400 });
+    const np = nickProblem(nick);
+    if (np === 'jamo') return NextResponse.json({ error: 'nick_jamo' }, { status: 400 });
+    if (np === 'bad') return NextResponse.json({ error: 'nick_bad' }, { status: 400 });
     if (!region) return NextResponse.json({ error: 'region_required' }, { status: 400 });
     if (!/^(19|20)\d\d$/.test(birthYear)) return NextResponse.json({ error: 'birthYear_invalid' }, { status: 400 });
 
@@ -65,7 +70,7 @@ export async function POST(req: Request) {
     }
 
     await ref.set({
-      uid, nick, nickLower, gender, region, birthYear, job, intro, look,
+      uid, key: plazaKey(uid), nick, nickLower, gender, region, birthYear, job, intro, look,
       updatedAt: FieldValue.serverTimestamp(),
       ...(nickChanged ? { nickChangedAt: FieldValue.serverTimestamp() } : {}),
       ...(existed ? {} : { createdAt: FieldValue.serverTimestamp() }),

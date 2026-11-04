@@ -31,6 +31,7 @@ const PAGE_TITLE: Record<string, string> = {
   '/admin/settings':      '시스템 설정',
   '/admin/sms-templates': 'SMS 템플릿',
   '/admin/plaza-chats':   '광장 대화',
+  '/admin/plaza-reports': '광장 신고',
   '/admin/excel-cleaner': '참여자 엑셀 정리',
 };
 
@@ -95,6 +96,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { label: '매출 통계',     icon: TrendingUp,      path: '/admin/revenue',       superOnly: true },
     { label: 'SMS 템플릿',     icon: MessageSquare,   path: '/admin/sms-templates' },
     { label: '광장 대화',      icon: MessageSquare,   path: '/admin/plaza-chats' },
+    { label: '광장 신고',      icon: Bell,            path: '/admin/plaza-reports' },
     { label: '콘텐츠 편집',   icon: FileText,        path: '/admin/cms' },
     { label: '시스템 설정',   icon: Settings,        path: '/admin/settings',       superOnly: true },
     { label: '엑셀 정리기',   icon: FileSpreadsheet, path: '/admin/excel-cleaner' },

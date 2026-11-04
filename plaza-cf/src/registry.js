@@ -5,7 +5,7 @@ export class PlazaRegistry {
 
   async counts() { return (await this.state.storage.get('counts')) || {}; }
 
-  roomName(i) { return 'plaza-' + String(i).padStart(2, '0'); }
+  roomName(prefix, i) { return prefix + '-' + String(i).padStart(2, '0'); }
 
   async fetch(request) {
     const url = new URL(request.url);
@@ -30,17 +30,19 @@ export class PlazaRegistry {
     }
 
     if (url.pathname === '/place') {
+      const prefix = (url.searchParams.get('prefix') || 'region').replace(/[^a-z]/g, '');
       const c = await this.counts();
       // 빈 자리 있는 방 중 '사람이 가장 많은' 방으로 (혼자 외롭지 않게 모아줌)
       let best = null, bestN = -1;
       for (const [name, n] of Object.entries(c)) {
+        if (!name.startsWith(prefix + '-')) continue; // 같은 지역 채널끼리만
         if (n < cap && n > bestN) { best = name; bestN = n; }
       }
       // 전부 꽉 찼거나 방이 없으면: 안 쓰는 가장 작은 번호로 새 방
       if (!best) {
         let i = 1;
-        while (c[this.roomName(i)] !== undefined) i++;
-        best = this.roomName(i);
+        while (c[this.roomName(prefix, i)] !== undefined) i++;
+        best = this.roomName(prefix, i);
       }
       return Response.json({ room: best });
     }
