@@ -184,6 +184,8 @@
     <div class="c-detail" hidden>욕설·비하, 음란한 말, 사기·금전 요구, 연락처를 집요하게 묻는 행동은 금지예요. 신고가 들어오면 확인 후 대화가 제한되거나 입장이 금지될 수 있어요.</div></div>
   <div class="c-row"><label class="c-line"><input type="checkbox" id="cPrivacy"><span><i class="c-tag">필수</i>개인정보 수집·이용에 동의해요</span><button type="button" class="c-more">보기</button></label>
     <div class="c-detail" hidden>수집 항목: 닉네임·캐릭터 정보, 1:1 대화 내용, 접속 기록(입장·퇴장 시각), 암호화된 IP·기기 정보<br>이용 목적: 키링 월드 운영, 신고 처리와 음란·범죄 예방(신고가 있거나 필요한 경우 관리자가 대화 내용을 확인할 수 있어요)<br>보관 기간: 접속 기록 30일, 대화 내용은 탈퇴 후 1년<br>AI 안내원 키키와의 대화는 답변을 만들기 위해 Anthropic(미국)에서 처리돼요.<br>동의하지 않으면 키링 월드에 입장할 수 없어요.</div></div>
+  <div class="c-row"><label class="c-line"><input type="checkbox" id="cProfile"><span><i class="c-tag opt">선택</i>내 프로필 공개에 동의해요</span><button type="button" class="c-more">보기</button></label>
+    <div class="c-detail" hidden>공개 대상: 키링 월드에서 나와 1:1 대화가 성사된 상대, 포인트를 사용해 프로필 열람을 신청한 회원<br>공개 항목: 프로필 사진, 닉네임, 나이대, 지역, 직군, 키, 자기소개, 이상형<br>공개하지 않는 정보: 이름, 연락처, 회사명, 정확한 생년월일, 재직 증빙 서류<br>이용 목적: 회원 간 만남 주선(프로필 열람 기능은 준비 중이며, 출시 전에 공지해요)<br>동의하지 않아도 입장할 수 있고, 나중에 설정에서 언제든 켜고 끌 수 있어요.</div></div>
   <button type="button" class="btn go" id="consentGo" disabled>동의하고 입장하기</button>
   <a class="c-out" href="/">동의하지 않고 나가기</a>
 </div></div>
@@ -383,6 +385,53 @@ const pickA=a=>a[Math.floor(Math.random()*a.length)];
 const animals=[];
 const animalDark=new THREE.MeshStandardMaterial({ color:0x2b2b2b });
 const std=(c)=>new THREE.MeshStandardMaterial({ color:c, roughness:0.85 });
+// 키링 월드는 그림체가 섞인 공간: 같은 고양이도 로우폴리·블록·동글이·도트·2D·실사로 제각각
+function boxLimb(px,py,len,w,mat){ const g=new THREE.Group(); g.position.set(px,py,0); const m=new THREE.Mesh(new THREE.BoxGeometry(w,len,w),mat); m.position.y=-len/2; g.add(m); return g; }
+function makeVoxelQuad(kind,color,accent,name){
+  const cat=kind==='cat', g=new THREE.Group(), root=new THREE.Group(); g.add(root);
+  const L=(c)=>new THREE.MeshLambertMaterial({ color:c }), mat=L(color), acc=L(accent), dark=L('#222222');
+  const B=(w,h,d,m,x,y,z,parent=root)=>{ const b=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m); b.position.set(x,y,z); parent.add(b); return b; };
+  B(0.36,0.32,0.74,mat,0,0.5,0);                                  // 몸통
+  const head=new THREE.Group(); head.position.set(0,0.74,0.4); root.add(head);
+  B(0.36,0.32,0.3,mat,0,0,0,head); B(0.08,0.08,0.02,dark,-0.09,0.04,0.155,head); B(0.08,0.08,0.02,dark,0.09,0.04,0.155,head);
+  if(cat){ B(0.1,0.1,0.06,mat,-0.12,0.2,-0.04,head); B(0.1,0.1,0.06,mat,0.12,0.2,-0.04,head); B(0.06,0.04,0.02,L('#f29bb0'),0,-0.04,0.155,head); }
+  else { B(0.18,0.12,0.12,acc,0,-0.07,0.2,head); B(0.06,0.06,0.03,dark,0,-0.03,0.27,head); B(0.06,0.18,0.12,acc,-0.21,0,-0.02,head); B(0.06,0.18,0.12,acc,0.21,0,-0.02,head); }
+  const legs=[[-0.1,0.25],[0.1,0.25],[-0.1,-0.25],[0.1,-0.25]].map(([x,z])=>{ const l=boxLimb(x,0.36,0.36,0.12,mat); l.position.z=z; root.add(l); return l; });
+  const tail=new THREE.Group(); tail.position.set(0,0.6,-0.37); B(0.08,cat?0.42:0.26,0.08,cat?mat:acc,0,(cat?0.42:0.26)/2,0,tail); tail.rotation.x=cat?-0.35:-0.7; root.add(tail);
+  g.scale.setScalar(cat?0.85:1);
+  g.userData={ root, legs, tail, head, kind, style:'voxel', phase:Math.random()*10, rest:Math.random()*3, target:null, profile:{ animal:true, kind, nick:name } };
+  return g; }
+function makeRoundQuad(kind,color,accent,name){
+  const cat=kind==='cat', g=new THREE.Group(), root=new THREE.Group(); g.add(root);
+  const mat=std(color), acc=std(accent);
+  const body=new THREE.Mesh(new THREE.SphereGeometry(0.3,24,18),mat); body.scale.set(1,0.88,1.12); body.position.y=0.4; root.add(body);
+  const head=new THREE.Group(); head.position.set(0,0.74,0.26); root.add(head);
+  head.add(new THREE.Mesh(new THREE.SphereGeometry(0.25,24,18),mat));
+  for(const sx of [-0.09,0.09]){ const e=new THREE.Mesh(new THREE.SphereGeometry(0.04,10,8),animalDark); e.position.set(sx,0.03,0.22); head.add(e);
+    const ch=new THREE.Mesh(new THREE.SphereGeometry(0.045,10,8),std('#ffb3c1')); ch.scale.set(1,0.6,0.4); ch.position.set(sx*1.8,-0.06,0.2); head.add(ch); }
+  if(cat){ for(const sx of [-0.13,0.13]){ const ear=new THREE.Mesh(new THREE.ConeGeometry(0.08,0.14,12),mat); ear.position.set(sx,0.22,0); head.add(ear); } }
+  else { for(const sx of [-1,1]){ const ear=new THREE.Mesh(new THREE.SphereGeometry(0.09,12,10),acc); ear.scale.set(0.6,1.2,0.6); ear.position.set(sx*0.22,0.02,0); head.add(ear); } }
+  const legs=[[-0.13,0.15],[0.13,0.15],[-0.13,-0.15],[0.13,-0.15]].map(([x,z])=>{ const l=new THREE.Group(); l.position.set(x,0.16,z); const m=new THREE.Mesh(new THREE.SphereGeometry(0.08,12,10),mat); m.position.y=-0.08; l.add(m); root.add(l); return l; });
+  const tail=new THREE.Group(); tail.position.set(0,0.42,-0.32); const tm=new THREE.Mesh(new THREE.SphereGeometry(0.08,12,10),cat?mat:acc); tm.position.y=0.08; tail.add(tm); root.add(tail);
+  g.scale.setScalar(cat?0.85:1);
+  g.userData={ root, legs, tail, head, kind, style:'round', phase:Math.random()*10, rest:Math.random()*3, target:null, profile:{ animal:true, kind, nick:name } };
+  return g; }
+// 도트·2D: 이미지 한 장을 항상 카메라를 보는 판(빌보드)으로 세운다. 도트는 픽셀이 뭉개지지 않게 NearestFilter
+function makeSpriteAnimal(kind,url,height,name,pixel){
+  const g=new THREE.Group(), root=new THREE.Group(); g.add(root);
+  const mat=new THREE.SpriteMaterial({ transparent:true, alphaTest:0.5 }); const sp=new THREE.Sprite(mat); sp.center.set(0.5,0); root.add(sp);
+  new THREE.TextureLoader().load(url,(t)=>{ t.colorSpace=THREE.SRGBColorSpace; if(pixel){ t.magFilter=THREE.NearestFilter; t.minFilter=THREE.NearestFilter; t.generateMipmaps=false; }
+    mat.map=t; mat.needsUpdate=true; const asp=t.image.width/t.image.height; sp.scale.set(height*asp,height,1); g.userData.w=height*asp; });
+  sp.scale.set(height*0.8,height,1);
+  g.userData={ root, sprite:sp, kind, style:'sprite', w:height*0.8, phase:Math.random()*10, rest:Math.random()*3, target:null, bubbleY:height+0.35, profile:{ animal:true, kind, nick:name } };
+  return g; }
+// 실사: AI로 만든 고화질 3D 모델(GLB). 네 발 동물은 자동 뼈대가 어색해서 한자리에서 자는 연출 + 숨쉬기
+function makeModelAnimal(kind,url,size,name,says){
+  const g=new THREE.Group(), root=new THREE.Group(); g.add(root);
+  new GLTFLoader().load(url,(gltf)=>{ const m=gltf.scene; const bb=new THREE.Box3().setFromObject(m), sz=bb.getSize(new THREE.Vector3()), c=bb.getCenter(new THREE.Vector3());
+    const k=size/Math.max(sz.x,sz.z); m.scale.setScalar(k); m.position.set(-c.x*k,-bb.min.y*k,-c.z*k); root.add(m); g.userData.bubbleY=sz.y*k+0.5; });
+  g.userData={ root, kind, style:'model', says, phase:Math.random()*10, bubbleY:0.9, profile:{ animal:true, kind, nick:name } };
+  return g; }
 function makeQuad(kind,color,accent,name){
   const cat=kind==='cat', g=new THREE.Group(), root=new THREE.Group(); g.add(root);
   const mat=std(color), acc=std(accent);
@@ -419,6 +468,12 @@ addAnimal(makeQuad('dog','#c98b4f','#8a5a2b','보리'), new THREE.Vector3(-6,0,6
 addAnimal(makeQuad('dog','#f3efe6','#d9c3a5','콩이'), new THREE.Vector3(7,0,-4));
 addAnimal(makeQuad('cat','#f0a35a','#f0a35a','치즈'), new THREE.Vector3(-8,0,-6));
 addAnimal(makeQuad('cat','#8e949c','#8e949c','회색이'), new THREE.Vector3(5,0,12));
+addAnimal(makeVoxelQuad('cat','#e8a35a','#e8a35a','블록냥'), new THREE.Vector3(-4,0,-9));
+addAnimal(makeVoxelQuad('dog','#d8c3a0','#9c7a4f','블록멍'), new THREE.Vector3(9,0,7));
+addAnimal(makeRoundQuad('cat','#fff1e6','#fff1e6','동글이'), new THREE.Vector3(-6,0,1));
+addAnimal(makeSpriteAnimal('cat','/plaza/assets/cat_pixel.png',0.85,'도트냥',true), new THREE.Vector3(6,0,2));
+addAnimal(makeSpriteAnimal('cat','/plaza/assets/cat_toon.webp',0.9,'구름이',false), new THREE.Vector3(-3,0,8));
+{ const sleepy=makeModelAnimal('cat','/plaza/assets/cat_real.glb',1.0,'치즈냥',['쿨쿨… zZ','골골골…','(꼬리만 살랑)']); sleepy.position.set(-2.1,0,4.7); sleepy.rotation.y=0.6; scene.add(sleepy); animals.push(sleepy); }
 for(let i=0;i<5;i++){ const a=Math.random()*Math.PI*2, r=4.5+Math.random()*3; addAnimal(makePigeon(), new THREE.Vector3(Math.cos(a)*r,0,Math.sin(a)*r)); }
 // 누르면 말풍선 + 반응(강아지는 잠깐 따라옴, 고양이는 쳐다봄, 비둘기는 날아감)
 const ANIMAL_SAYS={ dog:['멍멍!','왈왈!','헥헥'], cat:['야옹~','냐아','골골골…'], pigeon:['구구구','푸드덕!'] };
@@ -427,11 +482,12 @@ function animalBubble(g,text){ const u=g.userData; if(u.bubble){ u.root.remove(u
   c.fillStyle='#ffffff'; roundRect(c,14,10,272,74,37); c.fill(); c.beginPath(); c.moveTo(136,82); c.lineTo(150,104); c.lineTo(164,82); c.fill();
   c.fillStyle='#4a3a2a'; c.font='bold 40px Jua, sans-serif'; c.textAlign='center'; c.textBaseline='middle'; c.fillText(text,150,48);
   const tex=new THREE.CanvasTexture(cv); tex.colorSpace=THREE.SRGBColorSpace;
-  const sp=new THREE.Sprite(new THREE.SpriteMaterial({ map:tex, transparent:true, depthTest:false })); sp.scale.set(1.1,0.4,1); sp.position.y=u.kind==='pigeon'?0.8:1.35; u.root.add(sp); u.bubble=sp; u.bubbleT=1.8; }
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({ map:tex, transparent:true, depthTest:false })); sp.scale.set(1.1,0.4,1); sp.position.y=u.bubbleY||(u.kind==='pigeon'?0.8:1.35); u.root.add(sp); u.bubble=sp; u.bubbleT=1.8; }
 function pigeonFly(g){ const u=g.userData; u.state='fly'; u.from=g.position.clone(); u.to=pickWanderTarget(4,15); u.t=0; u.dur=1.6+Math.random()*0.6; g.rotation.y=Math.atan2(u.to.x-u.from.x,u.to.z-u.from.z); }
 function reactAnimal(prof){ const g=animals.find(a=>a.userData.profile===prof); if(!g) return; const u=g.userData;
   if(u.kind==='pigeon'){ animalBubble(g,'푸드덕!'); for(const p of animals) if(p.userData.kind==='pigeon' && p.userData.state==='ground' && p.position.distanceTo(g.position)<3) pigeonFly(p); return; }
-  animalBubble(g,pickA(ANIMAL_SAYS[u.kind])); u.rest=0; u.target=null; g.rotation.y=Math.atan2(hero.position.x-g.position.x, hero.position.z-g.position.z);
+  if(u.style==='model'){ animalBubble(g,pickA(u.says)); return; } // 자는 고양이는 깨지 않는다
+  animalBubble(g,pickA(ANIMAL_SAYS[u.kind])); u.rest=0; u.target=null; if(u.style==='sprite'){ u.rest=2.5; u.hop=0.0001; return; } g.rotation.y=Math.atan2(hero.position.x-g.position.x, hero.position.z-g.position.z);
   if(u.kind==='dog'){ u.follow=6; u.hop=0.0001; } else { u.rest=2.5; } }
 
 // ── AI NPC "키키": 광장 안내 + 소개팅 대화 연습 (대화는 /api/plaza/npc, 비회원도 가능) ──
@@ -799,19 +855,19 @@ addEventListener('pointerup',(e)=>{ if(e.pointerId!==dragId) return; const wasDr
 canvasEl.addEventListener('wheel',(e)=>{ camDist=Math.min(24,Math.max(7,camDist+Math.sign(e.deltaY)*1.3)); },{passive:true});
 
 // ── 키링 월드 입장 동의 (버전이 바뀌면 다시 받는다 — 예: 1:1 성사 후 프로필 사진 공개 기능 추가 시) ──
-const CONSENT_VER='2026-11-04', CONSENT_LS='kl_world_consent';
+const CONSENT_VER='2026-11-04.2', CONSENT_LS='kl_world_consent'; // .2: 선택 '프로필 공개' 항목 추가
 var consent=null; try{ const v=JSON.parse(localStorage.getItem(CONSENT_LS)||'null'); if(v && v.v===CONSENT_VER) consent=v; }catch(e){}
 var consentBox=document.getElementById('consent');
-const C_ITEMS=['cAge','cRules','cPrivacy'], C_REQ=C_ITEMS;
+const C_ITEMS=['cAge','cRules','cPrivacy','cProfile'], C_REQ=['cAge','cRules','cPrivacy'];
 const cEl=(id)=>document.getElementById(id);
 function syncConsent(){ cEl('consentGo').disabled=!C_REQ.every(id=>cEl(id).checked); cEl('cAll').checked=C_ITEMS.every(id=>cEl(id).checked); }
 cEl('cAll').onchange=(e)=>{ for(const id of C_ITEMS) cEl(id).checked=e.target.checked; syncConsent(); };
 for(const id of C_ITEMS) cEl(id).onchange=syncConsent;
 document.querySelectorAll('#consent .c-more').forEach(b=>b.onclick=(e)=>{ e.preventDefault(); const d=b.closest('.c-row').querySelector('.c-detail'); d.hidden=!d.hidden; b.textContent=d.hidden?'보기':'접기'; });
 function saveConsent(c){ consent=c; try{ localStorage.setItem(CONSENT_LS, JSON.stringify(c)); }catch(e){} }
-async function postConsent(c){ try{ const init={ method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ dev:DEV_ID, age:true, rules:true, privacy:true }) };
+async function postConsent(c){ try{ const init={ method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ dev:DEV_ID, age:true, rules:true, privacy:true, profileShare:!!c.profileShare }) };
   const r=fbUser ? await authFetch('/api/plaza/consent',init) : await fetch('/api/plaza/consent',init); return r.ok; }catch(e){ return false; } }
-cEl('consentGo').onclick=async()=>{ const c={ v:CONSENT_VER, at:Date.now() }; saveConsent(c); consentBox.hidden=true; postConsent(c); };
+cEl('consentGo').onclick=async()=>{ const c={ v:CONSENT_VER, profileShare:cEl('cProfile').checked, at:Date.now() }; saveConsent(c); consentBox.hidden=true; postConsent(c); };
 if(!consent) consentBox.hidden=false;
 
 // ── 루프 ──
@@ -862,7 +918,18 @@ function tick(){
       if(!u.target||g.position.distanceTo(u.target)<0.15){ u.target=g.position.clone().add(new THREE.Vector3((Math.random()-0.5)*2.4,0,(Math.random()-0.5)*2.4)); u.rest=0.6+Math.random()*2; continue; }
       const dir=u.target.clone().sub(g.position); dir.y=0; dir.normalize(); g.position.addScaledVector(dir,0.7*dt); pushOut(g); g.rotation.y=Math.atan2(dir.x,dir.z);
       u.head.rotation.x=0; u.root.position.y=Math.abs(Math.sin(u.phase*14))*0.03; continue; }
-    // 강아지·고양이
+    if(u.style==='model'){ u.root.scale.y=1+Math.sin(u.phase*1.7)*0.025; u.root.scale.x=u.root.scale.z=1-Math.sin(u.phase*1.7)*0.01; continue; }
+    if(u.style==='sprite'){
+      if(u.hop){ u.hop+=dt; u.root.position.y=Math.max(0,Math.sin(u.hop*Math.PI/0.35)*0.3); if(u.hop>0.35){ u.hop=0; u.root.position.y=0; } }
+      if(u.rest>0){ u.rest-=dt; if(!u.hop) u.root.position.y=L(u.root.position.y,0,0.2); continue; }
+      if(!u.target||g.position.distanceTo(u.target)<0.5){ if(u.target){ u.target=null; u.rest=3+Math.random()*5; continue; } u.target=pickWanderTarget(); u.stuck=0; }
+      const dir=u.target.clone().sub(g.position); dir.y=0; dir.normalize(); const px=g.position.x, pz=g.position.z, sp=1.3*dt;
+      g.position.addScaledVector(dir,sp); pushOut(g);
+      u.stuck = Math.hypot(g.position.x-px, g.position.z-pz) < sp*0.3 ? (u.stuck||0)+dt : 0; if(u.stuck>0.6){ u.target=pickWanderTarget(); u.stuck=0; }
+      const camRight=new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld,0); // 화면 기준 오른쪽으로 가면 그림 그대로, 왼쪽이면 좌우 반전
+      u.sprite.scale.x=Math.abs(u.w)*(dir.dot(camRight)<0?-1:1);
+      if(!u.hop) u.root.position.y=Math.abs(Math.sin(u.phase*9))*0.07; continue; }
+    // 강아지·고양이(로우폴리·블록·동글이)
     if(u.hop){ u.hop+=dt; g.position.y=Math.max(0,Math.sin(u.hop*Math.PI/0.35)*0.35); if(u.hop>0.35){ u.hop=0; g.position.y=0; } }
     u.tail.rotation.z=Math.sin(u.phase*(u.kind==='dog'?(u.follow>0?18:8):2))*(u.kind==='dog'?0.5:0.25);
     if(u.follow>0){ u.follow-=dt; const off=hero.position.clone().sub(g.position); off.y=0; if(off.length()>1.6){ u.target=hero.position.clone().addScaledVector(off.normalize(),-1.2); u.rest=0; } else { u.target=null; u.rest=0.2; g.rotation.y=Math.atan2(off.x,off.z); } }
@@ -875,7 +942,7 @@ function tick(){
       const moved=Math.hypot(g.position.x-px, g.position.z-pz); u.stuck = moved < sp*0.3 ? (u.stuck||0)+dt : 0; // 막히면 다른 곳으로(제자리 걸음 방지)
       if(u.stuck>0.6){ u.target=pickWanderTarget(); u.stuck=0; }
       g.rotation.y=Math.atan2(dir.x,dir.z); const s=Math.sin(u.phase*(u.kind==='dog'?14:10))*0.6;
-      u.legs[0].rotation.x=s; u.legs[3].rotation.x=s; u.legs[1].rotation.x=-s; u.legs[2].rotation.x=-s; u.root.position.y=Math.abs(s)*0.03; } }
+      u.legs[0].rotation.x=s; u.legs[3].rotation.x=s; u.legs[1].rotation.x=-s; u.legs[2].rotation.x=-s; u.root.position.y=Math.abs(s)*(u.style==='round'?0.09:0.03); } }
   renderer.render(scene,camera); requestAnimationFrame(tick);
 }
 tick();

@@ -4,7 +4,8 @@ import crypto from 'crypto';
 // key: 회원 'u:<uid>' / 비회원 'g:<광장 기기 id 해시>'
 // 필수 3개(만 19세·이용 수칙·개인정보 수집)를 남긴다. AI 키키 대화의 해외 처리(Anthropic 미국)는 별도 동의 없이
 // 개인정보 항목 안내 + 개인정보처리방침 공개로 처리(개인정보보호법 제28조의8 제1항 제3호) — 방침 개정 때 반드시 반영.
-export const CONSENT_VERSION = '2026-11-04';
+// 2026-11-04.2: 선택 항목 '프로필 공개'(1:1 성사 상대·포인트 열람 회원에게 사진 등 공개) — 결제 기능 출시 전 미리 동의
+export const CONSENT_VERSION = '2026-11-04.2';
 
 export const guestKeyOf = (dev: unknown) => {
   const d = String(dev ?? '');
