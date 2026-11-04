@@ -4,7 +4,8 @@ import { adminDb, adminAuth } from '@/lib/firebaseAdmin';
 import { rateLimitOr429, clientIp } from '@/lib/rateLimit';
 import { CONSENT_VERSION, consentKey } from '@/lib/plazaConsent';
 
-// 키링 월드 입장 동의 저장 — 필수 3개(만 19세·이용 수칙·개인정보)는 모두 true여야 한다. 프로필 공개(profileShare)는 선택.
+// 키링 월드 입장 동의 저장 — 필수 3개(만 19세·이용 수칙·개인정보)는 모두 true여야 한다.
+// 개인정보 항목에 회원 간 프로필 공개가 포함돼 있으므로 profileShare=true로 기록(나중에 설정에서 끌 수 있게 할 것).
 // 회원은 로그인 토큰, 비회원은 광장 기기 id로 기록한다(동의 증빙).
 export async function POST(req: Request) {
   try {
@@ -26,8 +27,7 @@ export async function POST(req: Request) {
     await ref.set({
       version: CONSENT_VERSION,
       age: true, rules: true, privacy: true,
-      profileShare: b.profileShare === true,
-      profileShareAt: b.profileShare === true ? FieldValue.serverTimestamp() : null,
+      profileShare: true,
       member: !!uid,
       agreedAt: FieldValue.serverTimestamp(),
       ...(existed ? {} : { firstAgreedAt: FieldValue.serverTimestamp() }),
