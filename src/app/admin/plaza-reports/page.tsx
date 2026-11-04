@@ -3,10 +3,11 @@
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { auth } from '@/lib/firebase';
-import { Loader2, RefreshCw, Bell, CheckCircle2, RotateCcw } from 'lucide-react';
+import { Loader2, RefreshCw, Bell, CheckCircle2, RotateCcw, Ban } from 'lucide-react';
 
 interface Report {
   id: string; reporter: string; reporterNick: string; targetUid: string | null; targetKey: string | null;
+  targetType: 'member' | 'guest'; tid: string | null;
   targetNick: string; reason: string; detail: string; convId: string | null; status: 'open' | 'resolved'; createdAt: number | null;
 }
 interface Msg { id: string; from: string; text: string; at: number | null }
@@ -25,6 +26,8 @@ export default function PlazaReportsPage() {
   const [sel, setSel] = useState<Report | null>(null);
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [msgLoading, setMsgLoading] = useState(false);
+  const [ban, setBan] = useState<{ known: boolean; bannedUntil: number } | null>(null);
+  const [banBusy, setBanBusy] = useState(false);
 
   const authed = async (url: string, init: RequestInit = {}) => {
     const t = await auth.currentUser?.getIdToken();
@@ -44,8 +47,34 @@ export default function PlazaReportsPage() {
   }, []);
   useEffect(() => { load(); }, [load]);
 
+  const loadBan = async (rep: Report) => {
+    setBan(null);
+    if (!rep.tid) return;
+    const r = await authed('/api/admin/plaza/ban', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tids: [rep.tid] }) });
+    const j = await r.json().catch(() => ({}));
+    setBan(j.status?.[rep.tid] || { known: false, bannedUntil: 0 });
+  };
+  const doBan = async (rep: Report, hours: number) => {
+    if (!rep.tid) return;
+    setBanBusy(true);
+    try {
+      const r = await authed('/api/admin/plaza/ban', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tid: rep.tid, hours }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) alertMsg(j.error === 'unknown_target' ? '최근 7일 안에 접속 기록이 없어 차단할 수 없어요' : '차단 실패: ' + (j.error || r.status));
+      await loadBan(rep);
+    } finally { setBanBusy(false); }
+  };
+  const doUnban = async (rep: Report) => {
+    if (!rep.tid) return;
+    setBanBusy(true);
+    try { await authed('/api/admin/plaza/ban?tid=' + encodeURIComponent(rep.tid), { method: 'DELETE' }); await loadBan(rep); }
+    finally { setBanBusy(false); }
+  };
+  const [notice, setNotice] = useState('');
+  const alertMsg = (m: string) => { setNotice(m); setTimeout(() => setNotice(''), 4000); };
+
   const open = async (rep: Report) => {
-    setSel(rep); setMsgs([]);
+    setSel(rep); setMsgs([]); loadBan(rep);
     if (!rep.convId) return;
     setMsgLoading(true);
     try {
@@ -126,6 +155,29 @@ export default function PlazaReportsPage() {
                     </button>
                   )}
                 </div>
+              </div>
+              <div style={{ marginTop: 12, padding: 12, border: '1px solid #f3d6d6', background: '#fff8f8', borderRadius: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 13 }}>
+                  <Ban size={15} color="#c0392b" />
+                  <b>광장 입장 금지</b>
+                  <span style={{ background: sel.targetType === 'member' ? '#e8f0ff' : '#f1f1f1', color: '#33415a', borderRadius: 6, padding: '1px 7px', fontSize: 12 }}>{sel.targetType === 'member' ? '회원' : '손님'}</span>
+                  <span style={{ color: '#67768b' }}>
+                    {!ban ? '상태 확인 중…' : ban.bannedUntil ? (ban.bannedUntil > 8e15 ? '영구 금지 중' : '금지 중 · ' + fmt(ban.bannedUntil) + ' 해제') : (ban.known ? '제한 없음' : '최근 접속 기록 없음')}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
+                  {[[24, '24시간'], [168, '7일'], [0, '영구']].map(([h, label]) => (
+                    <button key={String(h)} disabled={banBusy || !sel.tid} onClick={() => doBan(sel, Number(h))}
+                      style={{ padding: '7px 12px', borderRadius: 9, border: 'none', background: Number(h) === 0 ? '#7a1f1f' : '#c0392b', color: '#fff', fontWeight: 700, cursor: 'pointer', opacity: banBusy ? 0.6 : 1 }}>
+                      {label} 금지
+                    </button>
+                  ))}
+                  {ban?.bannedUntil ? (
+                    <button disabled={banBusy} onClick={() => doUnban(sel)} style={{ padding: '7px 12px', borderRadius: 9, border: '1px solid #e2e6ee', background: '#fff', fontWeight: 600, cursor: 'pointer' }}>해제</button>
+                  ) : null}
+                </div>
+                <div style={{ fontSize: 12, color: '#8a98ab', marginTop: 8, lineHeight: 1.6 }}>지금 접속 중이면 즉시 퇴장돼요. 기기와 IP(암호화된 값)로 다시 들어오지 못하게 막아요.</div>
+                {notice && <div style={{ fontSize: 13, color: '#c0392b', marginTop: 6 }}>{notice}</div>}
               </div>
               <div style={{ fontSize: 13, color: '#67768b', marginTop: 8, lineHeight: 1.7 }}>
                 신고자: {sel.reporterNick || '-'} · {fmt(sel.createdAt)}<br />

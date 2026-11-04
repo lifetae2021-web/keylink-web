@@ -21,7 +21,7 @@ export async function GET(req: Request) {
       const x = d.data() as Record<string, any>;
       return {
         id: d.id, reporter: x.reporter, reporterNick: x.reporterNick || '', targetUid: x.targetUid || null,
-        targetKey: x.targetKey || null, targetNick: x.targetNick || '', reason: x.reason, detail: x.detail || '',
+        targetKey: x.targetKey || null, targetType: x.targetType || (x.targetKey ? 'member' : 'guest'), tid: x.tid || (x.targetKey ? 'k:' + x.targetKey : null), targetNick: x.targetNick || '', reason: x.reason, detail: x.detail || '',
         convId: x.convId || null, status: x.status || 'open', createdAt: x.createdAt?.toMillis?.() || null,
       };
     });

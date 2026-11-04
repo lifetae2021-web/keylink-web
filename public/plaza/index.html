@@ -78,6 +78,8 @@
   .msg.me { align-self:flex-end; background:var(--accent); color:#fff; border-bottom-right-radius:5px; }
   .nick-hint { margin-top:6px; font-size:.78rem; color:#8a98ab; word-break:keep-all; }
   #nick[readonly] { background:rgba(120,160,210,.10); color:#8a98ab; cursor:not-allowed; }
+  #bannedBox { position:fixed; inset:0; z-index:40; display:grid; place-items:center; background:rgba(30,40,60,.55); padding:16px; }
+  .npc-tag { display:inline-block; margin-bottom:6px; padding:2px 10px; border-radius:999px; background:rgba(120,160,210,.16); color:#5b6f8c; font-size:.78rem; word-break:keep-all; }
   .safety-row { display:flex; justify-content:center; gap:14px; margin-top:12px; }
   .safety-row button { border:none; background:none; color:#8a98ab; font-family:inherit; font-size:.85rem; cursor:pointer; padding:4px 6px; }
   .chat-tools { display:flex; align-items:center; gap:4px; }
@@ -321,24 +323,33 @@ const PLAZA_WS = 'wss://keylink-plaza.keylink-plaza-cf.workers.dev'; // Cloudfla
 const _wsBase = new URLSearchParams(location.search).get('ws')
   || ((location.hostname==='localhost'||location.hostname==='127.0.0.1') ? 'ws://127.0.0.1:8787' : PLAZA_WS);
 const _wsRoom = new URLSearchParams(location.search).get('room');
-const WS_URL = _wsBase ? (_wsBase.replace(/\/+$/,'') + '/ws' + (_wsRoom ? ('?room=' + encodeURIComponent(_wsRoom)) : '')) : '';
+let DEV_ID=''; try{ DEV_ID=localStorage.getItem('kl_dev')||''; if(!DEV_ID){ DEV_ID=(crypto.randomUUID?crypto.randomUUID():Math.random().toString(36).slice(2)+Date.now().toString(36)); localStorage.setItem('kl_dev',DEV_ID); } }catch(e){}
+const _wsQuery = new URLSearchParams(); if(_wsRoom) _wsQuery.set('room',_wsRoom); if(DEV_ID) _wsQuery.set('dev',DEV_ID);
+const WS_URL = _wsBase ? (_wsBase.replace(/\/+$/,'') + '/ws' + (_wsQuery.toString() ? '?'+_wsQuery.toString() : '')) : '';
 const peers=new Map(); // id -> { group, refs, target:{x,z,ry}, nick, phase, lastMove }
 const blocked=new Set();    // 내가 차단한 사람의 익명 키(회원) — 서버에 저장돼 다음에도 유지
 const blockedIds=new Set();  // 키가 없는 상대(손님)는 이번 접속 동안만 차단
-let roomFullUntil=0;
+let roomFullUntil=0, bannedUntil=0;
+function showBanned(until, reason){ bannedUntil=until||Date.now()+86400000; chat.hidden=true; card.hidden=true;
+  const forever=bannedUntil>8e15; const d=new Date(bannedUntil);
+  const when=forever?'영구적으로':(d.getMonth()+1)+'월 '+d.getDate()+'일 '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')+'까지';
+  let el=document.getElementById('bannedBox'); if(!el){ el=document.createElement('div'); el.id='bannedBox'; document.body.appendChild(el); }
+  el.innerHTML='<div class="card-box"><div class="card-name">광장 이용이 제한됐어요</div><div class="card-meta">'+(reason==='reports'?'여러 회원의 신고가 접수돼 ':'운영 정책 위반으로 ')+when+' 입장할 수 없어요.</div></div>';
+  el.hidden=false; }
 let ws=null, myId=null;
 const netDot=document.getElementById('netDot'), netTxt=document.getElementById('netTxt');
 function setNet(on, n){ netDot.className='dot '+(on?'on':'off'); netTxt.textContent = on ? ('접속 '+(n)+'명') : '오프라인 (혼자)'; }
-function addPeer(p){ if(p.id===myId||peers.has(p.id)) return; if((p.key && blocked.has(p.key)) || blockedIds.has(p.id)) return; /* 차단한 사람은 안 보임 */ const group=new THREE.Group(); const root=new THREE.Group(); group.add(root); const refs=makeBody(root, p.look||{clothes:'#5bb0d1',hairColor:'#6b4423',face:'round',hair:'short',eye:'round',nick:p.nick}); group.position.set(p.state?.x||0,0,p.state?.z||0); group.userData={ profile:{ nick:p.nick, id:p.id, key:p.key||null, gender:(p.look&&p.look.gender==='female')?'여':(p.look&&p.look.gender==='male')?'남':null } }; scene.add(group); peers.set(p.id,{ group, refs, root, key:p.key||null, target:{x:group.position.x,z:group.position.z,ry:0}, nick:p.nick, phase:Math.random()*10 }); updateCount(); }
+function addPeer(p){ if(p.id===myId||peers.has(p.id)) return; if((p.key && blocked.has(p.key)) || blockedIds.has(p.id)) return; /* 차단한 사람은 안 보임 */ const group=new THREE.Group(); const root=new THREE.Group(); group.add(root); const refs=makeBody(root, p.look||{clothes:'#5bb0d1',hairColor:'#6b4423',face:'round',hair:'short',eye:'round',nick:p.nick}); group.position.set(p.state?.x||0,0,p.state?.z||0); group.userData={ profile:{ nick:p.nick, id:p.id, key:p.key||null, gkey:p.gkey||null, gender:(p.look&&p.look.gender==='female')?'여':(p.look&&p.look.gender==='male')?'남':null } }; scene.add(group); peers.set(p.id,{ group, refs, root, key:p.key||null, target:{x:group.position.x,z:group.position.z,ry:0}, nick:p.nick, phase:Math.random()*10 }); updateCount(); }
 function updateCount(){ setNet(true, peers.size+1); }
 function connect(){
   if(!WS_URL){ setNet(false); return; } // 운영 실시간 서버 주소 미설정 → 혼자 모드(봇만)
   try{ ws=new WebSocket(WS_URL); }catch(e){ setNet(false); return; }
   ws.onopen=()=>{ ws.send(JSON.stringify({ t:'hello', room:'plaza', nick:opts.nick, look:opts, uid: myUid })); };
-  ws.onclose=()=>{ setNet(false); for(const [id,pr] of peers){ scene.remove(pr.group); } peers.clear(); const wait=Date.now()<roomFullUntil?30000:2500; setTimeout(()=>{ if(mode==='playing') connect(); }, wait); };
+  ws.onclose=()=>{ setNet(false); for(const [id,pr] of peers){ scene.remove(pr.group); } peers.clear(); if(bannedUntil>Date.now()) return; const wait=Date.now()<roomFullUntil?30000:2500; setTimeout(()=>{ if(mode==='playing') connect(); }, wait); };
   ws.onerror=()=>{ setNet(false); };
   ws.onmessage=(ev)=>{ let m; try{ m=JSON.parse(ev.data); }catch(e){ return; }
     if(m.t==='full'){ roomFullUntil=Date.now()+30000; toast('광장이 꽉 찼어요. 잠시 후 다시 연결할게요'); return; }
+    if(m.t==='banned'){ showBanned(m.until, m.reason); return; }
     if(m.t==='welcome'){ myId=m.id; if(m.nick && m.nick!==opts.nick) document.getElementById('hudNick').textContent=m.nick+' 님'; (m.peers||[]).forEach(addPeer); updateCount(); }
     else if(m.t==='join'){ addPeer(m); }
     else if(m.t==='peer'){ const pr=peers.get(m.id); if(pr) pr.target={x:m.x,z:m.z,ry:m.ry}; }
@@ -357,7 +368,7 @@ function sendPos(dt){ if(!ws||ws.readyState!==1) return; posTimer-=dt; if(posTim
 const card=document.getElementById('card'); let reqTarget=null;
 function openCard(profile){ document.exitPointerLock?.(); reqTarget=profile; document.getElementById('cardName').textContent=profile.nick;
   const meta=document.getElementById('cardMeta');
-  if(profile.bot) meta.innerHTML=`${profile.gender} · ${profile.age} · ${profile.region}<br>${profile.job?profile.job+'<br>':''}<span style="opacity:.85">“${profile.intro}”</span>`;
+  if(profile.bot) meta.innerHTML=`<span class="npc-tag">🤖 가상 이웃 · 실제 회원이 아니에요</span><br>${profile.gender} · ${profile.age} · ${profile.region}<br>${profile.job?profile.job+'<br>':''}<span style="opacity:.85">“${profile.intro}”</span>`;
   else meta.textContent=(profile.gender?profile.gender+' · ':'')+'지금 광장에 접속 중';
   document.getElementById('cardSafety').hidden=!!profile.bot;
   card.hidden=false; }
@@ -403,8 +414,8 @@ function openReport(t){ if(!t||t.bot) return; if(!fbUser){ openJoin(); return; }
 document.getElementById('reportClose').onclick=()=>{ reportBox.hidden=true; };
 reportBox.addEventListener('pointerdown',(e)=>{ if(e.target===reportBox) reportBox.hidden=true; });
 document.getElementById('reportSend').onclick=async()=>{ const t=reportTarget; if(!t) return;
-  try{ const r=await authFetch('/api/plaza/report',{ method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ targetKey:t.key||null, targetUid:t.uid||null, targetNick:t.nick, reason:reportReason, detail:document.getElementById('reportDetail').value }) });
-    if(r.ok){ reportBox.hidden=true; toast('신고가 접수됐어요. 확인 후 조치할게요'); } else { const j=await r.json().catch(()=>({})); toast(j.error==='no_target'?'손님은 신고할 수 없어요. 차단을 이용해 주세요':'신고 접수 실패'); }
+  try{ const r=await authFetch('/api/plaza/report',{ method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ targetKey:t.key||null, targetGkey:t.gkey||null, targetUid:t.uid||null, targetNick:t.nick, reason:reportReason, detail:document.getElementById('reportDetail').value }) });
+    if(r.ok){ reportBox.hidden=true; toast('신고가 접수됐어요. 확인 후 조치할게요'); if(t.id && ws && ws.readyState===1){ try{ ws.send(JSON.stringify({ t:'report', to:t.id })); }catch(e){} } } else { const j=await r.json().catch(()=>({})); toast(j.error==='no_target'?'손님은 신고할 수 없어요. 차단을 이용해 주세요':'신고 접수 실패'); }
   }catch(e){ toast('네트워크 오류예요'); } };
 function askConfirm(title,msg,yes){ document.exitPointerLock?.(); document.getElementById('confirmTitle').textContent=title; document.getElementById('confirmMsg').textContent=msg; confirmYesFn=yes; confirmBox.hidden=false; }
 document.getElementById('confirmNo').onclick=()=>{ confirmBox.hidden=true; confirmYesFn=null; };

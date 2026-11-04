@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { adminDb, adminAuth } from '@/lib/firebaseAdmin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { plazaKey } from '@/lib/plazaKey';
 
 // 광장 신고 접수 — plazaReports 에 저장, 관리자가 /admin/plaza-reports 에서 확인.
 // 1:1 대화 상대를 신고하면 그 대화(convId)를 같이 연결해 관리자가 바로 열람할 수 있게 한다.
@@ -17,9 +18,10 @@ export async function POST(req: Request) {
     const reason = REASONS.includes(b.reason) ? b.reason : '기타';
     const targetKey = str(b.targetKey, 32).replace(/[^a-f0-9]/g, '') || null;
     let targetUid = str(b.targetUid, 128) || null;
+    const targetGkey = str(b.targetGkey, 32).replace(/[^a-f0-9]/g, '') || null; // 손님 신고용 기기 해시
     const targetNick = str(b.targetNick, 12);
     const detail = str(b.detail, 500);
-    if (!targetKey && !targetUid) return NextResponse.json({ error: 'no_target' }, { status: 400 });
+    if (!targetKey && !targetUid && !targetGkey) return NextResponse.json({ error: 'no_target' }, { status: 400 });
     if (targetUid === reporter) return NextResponse.json({ error: 'self' }, { status: 400 });
 
     // 익명 키만 있으면 광장 프로필에서 실제 회원을 찾아 둔다(관리자 확인용)
@@ -28,10 +30,13 @@ export async function POST(req: Request) {
       if (!q.empty) targetUid = q.docs[0].id;
     }
     const convId = targetUid ? [reporter, targetUid].sort().join('__') : null;
+    // 실시간 서버에서 차단할 때 쓰는 대상 ID: 회원 'k:'+익명키 / 손님 'g:'+기기해시
+    const memberKey = targetKey || (targetUid ? plazaKey(targetUid) : null);
+    const tid = memberKey ? 'k:' + memberKey : (targetGkey ? 'g:' + targetGkey : null);
     const reporterNick = (await adminDb.collection('plazaProfiles').doc(reporter).get()).data()?.nick || '';
 
     const ref = await adminDb.collection('plazaReports').add({
-      reporter, reporterNick, targetUid, targetKey, targetNick, reason, detail, convId,
+      reporter, reporterNick, targetUid, targetKey: memberKey, targetGkey, targetType: memberKey ? 'member' : 'guest', tid, targetNick, reason, detail, convId,
       status: 'open', createdAt: FieldValue.serverTimestamp(),
     });
     return NextResponse.json({ ok: true, id: ref.id });
