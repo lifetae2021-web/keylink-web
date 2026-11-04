@@ -280,9 +280,14 @@ document.getElementById('jumpBtn').addEventListener('pointerdown',(e)=>{ e.preve
 let toastT; function toast(m){ let t=document.getElementById('toast'); if(!t){t=document.createElement('div');t.id='toast';document.body.appendChild(t);} t.textContent=m; clearTimeout(toastT); toastT=setTimeout(()=>t.remove(),2600); }
 
 // ── 네트워킹 ──
-const WS_URL = new URLSearchParams(location.search).get('ws')
-  || ((location.hostname==='localhost'||location.hostname==='127.0.0.1') ? 'ws://localhost:8787'
-      : (location.protocol==='https:'?'wss':'ws')+'://'+location.hostname+':8787');
+// 실시간 서버(Cloudflare Worker + Durable Objects). 로컬은 wrangler dev(8787), 운영은 배포 후 아래 한 줄을 채운다.
+// 배포하면 wss://keylink-plaza.<내 계정>.workers.dev 주소가 나오고, 그걸 PLAZA_WS 에 넣으면 됨.
+// ?ws= 로 임시 override, ?room=이름 으로 특정 방 입장(친구와 같은 방).
+const PLAZA_WS = 'wss://keylink-plaza.keylink-plaza-cf.workers.dev'; // Cloudflare Worker(실시간). 재배포하면 이 한 줄만.
+const _wsBase = new URLSearchParams(location.search).get('ws')
+  || ((location.hostname==='localhost'||location.hostname==='127.0.0.1') ? 'ws://localhost:8787' : PLAZA_WS);
+const _wsRoom = new URLSearchParams(location.search).get('room');
+const WS_URL = _wsBase ? (_wsBase.replace(/\/+$/,'') + '/ws' + (_wsRoom ? ('?room=' + encodeURIComponent(_wsRoom)) : '')) : '';
 const peers=new Map(); // id -> { group, refs, target:{x,z,ry}, nick, phase, lastMove }
 let ws=null, myId=null;
 const netDot=document.getElementById('netDot'), netTxt=document.getElementById('netTxt');
@@ -290,8 +295,9 @@ function setNet(on, n){ netDot.className='dot '+(on?'on':'off'); netTxt.textCont
 function addPeer(p){ if(p.id===myId||peers.has(p.id)) return; const group=new THREE.Group(); const root=new THREE.Group(); group.add(root); const refs=makeBody(root, p.look||{clothes:'#5bb0d1',hairColor:'#6b4423',face:'round',hair:'short',eye:'round',nick:p.nick}); group.position.set(p.state?.x||0,0,p.state?.z||0); group.userData={ profile:{ nick:p.nick, id:p.id, gender:(p.look&&p.look.gender==='female')?'여':(p.look&&p.look.gender==='male')?'남':null } }; scene.add(group); peers.set(p.id,{ group, refs, root, target:{x:group.position.x,z:group.position.z,ry:0}, nick:p.nick, phase:Math.random()*10 }); updateCount(); }
 function updateCount(){ setNet(true, peers.size+1); }
 function connect(){
+  if(!WS_URL){ setNet(false); return; } // 운영 실시간 서버 주소 미설정 → 혼자 모드(봇만)
   try{ ws=new WebSocket(WS_URL); }catch(e){ setNet(false); return; }
-  ws.onopen=()=>{ ws.send(JSON.stringify({ t:'hello', room:'plaza', nick:opts.nick, look:opts })); };
+  ws.onopen=()=>{ ws.send(JSON.stringify({ t:'hello', room:'plaza', nick:opts.nick, look:opts, uid: fbUser?fbUser.uid:null })); };
   ws.onclose=()=>{ setNet(false); for(const [id,pr] of peers){ scene.remove(pr.group); } peers.clear(); setTimeout(()=>{ if(mode==='playing') connect(); }, 2500); };
   ws.onerror=()=>{ setNet(false); };
   ws.onmessage=(ev)=>{ let m; try{ m=JSON.parse(ev.data); }catch(e){ return; }
@@ -299,9 +305,9 @@ function connect(){
     else if(m.t==='join'){ addPeer(m); }
     else if(m.t==='peer'){ const pr=peers.get(m.id); if(pr) pr.target={x:m.x,z:m.z,ry:m.ry}; }
     else if(m.t==='leave'){ const pr=peers.get(m.id); if(pr){ scene.remove(pr.group); peers.delete(m.id); updateCount(); } }
-    else if(m.t==='req'){ showReq(m.from, m.nick); }
-    else if(m.t==='accept'){ toast(`💗 ${m.nick}님과 매칭!`); openChat({ id:m.from, nick:m.nick, bot:false }); }
-    else if(m.t==='chat'){ onChatMsg(m.from, m.nick, m.text); }
+    else if(m.t==='req'){ showReq(m.from, m.nick, m.uid); }
+    else if(m.t==='accept'){ toast(`💗 ${m.nick}님과 매칭!`); openChat({ id:m.from, nick:m.nick, uid:m.uid, bot:false }); }
+    else if(m.t==='chat'){ onChatMsg(m.from, m.nick, m.text, m.uid); }
   };
 }
 let posTimer=0;
@@ -320,21 +326,26 @@ document.getElementById('cardReq').onclick=()=>{ const p=reqTarget; card.hidden=
   if(p.bot){ toast(`${p.nick}님에게 1:1 신청!`); setTimeout(()=>{ toast(`💗 ${p.nick}님이 수락했어요!`); openChat({ nick:p.nick, bot:true }); },1600); }
   else if(ws&&ws.readyState===1&&p.id){ ws.send(JSON.stringify({ t:'req', to:p.id })); toast(`${p.nick}님에게 1:1 신청!`); } };
 let incoming=null; const reqBox=document.getElementById('req');
-function showReq(fromId, nick){ document.exitPointerLock?.(); incoming={id:fromId,nick}; document.getElementById('reqTxt').textContent=`💌 ${nick}님이 1:1 대화를 신청했어요`; reqBox.hidden=false; }
-document.getElementById('reqYes').onclick=()=>{ if(incoming&&ws&&ws.readyState===1){ ws.send(JSON.stringify({ t:'accept', to:incoming.id })); openChat({ id:incoming.id, nick:incoming.nick, bot:false }); } reqBox.hidden=true; };
+function showReq(fromId, nick, uid){ document.exitPointerLock?.(); incoming={id:fromId,nick,uid}; document.getElementById('reqTxt').textContent=`💌 ${nick}님이 1:1 대화를 신청했어요`; reqBox.hidden=false; }
+document.getElementById('reqYes').onclick=()=>{ if(incoming&&ws&&ws.readyState===1){ ws.send(JSON.stringify({ t:'accept', to:incoming.id })); openChat({ id:incoming.id, nick:incoming.nick, uid:incoming.uid, bot:false }); } reqBox.hidden=true; };
 document.getElementById('reqNo').onclick=()=>{ reqBox.hidden=true; };
 
 // ── 1:1 대화창 ──
 const chat=document.getElementById('chat'), chatMsgs=document.getElementById('chatMsgs'), chatText=document.getElementById('chatText');
 let currentChat=null;
 const BOT_REPLIES=['안녕하세요! 반가워요 😊','말 걸어주셔서 고마워요','무슨 요일에 주로 시간 괜찮으세요?','저도 그거 좋아해요!','혹시 어느 동네 사세요?','오프라인에서도 보면 좋겠어요 ㅎㅎ'];
-function openChat(p){ document.exitPointerLock?.(); currentChat=p; document.getElementById('chatName').textContent='💬 '+p.nick; chatMsgs.innerHTML=''; chat.hidden=false; addMsg('them','1:1 대화가 연결됐어요! 인사 나눠보세요 🎉'); setTimeout(()=>chatText.focus(),60); }
+async function openChat(p){ document.exitPointerLock?.(); currentChat=p; document.getElementById('chatName').textContent='💬 '+p.nick; chatMsgs.innerHTML=''; chat.hidden=false; setTimeout(()=>chatText.focus(),60);
+  let loaded=false;
+  if(p.uid && fbUser && !p.bot){ loaded=await loadChatHistory(p.uid); }
+  if(!loaded) addMsg('them','1:1 대화가 연결됐어요! 인사 나눠보세요 🎉'); }
+async function loadChatHistory(uid){ try{ const t=await fbUser.getIdToken(); const r=await fetch('/api/plaza/chat/history?with='+encodeURIComponent(uid),{ headers:{ Authorization:'Bearer '+t } }); const j=await r.json().catch(()=>({})); const msgs=j.messages||[]; if(!msgs.length) return false; for(const m of msgs) addMsg(m.mine?'me':'them', m.text); return true; }catch(e){ return false; } }
 function addMsg(who,text){ const d=document.createElement('div'); d.className='msg '+who; d.textContent=text; chatMsgs.appendChild(d); chatMsgs.scrollTop=chatMsgs.scrollHeight; }
 document.getElementById('chatClose').onclick=()=>{ chat.hidden=true; currentChat=null; };
+async function persistChat(toUid,toNick,text){ if(!toUid||!fbUser) return; try{ const t=await fbUser.getIdToken(); await fetch('/api/plaza/chat/send',{ method:'POST', headers:{ 'Content-Type':'application/json', Authorization:'Bearer '+t }, body:JSON.stringify({ toUid, toNick, myNick:opts.nick, text }) }); }catch(e){} }
 document.getElementById('chatForm').addEventListener('submit',(e)=>{ e.preventDefault(); const t=chatText.value.trim(); if(!t||!currentChat) return; addMsg('me',t); chatText.value='';
   if(currentChat.bot){ setTimeout(()=>addMsg('them',pickA(BOT_REPLIES)),700+Math.random()*800); }
-  else if(ws&&ws.readyState===1){ ws.send(JSON.stringify({ t:'chat', to:currentChat.id, text:t })); } });
-function onChatMsg(from,nick,text){ if(!currentChat||currentChat.id!==from) openChat({ id:from, nick, bot:false }); addMsg('them',text); }
+  else if(ws&&ws.readyState===1){ ws.send(JSON.stringify({ t:'chat', to:currentChat.id, text:t })); persistChat(currentChat.uid, currentChat.nick, t); } });
+async function onChatMsg(from,nick,text,uid){ if(!currentChat||currentChat.id!==from){ await openChat({ id:from, nick, uid, bot:false }); } addMsg('them',text); }
 // ── 손님 → 회원 전환 게이트 (실제 키링크 로그인 연동) ──
 let member=false, fbUser=null;
 const joinBox=document.getElementById('join'); let pendingAfterJoin=null;

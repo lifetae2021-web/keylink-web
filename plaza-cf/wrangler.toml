@@ -1,0 +1,18 @@
+name = "keylink-plaza"
+main = "src/worker.js"
+compatibility_date = "2025-05-06"
+account_id = "addaa1759102ef6b26123b025ab4a981"
+
+# 방(PlazaRoom)과 접속자 집계(PlazaRegistry)를 Durable Object로.
+# 무료 플랜에서 돌리려면 반드시 SQLite 기반(new_sqlite_classes)이어야 한다.
+[[durable_objects.bindings]]
+name = "PLAZA_ROOM"
+class_name = "PlazaRoom"
+
+[[durable_objects.bindings]]
+name = "PLAZA_REGISTRY"
+class_name = "PlazaRegistry"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["PlazaRoom", "PlazaRegistry"]
