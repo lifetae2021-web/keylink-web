@@ -175,7 +175,7 @@ export default function Navbar() {
             </Link>
 
             {/* Desktop Nav */}
-            <nav style={{ display: 'flex', alignItems: 'center', gap: '4px' }} className="desktop-nav">
+            <nav style={{ display: 'flex', alignItems: 'center', gap: '4px' }} className="desktop-nav kl-desktop-nav">
               {navLinks.map((link) => {
                 const active = isLinkActive(link);
                 const isConversionMenu = link.href === '/events';
@@ -190,7 +190,7 @@ export default function Navbar() {
                     style={{
                       padding: '8px 16px', borderRadius: '8px', fontSize: '0.88rem', fontWeight: active ? '900' : '600',
                       color: active ? activeColor : '#333333', textDecoration: 'none', transition: 'all 0.2s',
-                      letterSpacing: '0.02em', background: active ? activeBg : 'transparent',
+                      letterSpacing: '0.02em', background: active ? activeBg : 'transparent', whiteSpace: 'nowrap',
                       cursor: 'pointer',
                     }}
                     onMouseEnter={(e) => { e.currentTarget.style.color = '#FF6F61'; e.currentTarget.style.background = 'rgba(255, 111, 97, 0.15)'; }}
@@ -206,7 +206,7 @@ export default function Navbar() {
                     style={{
                       padding: '8px 16px', borderRadius: '8px', fontSize: '0.88rem', fontWeight: active ? '900' : '600',
                       color: active ? activeColor : '#333333', textDecoration: 'none', transition: 'all 0.2s',
-                      letterSpacing: '0.02em', background: active ? activeBg : 'transparent',
+                      letterSpacing: '0.02em', background: active ? activeBg : 'transparent', whiteSpace: 'nowrap',
                     }}
                     onMouseEnter={(e) => { e.currentTarget.style.color = '#FF6F61'; e.currentTarget.style.background = 'rgba(255, 111, 97, 0.15)'; }}
                     onMouseLeave={(e) => { e.currentTarget.style.color = active ? activeColor : '#333333'; e.currentTarget.style.background = active ? activeBg : 'transparent'; }}
@@ -504,6 +504,14 @@ export default function Navbar() {
             height: 13px !important;
           }
         }
+        /* PC 중간 폭: 메뉴가 7개라 로그인(관리자·마이페이지·로그아웃) 상태에서 줄이 넘치지 않게 간격을 줄인다 */
+        @media (min-width: 1025px) and (max-width: 1399px) {
+          .kl-desktop-nav { gap: 0 !important; }
+          .kl-desktop-nav a { padding: 8px 9px !important; font-size: 0.82rem !important; }
+          .kl-mypage-btn { padding: 9px 14px !important; font-size: 0.8rem !important; white-space: nowrap; }
+          .desktop-only-btn { padding: 9px 12px !important; font-size: 0.8rem !important; white-space: nowrap; }
+        }
+        .kl-mypage-btn, .desktop-only-btn { white-space: nowrap; }
         @media (min-width: 1025px) {
           .mobile-menu-btn { display: none !important; }
           .desktop-only-btn { display: flex !important; }
