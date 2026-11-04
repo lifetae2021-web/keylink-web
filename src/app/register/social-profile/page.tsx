@@ -148,7 +148,8 @@ export default function SocialProfilePage() {
         // 쿠폰이 없는 경우에만 발급 (유효기간 3개월 = 90일)
         const expireAt = new Date();
         expireAt.setMonth(expireAt.getMonth() + 3);
-        await addDoc(couponsRef, {
+        // 쿠폰 번호를 'welcome'으로 고정 → 1인 1장 (보안 규칙이 이 형태만 허용)
+        await setDoc(doc(couponsRef, 'welcome'), {
           title: '웰컴 가입 축하 쿠폰',
           type: 'amount',
           value: 5000,

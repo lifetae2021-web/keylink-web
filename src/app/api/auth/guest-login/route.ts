@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { adminDb, adminAuth } from '@/lib/firebaseAdmin';
+import { rateLimitOr429, clientIp } from '@/lib/rateLimit';
 
 export async function POST(request: Request) {
   try {
@@ -8,6 +9,12 @@ export async function POST(request: Request) {
     if (!guestName || !guestId || !guestPw) {
       return NextResponse.json({ error: '이름, 생년월일, 비밀번호를 입력해주세요.' }, { status: 400 });
     }
+    // 비밀번호 대입 방지: IP당 15분 20회 + 같은 생년월일(guestId) 15분 10회
+    const limited = await rateLimitOr429([
+      ['guest-login-ip', clientIp(request), 20, 900000],
+      ['guest-login-id', String(guestId), 10, 900000],
+    ]);
+    if (limited) return limited;
 
     // Query Firestore for the non-member user by guestId and guestPw only
     const usersRef = adminDb.collection('users');

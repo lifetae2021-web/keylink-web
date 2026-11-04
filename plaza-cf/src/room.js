@@ -9,6 +9,19 @@
 //   tid  : 신고·차단 대상 ID = 'k:'+key(회원) 또는 'g:'+gkey(손님)
 import { nickProblem } from '../../public/plaza/badwords.js';
 import { shortHash } from './hash.js';
+import { verifyFirebaseIdToken } from './firebaseToken.js';
+
+// 도배 방지: 연결마다 종류별 초당 허용량(토큰 버킷). 넘치면 조용히 버린다.
+const RATE = { pos: [15, 20], chat: [2, 6], req: [0.5, 3], accept: [1, 5], chatbye: [1, 5], report: [0.2, 3], hello: [0.5, 3] };
+const buckets = new WeakMap(); // ws → { type: { t, at } } (재우면 초기화돼도 무방)
+function allow(ws, type) {
+  const [rate, burst] = RATE[type] || [5, 10];
+  let b = buckets.get(ws); if (!b) { b = {}; buckets.set(ws, b); }
+  const now = Date.now() / 1000, cur = b[type] || { t: burst, at: now };
+  cur.t = Math.min(burst, cur.t + (now - cur.at) * rate); cur.at = now;
+  if (cur.t < 1) { b[type] = cur; return false; }
+  cur.t -= 1; b[type] = cur; return true;
+}
 
 const AUTO_BAN_REPORTERS = 5;             // 서로 다른 회원 5명이
 const AUTO_BAN_WINDOW_MS = 10 * 60 * 1000; // 10분 안에 신고하면
@@ -94,14 +107,17 @@ export class PlazaRoom {
   async webSocketMessage(ws, message) {
     let m;
     try { m = JSON.parse(message); } catch (e) { return; }
+    if (typeof message === 'string' && message.length > 8000) return; // 비정상적으로 큰 메시지 무시
     const a = this.attach(ws);
     if (!a) return;
+    if (!m || typeof m.t !== 'string' || !allow(ws, m.t)) return;
 
     if (m.t === 'hello') {
       a.nick = this.clean(m.nick || '손님', 12);
       if (nickProblem(a.nick)) a.nick = '손님'; // 비속어·자음만 닉네임 차단
       a.look = (m.look && typeof m.look === 'object') ? m.look : {};
-      a.uid = m.uid ? this.clean(m.uid, 128) : null; // 회원 uid(영속 DM 대화방 키용). 1:1 상대에게만 전달.
+      // 회원 uid는 클라이언트 주장을 믿지 않고, Firebase 로그인 토큰을 구글 공개키로 검증해서만 얻는다(위조 방지).
+      a.uid = m.idToken ? await verifyFirebaseIdToken(m.idToken) : null;
       a.key = a.uid ? await shortHash('kl-plaza:', a.uid) : null;
       a.gkey = a.key ? null : await shortHash('kl-guest:', a.dev || a.id);
       a.tid = a.key ? 'k:' + a.key : 'g:' + a.gkey;

@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
+import { rateLimitOr429, clientIp } from '@/lib/rateLimit';
 
 export async function POST(req: NextRequest) {
   try {
     const { phone, excludeUid } = await req.json();
     if (!phone) return NextResponse.json({ error: '연락처를 입력해 주세요.' }, { status: 400 });
+    // 가입된 번호인지 대량 조회 방지: IP당 1시간 20회
+    const limited = await rateLimitOr429([['check-phone', clientIp(req), 20, 3600000]]);
+    if (limited) return limited;
 
     const snap = await adminDb.collection('users').where('phone', '==', phone).limit(1).get();
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
+import { rateLimitOr429, clientIp } from '@/lib/rateLimit';
 
 /**
  * v7.3.3 - ID Duplicate Check API
@@ -13,6 +14,9 @@ export async function POST(req: NextRequest) {
     if (!username || typeof username !== 'string') {
       return NextResponse.json({ error: '아이디를 입력해 주세요.' }, { status: 400 });
     }
+    // 아이디 대량 조회 방지: IP당 1시간 60회
+    const limited = await rateLimitOr429([['check-id', clientIp(req), 60, 3600000]]);
+    if (limited) return limited;
 
     // Admin SDK로 username 중복 조회 (보안 규칙 우회)
     const snapshot = await adminDb

@@ -361,10 +361,13 @@ const netDot=document.getElementById('netDot'), netTxt=document.getElementById('
 function setNet(on, n){ netDot.className='dot '+(on?'on':'off'); netTxt.textContent = on ? ('접속 '+(n)+'명') : '오프라인 (혼자)'; }
 function addPeer(p){ if(p.id===myId||peers.has(p.id)) return; if((p.key && blocked.has(p.key)) || blockedIds.has(p.id)){ hiddenPeers.set(p.id,p); return; } /* 차단한 사람은 안 보임 */ const group=new THREE.Group(); const root=new THREE.Group(); group.add(root); const refs=makeBody(root, p.look||{clothes:'#5bb0d1',hairColor:'#6b4423',face:'round',hair:'short',eye:'round',nick:p.nick}); group.position.set(p.state?.x||0,0,p.state?.z||0); group.userData={ look:p.look||null, profile:{ nick:p.nick, id:p.id, key:p.key||null, gkey:p.gkey||null, gender:(p.look&&p.look.gender==='female')?'여':(p.look&&p.look.gender==='male')?'남':null } }; scene.add(group); peers.set(p.id,{ group, refs, root, key:p.key||null, target:{x:group.position.x,z:group.position.z,ry:0}, nick:p.nick, phase:Math.random()*10 }); updateCount(); }
 function updateCount(){ setNet(true, peers.size+1); }
+// 입장 인사: 회원이면 uid 대신 Firebase 로그인 토큰을 보낸다 → 실시간 서버가 구글 서명을 검증해 진짜 uid를 얻음(위조 방지)
+async function sendHello(){ let idToken=null; try{ if(fbUser) idToken=await fbUser.getIdToken(); }catch(e){}
+  try{ if(ws && ws.readyState===1) ws.send(JSON.stringify({ t:'hello', room:'plaza', nick:opts.nick, look:opts, idToken })); }catch(e){} }
 function connect(){
   if(!WS_URL){ setNet(false); return; } // 운영 실시간 서버 주소 미설정 → 혼자 모드(봇만)
   try{ ws=new WebSocket(WS_URL); }catch(e){ setNet(false); return; }
-  ws.onopen=()=>{ ws.send(JSON.stringify({ t:'hello', room:'plaza', nick:opts.nick, look:opts, uid: myUid })); };
+  ws.onopen=()=>{ sendHello(); };
   ws.onclose=()=>{ setNet(false); for(const [id,pr] of peers){ scene.remove(pr.group); } peers.clear(); if(bannedUntil>Date.now()) return; const wait=Date.now()<roomFullUntil?30000:2500; setTimeout(()=>{ if(mode==='playing') connect(); }, wait); };
   ws.onerror=()=>{ setNet(false); };
   ws.onmessage=(ev)=>{ let m; try{ m=JSON.parse(ev.data); }catch(e){ return; }
@@ -526,7 +529,7 @@ onAuthStateChanged(fbAuth, async (u)=>{
   fbUser = (u && !u.isAnonymous) ? u : null;
   myUid = fbUser ? fbUser.uid : null;
   // 로그인 확정이 입장보다 늦었을 때, uid를 서버에 다시 알려 1:1 대화 저장이 되게 한다
-  if(fbUser && ws && ws.readyState===1 && mode==='playing'){ try{ ws.send(JSON.stringify({ t:'hello', room:'plaza', nick:opts.nick, look:opts, uid:myUid })); }catch(e){} }
+  if(fbUser && ws && ws.readyState===1 && mode==='playing'){ sendHello(); }
   if(!fbUser){ member=false; return; }
   loadBlocks();
   try{

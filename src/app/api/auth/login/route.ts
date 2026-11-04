@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
+import { rateLimitOr429, clientIp } from '@/lib/rateLimit';
 
 export async function POST(req: NextRequest) {
   try {
@@ -8,6 +9,9 @@ export async function POST(req: NextRequest) {
     if (!username) {
       return NextResponse.json({ error: '아이디를 입력해 주세요.' }, { status: 400 });
     }
+    // 아이디 대량 조회 방지: IP당 15분 60회
+    const limited = await rateLimitOr429([['login', clientIp(req), 60, 900000]]);
+    if (limited) return limited;
 
     // username으로 조회
     const byUsername = await adminDb.collection('users')

@@ -378,7 +378,7 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
           const expireAt = new Date();
           expireAt.setMonth(expireAt.getMonth() + 3);
           // Wait, addDoc creates a new auto-id doc, we can use doc() with batch
-          const couponRef = doc(collection(db, 'users', uid, 'coupons'));
+          const couponRef = doc(db, 'users', uid, 'coupons', 'welcome'); // 고정 번호 → 1인 1장
           batch.set(couponRef, {
             title: '웰컴 가입 축하 쿠폰',
             type: 'amount',
@@ -1242,7 +1242,7 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
         // 웰컴 가입 축하 쿠폰 발급
         const expireAt = new Date();
         expireAt.setMonth(expireAt.getMonth() + 3);
-        const couponRef = doc(collection(db, 'users', uid, 'coupons'));
+        const couponRef = doc(db, 'users', uid, 'coupons', 'welcome'); // 고정 번호 → 1인 1장
         batch.set(couponRef, {
           title: '웰컴 가입 축하 쿠폰',
           type: 'amount',

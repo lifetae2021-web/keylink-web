@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 // Force Turbopack cache invalidation
 import { adminDb } from '@/lib/firebaseAdmin';
+import { rateLimitOr429, clientIp } from '@/lib/rateLimit';
 
 export async function POST(request: Request) {
   try {
@@ -9,6 +10,9 @@ export async function POST(request: Request) {
     if (!name || !phone) {
       return NextResponse.json({ error: '이름과 전화번호를 입력해주세요.' }, { status: 400 });
     }
+    // 반복 대입 방지: IP당 1시간 10회
+    const limited = await rateLimitOr429([['find-id', clientIp(request), 10, 3600000]]);
+    if (limited) return limited;
 
     // 하이픈이 없이 숫자만 입력된 경우 자동 변환 (예: 01012345678 -> 010-1234-5678)
     let formattedPhone = phone.replace(/[^0-9]/g, '');

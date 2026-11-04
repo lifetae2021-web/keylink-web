@@ -14,8 +14,14 @@ service firebase.storage {
     }
 
     function isValidImage() {
-      // 20MB 제한 (이미지 크기 제한)
-      return request.resource.size < 20 * 1024 * 1024;
+      // 20MB 제한 + 이미지 또는 PDF(재직 증명 등)만
+      return request.resource.size < 20 * 1024 * 1024 &&
+        (request.resource.contentType.matches('image/.*') || request.resource.contentType == 'application/pdf');
+    }
+
+    // 본인 또는 관리자만 읽기. 화면에 보여줄 때는 저장된 다운로드 URL(토큰 포함)을 쓰므로 규칙과 무관하게 계속 열린다.
+    function canRead(userId) {
+      return isOwner(userId) || isAdmin();
     }
 
     // 관리자 여부 확인 (Firestore users 컬렉션의 role 필드 기준)
@@ -30,53 +36,60 @@ service firebase.storage {
     // 사용자 프로필 사진: profile_images/{uid}/...
     // ─────────────────────────────────────
     match /profile_images/{userId}/{allPaths=**} {
-      allow read: if true; // URL을 아는 경우 누구나 읽기 가능
-      allow write: if (isOwner(userId) || isAdmin()) && isValidImage();
+      allow read: if canRead(userId);
+      allow create, update: if (isOwner(userId) || isAdmin()) && isValidImage();
+      allow delete: if isOwner(userId) || isAdmin(); // 탈퇴 시 본인 파일 정리
     }
 
     // ─────────────────────────────────────
     // 재직/신분 증명 사진: verification_proofs/{uid}/...
     // ─────────────────────────────────────
     match /verification_proofs/{userId}/{allPaths=**} {
-      allow read: if true;
-      allow write: if (isOwner(userId) || isAdmin()) && isValidImage();
+      allow read: if canRead(userId);
+      allow create, update: if (isOwner(userId) || isAdmin()) && isValidImage();
+      allow delete: if isOwner(userId) || isAdmin(); // 탈퇴 시 본인 파일 정리
     }
 
     // ─────────────────────────────────────
     // 프라이빗 매칭 첨부: private_matching/{uid}/...
     // ─────────────────────────────────────
     match /private_matching/{userId}/{allPaths=**} {
-      allow read: if true;
-      allow write: if (isOwner(userId) || isAdmin()) && isValidImage();
+      allow read: if canRead(userId);
+      allow create, update: if (isOwner(userId) || isAdmin()) && isValidImage();
+      allow delete: if isOwner(userId) || isAdmin(); // 탈퇴 시 본인 파일 정리
     }
 
     // ─────────────────────────────────────
     // 신청서 첨부 사진: applications/{uid}/...
     // ─────────────────────────────────────
     match /applications/{userId}/{allPaths=**} {
-      allow read: if true;
-      allow write: if (isOwner(userId) || isAdmin()) && isValidImage();
+      allow read: if canRead(userId);
+      allow create, update: if (isOwner(userId) || isAdmin()) && isValidImage();
+      allow delete: if isOwner(userId) || isAdmin(); // 탈퇴 시 본인 파일 정리
     }
 
     // ─────────────────────────────────────
     // 레거시 경로 호환: users/{uid}/...
     // ─────────────────────────────────────
     match /users/{userId}/{allPaths=**} {
-      allow read: if true;
-      allow write: if (isOwner(userId) || isAdmin()) && isValidImage();
+      allow read: if canRead(userId);
+      allow create, update: if (isOwner(userId) || isAdmin()) && isValidImage();
+      allow delete: if isOwner(userId) || isAdmin(); // 탈퇴 시 본인 파일 정리
     }
 
     // ─────────────────────────────────────
     // CMS 관리자 업로드: cms_reviews/..., cms_partners/...
-    // (경로에 uid가 없으므로 로그인 사용자로 제한. 관리자 페이지는 클라이언트에서 인증 필요)
+    // 관리자만 올릴 수 있다(공개 사이트 이미지라 아무나 덮어쓰면 안 됨)
     // ─────────────────────────────────────
     match /cms_reviews/{allPaths=**} {
       allow read: if true;
-      allow write: if isSignedIn() && isValidImage();
+      allow create, update: if isAdmin() && isValidImage();
+      allow delete: if isAdmin();
     }
     match /cms_partners/{allPaths=**} {
       allow read: if true;
-      allow write: if isSignedIn() && isValidImage();
+      allow create, update: if isAdmin() && isValidImage();
+      allow delete: if isAdmin();
     }
 
     // ─────────────────────────────────────

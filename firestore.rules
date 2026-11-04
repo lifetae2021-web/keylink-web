@@ -59,8 +59,19 @@ service cloud.firestore {
       // v8.15.9: 쿠폰 및 포인트 내역 서브 컬렉션 권한 추가
       match /coupons/{couponId} {
         allow read: if isUser(userId) || isAdmin();
-        allow create: if isUser(userId);
-        allow update: if isUser(userId) || isAdmin();
+        // 회원이 직접 만들 수 있는 건 가입 축하 쿠폰 1장뿐: 번호 'welcome' 고정, 5,000원, 미사용, 유효기간 약 3개월 이내
+        // (그 외 쿠폰은 관리자 화면이나 서버(Admin SDK)가 발급)
+        allow create: if isAdmin() || (isUser(userId) && couponId == 'welcome' &&
+          request.resource.data.keys().hasOnly(['title', 'type', 'value', 'createdAt', 'expireAt', 'isUsed']) &&
+          request.resource.data.title == '웰컴 가입 축하 쿠폰' &&
+          request.resource.data.type == 'amount' &&
+          request.resource.data.value == 5000 &&
+          request.resource.data.isUsed == false &&
+          request.resource.data.expireAt < request.time + duration.value(100, 'd'));
+        // 회원은 '미사용 → 사용됨' 표시만 가능 (금액·유효기간 등은 못 바꿈)
+        allow update: if isAdmin() || (isUser(userId) &&
+          resource.data.isUsed == false && request.resource.data.isUsed == true &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isUsed', 'usedAt', 'usedInSession']));
         allow delete: if isAdmin();
       }
       match /pointHistory/{logId} {
@@ -97,9 +108,12 @@ service cloud.firestore {
       allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
       // 관리자: 모든 신청서 읽기/쓰기
       allow read, write: if isAdmin();
-      // 신규 신청: 본인 UID로만 생성 가능
+      // 신규 신청: 본인 UID로만, 상태는 '신청됨'만, 호수·출석 같은 관리자용 값은 넣을 수 없다
       allow create: if isSignedIn() &&
-        request.resource.data.userId == request.auth.uid;
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.get('status', 'applied') == 'applied' &&
+        !('slotNumber' in request.resource.data) &&
+        !('attended' in request.resource.data);
       // 비회원 신청서 → 회원 계정 이전은 서버(/api/applications/existing)가 문자 인증된 번호를 확인하고 처리한다
     }
 
@@ -137,8 +151,9 @@ service cloud.firestore {
     // matchingSummaries (매칭 요약) 컬렉션
     // ─────────────────────────────────────
     match /matchingSummaries/{sessionId} {
-      // 승인된 결과는 누구나 읽기 가능 (본인 결과 필터링은 클라이언트에서)
-      allow read: if resource.data.status == 'approved';
+      // 승인된 결과는 로그인한 사람만 읽기 (누가 누구와 매칭됐는지 담겨 있어 비로그인 공개 금지)
+      // TODO: 그 기수 참가자만 읽게 하려면 참가자 uid 배열(participants)을 문서에 두는 구조 변경 필요
+      allow read: if isSignedIn() && resource.data.status == 'approved';
       // 관리자: 모든 읽기/쓰기
       allow read, write: if isAdmin();
     }
