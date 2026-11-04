@@ -251,11 +251,9 @@ const SPAWN=new THREE.Vector3(0,0,11);
 const hero=new THREE.Group(); hero.position.copy(SPAWN); scene.add(hero);
 const rig={};
 const obstacles=[];
-// 봇 목표 지점: 건물·분수·나무 안쪽은 피해서 고른다
-function pickBotTarget(){ for(let i=0;i<12;i++){ const a=Math.random()*Math.PI*2, rad=3+Math.random()*14; const x=Math.cos(a)*rad, z=Math.sin(a)*rad;
+// 동물 목표 지점: 건물·분수·나무 안쪽은 피해서 고른다
+function pickWanderTarget(minR=3,maxR=17){ for(let i=0;i<12;i++){ const a=Math.random()*Math.PI*2, rad=minR+Math.random()*(maxR-minR); const x=Math.cos(a)*rad, z=Math.sin(a)*rad;
   if(obstacles.every(o=>Math.hypot(x-o.x,z-o.z)>o.r+0.6)) return new THREE.Vector3(x,0,z); } return new THREE.Vector3(0,0,8); }
-// 서 있을 때 자세: 팔다리를 부드럽게 원위치
-function botIdlePose(u){ const L=THREE.MathUtils.lerp; for(const k of ['legL','legR','armL','armR']) u.refs[k].rotation.x=L(u.refs[k].rotation.x,0,0.2); u.root.position.y=L(u.root.position.y,0,0.2); }
 function pushOut(obj){ for(const o of obstacles){ const dx=obj.position.x-o.x, dz=obj.position.z-o.z; const d=Math.hypot(dx,dz); if(d>1e-4 && d<o.r){ obj.position.x=o.x+dx/d*o.r; obj.position.z=o.z+dz/d*o.r; } } }
 function clearHero(){ for(const ch of [...hero.children]){ hero.remove(ch); ch.traverse?.(o=>o.geometry?.dispose?.()); } }
 function buildHero(o){ clearHero(); const root=new THREE.Group(); hero.add(root); rig.root=root; const r=makeBody(root,o); Object.assign(rig,r); }
@@ -302,20 +300,61 @@ document.getElementById('enterBtn').onclick=async()=>{ { const np=nickProblem(op
   try{ localStorage.setItem('kl_char',JSON.stringify(opts)); }catch(e){} document.getElementById('entry').remove(); document.getElementById('hud').hidden=false; document.getElementById('hudNick').textContent=opts.nick+' 님'; mode='playing'; connect(); };
 renderAll(); buildHero(opts);
 
-// ── 가상 이웃(봇): 혼자서도 1:1 흐름을 테스트할 수 있게 ──
+// ── 광장 동물: 강아지·고양이·비둘기 (분위기용, 누르면 반응) ──
 const pickA=a=>a[Math.floor(Math.random()*a.length)];
-const REGIONS=['서울 강남','부산 해운대','서울 마포','부산 서면','대구 중구','인천 송도','경기 성남'];
-const AGES=['20대 초반','20대 중반','20대 후반','30대 초반','30대 중반'];
-const JOBS=['디자이너','개발자','간호사','교사','마케터','바리스타','회사원','대학원생','PT 트레이너','요리사'];
-const INTROS=['커피랑 산책 좋아해요 ☕','주말엔 등산 가요 ⛰️','맛집 탐방이 취미예요 🍜','강아지랑 살아요 🐶','영화 보는 거 좋아해요 🎬','운동 자주 해요 💪','여행 다니는 거 좋아해요 ✈️'];
-const BOT_NICKS=['보리','하루','살구','모찌','단비','별이','토리','구름'];
-const bots=[];
-function makeBot(i){ const gd=pickA(['male','female']); const o={ nick:BOT_NICKS[i%BOT_NICKS.length], gender:gd, face:pickA(['round','square','triangle']), hair:pickA(['short','long','spiky']), hairColor:pickA(HAIR_COLORS), eye:pickA(['round','line']), clothes:pickA(CLOTHES) };
-  const g=new THREE.Group(); const root=new THREE.Group(); g.add(root); const refs=makeBody(root,o);
-  const a=Math.random()*Math.PI*2, rad=5+Math.random()*11; g.position.set(Math.cos(a)*rad,0,Math.sin(a)*rad);
-  g.userData={ root, refs, phase:Math.random()*10, target:null, profile:{ nick:o.nick, gender:gd==='female'?'여':'남', region:pickA(REGIONS), age:pickA(AGES), job:pickA(JOBS), intro:pickA(INTROS), bot:true } };
-  scene.add(g); bots.push(g); }
-for(let i=0;i<5;i++) makeBot(i);
+const animals=[];
+const animalDark=new THREE.MeshStandardMaterial({ color:0x2b2b2b });
+const std=(c)=>new THREE.MeshStandardMaterial({ color:c, roughness:0.85 });
+function makeQuad(kind,color,accent,name){
+  const cat=kind==='cat', g=new THREE.Group(), root=new THREE.Group(); g.add(root);
+  const mat=std(color), acc=std(accent);
+  const body=new THREE.Mesh(new THREE.CapsuleGeometry(0.2,0.42,6,12),mat); body.rotation.x=Math.PI/2; body.position.y=0.5; root.add(body);
+  const head=new THREE.Group(); head.position.set(0,0.74,0.36); root.add(head);
+  head.add(new THREE.Mesh(new THREE.SphereGeometry(0.19,16,12),mat));
+  for(const sx of [-0.08,0.08]){ const e=new THREE.Mesh(new THREE.SphereGeometry(0.03,8,6),animalDark); e.position.set(sx,0.05,0.16); head.add(e); }
+  if(cat){ const n=new THREE.Mesh(new THREE.SphereGeometry(0.028,8,6),std('#f29bb0')); n.position.set(0,-0.01,0.185); head.add(n);
+    for(const sx of [-0.1,0.1]){ const ear=new THREE.Mesh(new THREE.ConeGeometry(0.07,0.15,4),mat); ear.position.set(sx,0.19,-0.02); ear.rotation.y=Math.PI/4; head.add(ear); } }
+  else { const sn=new THREE.Mesh(new THREE.BoxGeometry(0.16,0.11,0.14),acc); sn.position.set(0,-0.05,0.17); head.add(sn);
+    const n=new THREE.Mesh(new THREE.SphereGeometry(0.035,8,6),animalDark); n.position.set(0,-0.02,0.25); head.add(n);
+    for(const sx of [-1,1]){ const ear=new THREE.Mesh(new THREE.BoxGeometry(0.07,0.18,0.12),acc); ear.position.set(sx*0.17,-0.01,-0.02); ear.rotation.z=sx*0.25; head.add(ear); } }
+  const legs=[[-0.11,0.22],[0.11,0.22],[-0.11,-0.22],[0.11,-0.22]].map(([x,z])=>{ const l=limb(x,0.33,0.18,0.065,mat); l.position.z=z; root.add(l); return l; });
+  const tail=new THREE.Group(); tail.position.set(0,0.58,-0.4); const tl=cat?0.42:0.26;
+  const tm=new THREE.Mesh(new THREE.CapsuleGeometry(cat?0.035:0.045,tl,4,8),cat?mat:acc); tm.position.y=tl/2+0.03; tail.add(tm); tail.rotation.x=cat?-0.25:-0.7; root.add(tail);
+  g.scale.setScalar(cat?0.85:1);
+  g.userData={ root, legs, tail, head, kind, phase:Math.random()*10, rest:Math.random()*3, target:null, profile:{ animal:true, kind, nick:name } };
+  return g; }
+function makePigeon(){
+  const g=new THREE.Group(), root=new THREE.Group(); g.add(root);
+  const grey=std('#9aa3b5'), dark=std('#6f7a8f');
+  const body=new THREE.Mesh(new THREE.SphereGeometry(0.13,14,10),grey); body.scale.set(1,0.85,1.35); body.position.y=0.2; root.add(body);
+  const tailM=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.03,0.14),dark); tailM.position.set(0,0.22,-0.2); tailM.rotation.x=-0.3; root.add(tailM);
+  const head=new THREE.Group(); head.position.set(0,0.33,0.12); root.add(head);
+  head.add(new THREE.Mesh(new THREE.SphereGeometry(0.075,12,10),std('#6e8f86')));
+  const beak=new THREE.Mesh(new THREE.ConeGeometry(0.02,0.06,6),std('#f0a35a')); beak.rotation.x=Math.PI/2; beak.position.set(0,-0.01,0.09); head.add(beak);
+  for(const sx of [-0.045,0.045]){ const e=new THREE.Mesh(new THREE.SphereGeometry(0.014,6,5),animalDark); e.position.set(sx,0.02,0.055); head.add(e); }
+  const wings=[-1,1].map(sx=>{ const w=new THREE.Group(); w.position.set(sx*0.1,0.25,0); const m=new THREE.Mesh(new THREE.SphereGeometry(0.12,10,8),dark); m.scale.set(0.25,0.55,1.1); m.position.x=sx*0.04; w.add(m); root.add(w); return w; });
+  for(const sx of [-0.04,0.04]){ const l=new THREE.Mesh(new THREE.CylinderGeometry(0.012,0.012,0.12,5),std('#e88f9c')); l.position.set(sx,0.06,0); root.add(l); }
+  g.userData={ root, head, wings, kind:'pigeon', phase:Math.random()*10, rest:Math.random()*2, target:null, state:'ground', profile:{ animal:true, kind:'pigeon', nick:'비둘기' } };
+  return g; }
+function addAnimal(g,pos){ g.position.copy(pos); g.rotation.y=Math.random()*Math.PI*2; scene.add(g); animals.push(g); }
+addAnimal(makeQuad('dog','#c98b4f','#8a5a2b','보리'), new THREE.Vector3(-6,0,6));
+addAnimal(makeQuad('dog','#f3efe6','#d9c3a5','콩이'), new THREE.Vector3(7,0,-4));
+addAnimal(makeQuad('cat','#f0a35a','#f0a35a','치즈'), new THREE.Vector3(-8,0,-6));
+addAnimal(makeQuad('cat','#8e949c','#8e949c','회색이'), new THREE.Vector3(5,0,12));
+for(let i=0;i<5;i++){ const a=Math.random()*Math.PI*2, r=4.5+Math.random()*3; addAnimal(makePigeon(), new THREE.Vector3(Math.cos(a)*r,0,Math.sin(a)*r)); }
+// 누르면 말풍선 + 반응(강아지는 잠깐 따라옴, 고양이는 쳐다봄, 비둘기는 날아감)
+const ANIMAL_SAYS={ dog:['멍멍! 🐾','왈왈! 💛','헥헥 🐶'], cat:['야옹~ 💕','냐아 🐱','골골골…'], pigeon:['구구구','푸드덕!'] };
+function animalBubble(g,text){ const u=g.userData; if(u.bubble){ u.root.remove(u.bubble); u.bubble.material.map.dispose(); }
+  const cv=document.createElement('canvas'); cv.width=300; cv.height=110; const c=cv.getContext('2d');
+  c.fillStyle='#ffffff'; roundRect(c,14,10,272,74,37); c.fill(); c.beginPath(); c.moveTo(136,82); c.lineTo(150,104); c.lineTo(164,82); c.fill();
+  c.fillStyle='#4a3a2a'; c.font='bold 40px Jua, sans-serif'; c.textAlign='center'; c.textBaseline='middle'; c.fillText(text,150,48);
+  const tex=new THREE.CanvasTexture(cv); tex.colorSpace=THREE.SRGBColorSpace;
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({ map:tex, transparent:true, depthTest:false })); sp.scale.set(1.1,0.4,1); sp.position.y=u.kind==='pigeon'?0.8:1.35; u.root.add(sp); u.bubble=sp; u.bubbleT=1.8; }
+function pigeonFly(g){ const u=g.userData; u.state='fly'; u.from=g.position.clone(); u.to=pickWanderTarget(4,15); u.t=0; u.dur=1.6+Math.random()*0.6; g.rotation.y=Math.atan2(u.to.x-u.from.x,u.to.z-u.from.z); }
+function reactAnimal(prof){ const g=animals.find(a=>a.userData.profile===prof); if(!g) return; const u=g.userData;
+  if(u.kind==='pigeon'){ animalBubble(g,'푸드덕!'); for(const p of animals) if(p.userData.kind==='pigeon' && p.userData.state==='ground' && p.position.distanceTo(g.position)<3) pigeonFly(p); return; }
+  animalBubble(g,pickA(ANIMAL_SAYS[u.kind])); u.rest=0; u.target=null; g.rotation.y=Math.atan2(hero.position.x-g.position.x, hero.position.z-g.position.z);
+  if(u.kind==='dog'){ u.follow=6; u.hop=0.0001; } else { u.rest=2.5; } }
 
 // ── AI NPC "큐피드": 광장 안내 + 소개팅 대화 연습 (대화는 /api/plaza/npc, 회원 전용) ──
 const NPC_PROFILE={ nick:'큐피드', id:'npc', npc:true };
@@ -396,12 +435,12 @@ function connect(){
     if(m.t==='welcome'){ myId=m.id; if(m.nick && m.nick!==opts.nick) document.getElementById('hudNick').textContent=m.nick+' 님'; (m.peers||[]).forEach(addPeer); updateCount(); }
     else if(m.t==='join'){ addPeer(m); }
     else if(m.t==='peer'){ const pr=peers.get(m.id); if(pr) pr.target={x:m.x,z:m.z,ry:m.ry}; else { const h=hiddenPeers.get(m.id); if(h) h.state={x:m.x,z:m.z,ry:m.ry}; } }
-    else if(m.t==='leave'){ hiddenPeers.delete(m.id); const pr=peers.get(m.id); if(pr){ scene.remove(pr.group); peers.delete(m.id); updateCount(); } if(currentChat && !currentChat.bot && currentChat.id===m.id){ addMsg('sys', (currentChat.nick||'상대')+'님이 대화방을 나가셨습니다.'); } }
+    else if(m.t==='leave'){ hiddenPeers.delete(m.id); const pr=peers.get(m.id); if(pr){ scene.remove(pr.group); peers.delete(m.id); updateCount(); } if(currentChat && currentChat.id===m.id){ addMsg('sys', (currentChat.nick||'상대')+'님이 대화방을 나가셨습니다.'); } }
     else if(((m.key && blocked.has(m.key)) || blockedIds.has(m.from)) && (m.t==='req'||m.t==='accept'||m.t==='chat'||m.t==='chatbye')){ return; } // 차단한 사람
     else if(m.t==='req'){ showReq(m.from, m.nick, m.uid, m.key); }
     else if(m.t==='accept'){ toast(`💗 ${m.nick}님과 매칭!`); openChat({ id:m.from, nick:m.nick, uid:m.uid, key:m.key, bot:false }); }
     else if(m.t==='chat'){ onChatMsg(m.from, m.nick, m.text, m.uid); }
-    else if(m.t==='chatbye'){ if(currentChat && !currentChat.bot && currentChat.id===m.from){ addMsg('sys', (currentChat.nick||'상대')+'님이 대화방을 나가셨습니다.'); currentChat.left=true; } }
+    else if(m.t==='chatbye'){ if(currentChat && currentChat.id===m.from){ addMsg('sys', (currentChat.nick||'상대')+'님이 대화방을 나가셨습니다.'); currentChat.left=true; } }
   };
 }
 let posTimer=0;
@@ -413,15 +452,13 @@ function openCard(profile){ document.exitPointerLock?.(); reqTarget=profile; doc
   const meta=document.getElementById('cardMeta');
   const reqBtn=document.getElementById('cardReq');
   if(profile.npc){ meta.innerHTML='<span class="npc-tag">🤖 AI 안내원 · 실제 회원이 아니에요</span><br>광장 사용법과 키링크 소개팅을 안내하고,<br>소개팅 대화 연습도 도와드려요.'; reqBtn.textContent='💬 큐피드와 대화하기'; reqBtn.hidden=false; }
-  else if(profile.bot){ meta.innerHTML=`<span class="npc-tag">🤖 가상 이웃 · 실제 회원이 아니에요</span><br>${profile.gender} · ${profile.age} · ${profile.region}<br>${profile.job?profile.job+'<br>':''}<span style="opacity:.85">“${profile.intro}”</span>`; reqBtn.hidden=true; } // 가상 이웃은 분위기용(1:1 없음)
   else { meta.textContent=(profile.gender?profile.gender+' · ':'')+'지금 광장에 접속 중'; reqBtn.textContent='💌 1:1 대화 신청'; reqBtn.hidden=false; }
-  document.getElementById('cardSafety').hidden=!!(profile.bot||profile.npc);
+  document.getElementById('cardSafety').hidden=!!profile.npc;
   card.hidden=false; }
 document.getElementById('cardClose').onclick=()=>card.hidden=true;
 card.addEventListener('pointerdown',(e)=>{ if(e.target===card) card.hidden=true; });
 document.getElementById('cardReq').onclick=()=>{ const p=reqTarget; card.hidden=true;
-  if(p.npc){ if(!member || !fbUser){ openJoin(openNpcChat); return; } openNpcChat(); }
-  else if(p.bot){ return; }
+  if(p.npc){ openNpcChat(); } // 큐피드는 손님도 대화 가능
   else if(ws&&ws.readyState===1&&p.id){ ws.send(JSON.stringify({ t:'req', to:p.id })); toast(`${p.nick}님에게 1:1 신청!`); } };
 let incoming=null; const reqBox=document.getElementById('req');
 function showReq(fromId, nick, uid, key){ document.exitPointerLock?.(); incoming={id:fromId,nick,uid,key}; document.getElementById('reqTxt').textContent=`💌 ${nick}님이 1:1 대화를 신청했어요`; reqBox.hidden=false; }
@@ -431,30 +468,30 @@ document.getElementById('reqNo').onclick=()=>{ reqBox.hidden=true; };
 // ── 1:1 대화창 ──
 const chat=document.getElementById('chat'), chatMsgs=document.getElementById('chatMsgs'), chatText=document.getElementById('chatText');
 let currentChat=null;
-const BOT_REPLIES=['안녕하세요! 반가워요 😊','말 걸어주셔서 고마워요','무슨 요일에 주로 시간 괜찮으세요?','저도 그거 좋아해요!','혹시 어느 동네 사세요?','오프라인에서도 보면 좋겠어요 ㅎㅎ'];
-async function openChat(p){ document.exitPointerLock?.(); currentChat=p; document.getElementById('chatReport').hidden=document.getElementById('chatBlock').hidden=!!(p.bot||p.npc); document.getElementById('chatName').textContent='💬 '+p.nick; chatMsgs.innerHTML=''; chat.hidden=false; setTimeout(()=>chatText.focus(),60);
+async function openChat(p){ document.exitPointerLock?.(); currentChat=p; document.getElementById('chatReport').hidden=document.getElementById('chatBlock').hidden=!!p.npc; document.getElementById('chatName').textContent='💬 '+p.nick; chatMsgs.innerHTML=''; chat.hidden=false; setTimeout(()=>chatText.focus(),60);
   let loaded=false;
-  if(p.uid && fbUser && !p.bot){ loaded=await loadChatHistory(p.uid); }
+  if(p.npc && !fbUser){ loaded=await loadNpcGuestHistory(); }
+  else if(p.uid && fbUser){ loaded=await loadChatHistory(p.uid); }
   if(!loaded) addMsg('them', p.npc ? '안녕하세요! 저는 키링크 광장의 AI 안내원 큐피드예요 😊 광장 사용법, 소개팅 일정이 궁금하거나 소개팅 대화 연습을 하고 싶으면 편하게 말해 주세요.' : '1:1 대화가 연결됐어요! 인사 나눠보세요 🎉');
-  if(p.npc){ addMsg('sys','큐피드는 AI예요 · 하루 100번까지 대화할 수 있어요'); }
-  else if(!p.bot){ if(!fbUser) addMsg('sys','로그인하지 않아 이 대화는 저장되지 않아요'); else if(!p.uid) addMsg('sys','상대가 회원 로그인 전이라 이 대화는 저장되지 않아요'); } }
+  if(p.npc){ addMsg('sys', fbUser ? '큐피드는 AI예요 · 하루 100번까지 대화할 수 있어요' : '큐피드는 AI예요 · 손님은 하루 30번, 회원은 100번까지 대화할 수 있어요'); }
+  else { if(!fbUser) addMsg('sys','로그인하지 않아 이 대화는 저장되지 않아요'); else if(!p.uid) addMsg('sys','상대가 회원 로그인 전이라 이 대화는 저장되지 않아요'); } }
+async function loadNpcGuestHistory(){ if(!DEV_ID) return false; try{ const r=await fetch('/api/plaza/npc?dev='+encodeURIComponent(DEV_ID)); const j=await r.json().catch(()=>({})); const msgs=j.messages||[]; if(!msgs.length) return false; for(const m of msgs) addMsg(m.mine?'me':'them', m.text); return true; }catch(e){ return false; } }
 async function loadChatHistory(uid){ try{ const t=await fbUser.getIdToken(); const r=await fetch('/api/plaza/chat/history?with='+encodeURIComponent(uid),{ headers:{ Authorization:'Bearer '+t } }); const j=await r.json().catch(()=>({})); const msgs=j.messages||[]; if(!msgs.length) return false; for(const m of msgs) addMsg(m.mine?'me':'them', m.text); return true; }catch(e){ return false; } }
 function addMsg(who,text){ const d=document.createElement('div'); d.className='msg '+who; d.textContent=text; chatMsgs.appendChild(d); chatMsgs.scrollTop=chatMsgs.scrollHeight; }
-document.getElementById('chatClose').onclick=()=>{ if(currentChat && !currentChat.bot && !currentChat.npc && ws && ws.readyState===1){ try{ ws.send(JSON.stringify({ t:'chatbye', to:currentChat.id })); }catch(e){} } chat.hidden=true; currentChat=null; };
+document.getElementById('chatClose').onclick=()=>{ if(currentChat && !currentChat.npc && ws && ws.readyState===1){ try{ ws.send(JSON.stringify({ t:'chatbye', to:currentChat.id })); }catch(e){} } chat.hidden=true; currentChat=null; };
 async function persistChat(toUid,toNick,text){ if(!toUid||!fbUser) return; try{ const t=await fbUser.getIdToken(); const r=await fetch('/api/plaza/chat/send',{ method:'POST', headers:{ 'Content-Type':'application/json', Authorization:'Bearer '+t }, body:JSON.stringify({ toUid, toNick, myNick:opts.nick, text }) }); if(!r.ok){ const j=await r.json().catch(()=>({})); toast('대화 저장 실패: '+(j.error||r.status)); } }catch(e){ toast('대화 저장 실패: 네트워크'); } }
 document.getElementById('chatForm').addEventListener('submit',(e)=>{ e.preventDefault(); const t=chatText.value.trim(); if(!t||!currentChat) return; addMsg('me',t); chatText.value='';
   if(currentChat.npc){ sendToNpc(t); }
-  else if(currentChat.bot){ setTimeout(()=>addMsg('them',pickA(BOT_REPLIES)),700+Math.random()*800); }
   else if(ws&&ws.readyState===1){ ws.send(JSON.stringify({ t:'chat', to:currentChat.id, text:t })); persistChat(currentChat.uid, currentChat.nick, t); } });
 function openNpcChat(){ openChat({ id:'npc', nick:'큐피드 (AI)', uid:'npc', npc:true }); }
 let npcBusy=false;
 async function sendToNpc(text){ if(npcBusy) return; npcBusy=true; chatText.disabled=true;
   const typing=document.createElement('div'); typing.className='msg them typing'; typing.textContent='큐피드가 입력 중…'; chatMsgs.appendChild(typing); chatMsgs.scrollTop=chatMsgs.scrollHeight;
-  try{ const r=await authFetch('/api/plaza/npc',{ method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ text, myNick:opts.nick }) });
+  try{ const init={ method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ text, myNick:opts.nick, dev:DEV_ID }) };
+    const r=fbUser ? await authFetch('/api/plaza/npc',init) : await fetch('/api/plaza/npc',init);
     const j=await r.json().catch(()=>({})); typing.remove();
     if(r.ok && j.reply){ if(currentChat?.npc) addMsg('them', j.reply); }
-    else if(r.status===429 && j.error==='daily_limit'){ addMsg('sys','오늘 큐피드와의 대화 횟수('+(j.limit||100)+'번)를 다 썼어요. 내일 다시 만나요!'); }
-    else if(r.status===401){ addMsg('sys','로그인이 필요해요'); }
+    else if(r.status===429 && j.error==='daily_limit'){ addMsg('sys', j.guest ? '손님 대화 횟수('+j.limit+'번)를 다 썼어요. 회원이 되면 하루 100번까지 대화할 수 있어요' : '오늘 큐피드와의 대화 횟수('+(j.limit||100)+'번)를 다 썼어요. 내일 다시 만나요!'); }
     else { addMsg('sys','큐피드가 잠깐 자리를 비웠어요. 잠시 후 다시 말해 주세요'); }
   }catch(e){ typing.remove(); addMsg('sys','네트워크 오류예요. 잠시 후 다시 시도해 주세요'); }
   finally{ npcBusy=false; chatText.disabled=false; chatText.focus(); } }
@@ -470,7 +507,7 @@ async function authFetch(url,init={}){ const t=await fbUser.getIdToken(); return
 async function loadBlocks(){ document.getElementById('blockListBtn').hidden=false; try{ const r=await authFetch('/api/plaza/block'); const j=await r.json().catch(()=>({})); (j.blocks||[]).forEach(b=>{ blocked.add(b.key); blockedNames.set(b.key,{ nick:b.nick||'(닉네임 없음)', at:b.at, guest:false }); }); for(const [id,pr] of [...peers]){ if(pr.key && blocked.has(pr.key)){ hiddenPeers.set(id,{ id, nick:pr.nick, look:pr.group.userData.look||null, key:pr.key, state:{ x:pr.group.position.x, z:pr.group.position.z, ry:pr.group.rotation.y } }); removePeer(id); } } }catch(e){} }
 function removePeer(id){ const pr=peers.get(id); if(pr){ scene.remove(pr.group); peers.delete(id); updateCount(); } }
 function renderReasons(){ const el=document.getElementById('reportReasons'); el.innerHTML=''; for(const r of REPORT_REASONS){ const b=document.createElement('button'); b.type='button'; b.className='pill'; b.textContent=r; b.setAttribute('aria-pressed',String(r===reportReason)); b.onclick=()=>{ reportReason=r; renderReasons(); }; el.appendChild(b); } }
-function openReport(t){ if(!t||t.bot) return; if(!fbUser){ openJoin(); return; } document.exitPointerLock?.(); reportTarget=t; reportReason=REPORT_REASONS[0]; document.getElementById('reportTitle').textContent=t.nick+'님 신고'; document.getElementById('reportDetail').value=''; renderReasons(); reportBox.hidden=false; }
+function openReport(t){ if(!t) return; if(!fbUser){ openJoin(); return; } document.exitPointerLock?.(); reportTarget=t; reportReason=REPORT_REASONS[0]; document.getElementById('reportTitle').textContent=t.nick+'님 신고'; document.getElementById('reportDetail').value=''; renderReasons(); reportBox.hidden=false; }
 document.getElementById('reportClose').onclick=()=>{ reportBox.hidden=true; };
 reportBox.addEventListener('pointerdown',(e)=>{ if(e.target===reportBox) reportBox.hidden=true; });
 document.getElementById('reportSend').onclick=async()=>{ const t=reportTarget; if(!t) return;
@@ -484,9 +521,8 @@ function blockPerson(t){ if(!t) return;
   askConfirm(t.nick+'님 차단','차단하면 서로 보이지 않고, 1:1 신청과 메시지도 받지 않아요.', async()=>{
     if(t.key){ blocked.add(t.key); if(fbUser){ try{ await authFetch('/api/plaza/block',{ method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ key:t.key, nick:t.nick }) }); }catch(e){} } }
     if(t.id && !t.key) blockedIds.add(t.id);
-    blockedNames.set(t.bot ? 'bot:'+t.nick : (t.key||t.id), { nick:t.nick, at:Date.now(), guest:!t.key && !t.bot, bot:!!t.bot });
+    blockedNames.set(t.key||t.id, { nick:t.nick, at:Date.now(), guest:!t.key });
     for(const [id,pr] of peers){ if((t.key && pr.key===t.key) || id===t.id){ hiddenPeers.set(id,{ id, nick:pr.nick, look:pr.group.userData.look||null, key:pr.key, gkey:pr.group.userData.profile?.gkey||null, state:{ x:pr.group.position.x, z:pr.group.position.z, ry:pr.group.rotation.y } }); } }
-    if(t.bot){ const g=bots.find(b=>b.userData.profile===t); if(g) g.visible=false; }
     for(const [id,pr] of [...peers]){ if((t.key && pr.key===t.key) || id===t.id) removePeer(id); }
     if(currentChat && (currentChat.id===t.id || (t.key && currentChat.key===t.key))){ chat.hidden=true; currentChat=null; }
     card.hidden=true; toast(t.nick+'님을 차단했어요');
@@ -498,15 +534,14 @@ function renderBlockList(){ const el=document.getElementById('blockItems'); el.i
   if(!items.length){ el.innerHTML='<div class="block-empty">차단한 사람이 없어요.</div>'; return; }
   for(const [k,v] of items){ const row=document.createElement('div'); row.className='block-item';
     const d=v.at?new Date(v.at):null; const when=d?(d.getMonth()+1)+'/'+d.getDate()+' 차단':'';
-    const tag=v.bot?' · 가상 이웃':(v.guest?' · 손님(이번 접속만)':'');
+    const tag=v.guest?' · 손님(이번 접속만)':'';
     row.innerHTML='<div class="nm"><div></div><div class="when"></div></div><button type="button">해제</button>';
     row.querySelector('.nm div').textContent=v.nick; row.querySelector('.when').textContent=when+tag;
     row.querySelector('button').onclick=()=>unblock(k,v);
     el.appendChild(row); } }
 async function unblock(k,v){
   blockedNames.delete(k);
-  if(v.bot){ const g=bots.find(b=>b.userData.profile?.nick===v.nick); if(g) g.visible=true; }
-  else if(v.guest){ blockedIds.delete(k); }
+  if(v.guest){ blockedIds.delete(k); }
   else { blocked.delete(k); if(fbUser){ try{ await authFetch('/api/plaza/block?key='+encodeURIComponent(k),{ method:'DELETE' }); }catch(e){} } }
   for(const [id,p] of [...hiddenPeers]){ if((p.key && p.key===k) || id===k){ hiddenPeers.delete(id); addPeer(p); } } // 새로고침 없이 그 자리에 다시 보이게
   renderBlockList(); toast(v.nick+'님 차단을 해제했어요'); }
@@ -627,8 +662,8 @@ let dragId=null, dragX=0, dragY=0, dragged=false;
 const canvasEl=renderer.domElement, reticle=document.getElementById('reticle');
 let locked=false, aimTarget=null;
 const modalOpen=()=> !card.hidden || !chat.hidden || !joinBox.hidden || !reportBox.hidden || !confirmBox.hidden || !blockListBox.hidden;
-function pickProfile(prof){ if(!prof) return; if(member || prof.npc) openCard(prof); else openJoin(()=>openCard(prof)); }
-function raycastFromNDC(x,y){ ndc.set(x,y); raycaster.setFromCamera(ndc,camera); const groups=[...[...peers.values()].map(p=>p.group), ...bots, npcGroup]; const hits=raycaster.intersectObjects(groups,true); if(!hits.length) return null; let g=hits[0].object; while(g&&!g.userData.profile) g=g.parent; return g?g.userData.profile:null; }
+function pickProfile(prof){ if(!prof) return; if(prof.animal){ reactAnimal(prof); return; } if(member || prof.npc) openCard(prof); else openJoin(()=>openCard(prof)); }
+function raycastFromNDC(x,y){ ndc.set(x,y); raycaster.setFromCamera(ndc,camera); const groups=[...[...peers.values()].map(p=>p.group), ...animals, npcGroup]; const hits=raycaster.intersectObjects(groups,true); if(!hits.length) return null; let g=hits[0].object; while(g&&!g.userData.profile) g=g.parent; return g?g.userData.profile:null; }
 
 // ── 데스크톱: 배그식 마우스룩(Pointer Lock) ──
 canvasEl.addEventListener('pointerdown',(e)=>{
@@ -684,23 +719,36 @@ function tick(){
     if(moved>0.002){ g.rotation.y=pr.target.ry; pr.phase+=dt*9; const s=Math.sin(pr.phase); pr.refs.legL.rotation.x=s*0.5; pr.refs.legR.rotation.x=-s*0.5; pr.refs.armL.rotation.x=-s*0.45; pr.refs.armR.rotation.x=s*0.45; pr.root.position.y=Math.abs(Math.sin(pr.phase))*0.045; }
     else { pr.refs.legL.rotation.x=L(pr.refs.legL.rotation.x,0,0.2); pr.refs.legR.rotation.x=L(pr.refs.legR.rotation.x,0,0.2); pr.refs.armL.rotation.x=L(pr.refs.armL.rotation.x,0,0.2); pr.refs.armR.rotation.x=L(pr.refs.armR.rotation.x,0,0.2); pr.root.position.y=L(pr.root.position.y,0,0.2); }
   }
-  // 가상 이웃 돌아다니기
+  // 큐피드: 둥실둥실 + 가까이 오면 쳐다보기
   { const u=npcGroup.userData; u.phase+=dt; u.root.position.y=Math.sin(u.phase*2)*0.04; u.halo.rotation.z+=dt*0.8;
     u.bubble.position.y=3.05+Math.sin(u.phase*2.4)*0.08; u.glow.material.opacity=0.35+Math.sin(u.phase*3)*0.2;
     const dx=hero.position.x-npcGroup.position.x, dz=hero.position.z-npcGroup.position.z;
     if(mode==='playing' && dx*dx+dz*dz<49){ const want=Math.atan2(dx,dz); let d=want-npcGroup.rotation.y; d=Math.atan2(Math.sin(d),Math.cos(d)); npcGroup.rotation.y+=d*Math.min(1,dt*4); } }
-  for(const b of bots){ const u=b.userData;
-    // 도착하면 잠깐 서서 쉬기 → 다음 목표
-    if(u.rest>0){ u.rest-=dt; botIdlePose(u); continue; }
-    if(!u.target||b.position.distanceTo(u.target)<0.7){ if(u.target){ u.target=null; u.rest=1+Math.random()*2; botIdlePose(u); continue; } u.target=pickBotTarget(); u.stuck=0; }
-    const dir=u.target.clone().sub(b.position); dir.y=0; const d=dir.length();
-    if(d>0.1){ dir.normalize(); const px=b.position.x, pz=b.position.z, step=2.2*dt;
-      b.position.addScaledVector(dir,step); pushOut(b);
-      // 건물 등에 막혀 거의 못 움직이면(0.6초) 다른 곳으로 — 제자리 걸음 방지
-      const moved=Math.hypot(b.position.x-px, b.position.z-pz);
-      u.stuck = moved < step*0.3 ? (u.stuck||0)+dt : 0;
-      if(u.stuck>0.6){ u.target=pickBotTarget(); u.stuck=0; }
-      b.rotation.y=Math.atan2(dir.x,dir.z); u.phase+=dt*8; const s=Math.sin(u.phase); u.refs.legL.rotation.x=s*0.5; u.refs.legR.rotation.x=-s*0.5; u.refs.armL.rotation.x=-s*0.45; u.refs.armR.rotation.x=s*0.45; u.root.position.y=Math.abs(Math.sin(u.phase))*0.045; } }
+  for(const g of animals){ const u=g.userData;
+    if(u.bubble){ u.bubbleT-=dt; u.bubble.material.opacity=Math.min(1,u.bubbleT*2); if(u.bubbleT<=0){ u.root.remove(u.bubble); u.bubble.material.map.dispose(); u.bubble=null; } }
+    u.phase+=dt;
+    if(u.kind==='pigeon'){
+      if(u.state==='fly'){ u.t+=dt/u.dur; const k=Math.min(1,u.t); g.position.lerpVectors(u.from,u.to,k); g.position.y=Math.sin(Math.PI*k)*3;
+        const f=Math.sin(u.phase*28)*0.9; u.wings[0].rotation.z=f; u.wings[1].rotation.z=-f; if(k>=1){ u.state='ground'; g.position.y=0; u.rest=1; u.wings[0].rotation.z=u.wings[1].rotation.z=0; } continue; }
+      if(mode==='playing' && g.position.distanceTo(hero.position)<1.8){ pigeonFly(g); continue; } // 사람이 다가오면 날아감
+      if(u.rest>0){ u.rest-=dt; u.head.rotation.x=Math.max(0,Math.sin(u.phase*5))*0.9; continue; } // 콕콕 쪼기
+      if(!u.target||g.position.distanceTo(u.target)<0.15){ u.target=g.position.clone().add(new THREE.Vector3((Math.random()-0.5)*2.4,0,(Math.random()-0.5)*2.4)); u.rest=0.6+Math.random()*2; continue; }
+      const dir=u.target.clone().sub(g.position); dir.y=0; dir.normalize(); g.position.addScaledVector(dir,0.7*dt); pushOut(g); g.rotation.y=Math.atan2(dir.x,dir.z);
+      u.head.rotation.x=0; u.root.position.y=Math.abs(Math.sin(u.phase*14))*0.03; continue; }
+    // 강아지·고양이
+    if(u.hop){ u.hop+=dt; g.position.y=Math.max(0,Math.sin(u.hop*Math.PI/0.35)*0.35); if(u.hop>0.35){ u.hop=0; g.position.y=0; } }
+    u.tail.rotation.z=Math.sin(u.phase*(u.kind==='dog'?(u.follow>0?18:8):2))*(u.kind==='dog'?0.5:0.25);
+    if(u.follow>0){ u.follow-=dt; const off=hero.position.clone().sub(g.position); off.y=0; if(off.length()>1.6){ u.target=hero.position.clone().addScaledVector(off.normalize(),-1.2); u.rest=0; } else { u.target=null; u.rest=0.2; g.rotation.y=Math.atan2(off.x,off.z); } }
+    if(u.rest>0){ u.rest-=dt; for(const l of u.legs) l.rotation.x=L(l.rotation.x,0,0.2); u.root.position.y=L(u.root.position.y,0,0.2); continue; }
+    if(!u.target||g.position.distanceTo(u.target)<0.5){ if(u.target){ u.target=null; u.rest=u.kind==='cat'?3+Math.random()*6:1+Math.random()*3; continue; } u.target=pickWanderTarget(); u.stuck=0; }
+    const dir=u.target.clone().sub(g.position); dir.y=0; const d=dir.length();
+    if(d>0.05){ dir.normalize(); const px=g.position.x, pz=g.position.z, sp=(u.kind==='dog'?(u.follow>0?5.5:2.6):1.4)*dt;
+      g.position.addScaledVector(dir,sp); pushOut(g);
+      const r=Math.hypot(g.position.x,g.position.z); if(r>BOUNDARY){ g.position.x*=BOUNDARY/r; g.position.z*=BOUNDARY/r; }
+      const moved=Math.hypot(g.position.x-px, g.position.z-pz); u.stuck = moved < sp*0.3 ? (u.stuck||0)+dt : 0; // 막히면 다른 곳으로(제자리 걸음 방지)
+      if(u.stuck>0.6){ u.target=pickWanderTarget(); u.stuck=0; }
+      g.rotation.y=Math.atan2(dir.x,dir.z); const s=Math.sin(u.phase*(u.kind==='dog'?14:10))*0.6;
+      u.legs[0].rotation.x=s; u.legs[3].rotation.x=s; u.legs[1].rotation.x=-s; u.legs[2].rotation.x=-s; u.root.position.y=Math.abs(s)*0.03; } }
   renderer.render(scene,camera); requestAnimationFrame(tick);
 }
 tick();

@@ -1,39 +1,80 @@
 import { NextResponse, after } from 'next/server';
+import crypto from 'crypto';
 import Anthropic from '@anthropic-ai/sdk';
 import { FieldValue } from 'firebase-admin/firestore';
 import { adminDb, adminAuth } from '@/lib/firebaseAdmin';
 import { hitLimit, clientIp } from '@/lib/rateLimit';
 import {
-  NPC_ID, NPC_NICK, NPC_DAILY_LIMIT, NPC_HISTORY, NPC_SYSTEM_PROMPT,
+  NPC_ID, NPC_NICK, NPC_DAILY_LIMIT, NPC_GUEST_DAILY_LIMIT, NPC_GUEST_GLOBAL_DAILY, NPC_HISTORY, NPC_SYSTEM_PROMPT,
   upcomingSessionsText, memoryBlock, foldOldMessagesIntoMemory,
 } from '@/lib/plazaNpc';
 
-// 광장 AI NPC "큐피드"와 대화 (회원 전용, 하루 NPC_DAILY_LIMIT회)
+// 광장 AI NPC "큐피드"와 대화 — 회원(하루 NPC_DAILY_LIMIT회)과 손님(기기당 NPC_GUEST_DAILY_LIMIT회) 모두 가능
 // 대화 기록은 서버가 저장한 것만 문맥으로 쓴다(클라이언트가 보낸 가짜 AI 답변 끼워넣기 방지).
 // 문맥 = 요약 메모(장기 기억) + 최근 NPC_HISTORY개 메시지. 오래된 대화는 응답 후 after()에서 메모로 접는다.
+// 손님은 광장 기기 id(localStorage kl_dev)를 해시한 'npcguest_…' 로 대화방을 만든다 → 같은 기기면 기록·기억이 이어짐.
 const DAY = 24 * 60 * 60 * 1000;
 const DEFAULT_MODEL = process.env.NPC_MODEL || 'claude-opus-5-5';
 const DEV_MODELS = ['claude-opus-5-5', 'claude-sonnet-5-5', 'claude-haiku-5-5']; // 로컬 비교 테스트용
 const convOf = (a: string, b: string) => [a, b].sort().join('__');
+const guestIdOf = (dev: unknown) => {
+  const d = String(dev ?? '');
+  return /^[A-Za-z0-9_-]{8,64}$/.test(d) ? 'npcguest_' + crypto.createHash('sha256').update('kl-npc-guest:' + d).digest('hex').slice(0, 24) : null;
+};
 
 const client = new Anthropic();
 
+// 로그인 토큰이 있으면 회원, 없으면 기기 id로 손님
+async function whoIs(req: Request, dev: unknown): Promise<{ id: string; guest: boolean } | null> {
+  const h = req.headers.get('Authorization');
+  if (h?.startsWith('Bearer ')) {
+    try { return { id: (await adminAuth.verifyIdToken(h.split('Bearer ')[1])).uid, guest: false }; } catch { return null; }
+  }
+  const g = guestIdOf(dev);
+  return g ? { id: g, guest: true } : null;
+}
+
+// 손님 전체 하루 사용량(한국 날짜) — 넘으면 손님만 막는다
+async function guestGlobalOk(): Promise<boolean> {
+  const day = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
+  const ref = adminDb.doc(`rateLimits/npc-guest-global-${day}`);
+  const n = ((await ref.get()).get('n') as number) || 0;
+  if (n >= NPC_GUEST_GLOBAL_DAILY) return false;
+  await ref.set({ n: FieldValue.increment(1), bucket: 'npc-guest-global', expireAt: new Date(Date.now() + 2 * DAY) }, { merge: true });
+  return true;
+}
+
+// 손님 대화 기록 불러오기(회원은 /api/plaza/chat/history?with=npc)
+export async function GET(req: Request) {
+  const who = await whoIs(req, new URL(req.url).searchParams.get('dev'));
+  if (!who) return NextResponse.json({ error: 'bad_identity' }, { status: 400 });
+  const snap = await adminDb.collection('plazaChats').doc(convOf(who.id, NPC_ID))
+    .collection('messages').orderBy('createdAt', 'asc').limitToLast(100).get();
+  const messages = snap.docs.map((d) => {
+    const x = d.data() as { from?: string; text?: string };
+    return { text: x.text, mine: x.from !== NPC_ID };
+  });
+  return NextResponse.json({ messages, limit: who.guest ? NPC_GUEST_DAILY_LIMIT : NPC_DAILY_LIMIT });
+}
+
 export async function POST(req: Request) {
   try {
-    const h = req.headers.get('Authorization');
-    if (!h?.startsWith('Bearer ')) return NextResponse.json({ error: 'login_required' }, { status: 401 });
-    const uid = (await adminAuth.verifyIdToken(h.split('Bearer ')[1])).uid;
-
     const b = await req.json().catch(() => ({}));
+    const who = await whoIs(req, b.dev);
+    if (!who) return NextResponse.json({ error: 'bad_identity' }, { status: 400 });
+    const uid = who.id;
+
     const text = String(b.text ?? '').trim().slice(0, 500);
     if (!text) return NextResponse.json({ error: 'empty' }, { status: 400 });
     // 모델 바꿔 보기는 로컬 개발에서만(운영은 NPC_MODEL 환경변수로 고정)
     const model = process.env.NODE_ENV === 'development' && DEV_MODELS.includes(b.model) ? b.model : DEFAULT_MODEL;
 
-    const perUser = await hitLimit('npc-uid', uid, NPC_DAILY_LIMIT, DAY);
-    if (!perUser.ok) return NextResponse.json({ error: 'daily_limit', limit: NPC_DAILY_LIMIT }, { status: 429 });
+    const limit = who.guest ? NPC_GUEST_DAILY_LIMIT : NPC_DAILY_LIMIT;
+    const perUser = await hitLimit(who.guest ? 'npc-guest' : 'npc-uid', uid, limit, DAY);
+    if (!perUser.ok) return NextResponse.json({ error: 'daily_limit', limit, guest: who.guest }, { status: 429 });
     const perIp = await hitLimit('npc-ip', clientIp(req), NPC_DAILY_LIMIT * 3, DAY);
-    if (!perIp.ok) return NextResponse.json({ error: 'daily_limit', limit: NPC_DAILY_LIMIT }, { status: 429 });
+    if (!perIp.ok) return NextResponse.json({ error: 'daily_limit', limit, guest: who.guest }, { status: 429 });
+    if (who.guest && !(await guestGlobalOk())) return NextResponse.json({ error: 'busy' }, { status: 503 });
 
     const convId = convOf(uid, NPC_ID);
     const convRef = adminDb.collection('plazaChats').doc(convId);
@@ -77,14 +118,14 @@ export async function POST(req: Request) {
     // 저장(회원 1:1과 같은 구조 → 기록 이어짐, 관리자 열람 가능)
     const myNick = String(b.myNick ?? '').trim().slice(0, 12);
     const now = FieldValue.serverTimestamp();
-    const existed = convSnap.exists;
     await convRef.collection('messages').add({ from: uid, text, createdAt: now });
     await convRef.collection('messages').add({ from: NPC_ID, text: reply, createdAt: FieldValue.serverTimestamp(), model: response.model });
     await convRef.set({
       participants: [uid, NPC_ID].sort(),
-      nicks: { [NPC_ID]: NPC_NICK + ' (AI)', ...(myNick ? { [uid]: myNick } : {}) },
+      nicks: { [NPC_ID]: NPC_NICK + ' (AI)', ...(myNick ? { [uid]: who.guest ? myNick + ' (손님)' : myNick } : {}) },
       lastMessage: reply, lastFrom: NPC_ID, lastAt: now, updatedAt: now, isNpc: true,
-      ...(existed ? {} : { createdAt: now }),
+      ...(who.guest ? { isGuest: true } : {}),
+      ...(convSnap.exists ? {} : { createdAt: now }),
     }, { merge: true });
 
     // 응답을 보낸 뒤 오래된 대화를 요약 메모로 접는다(사용자 대기시간에 영향 없음)
