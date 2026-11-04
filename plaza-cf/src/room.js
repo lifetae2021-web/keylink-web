@@ -76,14 +76,14 @@ export class PlazaRoom {
       a.st = { x: +m.x || 0, z: +m.z || 0, ry: +m.ry || 0 };
       this.save(ws, a);
       this.broadcast(ws, { t: 'peer', id: a.id, x: a.st.x, z: a.st.z, ry: a.st.ry });
-    } else if (m.t === 'req' || m.t === 'accept' || m.t === 'chat') {
+    } else if (m.t === 'req' || m.t === 'accept' || m.t === 'chat' || m.t === 'chatbye') {
       const to = this.clean(m.to, 12);
       for (const p of this.state.getWebSockets()) {
         const pa = this.attach(p);
         if (pa && pa.id === to) {
           // uid는 1:1 상대에게만 실어 보낸다(영속 DM 대화방 매칭용). 방 전체엔 노출 안 함.
           if (m.t === 'chat') this.send(p, { t: 'chat', from: a.id, nick: a.nick, uid: a.uid, text: this.clean(m.text, 1000) });
-          else this.send(p, { t: m.t, from: a.id, nick: a.nick, uid: a.uid });
+          else this.send(p, { t: m.t, from: a.id, nick: a.nick, uid: a.uid }); // req / accept / chatbye(대화방 나감)
           break;
         }
       }

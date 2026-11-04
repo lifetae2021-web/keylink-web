@@ -7,6 +7,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 // 서버(Admin SDK)에서만 쓰므로 Firestore 규칙은 plazaProfiles 클라이언트 쓰기를 막아둔다.
 
 const str = (v: unknown, n: number) => String(v ?? '').trim().slice(0, n);
+const NICK_LOCK_MS = 24 * 60 * 60 * 1000; // 닉네임 변경 잠금 24시간
 
 export async function POST(req: Request) {
   try {
@@ -48,14 +49,33 @@ export async function POST(req: Request) {
     }
 
     const ref = adminDb.collection('plazaProfiles').doc(uid);
-    const existed = (await ref.get()).exists;
+    const prev = await ref.get();
+    const existed = prev.exists;
+    const prevData = prev.data() || {};
+
+    // 닉네임은 한 번 정하면 24시간 동안 변경 불가
+    const nickChanged = !existed || prevData.nickLower !== nickLower;
+    const changedAtMs: number | null = prevData.nickChangedAt?.toMillis?.() ?? null;
+    if (existed && nickChanged && changedAtMs && Date.now() - changedAtMs < NICK_LOCK_MS) {
+      return NextResponse.json({
+        error: 'nick_locked',
+        nickLockedUntil: changedAtMs + NICK_LOCK_MS,
+        nick: prevData.nick,
+      }, { status: 429 });
+    }
+
     await ref.set({
       uid, nick, nickLower, gender, region, birthYear, job, intro, look,
       updatedAt: FieldValue.serverTimestamp(),
+      ...(nickChanged ? { nickChangedAt: FieldValue.serverTimestamp() } : {}),
       ...(existed ? {} : { createdAt: FieldValue.serverTimestamp() }),
     }, { merge: true });
 
-    return NextResponse.json({ ok: true, profile: { nick, gender, region, birthYear, job, intro, look } });
+    const lockedFrom = nickChanged ? Date.now() : changedAtMs;
+    return NextResponse.json({
+      ok: true,
+      profile: { nick, gender, region, birthYear, job, intro, look, nickLockedUntil: lockedFrom ? lockedFrom + NICK_LOCK_MS : null },
+    });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'error';
     return NextResponse.json({ error: msg }, { status: 500 });

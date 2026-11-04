@@ -18,8 +18,11 @@ export async function GET(req: Request) {
     }
     const data = snap.data() || {};
     // 내부 필드는 빼고 광장 표시용만 돌려준다
-    const { nickLower, uid, createdAt, updatedAt, ...profile } = data as Record<string, unknown>;
-    return NextResponse.json({ profile });
+    const { nickLower, uid, createdAt, updatedAt, nickChangedAt, ...profile } = data as Record<string, any>;
+    // 닉네임 변경 잠금(24시간) 해제 시각 — 예전 프로필(변경 기록 없음)은 잠금 없음
+    const changedMs: number | null = nickChangedAt?.toMillis?.() ?? null;
+    const nickLockedUntil = changedMs ? changedMs + 24 * 60 * 60 * 1000 : null;
+    return NextResponse.json({ profile: { ...profile, nickLockedUntil } });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'error';
     return NextResponse.json({ error: msg }, { status: 401 });

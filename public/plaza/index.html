@@ -14,10 +14,11 @@
   #hud { position:fixed; inset:0; pointer-events:none; }
   .panel { position:absolute; top:env(safe-area-inset-top,0px); left:max(16px,env(safe-area-inset-left,0px));
     background:var(--card); border:1px solid var(--card-border); border-radius:18px; padding:10px 16px; margin-top:12px;
+    max-width:calc(100vw - max(16px,env(safe-area-inset-left,0px)) - max(16px,env(safe-area-inset-right,0px)) - 112px); box-sizing:border-box;
     box-shadow:0 8px 24px rgba(80,120,170,.18); backdrop-filter:blur(6px); }
-  .panel h1 { margin:0; font-size:1.05rem; } .panel p { margin:3px 0 0; font-size:.78rem; opacity:.72; }
+  .panel h1 { margin:0; font-size:1.05rem; } .panel p { margin:3px 0 0; font-size:.78rem; opacity:.72; word-break:keep-all; line-height:1.45; }
   #net { position:absolute; top:env(safe-area-inset-top,0px); right:max(16px,env(safe-area-inset-right,0px)); margin-top:12px;
-    background:var(--card); border:1px solid var(--card-border); border-radius:14px; padding:7px 12px; font-size:.78rem; box-shadow:0 8px 24px rgba(80,120,170,.18); }
+    background:var(--card); border:1px solid var(--card-border); border-radius:14px; padding:7px 12px; font-size:.78rem; box-shadow:0 8px 24px rgba(80,120,170,.18); white-space:nowrap; }
   .dot { display:inline-block; width:8px; height:8px; border-radius:50%; background:#bbb; margin-right:6px; vertical-align:middle; }
   .dot.on { background:#4ec36b; } .dot.off { background:#e06b5b; }
   #loading { position:fixed; inset:0; display:grid; place-items:center; z-index:30; background:linear-gradient(var(--sky-top),var(--sky-bottom)); font-size:1.05rem; text-align:center; }
@@ -75,6 +76,9 @@
   .msg { max-width:76%; padding:9px 13px; border-radius:14px; font-size:.95rem; line-height:1.4; }
   .msg.them { align-self:flex-start; background:var(--pill); color:var(--ink); border-bottom-left-radius:5px; }
   .msg.me { align-self:flex-end; background:var(--accent); color:#fff; border-bottom-right-radius:5px; }
+  .nick-hint { margin-top:6px; font-size:.78rem; color:#8a98ab; word-break:keep-all; }
+  #nick[readonly] { background:rgba(120,160,210,.10); color:#8a98ab; cursor:not-allowed; }
+  .msg.sys { align-self:center; max-width:90%; background:transparent; color:#8a98ab; font-size:.82rem; text-align:center; padding:4px 8px; word-break:keep-all; }
   .chat-input { display:flex; gap:8px; padding:12px 14px calc(12px + env(safe-area-inset-bottom,0px)); border-top:1px solid var(--card-border); }
   .chat-input input { flex:1; min-width:0; font-family:inherit; font-size:1rem; padding:11px 14px; border:1px solid var(--card-border); border-radius:12px; background:rgba(255,255,255,.7); color:var(--ink); }
   .chat-input button { border:none; background:var(--accent); color:#fff; font-family:inherit; font-size:.95rem; padding:0 18px; border-radius:12px; cursor:pointer; }
@@ -87,7 +91,7 @@
 <body>
 <canvas id="c"></canvas>
 <div id="hud" hidden>
-  <div class="panel"><h1 id="hudNick">키링크 광장</h1><p>WASD·조이스틱 이동 · 마우스로 시야 · 스페이스 점프 · 사람 클릭</p></div>
+  <div class="panel"><h1 id="hudNick">키링크 광장</h1><p id="hudHelp">WASD·조이스틱 이동 · 마우스로 시야 · 스페이스 점프 · 사람 클릭</p></div>
   <div id="net"><span class="dot off" id="netDot"></span><span id="netTxt">연결 중…</span></div>
   <div id="stick"><div id="knob"></div><div class="hint">드래그해서 이동</div></div>
   <button id="jumpBtn" aria-label="점프">점프</button>
@@ -95,7 +99,7 @@
 </div>
 <div id="entry"><div id="sheet">
   <h2>캐릭터 만들기</h2>
-  <div class="row"><label for="nick">닉네임</label><input id="nick" maxlength="8" placeholder="2~8자" autocomplete="off"></div>
+  <div class="row"><label for="nick">닉네임</label><input id="nick" maxlength="8" placeholder="2~8자" autocomplete="off"><div id="nickLockHint" class="nick-hint" hidden></div></div>
   <div class="row"><label>성별</label><div class="opts" id="opt-gender"></div></div>
   <div class="row"><label>얼굴형</label><div class="opts" id="opt-face"></div></div>
   <div class="row"><label>머리 모양</label><div class="opts" id="opt-hair"></div></div>
@@ -234,6 +238,7 @@ const NICKS=['햇살','바다','구름','단비','별이','토리','보리','하
 let opts; try{ opts=JSON.parse(localStorage.getItem('kl_char')||'null'); }catch(e){}
 if(!opts) opts={ nick:'', gender:'male', face:'round', hair:'short', hairColor:HAIR_COLORS[1], eye:'round', clothes:CLOTHES[0], region:'', age:'', intro:'', job:'' };
 if(opts){ opts.gender=opts.gender||'male'; opts.region=opts.region||''; opts.age=opts.age||''; opts.intro=opts.intro||''; opts.job=opts.job||''; }
+if(matchMedia('(pointer:coarse)').matches){ const hh=document.getElementById('hudHelp'); if(hh) hh.textContent='조이스틱 이동 · 화면 끌어 시야 · 사람 탭'; }
 const nickInput=document.getElementById('nick'); nickInput.value=opts.nick||'';
 nickInput.addEventListener('input',()=>{ opts.nick=nickInput.value.trim(); buildHero(opts); });
 const introInput=document.getElementById('intro'); introInput.value=opts.intro||''; introInput.addEventListener('input',()=>{ opts.intro=introInput.value.trim(); });
@@ -245,7 +250,9 @@ function renderSw(id,key,cols){ const el=document.getElementById(id); el.innerHT
 function renderAll(){ renderPills('opt-gender','gender',CHOICES.gender); renderPills('opt-face','face',CHOICES.face); renderPills('opt-hair','hair',CHOICES.hair); renderSw('opt-hairColor','hairColor',HAIR_COLORS); renderPills('opt-eye','eye',CHOICES.eye); renderSw('opt-clothes','clothes',CLOTHES); renderPills('opt-region','region',CHOICES.region); }
 document.getElementById('randomBtn').onclick=()=>{ const p=a=>a[Math.floor(Math.random()*a.length)]; opts.gender=p(CHOICES.gender)[1]; opts.face=p(CHOICES.face)[1]; opts.hair=p(CHOICES.hair)[1]; opts.eye=p(CHOICES.eye)[1]; opts.hairColor=p(HAIR_COLORS); opts.clothes=p(CLOTHES); if(!nickInput.value){ opts.nick=p(NICKS); nickInput.value=opts.nick; } renderAll(); buildHero(opts); };
 let mode='creating';
-document.getElementById('enterBtn').onclick=()=>{ if(!opts.region){ toast('지역을 선택해 주세요'); return; } if(!/^(19|20)\d\d$/.test(opts.age)){ toast('출생연도를 네 자리로 입력해 주세요'); return; } if(!opts.nick){ opts.nick=NICKS[Math.floor(Math.random()*NICKS.length)]; nickInput.value=opts.nick; buildHero(opts); } try{ localStorage.setItem('kl_char',JSON.stringify(opts)); }catch(e){} document.getElementById('entry').remove(); document.getElementById('hud').hidden=false; document.getElementById('hudNick').textContent=opts.nick+' 님'; mode='playing'; connect(); };
+document.getElementById('enterBtn').onclick=async()=>{ if(!opts.region){ toast('지역을 선택해 주세요'); return; } if(!/^(19|20)\d\d$/.test(opts.age)){ toast('출생연도를 네 자리로 입력해 주세요'); return; } if(!opts.nick){ opts.nick=NICKS[Math.floor(Math.random()*NICKS.length)]; nickInput.value=opts.nick; buildHero(opts); }
+  if(member && fbUser && profileNick && opts.nick!==profileNick){ if(!(await saveNickChange())) return; }
+  try{ localStorage.setItem('kl_char',JSON.stringify(opts)); }catch(e){} document.getElementById('entry').remove(); document.getElementById('hud').hidden=false; document.getElementById('hudNick').textContent=opts.nick+' 님'; mode='playing'; connect(); };
 renderAll(); buildHero(opts);
 
 // ── 가상 이웃(봇): 혼자서도 1:1 흐름을 테스트할 수 있게 ──
@@ -265,8 +272,10 @@ for(let i=0;i<5;i++) makeBot(i);
 
 // ── 입력 ──
 const move=new THREE.Vector2(0,0); const keys={};
-addEventListener('keydown',(e)=>{ keys[e.code]=true; if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)) e.preventDefault(); });
-addEventListener('keyup',(e)=>keys[e.code]=false);
+// 입력칸(채팅·닉네임 등)에 포커스돼 있으면 이동키로 새지 않게 (한글 'ㅇ'=물리 d키 등)
+const typingInField=(el)=>{ el=el||document.activeElement; return !!el && (el.tagName==='INPUT'||el.tagName==='TEXTAREA'||el.isContentEditable); };
+addEventListener('keydown',(e)=>{ if(typingInField(e.target)) return; keys[e.code]=true; if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)) e.preventDefault(); });
+addEventListener('keyup',(e)=>{ keys[e.code]=false; });
 let mobileJump=false, vy=0, grounded=true, walkPhase=0;
 const stick=document.getElementById('stick'), knob=document.getElementById('knob'); let touchId=null,cx=0,cy=0; const R=52;
 stick.addEventListener('pointerdown',(e)=>{ e.preventDefault(); const r=stick.getBoundingClientRect(); cx=r.left+r.width/2; cy=r.top+r.height/2; touchId=e.pointerId; sMove(e.clientX,e.clientY); });
@@ -285,7 +294,7 @@ let toastT; function toast(m){ let t=document.getElementById('toast'); if(!t){t=
 // ?ws= 로 임시 override, ?room=이름 으로 특정 방 입장(친구와 같은 방).
 const PLAZA_WS = 'wss://keylink-plaza.keylink-plaza-cf.workers.dev'; // Cloudflare Worker(실시간). 재배포하면 이 한 줄만.
 const _wsBase = new URLSearchParams(location.search).get('ws')
-  || ((location.hostname==='localhost'||location.hostname==='127.0.0.1') ? 'ws://localhost:8787' : PLAZA_WS);
+  || ((location.hostname==='localhost'||location.hostname==='127.0.0.1') ? 'ws://127.0.0.1:8787' : PLAZA_WS);
 const _wsRoom = new URLSearchParams(location.search).get('room');
 const WS_URL = _wsBase ? (_wsBase.replace(/\/+$/,'') + '/ws' + (_wsRoom ? ('?room=' + encodeURIComponent(_wsRoom)) : '')) : '';
 const peers=new Map(); // id -> { group, refs, target:{x,z,ry}, nick, phase, lastMove }
@@ -297,17 +306,18 @@ function updateCount(){ setNet(true, peers.size+1); }
 function connect(){
   if(!WS_URL){ setNet(false); return; } // 운영 실시간 서버 주소 미설정 → 혼자 모드(봇만)
   try{ ws=new WebSocket(WS_URL); }catch(e){ setNet(false); return; }
-  ws.onopen=()=>{ ws.send(JSON.stringify({ t:'hello', room:'plaza', nick:opts.nick, look:opts, uid: fbUser?fbUser.uid:null })); };
+  ws.onopen=()=>{ ws.send(JSON.stringify({ t:'hello', room:'plaza', nick:opts.nick, look:opts, uid: myUid })); };
   ws.onclose=()=>{ setNet(false); for(const [id,pr] of peers){ scene.remove(pr.group); } peers.clear(); setTimeout(()=>{ if(mode==='playing') connect(); }, 2500); };
   ws.onerror=()=>{ setNet(false); };
   ws.onmessage=(ev)=>{ let m; try{ m=JSON.parse(ev.data); }catch(e){ return; }
     if(m.t==='welcome'){ myId=m.id; (m.peers||[]).forEach(addPeer); updateCount(); }
     else if(m.t==='join'){ addPeer(m); }
     else if(m.t==='peer'){ const pr=peers.get(m.id); if(pr) pr.target={x:m.x,z:m.z,ry:m.ry}; }
-    else if(m.t==='leave'){ const pr=peers.get(m.id); if(pr){ scene.remove(pr.group); peers.delete(m.id); updateCount(); } }
+    else if(m.t==='leave'){ const pr=peers.get(m.id); if(pr){ scene.remove(pr.group); peers.delete(m.id); updateCount(); } if(currentChat && !currentChat.bot && currentChat.id===m.id){ addMsg('sys', (currentChat.nick||'상대')+'님이 대화방을 나가셨습니다.'); } }
     else if(m.t==='req'){ showReq(m.from, m.nick, m.uid); }
     else if(m.t==='accept'){ toast(`💗 ${m.nick}님과 매칭!`); openChat({ id:m.from, nick:m.nick, uid:m.uid, bot:false }); }
     else if(m.t==='chat'){ onChatMsg(m.from, m.nick, m.text, m.uid); }
+    else if(m.t==='chatbye'){ if(currentChat && !currentChat.bot && currentChat.id===m.from){ addMsg('sys', (currentChat.nick||'상대')+'님이 대화방을 나가셨습니다.'); currentChat.left=true; } }
   };
 }
 let posTimer=0;
@@ -327,7 +337,7 @@ document.getElementById('cardReq').onclick=()=>{ const p=reqTarget; card.hidden=
   else if(ws&&ws.readyState===1&&p.id){ ws.send(JSON.stringify({ t:'req', to:p.id })); toast(`${p.nick}님에게 1:1 신청!`); } };
 let incoming=null; const reqBox=document.getElementById('req');
 function showReq(fromId, nick, uid){ document.exitPointerLock?.(); incoming={id:fromId,nick,uid}; document.getElementById('reqTxt').textContent=`💌 ${nick}님이 1:1 대화를 신청했어요`; reqBox.hidden=false; }
-document.getElementById('reqYes').onclick=()=>{ if(incoming&&ws&&ws.readyState===1){ ws.send(JSON.stringify({ t:'accept', to:incoming.id })); openChat({ id:incoming.id, nick:incoming.nick, uid:incoming.uid, bot:false }); } reqBox.hidden=true; };
+document.getElementById('reqYes').onclick=()=>{ if(!member){ reqBox.hidden=true; openJoin(); return; } if(incoming&&ws&&ws.readyState===1){ ws.send(JSON.stringify({ t:'accept', to:incoming.id })); openChat({ id:incoming.id, nick:incoming.nick, uid:incoming.uid, bot:false }); } reqBox.hidden=true; };
 document.getElementById('reqNo').onclick=()=>{ reqBox.hidden=true; };
 
 // ── 1:1 대화창 ──
@@ -337,17 +347,21 @@ const BOT_REPLIES=['안녕하세요! 반가워요 😊','말 걸어주셔서 고
 async function openChat(p){ document.exitPointerLock?.(); currentChat=p; document.getElementById('chatName').textContent='💬 '+p.nick; chatMsgs.innerHTML=''; chat.hidden=false; setTimeout(()=>chatText.focus(),60);
   let loaded=false;
   if(p.uid && fbUser && !p.bot){ loaded=await loadChatHistory(p.uid); }
-  if(!loaded) addMsg('them','1:1 대화가 연결됐어요! 인사 나눠보세요 🎉'); }
+  if(!loaded) addMsg('them','1:1 대화가 연결됐어요! 인사 나눠보세요 🎉');
+  if(!p.bot){ if(!fbUser) addMsg('sys','로그인하지 않아 이 대화는 저장되지 않아요'); else if(!p.uid) addMsg('sys','상대가 회원 로그인 전이라 이 대화는 저장되지 않아요'); } }
 async function loadChatHistory(uid){ try{ const t=await fbUser.getIdToken(); const r=await fetch('/api/plaza/chat/history?with='+encodeURIComponent(uid),{ headers:{ Authorization:'Bearer '+t } }); const j=await r.json().catch(()=>({})); const msgs=j.messages||[]; if(!msgs.length) return false; for(const m of msgs) addMsg(m.mine?'me':'them', m.text); return true; }catch(e){ return false; } }
 function addMsg(who,text){ const d=document.createElement('div'); d.className='msg '+who; d.textContent=text; chatMsgs.appendChild(d); chatMsgs.scrollTop=chatMsgs.scrollHeight; }
-document.getElementById('chatClose').onclick=()=>{ chat.hidden=true; currentChat=null; };
-async function persistChat(toUid,toNick,text){ if(!toUid||!fbUser) return; try{ const t=await fbUser.getIdToken(); await fetch('/api/plaza/chat/send',{ method:'POST', headers:{ 'Content-Type':'application/json', Authorization:'Bearer '+t }, body:JSON.stringify({ toUid, toNick, myNick:opts.nick, text }) }); }catch(e){} }
+document.getElementById('chatClose').onclick=()=>{ if(currentChat && !currentChat.bot && ws && ws.readyState===1){ try{ ws.send(JSON.stringify({ t:'chatbye', to:currentChat.id })); }catch(e){} } chat.hidden=true; currentChat=null; };
+async function persistChat(toUid,toNick,text){ if(!toUid||!fbUser) return; try{ const t=await fbUser.getIdToken(); const r=await fetch('/api/plaza/chat/send',{ method:'POST', headers:{ 'Content-Type':'application/json', Authorization:'Bearer '+t }, body:JSON.stringify({ toUid, toNick, myNick:opts.nick, text }) }); if(!r.ok){ const j=await r.json().catch(()=>({})); toast('대화 저장 실패: '+(j.error||r.status)); } }catch(e){ toast('대화 저장 실패: 네트워크'); } }
 document.getElementById('chatForm').addEventListener('submit',(e)=>{ e.preventDefault(); const t=chatText.value.trim(); if(!t||!currentChat) return; addMsg('me',t); chatText.value='';
   if(currentChat.bot){ setTimeout(()=>addMsg('them',pickA(BOT_REPLIES)),700+Math.random()*800); }
   else if(ws&&ws.readyState===1){ ws.send(JSON.stringify({ t:'chat', to:currentChat.id, text:t })); persistChat(currentChat.uid, currentChat.nick, t); } });
-async function onChatMsg(from,nick,text,uid){ if(!currentChat||currentChat.id!==from){ await openChat({ id:from, nick, uid, bot:false }); } addMsg('them',text); }
+function onChatMsg(from,nick,text,uid){
+  if(currentChat && currentChat.id===from){ currentChat.left=false; addMsg('them',text); return; }
+  toast('💬 '+nick+'님이 메시지를 보냈어요'); // 강제로 열지 않음. 상대를 눌러 1:1을 다시 열면 기록이 보임
+}
 // ── 손님 → 회원 전환 게이트 (실제 키링크 로그인 연동) ──
-let member=false, fbUser=null;
+let member=false, fbUser=null, myUid=null;
 const joinBox=document.getElementById('join'); let pendingAfterJoin=null;
 const PLAZA_PATH='/plaza/index.html'; // 로그인 후 복귀 주소 (정적 파일 직접 경로 — 404 방지)
 function buildJoinBody(){ return { nick:opts.nick, gender:opts.gender, region:opts.region, birthYear:opts.age, job:opts.job, intro:opts.intro, look:{ face:opts.face, hair:opts.hair, hairColor:opts.hairColor, eye:opts.eye, clothes:opts.clothes } }; }
@@ -374,16 +388,28 @@ function goLogin(){
 document.getElementById('joinKakao').onclick=goLogin;
 
 // 서버 프로필을 opts에 반영 (닉네임 등 자동기입)
+let profileNick=null, nickLockedUntil=null; // 회원의 확정 닉네임과 변경 잠금 해제 시각
 function applyProfile(p){ if(!p) return;
+  profileNick=p.nick||null; nickLockedUntil=p.nickLockedUntil||null;
   opts.nick=p.nick||opts.nick; opts.gender=p.gender||opts.gender; opts.region=p.region||opts.region;
   opts.age=p.birthYear||opts.age; opts.job=p.job||opts.job; opts.intro=p.intro||opts.intro;
   if(p.look){ opts.face=p.look.face||opts.face; opts.hair=p.look.hair||opts.hair; opts.hairColor=p.look.hairColor||opts.hairColor; opts.eye=p.look.eye||opts.eye; opts.clothes=p.look.clothes||opts.clothes; }
   try{ nickInput.value=opts.nick; const bi=document.getElementById('birth'); if(bi) bi.value=(opts.age||''); const ji=document.getElementById('job'); if(ji) ji.value=opts.job||''; const ii=document.getElementById('intro'); if(ii) ii.value=opts.intro||''; renderAll(); buildHero(opts); }catch(e){}
+  updateNickLock();
 }
+function lockLeftText(ms){ const m=Math.ceil(ms/60000); const h=Math.floor(m/60); return h>0 ? `${h}시간 ${m%60}분` : `${m}분`; }
+// 회원은 닉네임을 정한 뒤 24시간 동안 바꿀 수 없다
+function updateNickLock(){ const hint=document.getElementById('nickLockHint'); if(!hint) return;
+  const left = (member && nickLockedUntil) ? nickLockedUntil-Date.now() : 0;
+  if(left>0){ nickInput.readOnly=true; if(profileNick){ nickInput.value=profileNick; opts.nick=profileNick; buildHero(opts); } hint.textContent='닉네임은 '+lockLeftText(left)+' 후 변경할 수 있어요'; hint.hidden=false; }
+  else { nickInput.readOnly=false; hint.hidden=true; } }
 
 // 로그인 상태 감지 → 광장 회원 여부 확인 / 대기중 가입 자동 완료
 onAuthStateChanged(fbAuth, async (u)=>{
   fbUser = (u && !u.isAnonymous) ? u : null;
+  myUid = fbUser ? fbUser.uid : null;
+  // 로그인 확정이 입장보다 늦었을 때, uid를 서버에 다시 알려 1:1 대화 저장이 되게 한다
+  if(fbUser && ws && ws.readyState===1 && mode==='playing'){ try{ ws.send(JSON.stringify({ t:'hello', room:'plaza', nick:opts.nick, look:opts, uid:myUid })); }catch(e){} }
   if(!fbUser){ member=false; return; }
   try{
     const token=await fbUser.getIdToken();
@@ -401,13 +427,26 @@ async function submitJoin(){
     const token=await fbUser.getIdToken();
     const r=await fetch('/api/plaza/join',{ method:'POST', headers:{ 'Content-Type':'application/json', Authorization:'Bearer '+token }, body:JSON.stringify(buildJoinBody()) });
     const j=await r.json().catch(()=>({}));
-    if(r.ok && j.ok){ member=true; try{ localStorage.removeItem('kl_plaza_pending'); }catch(e){} joinBox.hidden=true; toast('가입 완료! 환영해요 🎉'); const a=pendingAfterJoin; pendingAfterJoin=null; if(a) setTimeout(a,300); return true; }
+    if(r.ok && j.ok){ member=true; if(j.profile){ profileNick=j.profile.nick; nickLockedUntil=j.profile.nickLockedUntil||null; updateNickLock(); } try{ localStorage.removeItem('kl_plaza_pending'); }catch(e){} joinBox.hidden=true; toast('가입 완료! 환영해요 🎉'); const a=pendingAfterJoin; pendingAfterJoin=null; if(a) setTimeout(a,300); return true; }
+    if(r.status===429 && j.nick){ opts.nick=j.nick; nickInput.value=j.nick; profileNick=j.nick; nickLockedUntil=j.nickLockedUntil||null; return submitJoin(); }
     if(r.status===409){ promptNickFix(); return false; }
     if(j.error==='region_required'||j.error==='birthYear_invalid'||j.error==='nick_required'){ toast('기본 정보를 먼저 입력해 주세요'); return false; }
     toast('가입 처리 중 문제가 생겼어요. 다시 시도해 주세요'); return false;
   }catch(e){ toast('네트워크 오류예요. 잠시 후 다시 시도해 주세요'); return false; }
 }
 
+// 회원이 입장 화면에서 닉네임을 바꿨을 때: 서버 저장(24시간 잠금·중복 검사)
+async function saveNickChange(){
+  try{
+    const t=await fbUser.getIdToken();
+    const r=await fetch('/api/plaza/join',{ method:'POST', headers:{ 'Content-Type':'application/json', Authorization:'Bearer '+t }, body:JSON.stringify(buildJoinBody()) });
+    const j=await r.json().catch(()=>({}));
+    if(r.ok && j.ok){ profileNick=j.profile.nick; nickLockedUntil=j.profile.nickLockedUntil||null; toast('닉네임을 '+profileNick+'(으)로 바꿨어요'); return true; }
+    if(r.status===429){ nickLockedUntil=j.nickLockedUntil||nickLockedUntil; if(j.nick) profileNick=j.nick; updateNickLock(); toast('닉네임은 '+lockLeftText(nickLockedUntil-Date.now())+' 후 바꿀 수 있어요'); return false; }
+    if(r.status===409){ toast('이미 사용 중인 닉네임이에요'); nickInput.focus(); return false; }
+    toast('닉네임 저장 실패: '+(j.error||r.status)); return false;
+  }catch(e){ toast('네트워크 오류예요'); return false; }
+}
 // 닉네임 중복 → 카카오 버튼·안내는 숨기고 닉 입력만 깔끔히 노출
 function promptNickFix(){ joinBox.hidden=false;
   document.getElementById('joinTitle').textContent='닉네임만 바꿔주세요';
