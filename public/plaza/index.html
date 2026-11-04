@@ -108,7 +108,8 @@
   .msg.typing { opacity:.6; font-style:italic; }
   .msg-cta { align-self:flex-start; margin-top:-2px; display:inline-block; text-decoration:none; background:var(--accent); color:#fff; font-size:.9rem; padding:9px 16px; border-radius:999px; box-shadow:0 4px 12px rgba(255,154,98,.35); word-break:keep-all; }
   .msg.them, .msg.me { white-space:pre-wrap; word-break:keep-all; overflow-wrap:anywhere; }
-  .msg.sys { align-self:center; max-width:90%; background:transparent; color:#8a98ab; font-size:.82rem; text-align:center; padding:4px 8px; word-break:keep-all; }
+  .msg.sys { align-self:center; max-width:90%; background:transparent; color:#8a98ab; font-size:.82rem; text-align:center; padding:4px 8px; word-break:keep-all; white-space:pre-line; line-height:1.55; }
+  .npc-left { text-align:center; font-size:.78rem; color:#8a98ab; padding:6px 14px 0; word-break:keep-all; } .npc-left b { color:var(--accent-ink); }
   .chat-input { display:flex; gap:8px; padding:12px 14px calc(12px + env(safe-area-inset-bottom,0px)); border-top:1px solid var(--card-border); }
   .chat-input input { flex:1; min-width:0; font-family:inherit; font-size:1rem; padding:11px 14px; border:1px solid var(--card-border); border-radius:12px; background:rgba(255,255,255,.7); color:var(--ink); }
   .chat-input button { border:none; background:var(--accent); color:#fff; font-family:inherit; font-size:.95rem; padding:0 18px; border-radius:12px; cursor:pointer; }
@@ -472,7 +473,7 @@ function openCard(profile){ document.exitPointerLock?.(); reqTarget=profile; doc
 document.getElementById('cardClose').onclick=()=>card.hidden=true;
 card.addEventListener('pointerdown',(e)=>{ if(e.target===card) card.hidden=true; });
 document.getElementById('cardReq').onclick=()=>{ const p=reqTarget; card.hidden=true;
-  if(p.npc){ openNpcChat(); } // 큐피드는 손님도 대화 가능
+  if(p.npc){ openNpcChat(); } // 큐피드는 비회원도 대화 가능
   else if(ws&&ws.readyState===1&&p.id){ ws.send(JSON.stringify({ t:'req', to:p.id })); toast(`${p.nick}님에게 1:1 신청!`); } };
 let incoming=null; const reqBox=document.getElementById('req');
 function showReq(fromId, nick, uid, key){ document.exitPointerLock?.(); incoming={id:fromId,nick,uid,key}; document.getElementById('reqNick').textContent=nick; reqBox.hidden=false; }
@@ -498,14 +499,14 @@ document.getElementById('reqNo').onclick=()=>{ reqBox.hidden=true; };
 // ── 1:1 대화창 ──
 const chat=document.getElementById('chat'), chatMsgs=document.getElementById('chatMsgs'), chatText=document.getElementById('chatText');
 let currentChat=null;
-async function openChat(p){ document.exitPointerLock?.(); currentChat=p; document.getElementById('chatReport').hidden=document.getElementById('chatBlock').hidden=!!p.npc; document.getElementById('chatName').textContent='💬 '+p.nick; chatMsgs.innerHTML=''; chat.hidden=false; setTimeout(()=>chatText.focus(),60);
+async function openChat(p){ document.exitPointerLock?.(); currentChat=p; setNpcLeft(null); document.getElementById('chatReport').hidden=document.getElementById('chatBlock').hidden=!!p.npc; document.getElementById('chatName').textContent='💬 '+p.nick; chatMsgs.innerHTML=''; chat.hidden=false; setTimeout(()=>chatText.focus(),60);
   let loaded=false;
-  if(p.npc && !fbUser){ loaded=await loadNpcGuestHistory(); }
+  if(p.npc){ loaded=await loadNpcHistory(); }
   else if(p.uid && fbUser){ loaded=await loadChatHistory(p.uid); }
   if(!loaded) addMsg('them', p.npc ? '안녕하세요! 저는 키링크 광장의 AI 안내원 큐피드예요 😊 광장 사용법, 소개팅 일정이 궁금하거나 소개팅 대화 연습을 하고 싶으면 편하게 말해 주세요.' : '1:1 대화가 연결됐어요! 인사 나눠보세요 🎉');
-  if(p.npc){ addMsg('sys', fbUser ? '큐피드는 AI예요 · 하루 100번까지 대화할 수 있어요' : '큐피드는 AI예요 · 손님은 하루 30번, 회원은 100번까지 대화할 수 있어요'); }
+  if(p.npc){ addMsg('sys', fbUser ? '큐피드는 AI예요\n회원은 하루 100번까지 대화할 수 있어요' : '큐피드는 AI예요\n비회원은 하루 30번, 회원은 100번까지\n대화할 수 있어요'); }
   else { if(!fbUser) addMsg('sys','로그인하지 않아 이 대화는 저장되지 않아요'); else if(!p.uid) addMsg('sys','상대가 회원 로그인 전이라 이 대화는 저장되지 않아요'); } }
-async function loadNpcGuestHistory(){ if(!DEV_ID) return false; try{ const r=await fetch('/api/plaza/npc?dev='+encodeURIComponent(DEV_ID)); const j=await r.json().catch(()=>({})); const msgs=j.messages||[]; if(!msgs.length) return false; for(const m of msgs) addMsg(m.mine?'me':'them', m.text, m.cta); return true; }catch(e){ return false; } }
+async function loadNpcHistory(){ try{ const r=fbUser ? await authFetch('/api/plaza/npc') : await fetch('/api/plaza/npc?dev='+encodeURIComponent(DEV_ID)); const j=await r.json().catch(()=>({})); setNpcLeft(j.remaining, j.limit); const msgs=j.messages||[]; if(!msgs.length) return false; for(const m of msgs) addMsg(m.mine?'me':'them', m.text, m.cta); return true; }catch(e){ return false; } }
 async function loadChatHistory(uid){ try{ const t=await fbUser.getIdToken(); const r=await fetch('/api/plaza/chat/history?with='+encodeURIComponent(uid),{ headers:{ Authorization:'Bearer '+t } }); const j=await r.json().catch(()=>({})); const msgs=j.messages||[]; if(!msgs.length) return false; for(const m of msgs) addMsg(m.mine?'me':'them', m.text, m.cta); return true; }catch(e){ return false; } }
 function addMsg(who,text,cta){ const d=document.createElement('div'); d.className='msg '+who; d.textContent=text; chatMsgs.appendChild(d);
   if(cta==='apply'){ const a=document.createElement('a'); a.className='msg-cta'; a.href='/#apply'; a.target='_blank'; a.rel='noopener'; a.textContent='신청하러 가기 →'; chatMsgs.appendChild(a); } // 큐피드 답 아래 신청 버튼(새 탭: 광장은 그대로)
@@ -517,13 +518,17 @@ document.getElementById('chatForm').addEventListener('submit',(e)=>{ e.preventDe
   else if(ws&&ws.readyState===1){ ws.send(JSON.stringify({ t:'chat', to:currentChat.id, text:t })); persistChat(currentChat.uid, currentChat.nick, t); } });
 function openNpcChat(){ openChat({ id:'npc', nick:'큐피드 (AI)', uid:'npc', npc:true }); }
 let npcBusy=false;
+// 큐피드 대화창 입력칸 위: 오늘 남은 대화 횟수
+function setNpcLeft(left,limit){ let el=document.getElementById('npcLeft'); if(typeof left!=='number'){ if(el) el.remove(); return; }
+  if(!el){ el=document.createElement('div'); el.id='npcLeft'; el.className='npc-left'; document.getElementById('chatForm').before(el); }
+  el.innerHTML='오늘 남은 대화 <b>'+left+'번</b> / '+limit+'번'+(fbUser?'':' · 회원은 하루 100번'); }
 async function sendToNpc(text){ if(npcBusy) return; npcBusy=true; chatText.disabled=true;
   const typing=document.createElement('div'); typing.className='msg them typing'; typing.textContent='큐피드가 입력 중…'; chatMsgs.appendChild(typing); chatMsgs.scrollTop=chatMsgs.scrollHeight;
   try{ const init={ method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ text, myNick:opts.nick, dev:DEV_ID }) };
     const r=fbUser ? await authFetch('/api/plaza/npc',init) : await fetch('/api/plaza/npc',init);
     const j=await r.json().catch(()=>({})); typing.remove();
-    if(r.ok && j.reply){ if(currentChat?.npc) addMsg('them', j.reply, j.cta); }
-    else if(r.status===429 && j.error==='daily_limit'){ addMsg('sys', j.guest ? '손님 대화 횟수('+j.limit+'번)를 다 썼어요. 회원이 되면 하루 100번까지 대화할 수 있어요' : '오늘 큐피드와의 대화 횟수('+(j.limit||100)+'번)를 다 썼어요. 내일 다시 만나요!'); }
+    if(r.ok && j.reply){ if(currentChat?.npc){ addMsg('them', j.reply, j.cta); setNpcLeft(j.remaining, j.limit); } }
+    else if(r.status===429 && j.error==='daily_limit'){ setNpcLeft(0, j.limit); addMsg('sys', j.guest ? '오늘 비회원 대화 횟수('+j.limit+'번)를 다 썼어요\n회원이 되면 하루 100번까지 대화할 수 있어요' : '오늘 대화 횟수('+(j.limit||100)+'번)를 다 썼어요\n내일 다시 만나요!'); }
     else { addMsg('sys','큐피드가 잠깐 자리를 비웠어요. 잠시 후 다시 말해 주세요'); }
   }catch(e){ typing.remove(); addMsg('sys','네트워크 오류예요. 잠시 후 다시 시도해 주세요'); }
   finally{ npcBusy=false; chatText.disabled=false; chatText.focus(); } }
@@ -566,7 +571,7 @@ function renderBlockList(){ const el=document.getElementById('blockItems'); el.i
   if(!items.length){ el.innerHTML='<div class="block-empty">차단한 사람이 없어요.</div>'; return; }
   for(const [k,v] of items){ const row=document.createElement('div'); row.className='block-item';
     const d=v.at?new Date(v.at):null; const when=d?(d.getMonth()+1)+'/'+d.getDate()+' 차단':'';
-    const tag=v.guest?' · 손님(이번 접속만)':'';
+    const tag=v.guest?' · 비회원(이번 접속만)':'';
     row.innerHTML='<div class="nm"><div></div><div class="when"></div></div><button type="button">해제</button>';
     row.querySelector('.nm div').textContent=v.nick; row.querySelector('.when').textContent=when+tag;
     row.querySelector('button').onclick=()=>unblock(k,v);

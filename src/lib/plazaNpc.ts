@@ -7,8 +7,8 @@ import { adminDb } from '@/lib/firebaseAdmin';
 export const NPC_ID = 'npc';
 export const NPC_NICK = '큐피드';
 export const NPC_DAILY_LIMIT = 100; // 회원 1명당 하루 대화 횟수
-export const NPC_GUEST_DAILY_LIMIT = 30;     // 손님(비로그인) 기기 1대당 하루 대화 횟수
-export const NPC_GUEST_GLOBAL_DAILY = 3000;  // 손님 전체 하루 상한(비용 안전장치, 한국 시간 자정 기준)
+export const NPC_GUEST_DAILY_LIMIT = 30;     // 비회원(비로그인) 기기 1대당 하루 대화 횟수
+export const NPC_GUEST_GLOBAL_DAILY = 3000;  // 비회원 전체 하루 상한(비용 안전장치, 한국 시간 자정 기준)
 export const NPC_HISTORY = 100;     // 문맥으로 그대로 넘기는 최근 메시지 수
 const MEMORY_CHUNK = 40;            // 최근 창 밖으로 밀려난 메시지가 이만큼 쌓이면 요약 메모에 접어 넣는다
 const MEMORY_MAX_CHARS = 1200;

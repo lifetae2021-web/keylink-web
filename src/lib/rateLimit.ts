@@ -11,19 +11,27 @@ export function clientIp(req: Request): string {
   return fwd.split(',')[0].trim() || req.headers.get('x-real-ip') || 'unknown';
 }
 
-export async function hitLimit(bucket: string, key: string, limit: number, windowMs: number): Promise<{ ok: boolean; retryAfterSec: number }> {
+export async function hitLimit(bucket: string, key: string, limit: number, windowMs: number): Promise<{ ok: boolean; retryAfterSec: number; remaining: number }> {
   const ref = adminDb.doc(`rateLimits/${sha(bucket + ':' + key)}`);
   const now = Date.now();
   return adminDb.runTransaction(async (tx) => {
     const snap = await tx.get(ref);
     const hits: number[] = ((snap.data()?.hits as number[]) || []).filter((t) => now - t < windowMs);
     if (hits.length >= limit) {
-      return { ok: false, retryAfterSec: Math.ceil((hits[0] + windowMs - now) / 1000) };
+      return { ok: false, retryAfterSec: Math.ceil((hits[0] + windowMs - now) / 1000), remaining: 0 };
     }
     hits.push(now);
     tx.set(ref, { hits, bucket, expireAt: new Date(now + windowMs) });
-    return { ok: true, retryAfterSec: 0 };
+    return { ok: true, retryAfterSec: 0, remaining: limit - hits.length };
   });
+}
+
+// 횟수를 쓰지 않고 남은 횟수만 확인(예: 대화창을 열 때 "오늘 남은 대화" 표시)
+export async function peekLimit(bucket: string, key: string, limit: number, windowMs: number): Promise<number> {
+  const snap = await adminDb.doc(`rateLimits/${sha(bucket + ':' + key)}`).get();
+  const now = Date.now();
+  const used = ((snap.data()?.hits as number[]) || []).filter((t) => now - t < windowMs).length;
+  return Math.max(0, limit - used);
 }
 
 // 여러 제한을 한 번에 검사 — 하나라도 넘으면 429 응답을 돌려준다(통과하면 null)

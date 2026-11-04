@@ -3,16 +3,16 @@ import crypto from 'crypto';
 import Anthropic from '@anthropic-ai/sdk';
 import { FieldValue } from 'firebase-admin/firestore';
 import { adminDb, adminAuth } from '@/lib/firebaseAdmin';
-import { hitLimit, clientIp } from '@/lib/rateLimit';
+import { hitLimit, peekLimit, clientIp } from '@/lib/rateLimit';
 import {
   NPC_ID, NPC_NICK, NPC_DAILY_LIMIT, NPC_GUEST_DAILY_LIMIT, NPC_GUEST_GLOBAL_DAILY, NPC_HISTORY, NPC_SYSTEM_PROMPT,
   upcomingSessionsText, memoryBlock, foldOldMessagesIntoMemory,
 } from '@/lib/plazaNpc';
 
-// 광장 AI NPC "큐피드"와 대화 — 회원(하루 NPC_DAILY_LIMIT회)과 손님(기기당 NPC_GUEST_DAILY_LIMIT회) 모두 가능
+// 광장 AI NPC "큐피드"와 대화 — 회원(하루 NPC_DAILY_LIMIT회)과 비회원(기기당 NPC_GUEST_DAILY_LIMIT회) 모두 가능
 // 대화 기록은 서버가 저장한 것만 문맥으로 쓴다(클라이언트가 보낸 가짜 AI 답변 끼워넣기 방지).
 // 문맥 = 요약 메모(장기 기억) + 최근 NPC_HISTORY개 메시지. 오래된 대화는 응답 후 after()에서 메모로 접는다.
-// 손님은 광장 기기 id(localStorage kl_dev)를 해시한 'npcguest_…' 로 대화방을 만든다 → 같은 기기면 기록·기억이 이어짐.
+// 비회원은 광장 기기 id(localStorage kl_dev)를 해시한 'npcguest_…' 로 대화방을 만든다 → 같은 기기면 기록·기억이 이어짐.
 const DAY = 24 * 60 * 60 * 1000;
 const DEFAULT_MODEL = process.env.NPC_MODEL || 'claude-opus-5-5';
 const DEV_MODELS = ['claude-opus-5-5', 'claude-sonnet-5-5', 'claude-haiku-5-5']; // 로컬 비교 테스트용
@@ -24,7 +24,7 @@ const guestIdOf = (dev: unknown) => {
 
 const client = new Anthropic();
 
-// 로그인 토큰이 있으면 회원, 없으면 기기 id로 손님
+// 로그인 토큰이 있으면 회원, 없으면 기기 id로 비회원
 async function whoIs(req: Request, dev: unknown): Promise<{ id: string; guest: boolean } | null> {
   const h = req.headers.get('Authorization');
   if (h?.startsWith('Bearer ')) {
@@ -34,7 +34,7 @@ async function whoIs(req: Request, dev: unknown): Promise<{ id: string; guest: b
   return g ? { id: g, guest: true } : null;
 }
 
-// 손님 전체 하루 사용량(한국 날짜) — 넘으면 손님만 막는다
+// 비회원 전체 하루 사용량(한국 날짜) — 넘으면 비회원만 막는다
 async function guestGlobalOk(): Promise<boolean> {
   const day = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
   const ref = adminDb.doc(`rateLimits/npc-guest-global-${day}`);
@@ -44,7 +44,7 @@ async function guestGlobalOk(): Promise<boolean> {
   return true;
 }
 
-// 손님 대화 기록 불러오기(회원은 /api/plaza/chat/history?with=npc)
+// 큐피드 대화 기록 + 오늘 남은 대화 횟수 불러오기(회원은 로그인 토큰, 비회원은 기기 id)
 export async function GET(req: Request) {
   const who = await whoIs(req, new URL(req.url).searchParams.get('dev'));
   if (!who) return NextResponse.json({ error: 'bad_identity' }, { status: 400 });
@@ -54,7 +54,9 @@ export async function GET(req: Request) {
     const x = d.data() as { from?: string; text?: string; cta?: string };
     return { text: x.text, mine: x.from !== NPC_ID, cta: x.cta || null };
   });
-  return NextResponse.json({ messages, limit: who.guest ? NPC_GUEST_DAILY_LIMIT : NPC_DAILY_LIMIT });
+  const limit = who.guest ? NPC_GUEST_DAILY_LIMIT : NPC_DAILY_LIMIT;
+  const remaining = await peekLimit(who.guest ? 'npc-guest' : 'npc-uid', who.id, limit, DAY);
+  return NextResponse.json({ messages, limit, remaining, guest: who.guest });
 }
 
 export async function POST(req: Request) {
@@ -126,7 +128,7 @@ export async function POST(req: Request) {
     await convRef.collection('messages').add({ from: NPC_ID, text: reply, createdAt: FieldValue.serverTimestamp(), model: response.model, ...(cta ? { cta: 'apply' } : {}) });
     await convRef.set({
       participants: [uid, NPC_ID].sort(),
-      nicks: { [NPC_ID]: NPC_NICK + ' (AI)', ...(myNick ? { [uid]: who.guest ? myNick + ' (손님)' : myNick } : {}) },
+      nicks: { [NPC_ID]: NPC_NICK + ' (AI)', ...(myNick ? { [uid]: who.guest ? myNick + ' (비회원)' : myNick } : {}) },
       lastMessage: reply, lastFrom: NPC_ID, lastAt: now, updatedAt: now, isNpc: true,
       ...(who.guest ? { isGuest: true } : {}),
       ...(convSnap.exists ? {} : { createdAt: now }),
@@ -135,7 +137,7 @@ export async function POST(req: Request) {
     // 응답을 보낸 뒤 오래된 대화를 요약 메모로 접는다(사용자 대기시간에 영향 없음)
     after(() => foldOldMessagesIntoMemory(client, model, convId).catch((e) => console.error('[plaza npc] memory', e)));
 
-    return NextResponse.json({ reply, cta: cta ? 'apply' : null, model: response.model, usage: process.env.NODE_ENV === 'development' ? response.usage : undefined });
+    return NextResponse.json({ reply, cta: cta ? 'apply' : null, remaining: perUser.remaining, limit, guest: who.guest, model: response.model, usage: process.env.NODE_ENV === 'development' ? response.usage : undefined });
   } catch (e: unknown) {
     if (e instanceof Anthropic.RateLimitError) return NextResponse.json({ error: 'busy' }, { status: 503 });
     if (e instanceof Anthropic.APIError) {
