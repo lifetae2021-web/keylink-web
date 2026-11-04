@@ -40,8 +40,24 @@ export class PlazaRoom {
     const init = body ? { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : undefined;
     return this.registry().fetch('https://do' + path, init);
   }
-  async bumpRegistry(room, delta) {
-    try { await this.reg('/inc?room=' + encodeURIComponent(room) + '&delta=' + delta); } catch (e) {}
+  // 방 인원은 '+1/-1' 대신 실제 연결 수를 그대로 보고한다.
+  // (배포·재시작으로 연결이 강제로 끊기면 퇴장 신호가 안 와서, 더하기·빼기 방식은 인원이 계속 부풀었다)
+  live(except) {
+    let n = 0; const vids = [];
+    for (const ws of this.state.getWebSockets()) { if (ws === except) continue; const a = this.attach(ws); if (a && !a.gone) { n++; if (a.vid) vids.push(a.vid); } }
+    return { n, vids };
+  }
+  async reportCount(room, except) {
+    const { n, vids } = this.live(except);
+    // vids: 지금 실제로 있는 사람들의 접속 기록 번호 → 목록에 없는 '접속 중' 기록은 퇴장 처리(강제 종료 대비)
+    try { await this.reg('/inc?room=' + encodeURIComponent(room) + '&set=' + n, { vids }); } catch (e) {}
+    // 접속자가 있는 동안 1분마다 다시 보고(하트비트). 보고가 끊긴 방은 레지스트리가 3분 뒤 0명으로 본다.
+    try { if (n > 0 && !(await this.state.storage.getAlarm())) await this.state.storage.setAlarm(Date.now() + 60000); } catch (e) {}
+  }
+  async alarm() {
+    const ws = this.state.getWebSockets()[0];
+    const room = (ws && this.attach(ws)?.room) || (await this.state.storage.get('room')) || 'plaza';
+    await this.reportCount(room);
   }
 
   clean(s, n) { return String(s ?? '').slice(0, n); }
@@ -99,7 +115,8 @@ export class PlazaRoom {
 
     this.state.acceptWebSocket(server);
     this.save(server, { id, room, ip, dev, nick: null, look: null, st: { x: 0, z: 11, ry: 0 } });
-    await this.bumpRegistry(room, 1);
+    try { await this.state.storage.put('room', room); } catch (e) {}
+    await this.reportCount(room);
 
     return new Response(null, { status: 101, webSocket: client });
   }
@@ -128,6 +145,12 @@ export class PlazaRoom {
         if (r.banned) { this.save(ws, a); this.kickBanned(ws, r.until, 'banned'); return; }
       } catch (e) {}
       try { await this.reg('/seen', { tid: a.tid, ip: a.ip, dev: a.dev, key: a.key, nick: a.nick }); } catch (e) {}
+      // 접속 기록(관리자 '광장 현황'): 처음 인사면 새 기록, 로그인 후 다시 인사하면 같은 기록을 갱신
+      try {
+        const v = { room: a.room, tid: a.tid, nick: a.nick, member: a.key ? 1 : 0, uid: a.uid || null };
+        if (a.vid) await this.reg('/visit/update', { id: a.vid, ...v });
+        else a.vid = (await (await this.reg('/visit/start', v)).json()).id;
+      } catch (e) {}
 
       this.save(ws, a);
       const peers = [];
@@ -179,6 +202,7 @@ export class PlazaRoom {
     if (!a || a.gone) return;
     a.gone = true; this.save(ws, a);
     if (a.nick) this.broadcast(ws, { t: 'leave', id: a.id });
-    await this.bumpRegistry(a.room, -1);
+    if (a.vid) { try { await this.reg('/visit/end', { id: a.vid }); } catch (e) {} }
+    await this.reportCount(a.room, ws);
   }
 }

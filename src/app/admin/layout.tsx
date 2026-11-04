@@ -13,7 +13,7 @@ import {
   Settings, LogOut, Bell, Menu, X,
   ExternalLink, ChevronDown,
   FileText, Loader2, Timer, ChevronsLeft, ChevronsRight, MessageSquare,
-  UserPlus, ClipboardList, Clock, Zap, Lock, Crown, FileSpreadsheet, Coins
+  UserPlus, ClipboardList, Clock, Zap, Lock, Crown, FileSpreadsheet, Coins, Activity
 } from 'lucide-react';
 import Link from 'next/link';
 import { format } from 'date-fns';
@@ -30,6 +30,7 @@ const PAGE_TITLE: Record<string, string> = {
   '/admin/cms':           '콘텐츠 편집',
   '/admin/settings':      '시스템 설정',
   '/admin/sms-templates': 'SMS 템플릿',
+  '/admin/plaza-stats':   '광장 현황',
   '/admin/plaza-chats':   '광장 대화',
   '/admin/plaza-reports': '광장 신고',
   '/admin/excel-cleaner': '참여자 엑셀 정리',
@@ -95,6 +96,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { label: '소개팅 진행',   icon: Timer,           path: '/admin/timer' },
     { label: '매출 통계',     icon: TrendingUp,      path: '/admin/revenue',       superOnly: true },
     { label: 'SMS 템플릿',     icon: MessageSquare,   path: '/admin/sms-templates' },
+    { label: '광장 현황',      icon: Activity,        path: '/admin/plaza-stats' },
     { label: '광장 대화',      icon: MessageSquare,   path: '/admin/plaza-chats' },
     { label: '광장 신고',      icon: Bell,            path: '/admin/plaza-reports' },
     { label: '콘텐츠 편집',   icon: FileText,        path: '/admin/cms' },
