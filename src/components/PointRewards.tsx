@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
+import { Coins, Check, Gift } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import PointDropImage, { DEFAULT_POINT_DROP_IMAGE } from './PointDropImage';
 
@@ -55,8 +56,8 @@ export default function PointRewards() {
         if (data.granted > 0) {
           toast(
             data.isMember
-              ? `🎁 오늘의 방문 포인트 +${data.granted}P`
-              : `🎁 오늘의 방문 포인트 +${data.granted}P\n가입하면 모은 포인트를 쓸 수 있어요`,
+              ? `오늘의 방문 포인트 +${data.granted}P`
+              : `오늘의 방문 포인트 +${data.granted}P\n가입하면 모은 포인트를 쓸 수 있어요`,
             { duration: 3500 }
           );
         } else if (data.capped && !data.isMember) {
@@ -95,8 +96,13 @@ export default function PointRewards() {
     toast((t) => (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', minWidth: '250px', maxWidth: '300px', wordBreak: 'keep-all' }}>
         <div>
-          <div style={{ fontSize: capped ? '1rem' : '1.25rem', fontWeight: 900, color: capped ? '#333' : '#FF6F61', lineHeight: 1.35 }}>
-            {capped ? `비회원은 ${cap.toLocaleString()}P까지 모을 수 있어요` : `${earned >= 500 ? '🎉 ' : '🪙 '}+${earned.toLocaleString()}P 적립!`}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: capped ? '1rem' : '1.25rem', fontWeight: 900, color: capped ? '#333' : '#FF6F61', lineHeight: 1.35 }}>
+            {!capped && (
+              <span style={{ width: '30px', height: '30px', borderRadius: '50%', background: '#FFE9E5', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto' }}>
+                <Coins size={17} color="#FF6F61" strokeWidth={2.4} />
+              </span>
+            )}
+            {capped ? `비회원은 ${cap.toLocaleString()}P까지 모을 수 있어요` : `${earned >= 500 ? '대박! ' : ''}+${earned.toLocaleString()}P 적립!`}
           </div>
           {typeof balance === 'number' && balance > 0 && (
             <div style={{ fontSize: '0.85rem', color: '#777', marginTop: '4px' }}>
@@ -108,7 +114,9 @@ export default function PointRewards() {
           <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#FF6F61' }}>회원가입하면</div>
           {perks.map((p, i) => (
             <div key={p} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.88rem', color: '#333', lineHeight: 1.4 }}>
-              <span aria-hidden style={{ flex: '0 0 auto' }}>{i === perks.length - 1 ? '🎁' : '✅'}</span>
+              <span aria-hidden style={{ flex: '0 0 auto', display: 'inline-flex' }}>
+                {i === perks.length - 1 ? <Gift size={16} color="#FF6F61" strokeWidth={2.2} /> : <Check size={16} color="#FF6F61" strokeWidth={2.6} />}
+              </span>
               <span>{p}</span>
             </div>
           ))}
@@ -134,7 +142,7 @@ export default function PointRewards() {
       if (!data.isMember) {
         guestClaimToast(data.earned, data.balance, data.visitorCap);
       } else if (data.earned >= 500) {
-        toast.success(`🎉 대박! +${data.earned}P 적립!`, { duration: 4000 });
+        toast.success(`대박! +${data.earned}P 적립!`, { duration: 4000 });
       } else if (data.earned > 0) {
         toast.success(`+${data.earned}P 적립!`);
       }

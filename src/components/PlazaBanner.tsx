@@ -22,12 +22,9 @@ export function PlazaBanner() {
   return (
     <section style={{ padding: '0 max(16px, env(safe-area-inset-left, 0px)) 24px' }}>
       <a href="/plaza" className="kl-plaza-banner">
-        <div className="kl-plaza-art" aria-hidden>
-          <span style={{ fontSize: '2.6rem' }}>🏡</span>
-          <span style={{ fontSize: '1.7rem', position: 'absolute', left: '12px', bottom: '10px' }}>🧑</span>
-          <span style={{ fontSize: '1.7rem', position: 'absolute', right: '14px', bottom: '12px' }}>👩</span>
-          <span style={{ fontSize: '1.2rem', position: 'absolute', right: '10px', top: '10px' }}>🐶</span>
-          <span style={{ fontSize: '1.1rem', position: 'absolute', left: '14px', top: '12px' }}>💬</span>
+        {/* 실제 광장 3D 화면(public/plaza/preview.jpg) */}
+        <div className="kl-plaza-art">
+          <img src="/plaza/preview.jpg" alt="키링크 광장 3D 화면 — 분수대 광장의 캐릭터와 AI 큐피드" loading="lazy" width={1000} height={560} />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
@@ -57,13 +54,15 @@ export function PlazaBanner() {
           border-radius: 24px; text-decoration: none; background: linear-gradient(135deg, #bfe3ff 0%, #eaf7ff 55%, #ffe6ee 100%);
           border: 1px solid rgba(140,170,210,0.45); box-shadow: 0 10px 30px rgba(80,130,190,0.15); transition: transform .2s ease, box-shadow .2s ease; }
         .kl-plaza-banner:hover { transform: translateY(-2px); box-shadow: 0 14px 36px rgba(80,130,190,0.22); }
-        .kl-plaza-art { position: relative; flex: 0 0 120px; height: 120px; border-radius: 20px; background: rgba(255,255,255,0.55);
-          display: flex; align-items: center; justify-content: center; }
+        .kl-plaza-art { position: relative; flex: 0 0 240px; aspect-ratio: 1000 / 560; max-width: 100%; border-radius: 16px; overflow: hidden;
+          background: #bfe3ff; box-shadow: 0 6px 18px rgba(60,110,170,0.18); border: 3px solid rgba(255,255,255,0.85); }
+        .kl-plaza-art img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .4s ease; }
+        .kl-plaza-banner:hover .kl-plaza-art img { transform: scale(1.04); }
         .kl-plaza-go { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; background: #FF6F61; color: #fff; font-weight: 900;
           font-size: 0.92rem; padding: 10px 18px; border-radius: 100px; white-space: nowrap; box-shadow: 0 6px 16px rgba(255,111,97,0.35); }
         @media (max-width: 560px) {
           .kl-plaza-banner { flex-direction: column; align-items: stretch; padding: 18px; gap: 14px; }
-          .kl-plaza-art { flex-basis: auto; height: 96px; }
+          .kl-plaza-art { flex-basis: auto; width: 100%; }
           .kl-plaza-go { margin-left: 0; width: 100%; justify-content: center; margin-top: 4px; }
         }
       `}</style>
