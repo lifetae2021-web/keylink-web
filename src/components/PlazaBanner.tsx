@@ -24,11 +24,11 @@ export function PlazaBanner() {
       <a href="/plaza" className="kl-plaza-banner">
         {/* 실제 광장 3D 화면(public/plaza/preview.jpg) */}
         <div className="kl-plaza-art">
-          <img src="/plaza/preview.jpg" alt="키링크 광장 3D 화면 — 분수대 광장의 캐릭터와 AI 큐피드" loading="lazy" width={1000} height={560} />
+          <img src="/plaza/preview.jpg" alt="키링 월드 3D 화면 — 분수대 광장의 캐릭터와 AI 키키" loading="lazy" width={1000} height={560} />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
-            <span style={{ padding: '3px 10px', borderRadius: '100px', background: '#FF6F61', color: '#fff', fontSize: '0.72rem', fontWeight: 900, letterSpacing: '0.04em' }}>NEW · 전국 온라인 소개팅</span>
+            <span style={{ padding: '3px 10px', borderRadius: '100px', background: '#FF6F61', color: '#fff', fontSize: '0.72rem', fontWeight: 900, letterSpacing: '0.04em' }}>NEW · 신개념 온라인 소개팅</span>
             {online > 0 && (
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '0.78rem', fontWeight: 700, color: '#2f7a4a', whiteSpace: 'nowrap' }}>
                 <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#3cc56b' }} />지금 {online}명 접속 중
@@ -36,16 +36,16 @@ export function PlazaBanner() {
             )}
           </div>
           <h2 style={{ fontSize: 'clamp(1.15rem, 3vw, 1.45rem)', fontWeight: 900, color: '#2a3a55', marginBottom: '6px', wordBreak: 'keep-all', textWrap: 'balance' }}>
-            전국 어디서나 만나는 <span style={{ color: '#FF6F61' }}>키링크 광장</span>
+            전국 어디서나 만나는 <span style={{ color: '#FF6F61' }}>키링 월드</span>
           </h2>
           <p style={{ fontSize: '0.9rem', color: '#4f5f78', lineHeight: 1.65, wordBreak: 'keep-all', marginBottom: '12px' }}>
-            사는 지역과 상관없이, 내 캐릭터로 3D 광장을 걸어 다니며 1:1 대화를 나눠 보세요. AI 큐피드와 소개팅 대화 연습도 할 수 있어요.
+            키링크의 신개념 온라인 소개팅. 사는 지역과 상관없이, 내 캐릭터로 3D 공간을 걸어 다니며 1:1 대화를 나눠 보세요. AI 키키와 소개팅 대화 연습도 할 수 있어요.
           </p>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
             {['전국 누구나', '설치 없이 바로', '로그인 없이 구경'].map((t) => (
               <span key={t} style={{ fontSize: '0.75rem', fontWeight: 700, color: '#5b6f8c', background: 'rgba(255,255,255,0.7)', padding: '4px 10px', borderRadius: '100px', whiteSpace: 'nowrap' }}>{t}</span>
             ))}
-            <span className="kl-plaza-go">광장 입장하기 <ArrowRight size={16} /></span>
+            <span className="kl-plaza-go">키링 월드 입장하기 <ArrowRight size={16} /></span>
           </div>
         </div>
       </a>

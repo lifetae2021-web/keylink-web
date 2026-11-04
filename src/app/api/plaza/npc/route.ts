@@ -9,7 +9,7 @@ import {
   upcomingSessionsText, memoryBlock, foldOldMessagesIntoMemory,
 } from '@/lib/plazaNpc';
 
-// 광장 AI NPC "큐피드"와 대화 — 회원(하루 NPC_DAILY_LIMIT회)과 비회원(기기당 NPC_GUEST_DAILY_LIMIT회) 모두 가능
+// 광장 AI NPC "키키"와 대화 — 회원(하루 NPC_DAILY_LIMIT회)과 비회원(기기당 NPC_GUEST_DAILY_LIMIT회) 모두 가능
 // 대화 기록은 서버가 저장한 것만 문맥으로 쓴다(클라이언트가 보낸 가짜 AI 답변 끼워넣기 방지).
 // 문맥 = 요약 메모(장기 기억) + 최근 NPC_HISTORY개 메시지. 오래된 대화는 응답 후 after()에서 메모로 접는다.
 // 비회원은 광장 기기 id(localStorage kl_dev)를 해시한 'npcguest_…' 로 대화방을 만든다 → 같은 기기면 기록·기억이 이어짐.
@@ -44,7 +44,7 @@ async function guestGlobalOk(): Promise<boolean> {
   return true;
 }
 
-// 큐피드 대화 기록 + 오늘 남은 대화 횟수 불러오기(회원은 로그인 토큰, 비회원은 기기 id)
+// 키키(AI) 대화 기록 + 오늘 남은 대화 횟수 불러오기(회원은 로그인 토큰, 비회원은 기기 id)
 export async function GET(req: Request) {
   const who = await whoIs(req, new URL(req.url).searchParams.get('dev'));
   if (!who) return NextResponse.json({ error: 'bad_identity' }, { status: 400 });

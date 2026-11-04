@@ -64,7 +64,7 @@ export default function PlazaChatsPage() {
     <div style={{ padding: 24, maxWidth: 1100, margin: '0 auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
         <MessageSquare size={22} />
-        <h1 style={{ fontSize: 20, fontWeight: 800, margin: 0 }}>광장 1:1 대화</h1>
+        <h1 style={{ fontSize: 20, fontWeight: 800, margin: 0 }}>키링 월드 1:1 대화</h1>
         <button onClick={load} style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', border: '1px solid #e2e6ee', borderRadius: 10, background: '#fff', cursor: 'pointer', fontWeight: 600 }}>
           <RefreshCw size={15} /> 새로고침
         </button>
@@ -82,7 +82,7 @@ export default function PlazaChatsPage() {
           {loading ? (
             <div style={{ padding: 24, textAlign: 'center', color: '#9fb0c5' }}><Loader2 className="animate-spin" style={{ display: 'inline' }} size={18} /> 불러오는 중…</div>
           ) : rows.length === 0 ? (
-            <div style={{ padding: 24, textAlign: 'center', color: '#9fb0c5' }}>아직 광장 대화가 없어요.</div>
+            <div style={{ padding: 24, textAlign: 'center', color: '#9fb0c5' }}>아직 키링 월드 대화가 없어요.</div>
           ) : rows.map((row) => (
             <button key={row.convId} onClick={() => openConv(row)}
               style={{ display: 'block', width: '100%', textAlign: 'left', padding: '12px 14px', border: 'none', borderBottom: '1px solid #f0f3f8', background: sel?.convId === row.convId ? '#eef4ff' : '#fff', cursor: 'pointer' }}>

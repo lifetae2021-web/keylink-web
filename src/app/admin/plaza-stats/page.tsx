@@ -113,7 +113,7 @@ export default function PlazaStatsPage() {
     <div style={{ padding: 24, maxWidth: 1100, margin: '0 auto', color: INK }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
         <Activity size={22} />
-        <h1 style={{ fontSize: 20, fontWeight: 800, margin: 0 }}>광장 현황</h1>
+        <h1 style={{ fontSize: 20, fontWeight: 800, margin: 0 }}>키링 월드 현황</h1>
         <span style={{ fontSize: 13, color: MUTED }}>30초마다 자동 갱신 · 접속 기록 {data?.retentionDays ?? 30}일 보관</span>
         <button onClick={() => load()} style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', border: `1px solid ${LINE}`, borderRadius: 10, background: '#fff', cursor: 'pointer', fontWeight: 600 }}>
           <RefreshCw size={15} /> 새로고침

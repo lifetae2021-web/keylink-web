@@ -20,7 +20,7 @@ const navLinks: NavLink[] = [
   { href: '/notices', label: '협업사 & 공지', anchor: null },
   { href: '/', label: '진행 과정', anchor: 'process' },
   { href: '/', label: '참여 신청', anchor: 'apply' },
-  { href: '/plaza', label: '온라인 소개팅', anchor: null, isNew: true, plain: true },
+  { href: '/plaza', label: '키링 월드', anchor: null, isNew: true, plain: true }, // 신개념 온라인 소개팅(3D)
   { href: '/status', label: '실시간 현황', anchor: null },
   { href: '/matching/result', label: '매칭 결과', anchor: null },
 ];

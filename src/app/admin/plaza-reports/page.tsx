@@ -97,7 +97,7 @@ export default function PlazaReportsPage() {
     <div style={{ padding: 24, maxWidth: 1100, margin: '0 auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
         <Bell size={22} />
-        <h1 style={{ fontSize: 20, fontWeight: 800, margin: 0 }}>광장 신고</h1>
+        <h1 style={{ fontSize: 20, fontWeight: 800, margin: 0 }}>키링 월드 신고</h1>
         <span style={{ fontSize: 13, color: '#8a98ab' }}>미처리 {openCount}건</span>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
           {(['open', 'all'] as const).map((f) => (
@@ -159,7 +159,7 @@ export default function PlazaReportsPage() {
               <div style={{ marginTop: 12, padding: 12, border: '1px solid #f3d6d6', background: '#fff8f8', borderRadius: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 13 }}>
                   <Ban size={15} color="#c0392b" />
-                  <b>광장 입장 금지</b>
+                  <b>키링 월드 입장 금지</b>
                   <span style={{ background: sel.targetType === 'member' ? '#e8f0ff' : '#f1f1f1', color: '#33415a', borderRadius: 6, padding: '1px 7px', fontSize: 12 }}>{sel.targetType === 'member' ? '회원' : '손님'}</span>
                   <span style={{ color: '#67768b' }}>
                     {!ban ? '상태 확인 중…' : ban.bannedUntil ? (ban.bannedUntil > 8e15 ? '영구 금지 중' : '금지 중 · ' + fmt(ban.bannedUntil) + ' 해제') : (ban.known ? '제한 없음' : '최근 접속 기록 없음')}

@@ -2,10 +2,10 @@ import Anthropic from '@anthropic-ai/sdk';
 import { Timestamp } from 'firebase-admin/firestore';
 import { adminDb } from '@/lib/firebaseAdmin';
 
-// 광장 AI NPC "큐피드" — 광장 안내원 + 소개팅 대화 연습 상대.
+// 광장 AI NPC "키키" — 키링 월드 안내원 + 소개팅 대화 연습 상대.
 // 대화는 plazaChats 의 대화방(convId = sort(uid, 'npc'))에 저장돼 회원 1:1처럼 기록이 이어지고, 관리자가 열람할 수 있다.
 export const NPC_ID = 'npc';
-export const NPC_NICK = '큐피드';
+export const NPC_NICK = '키키';
 export const NPC_DAILY_LIMIT = 100; // 회원 1명당 하루 대화 횟수
 export const NPC_GUEST_DAILY_LIMIT = 30;     // 비회원(비로그인) 기기 1대당 하루 대화 횟수
 export const NPC_GUEST_GLOBAL_DAILY = 3000;  // 비회원 전체 하루 상한(비용 안전장치, 한국 시간 자정 기준)
@@ -14,11 +14,11 @@ const MEMORY_CHUNK = 40;            // 최근 창 밖으로 밀려난 메시지�
 const MEMORY_MAX_CHARS = 1200;
 
 // 매 요청 동일한 고정 부분 → 프롬프트 캐싱 대상(바이트가 바뀌면 캐시가 깨지므로 날짜·이름 등 변하는 값은 넣지 않는다)
-export const NPC_SYSTEM_PROMPT = `너는 "키링크 광장"에 있는 AI 캐릭터 "큐피드"야. 키링크는 부산에서 소규모 로테이션 소개팅을 운영하는 서비스이고, 키링크 광장은 회원들이 캐릭터로 돌아다니며 만나는 3D 온라인 공간이야. 너는 광장 분수대 근처에 서 있어.
+export const NPC_SYSTEM_PROMPT = `너는 "키링 월드"에 있는 AI 캐릭터 "키키"야. 이름은 키링크의 '키(Key)'에서 따왔고, 손에 금색 열쇠고리(키링)를 들고 있어. 키링크는 부산에서 소규모 로테이션 소개팅을 운영하는 서비스이고, 키링 월드는 키링크가 만든 신개념 온라인 소개팅이야. 전국 어디서나 내 캐릭터로 3D 공간을 돌아다니며 다른 사람을 만나고 1:1로 대화할 수 있어. 키링 월드를 소개할 때는 "키링크의 신개념 온라인 소개팅"이라고 말해. 너는 광장 분수대 근처에 서 있어.
 키링크는 2025년 2월에 론칭했고, 지금까지 130기 이상 진행했어. 운영 이력을 물으면 이 내용으로 자연스럽게 답하고, 참가자 수·매칭 성공 수처럼 여기 없는 숫자는 지어내지 마.
 
 정체
-- 너는 AI야. 사람인 척하지 마. "사람이에요?", "진짜 회원이에요?" 같은 질문에는 키링크 광장의 AI 안내원이라고 솔직하게 말해.
+- 너는 AI야. 사람인 척하지 마. "사람이에요?", "진짜 회원이에요?" 같은 질문에는 키링 월드의 AI 안내원이라고 솔직하게 말해.
 - 너는 실제 소개팅 상대가 아니야. 사용자와 만나거나 연락을 주고받을 수 없어.
 
 하는 일
@@ -55,13 +55,13 @@ export const NPC_SYSTEM_PROMPT = `너는 "키링크 광장"에 있는 AI 캐릭�
 // 매 요청은 "메모 + 최근 대화"를 넘기므로 비용은 일정하고 기억은 사실상 무제한.
 export function memoryBlock(memory: unknown): string | null {
   const m = typeof memory === 'string' ? memory.trim() : '';
-  return m ? `큐피드가 이 사용자와의 예전 대화에서 기억하는 것\n${m}\n(이건 너 자신의 기억이야. 원래 알고 있던 것처럼 자연스럽게 말하고, "메모", "기록에 따르면" 같은 표현은 쓰지 마.)` : null;
+  return m ? `키키가 이 사용자와의 예전 대화에서 기억하는 것\n${m}\n(이건 너 자신의 기억이야. 원래 알고 있던 것처럼 자연스럽게 말하고, "메모", "기록에 따르면" 같은 표현은 쓰지 마.)` : null;
 }
 
-const MEMORY_PROMPT = `너는 키링크 광장 AI 캐릭터 "큐피드"의 기억 정리 담당이야. 기존 메모와 새로 밀려난 예전 대화를 합쳐서, 다음에 이 사용자를 만났을 때 대화를 자연스럽게 이어가는 데 필요한 메모를 다시 써.
+const MEMORY_PROMPT = `너는 키링 월드 AI 캐릭터 "키키"의 기억 정리 담당이야. 기존 메모와 새로 밀려난 예전 대화를 합쳐서, 다음에 이 사용자를 만났을 때 대화를 자연스럽게 이어가는 데 필요한 메모를 다시 써.
 
 남길 것: 사용자가 불러 달라고 한 이름·호칭, 사는 지역(시·구 정도), 나이대, 관심사·취향, 원하는 이상형, 소개팅 대화 연습 이력(어떤 상대 역할이었는지, 받은 피드백, 반복되는 습관), 고민, 진행 중인 이야기.
-남기지 말 것: 전화번호, 카카오톡 ID, 상세 주소, 직장명, 계좌 등 연락처·식별 정보, 다른 사람의 개인정보, 큐피드가 안내한 소개팅 일정·가격(바뀌는 정보).
+남기지 말 것: 전화번호, 카카오톡 ID, 상세 주소, 직장명, 계좌 등 연락처·식별 정보, 다른 사람의 개인정보, 키키가 안내한 소개팅 일정·가격(바뀌는 정보).
 
 형식: 마크다운 없이 짧은 문장을 줄바꿈으로 나열. ${MEMORY_MAX_CHARS}자 이내. 오래되고 덜 중요한 것부터 줄이고, 새 정보가 기존 메모와 다르면 새 정보로 고쳐. 메모만 출력해.`;
 
@@ -78,7 +78,7 @@ export async function foldOldMessagesIntoMemory(client: Anthropic, model: string
   const old = snap.docs.slice(0, MEMORY_CHUNK);
   const transcript = old.map((d) => {
     const x = d.data() as { from?: string; text?: string };
-    return `${x.from === NPC_ID ? '큐피드' : '사용자'}: ${String(x.text ?? '')}`;
+    return `${x.from === NPC_ID ? '키키' : '사용자'}: ${String(x.text ?? '')}`;
   }).join('\n');
 
   const res = await client.messages.create({

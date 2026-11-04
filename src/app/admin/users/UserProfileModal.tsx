@@ -127,16 +127,19 @@ const PhoneActionBadge = ({ phone }: { phone: string }) => {
 };
 
 // ── 상세 정보 행 (마이페이지 스타일)
-const DetailRow = ({ label, value, icon: Icon, valueNode }: { label: string; value?: string | number | null; icon: any; valueNode?: React.ReactNode }) => {
+// compact: 2칸 배치용 — 칸이 좁으면(@container 576px 미만) 아이콘을 빼고 값을 한 줄로(넘치면 … + 마우스 올리면 전체)
+const DetailRow = ({ label, value, icon: Icon, valueNode, compact }: { label: string; value?: string | number | null; icon: any; valueNode?: React.ReactNode; compact?: boolean }) => {
   const isEmpty = !value && !valueNode || value === '미입력';
   return (
-    <div className="flex items-center py-4 border-b border-slate-50 last:border-0 group">
-      <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center flex-shrink-0 group-hover:bg-[#FF7E7E]/10 transition-colors">
+    <div className={`flex items-center border-b border-slate-50 last:border-0 group min-w-0 ${compact ? 'py-3 @xl:py-4' : 'py-4'}`}>
+      <div className={`w-10 h-10 rounded-xl bg-slate-50 items-center justify-center flex-shrink-0 group-hover:bg-[#FF7E7E]/10 transition-colors ${compact ? 'hidden @xl:flex' : 'flex'}`}>
         <Icon size={18} className="text-slate-400 group-hover:text-[#FF7E7E] transition-colors" />
       </div>
-      <div className="ml-4 flex-1">
-        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{label}</p>
-        <div className={`text-[0.92rem] font-bold mt-0.5 ${isEmpty ? 'text-slate-300 italic font-normal' : 'text-slate-800'}`}>
+      <div className={`flex-1 min-w-0 ${compact ? '@xl:ml-4' : 'ml-4'}`}>
+        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">{label}</p>
+        <div
+          title={compact && !isEmpty && typeof value !== 'object' ? String(value ?? '') : undefined}
+          className={`text-[0.92rem] font-bold mt-0.5 ${compact ? 'whitespace-nowrap overflow-hidden text-ellipsis' : ''} ${isEmpty ? 'text-slate-300 italic font-normal' : 'text-slate-800'}`}>
           {isEmpty ? '미입력' : (valueNode || value)}
         </div>
       </div>
@@ -674,9 +677,11 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
                     <div className="w-1 h-3 bg-[#FF7E7E] rounded-full" />
                     <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Physical & Career</span>
                   </div>
-                  <div className="grid grid-cols-2 gap-x-8">
-                    <DetailRow label="키" value={user.height ? `${user.height}cm` : null} icon={Ruler} />
-                    <DetailRow label="몸무게" value={user.weight ? `${user.weight}kg` : null} icon={Weight} />
+                  <div className="@container">
+                    <div className="grid grid-cols-2 gap-x-5 @xl:gap-x-8">
+                      <DetailRow compact label="키" value={user.height ? `${user.height}cm` : null} icon={Ruler} />
+                      <DetailRow compact label="몸무게" value={user.weight ? `${user.weight}kg` : null} icon={Weight} />
+                    </div>
                   </div>
                   <DetailRow label="회사명/직무" value={user.workplace || user.jobRole || user.job} icon={Briefcase} />
                   <DetailRow label="출생" value={user.birthDate ? `${user.birthDate.includes('-') ? user.birthDate.split('-')[0].slice(-2) : (user.birthDate.length === 8 ? user.birthDate.slice(2, 4) : user.birthDate.slice(0, 2))}년생` : null} icon={Calendar} />
@@ -762,11 +767,13 @@ export default function UserProfileModal({ user: initialUser, isOpen, onClose, o
                     <div className="w-1 h-3 bg-indigo-400 rounded-full" />
                     <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Lifestyle</span>
                   </div>
-                  <div className="grid grid-cols-2 gap-x-8">
-                    <DetailRow label="음주 빈도" value={user.drinking} icon={Wine} />
-                    <DetailRow label="흡연 여부" value={user.smoking} icon={Cigarette} />
-                    <DetailRow label="종교" value={user.religion} icon={Info} />
-                    <DetailRow label="희망 음료" value={Array.isArray(user.drink) ? user.drink.join(', ') : user.drink} icon={Coffee} />
+                  <div className="@container">
+                    <div className="grid grid-cols-2 gap-x-5 @xl:gap-x-8">
+                      <DetailRow compact label="음주 빈도" value={user.drinking} icon={Wine} />
+                      <DetailRow compact label="흡연 여부" value={user.smoking} icon={Cigarette} />
+                      <DetailRow compact label="종교" value={user.religion} icon={Info} />
+                      <DetailRow compact label="희망 음료" value={Array.isArray(user.drink) ? user.drink.join(', ') : user.drink} icon={Coffee} />
+                    </div>
                   </div>
                 </div>
 

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>키링크 광장</title>
+<title>키링 월드 · 키링크 신개념 온라인 소개팅</title>
 <style>
   :root { --sky-top:#bfe3ff; --sky-bottom:#eaf7ff; --ink:#3a4a63; --card:rgba(255,255,255,.9); --card-border:rgba(140,170,210,.45);
     --accent:#ff9a62; --accent-ink:#7a3c18; --stick:rgba(255,255,255,.5); --stick-knob:#ff9a62; --pill:rgba(120,160,210,.14); --pill-ink:#4a5a73; }
@@ -69,6 +69,21 @@
   #req .yes, #notice .yes { background:var(--accent); color:#fff; } #req .no { background:var(--pill); color:var(--pill-ink); }
   #join { position:fixed; inset:0; z-index:27; display:grid; place-items:center; background:rgba(40,60,90,.3);
     padding:max(16px,env(safe-area-inset-top,0px)) 16px max(16px,env(safe-area-inset-bottom,0px)); }
+  /* 키링 월드 입장 동의서 */
+  #consent { position:fixed; inset:0; z-index:40; display:grid; place-items:center; background:rgba(40,60,90,.35);
+    padding:max(16px,env(safe-area-inset-top,0px)) 16px max(16px,env(safe-area-inset-bottom,0px)); }
+  #consent .card-box { max-width:380px; text-align:left; background:#fff; backdrop-filter:none; }
+  #consent .card-name { text-align:center; } #consent .c-lead { text-align:center; font-size:.86rem; color:#6b7a90; margin:4px 0 14px; word-break:keep-all; line-height:1.55; }
+  .c-all { display:flex; align-items:center; gap:10px; padding:12px 14px; border-radius:14px; background:var(--pill); font-size:.98rem; cursor:pointer; }
+  .c-row { border-bottom:1px solid rgba(140,170,210,.25); padding:10px 2px; }
+  .c-line { display:flex; align-items:center; gap:10px; font-size:.9rem; word-break:keep-all; cursor:pointer; }
+  .c-line span { flex:1; } .c-tag { font-style:normal; font-size:.74rem; color:var(--accent-ink); background:rgba(255,154,98,.16); border-radius:6px; padding:1px 6px; margin-right:4px; white-space:nowrap; }
+  .c-tag.opt { color:#5b6f8c; background:var(--pill); }
+  .c-more { border:none; background:none; color:#8a98ab; font-family:inherit; font-size:.78rem; text-decoration:underline; cursor:pointer; flex:0 0 auto; }
+  .c-detail { margin:8px 0 2px 30px; font-size:.8rem; color:#5b6f8c; line-height:1.65; word-break:keep-all; }
+  #consent input[type=checkbox] { width:20px; height:20px; accent-color:var(--accent); flex:0 0 auto; }
+  #consentGo:disabled { opacity:.45; box-shadow:none; cursor:not-allowed; }
+  .c-out { display:block; text-align:center; margin-top:10px; font-size:.82rem; color:#8a98ab; }
   .join-sum { text-align:left; background:var(--pill); border-radius:14px; padding:12px 14px; margin:14px 0 10px; font-size:.9rem; line-height:1.7; word-break:keep-all; }
   .join-note { font-size:.8rem; opacity:.7; margin-bottom:14px; word-break:keep-all; }
   #join .btn { width:100%; margin-top:0; }
@@ -125,7 +140,7 @@
 <body>
 <canvas id="c"></canvas>
 <div id="hud" hidden>
-  <div class="panel"><h1 id="hudNick">키링크 광장</h1><p id="hudHelp">WASD·조이스틱 이동 · 마우스로 시야 · 스페이스 점프 · 사람 클릭</p><div class="hud-links"><a class="hud-link" href="/"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/></svg>키링크 홈</a><button type="button" id="blockListBtn" class="hud-link" hidden><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m5.6 5.6 12.8 12.8"/></svg>차단 목록</button></div></div>
+  <div class="panel"><h1 id="hudNick">키링 월드</h1><p id="hudHelp">WASD·조이스틱 이동 · 마우스로 시야 · 스페이스 점프 · 사람 클릭</p><div class="hud-links"><a class="hud-link" href="/"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/></svg>키링크 홈</a><button type="button" id="blockListBtn" class="hud-link" hidden><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m5.6 5.6 12.8 12.8"/></svg>차단 목록</button></div></div>
   <div id="net"><span class="dot off" id="netDot"></span><span id="netTxt">연결 중…</span></div>
   <div id="stick"><div id="knob"></div><div class="hint">드래그해서 이동</div></div>
   <button id="jumpBtn" aria-label="점프">점프</button>
@@ -160,6 +175,18 @@
   <div class="join-note" id="joinNote">카카오로 1초면 끝나요. 생년월일·연락처는 가입할 때 입력해요.</div>
   <button class="btn kakao" id="joinKakao"><svg class="kakao-logo" viewBox="0 0 24 24" aria-hidden="true"><path fill="#191919" d="M12 3.5C6.75 3.5 2.5 6.86 2.5 11c0 2.66 1.75 5 4.39 6.33l-.9 3.3c-.08.3.26.53.51.36l3.94-2.62c.5.06 1.02.1 1.56.1 5.25 0 9.5-3.36 9.5-7.47S17.25 3.5 12 3.5z"/></svg>카카오로 1초만에 시작하기</button>
 </div></div>
+<div id="consent" hidden><div class="card-box">
+  <div class="card-name">키링 월드 입장 동의</div>
+  <div class="c-lead">키링크의 신개념 온라인 소개팅이에요.<br>안전한 만남을 위해 아래 내용에 동의해 주세요.</div>
+  <label class="c-all"><input type="checkbox" id="cAll"><b>전체 동의</b></label>
+  <div class="c-row"><label class="c-line"><input type="checkbox" id="cAge"><span><i class="c-tag">필수</i>만 19세 이상이에요</span></label></div>
+  <div class="c-row"><label class="c-line"><input type="checkbox" id="cRules"><span><i class="c-tag">필수</i>이용 수칙을 지킬게요</span><button type="button" class="c-more">보기</button></label>
+    <div class="c-detail" hidden>욕설·비하, 음란한 말, 사기·금전 요구, 연락처를 집요하게 묻는 행동은 금지예요. 신고가 들어오면 확인 후 대화가 제한되거나 입장이 금지될 수 있어요.</div></div>
+  <div class="c-row"><label class="c-line"><input type="checkbox" id="cPrivacy"><span><i class="c-tag">필수</i>개인정보 수집·이용에 동의해요</span><button type="button" class="c-more">보기</button></label>
+    <div class="c-detail" hidden>수집 항목: 닉네임·캐릭터 정보, 1:1 대화 내용, 접속 기록(입장·퇴장 시각), 암호화된 IP·기기 정보<br>이용 목적: 키링 월드 운영, 신고 처리와 음란·범죄 예방(신고가 있거나 필요한 경우 관리자가 대화 내용을 확인할 수 있어요)<br>보관 기간: 접속 기록 30일, 대화 내용은 탈퇴 후 1년<br>AI 안내원 키키와의 대화는 답변을 만들기 위해 Anthropic(미국)에서 처리돼요.<br>동의하지 않으면 키링 월드에 입장할 수 없어요.</div></div>
+  <button type="button" class="btn go" id="consentGo" disabled>동의하고 입장하기</button>
+  <a class="c-out" href="/">동의하지 않고 나가기</a>
+</div></div>
 <div id="notice" hidden><div class="req-label" id="noticeLabel"></div><div class="req-nick" id="noticeNick"></div><div class="req-sub" id="noticeSub"></div><div class="req-btns"><button class="yes" id="noticeOk">확인</button></div></div>
 <div id="req" hidden><div class="req-label">1:1 대화 신청</div><div class="req-nick" id="reqNick"></div><div class="req-sub">님이 대화를 신청했어요</div><div class="req-btns"><button class="no" id="reqNo">나중에</button><button class="yes" id="reqYes">수락</button></div></div>
 <div id="report" hidden><div class="card-box">
@@ -186,7 +213,7 @@
   <div class="chat-msgs" id="chatMsgs"></div>
   <form class="chat-input" id="chatForm"><input id="chatText" placeholder="메시지 입력" autocomplete="off" maxlength="200"><button type="submit">전송</button></form>
 </div></div>
-<div id="loading">마을을 불러오는 중…</div>
+<div id="loading">키링 월드에 들어가는 중…</div>
 
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/" } }
@@ -274,11 +301,47 @@ function clearHero(){ for(const ch of [...hero.children]){ hero.remove(ch); ch.t
 function buildHero(o){ clearHero(); const root=new THREE.Group(); hero.add(root); rig.root=root; const r=makeBody(root,o); Object.assign(rig,r); }
 
 let shuttlePos=null; const BOUNDARY=20;
+// 택시(지역 이동): 아직 준비 중 — 누르면 안내 카드. 택시 몸체·정류장 표지판을 누를 수 있게 한다
+const TAXI_PROFILE={ taxi:true, nick:'택시' }; const taxiParts=[];
+function textTexture(w,h,draw){ const cv=document.createElement('canvas'); cv.width=w; cv.height=h; draw(cv.getContext('2d'),w,h); const t=new THREE.CanvasTexture(cv); t.colorSpace=THREE.SRGBColorSpace; return t; }
+// 로우폴리 한국 택시: 주황 차체 + 창문 + 바퀴 + 지붕 'TAXI' 표시등 + 문짝 '키링 월드 택시'
+function buildTaxi(){
+  const g=new THREE.Group(), M=(c,o={})=>new THREE.MeshStandardMaterial({ color:c, roughness:0.45, ...o });
+  const paint=M('#f2a33a'), dark=M('#2f3440',{ roughness:0.8 }), glass=M('#a9d4f0',{ roughness:0.15, metalness:0.1 }), chrome=M('#d8dde4',{ metalness:0.5, roughness:0.3 });
+  const box=(w,h,d,m,x,y,z)=>{ const b=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m); b.position.set(x,y,z); g.add(b); return b; };
+  box(4.0,0.62,1.8,paint,0,0.62,0);                 // 차체 아래
+  box(1.0,0.12,1.7,paint,1.45,0.98,0);              // 보닛 끝 살짝
+  box(2.3,0.62,1.62,glass,-0.2,1.24,0);             // 창문(캐빈)
+  box(2.36,0.1,1.68,paint,-0.2,1.58,0);             // 지붕
+  for(const x of [-1.32,-0.2,0.92]) for(const z of [-0.79,0.79]) box(0.1,0.62,0.08,paint,x,1.24,z); // 창틀 기둥(양옆 모서리만 → 앞·뒤 유리가 보이게)
+  box(0.2,0.2,1.86,dark,2.05,0.45,0); box(0.2,0.2,1.86,dark,-2.05,0.45,0); // 범퍼
+  for(const z of [-0.6,0.6]){ box(0.06,0.16,0.34,M('#fff7d1',{ emissive:'#ffe9a0', emissiveIntensity:0.6 }),2.02,0.72,z); box(0.06,0.14,0.3,M('#e0453a',{ emissive:'#a01810', emissiveIntensity:0.4 }),-2.02,0.72,z); }
+  for(const [x,z] of [[1.3,0.86],[1.3,-0.86],[-1.3,0.86],[-1.3,-0.86]]){
+    const w=new THREE.Mesh(new THREE.CylinderGeometry(0.36,0.36,0.28,18),dark); w.rotation.x=Math.PI/2; w.position.set(x,0.36,z); g.add(w);
+    const hub=new THREE.Mesh(new THREE.CylinderGeometry(0.16,0.16,0.3,12),chrome); hub.rotation.x=Math.PI/2; hub.position.set(x,0.36,z); g.add(hub); }
+  // 지붕 표시등
+  const signTex=textTexture(256,96,(c,w,h)=>{ c.fillStyle='#fffbe8'; c.fillRect(0,0,w,h); c.fillStyle='#1f2a3d'; c.font='bold 64px Jua, sans-serif'; c.textAlign='center'; c.textBaseline='middle'; c.fillText('TAXI',w/2,h/2+3); });
+  const signSide=M('#fffbe8',{ emissive:'#fff1b8', emissiveIntensity:0.35 }), signFace=new THREE.MeshStandardMaterial({ map:signTex, emissive:'#fff1b8', emissiveIntensity:0.25, emissiveMap:signTex });
+  const sign=new THREE.Mesh(new THREE.BoxGeometry(0.34,0.3,0.86),[signFace,signFace,signSide,signSide,signFace,signFace]); sign.position.set(-0.2,1.79,0); sign.rotation.y=Math.PI/2; g.add(sign);
+  // 문짝 글씨(양쪽)
+  const doorTex=textTexture(512,96,(c,w,h)=>{ c.fillStyle='#1f2a3d'; c.font='bold 54px Jua, sans-serif'; c.textAlign='center'; c.textBaseline='middle'; c.fillText('키링 월드 택시',w/2,h/2+2); });
+  for(const z of [0.905,-0.905]){ const d=new THREE.Mesh(new THREE.PlaneGeometry(1.9,0.36),new THREE.MeshBasicMaterial({ map:doorTex, transparent:true })); d.position.set(-0.1,0.66,z); if(z<0) d.rotation.y=Math.PI; g.add(d); }
+  box(4.02,0.06,1.82,dark,0,0.92,0);               // 허리 라인
+  // 위에 '택시 · 준비 중' 표시
+  const tag=new THREE.Sprite(new THREE.SpriteMaterial({ map:textTexture(320,96,(c)=>{ c.fillStyle='rgba(255,255,255,.95)'; roundRect(c,10,8,300,70,35); c.fill(); c.fillStyle='#5b6f8c'; c.font='bold 36px Jua, sans-serif'; c.textAlign='center'; c.textBaseline='middle'; c.fillText('택시 · 준비 중',160,44); }), transparent:true, depthTest:false }));
+  tag.scale.set(1.6,0.48,1); tag.position.y=2.55; g.add(tag);
+  g.position.set(12.6,0,-0.2); g.rotation.y=Math.PI; // 동쪽 길 위, 정류장 옆 — 앞이 광장 쪽을 보게
+  g.userData.profile=TAXI_PROFILE; taxiParts.push(g); scene.add(g);
+  obstacles.push({ x:11.5, z:-0.2, r:1.05 }, { x:13.7, z:-0.2, r:1.05 }); // 차를 뚫고 지나가지 않게
+  return g; }
+buildTaxi();
 new GLTFLoader().load('/plaza/village.glb', (gltf)=>{
   const v=gltf.scene; scene.add(v); v.updateMatrixWorld(true);
   v.traverse((o)=>{
     const role=o.userData&&o.userData.kl_role;
     if(role==='collider'||role==='trigger'){ if(role==='trigger'){ shuttlePos=new THREE.Vector3(); o.getWorldPosition(shuttlePos); } o.visible=false; return; }
+    if(o.name==='PRP_shuttle_body'){ o.visible=false; return; } // 예전 셔틀 모양 → 코드로 만든 택시(buildTaxi)로 대체
+    if(o.name==='PRP_shuttle_stop_post'){ o.userData.profile=TAXI_PROFILE; taxiParts.push(o); }
     if(o.isMesh){ const n=o.name||'';
       if((n.includes('cottage')&&n.includes('_body'))||n.includes('fountain_basin')||(n.includes('tree_')&&n.includes('trunk'))){
         const bb=new THREE.Box3().setFromObject(o), c=bb.getCenter(new THREE.Vector3()), sz=bb.getSize(new THREE.Vector3());
@@ -287,7 +350,7 @@ new GLTFLoader().load('/plaza/village.glb', (gltf)=>{
     }
   });
   document.getElementById('loading').remove();
-}, undefined, (err)=>{ document.getElementById('loading').textContent='마을을 불러오지 못했어요.'; console.error(err); });
+}, undefined, (err)=>{ document.getElementById('loading').textContent='키링 월드를 불러오지 못했어요.'; console.error(err); });
 
 // ── 입장 UI ──
 const HAIR_COLORS=['#2a2018','#6b4423','#111111','#d9b36a','#d14b4b','#8a5bd1'];
@@ -310,7 +373,7 @@ function renderSw(id,key,cols){ const el=document.getElementById(id); el.innerHT
 function renderAll(){ renderPills('opt-gender','gender',CHOICES.gender); renderPills('opt-face','face',CHOICES.face); renderPills('opt-hair','hair',CHOICES.hair); renderSw('opt-hairColor','hairColor',HAIR_COLORS); renderPills('opt-eye','eye',CHOICES.eye); renderSw('opt-clothes','clothes',CLOTHES); renderPills('opt-region','region',CHOICES.region); }
 document.getElementById('randomBtn').onclick=()=>{ const p=a=>a[Math.floor(Math.random()*a.length)]; opts.gender=p(CHOICES.gender)[1]; opts.face=p(CHOICES.face)[1]; opts.hair=p(CHOICES.hair)[1]; opts.eye=p(CHOICES.eye)[1]; opts.hairColor=p(HAIR_COLORS); opts.clothes=p(CLOTHES); if(!nickInput.value){ opts.nick=p(NICKS); nickInput.value=opts.nick; } renderAll(); buildHero(opts); };
 let mode='creating';
-document.getElementById('enterBtn').onclick=async()=>{ { const np=nickProblem(opts.nick); if(np){ toast(NICK_MSG[np]); nickInput.focus(); return; } } if(!opts.region){ toast('지역을 선택해 주세요'); return; } if(!/^(19|20)\d\d$/.test(opts.age)){ toast('출생연도를 네 자리로 입력해 주세요'); return; } if(!opts.nick){ opts.nick=NICKS[Math.floor(Math.random()*NICKS.length)]; nickInput.value=opts.nick; buildHero(opts); }
+document.getElementById('enterBtn').onclick=async()=>{ if(!consent){ consentBox.hidden=false; return; } { const np=nickProblem(opts.nick); if(np){ toast(NICK_MSG[np]); nickInput.focus(); return; } } if(!opts.region){ toast('지역을 선택해 주세요'); return; } if(!/^(19|20)\d\d$/.test(opts.age)){ toast('출생연도를 네 자리로 입력해 주세요'); return; } if(!opts.nick){ opts.nick=NICKS[Math.floor(Math.random()*NICKS.length)]; nickInput.value=opts.nick; buildHero(opts); }
   if(member && fbUser && profileNick && opts.nick!==profileNick){ if(!(await saveNickChange())) return; }
   try{ localStorage.setItem('kl_char',JSON.stringify(opts)); }catch(e){} document.getElementById('entry').remove(); document.getElementById('hud').hidden=false; document.getElementById('hudNick').textContent=opts.nick+' 님'; mode='playing'; connect(); };
 renderAll(); buildHero(opts);
@@ -371,12 +434,18 @@ function reactAnimal(prof){ const g=animals.find(a=>a.userData.profile===prof); 
   animalBubble(g,pickA(ANIMAL_SAYS[u.kind])); u.rest=0; u.target=null; g.rotation.y=Math.atan2(hero.position.x-g.position.x, hero.position.z-g.position.z);
   if(u.kind==='dog'){ u.follow=6; u.hop=0.0001; } else { u.rest=2.5; } }
 
-// ── AI NPC "큐피드": 광장 안내 + 소개팅 대화 연습 (대화는 /api/plaza/npc, 회원 전용) ──
-const NPC_PROFILE={ nick:'큐피드', id:'npc', npc:true };
+// ── AI NPC "키키": 광장 안내 + 소개팅 대화 연습 (대화는 /api/plaza/npc, 비회원도 가능) ──
+const NPC_PROFILE={ nick:'키키', id:'npc', npc:true };
 const npcGroup=(()=>{ const g=new THREE.Group(); const root=new THREE.Group(); g.add(root);
-  const refs=makeBody(root,{ nick:'큐피드 AI', gender:'npc', face:'round', hair:'short', hairColor:'#f6a6c1', eye:'round', clothes:'#f2b84b' });
-  const halo=new THREE.Mesh(new THREE.TorusGeometry(0.3,0.045,8,28), new THREE.MeshStandardMaterial({ color:'#ffd65a', emissive:'#ffb800', emissiveIntensity:0.6 }));
-  halo.rotation.x=Math.PI/2; halo.position.y=2.3; root.add(halo);
+  const refs=makeBody(root,{ nick:'키키 AI', gender:'npc', face:'round', hair:'short', hairColor:'#f6a6c1', eye:'round', clothes:'#f2b84b' });
+  // 손에 든 열쇠고리(키링): 금색 고리 + 매달린 열쇠가 흔들린다 (머리 위는 이름표에 가려서 손으로)
+  const gold=new THREE.MeshStandardMaterial({ color:'#ffd65a', emissive:'#ffb800', emissiveIntensity:0.55, metalness:0.3, roughness:0.35 });
+  const halo=new THREE.Group(); halo.position.set(0,-0.64,0.06); halo.scale.setScalar(0.95); refs.armR.add(halo); refs.armR.rotation.x=-0.5;
+  halo.add(new THREE.Mesh(new THREE.TorusGeometry(0.17,0.035,8,28),gold));
+  const key=new THREE.Group(); key.position.y=-0.17; halo.add(key);
+  const bow=new THREE.Mesh(new THREE.TorusGeometry(0.07,0.028,8,20),gold); bow.position.y=-0.07; key.add(bow);
+  const shaft=new THREE.Mesh(new THREE.CylinderGeometry(0.022,0.022,0.2,8),gold); shaft.position.y=-0.24; key.add(shaft);
+  for(const [y,w] of [[-0.29,0.07],[-0.33,0.05]]){ const t=new THREE.Mesh(new THREE.BoxGeometry(w,0.03,0.03),gold); t.position.set(w/2,y,0); key.add(t); }
   // 눈에 띄게: 발밑 빛나는 원 + 머리 위 "눌러서 대화" 말풍선
   const glow=new THREE.Mesh(new THREE.RingGeometry(0.55,0.95,40), new THREE.MeshBasicMaterial({ color:'#a98bff', transparent:true, opacity:0.55, side:THREE.DoubleSide, depthWrite:false }));
   glow.rotation.x=-Math.PI/2; glow.position.y=0.03; g.add(glow);
@@ -469,14 +538,14 @@ const card=document.getElementById('card'); let reqTarget=null;
 function openCard(profile){ document.exitPointerLock?.(); reqTarget=profile; document.getElementById('cardName').textContent=profile.nick;
   const meta=document.getElementById('cardMeta');
   const reqBtn=document.getElementById('cardReq');
-  if(profile.npc){ meta.innerHTML='<span class="npc-tag">AI 안내원 · 실제 회원이 아니에요</span><br>광장 사용법과 키링크 소개팅을 안내하고,<br>소개팅 대화 연습도 도와드려요.'; reqBtn.textContent='큐피드와 대화하기'; reqBtn.hidden=false; }
+  if(profile.npc){ meta.innerHTML='<span class="npc-tag">AI 안내원 · 실제 회원이 아니에요</span><br>광장 사용법과 키링크 소개팅을 안내하고,<br>소개팅 대화 연습도 도와드려요.'; reqBtn.textContent='키키와 대화하기'; reqBtn.hidden=false; }
   else { meta.textContent=(profile.gender?profile.gender+' · ':'')+'지금 광장에 접속 중'; reqBtn.textContent='1:1 대화 신청'; reqBtn.hidden=false; }
   document.getElementById('cardSafety').hidden=!!profile.npc;
   card.hidden=false; }
 document.getElementById('cardClose').onclick=()=>card.hidden=true;
 card.addEventListener('pointerdown',(e)=>{ if(e.target===card) card.hidden=true; });
 document.getElementById('cardReq').onclick=()=>{ const p=reqTarget; card.hidden=true;
-  if(p.npc){ openNpcChat(); } // 큐피드는 비회원도 대화 가능
+  if(p.npc){ openNpcChat(); } // 키키(AI)는 비회원도 대화 가능
   else if(ws&&ws.readyState===1&&p.id){ ws.send(JSON.stringify({ t:'req', to:p.id })); toast(`${p.nick}님에게 1:1 신청!`); } };
 let incoming=null; const reqBox=document.getElementById('req');
 function showReq(fromId, nick, uid, key){ document.exitPointerLock?.(); incoming={id:fromId,nick,uid,key}; document.getElementById('reqNick').textContent=nick; reqBox.hidden=false; }
@@ -506,33 +575,33 @@ async function openChat(p){ document.exitPointerLock?.(); currentChat=p; setNpcL
   let loaded=false;
   if(p.npc){ loaded=await loadNpcHistory(); }
   else if(p.uid && fbUser){ loaded=await loadChatHistory(p.uid); }
-  if(!loaded) addMsg('them', p.npc ? '안녕하세요! 저는 키링크 광장의 AI 안내원 큐피드예요. 광장 사용법, 소개팅 일정이 궁금하거나 소개팅 대화 연습을 하고 싶으면 편하게 말해 주세요.' : '1:1 대화가 연결됐어요! 인사 나눠보세요');
-  if(p.npc){ addMsg('sys', fbUser ? '큐피드는 AI예요\n회원은 하루 100번까지 대화할 수 있어요' : '큐피드는 AI예요\n비회원은 하루 30번, 회원은 100번까지\n대화할 수 있어요'); }
+  if(!loaded) addMsg('them', p.npc ? '안녕하세요! 저는 키링 월드의 AI 안내원 키키예요. 광장 사용법, 소개팅 일정이 궁금하거나 소개팅 대화 연습을 하고 싶으면 편하게 말해 주세요.' : '1:1 대화가 연결됐어요! 인사 나눠보세요');
+  if(p.npc){ addMsg('sys', fbUser ? '키키는 AI예요\n회원은 하루 100번까지 대화할 수 있어요' : '키키는 AI예요\n비회원은 하루 30번, 회원은 100번까지\n대화할 수 있어요'); }
   else { if(!fbUser) addMsg('sys','로그인하지 않아 이 대화는 저장되지 않아요'); else if(!p.uid) addMsg('sys','상대가 회원 로그인 전이라 이 대화는 저장되지 않아요'); } }
 async function loadNpcHistory(){ try{ const r=fbUser ? await authFetch('/api/plaza/npc') : await fetch('/api/plaza/npc?dev='+encodeURIComponent(DEV_ID)); const j=await r.json().catch(()=>({})); setNpcLeft(j.remaining, j.limit); const msgs=j.messages||[]; if(!msgs.length) return false; for(const m of msgs) addMsg(m.mine?'me':'them', m.text, m.cta); return true; }catch(e){ return false; } }
 async function loadChatHistory(uid){ try{ const t=await fbUser.getIdToken(); const r=await fetch('/api/plaza/chat/history?with='+encodeURIComponent(uid),{ headers:{ Authorization:'Bearer '+t } }); const j=await r.json().catch(()=>({})); const msgs=j.messages||[]; if(!msgs.length) return false; for(const m of msgs) addMsg(m.mine?'me':'them', m.text, m.cta); return true; }catch(e){ return false; } }
 function addMsg(who,text,cta){ const d=document.createElement('div'); d.className='msg '+who; d.textContent=text; chatMsgs.appendChild(d);
-  if(cta==='apply'){ const a=document.createElement('a'); a.className='msg-cta'; a.href='/#apply'; a.target='_blank'; a.rel='noopener'; a.textContent='신청하러 가기 →'; chatMsgs.appendChild(a); } // 큐피드 답 아래 신청 버튼(새 탭: 광장은 그대로)
+  if(cta==='apply'){ const a=document.createElement('a'); a.className='msg-cta'; a.href='/#apply'; a.target='_blank'; a.rel='noopener'; a.textContent='신청하러 가기 →'; chatMsgs.appendChild(a); } // 키키(AI) 답 아래 신청 버튼(새 탭: 광장은 그대로)
   chatMsgs.scrollTop=chatMsgs.scrollHeight; }
 document.getElementById('chatClose').onclick=()=>{ if(currentChat && !currentChat.npc && ws && ws.readyState===1){ try{ ws.send(JSON.stringify({ t:'chatbye', to:currentChat.id })); }catch(e){} } chat.hidden=true; currentChat=null; };
 async function persistChat(toUid,toNick,text){ if(!toUid||!fbUser) return; try{ const t=await fbUser.getIdToken(); const r=await fetch('/api/plaza/chat/send',{ method:'POST', headers:{ 'Content-Type':'application/json', Authorization:'Bearer '+t }, body:JSON.stringify({ toUid, toNick, myNick:opts.nick, text }) }); if(!r.ok){ const j=await r.json().catch(()=>({})); toast('대화 저장 실패: '+(j.error||r.status)); } }catch(e){ toast('대화 저장 실패: 네트워크'); } }
 document.getElementById('chatForm').addEventListener('submit',(e)=>{ e.preventDefault(); const t=chatText.value.trim(); if(!t||!currentChat) return; addMsg('me',t); chatText.value='';
   if(currentChat.npc){ sendToNpc(t); }
   else if(ws&&ws.readyState===1){ ws.send(JSON.stringify({ t:'chat', to:currentChat.id, text:t })); persistChat(currentChat.uid, currentChat.nick, t); } });
-function openNpcChat(){ openChat({ id:'npc', nick:'큐피드 (AI)', uid:'npc', npc:true }); }
+function openNpcChat(){ openChat({ id:'npc', nick:'키키 (AI)', uid:'npc', npc:true }); }
 let npcBusy=false;
-// 큐피드 대화창 입력칸 위: 오늘 남은 대화 횟수
+// 키키(AI) 대화창 입력칸 위: 오늘 남은 대화 횟수
 function setNpcLeft(left,limit){ let el=document.getElementById('npcLeft'); if(typeof left!=='number'){ if(el) el.remove(); return; }
   if(!el){ el=document.createElement('div'); el.id='npcLeft'; el.className='npc-left'; document.getElementById('chatForm').before(el); }
   el.innerHTML='오늘 남은 대화 <b>'+left+'번</b> / '+limit+'번'+(fbUser?'':' · 회원은 하루 100번'); }
 async function sendToNpc(text){ if(npcBusy) return; npcBusy=true; chatText.disabled=true;
-  const typing=document.createElement('div'); typing.className='msg them typing'; typing.textContent='큐피드가 입력 중…'; chatMsgs.appendChild(typing); chatMsgs.scrollTop=chatMsgs.scrollHeight;
+  const typing=document.createElement('div'); typing.className='msg them typing'; typing.textContent='키키가 입력 중…'; chatMsgs.appendChild(typing); chatMsgs.scrollTop=chatMsgs.scrollHeight;
   try{ const init={ method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ text, myNick:opts.nick, dev:DEV_ID }) };
     const r=fbUser ? await authFetch('/api/plaza/npc',init) : await fetch('/api/plaza/npc',init);
     const j=await r.json().catch(()=>({})); typing.remove();
     if(r.ok && j.reply){ if(currentChat?.npc){ addMsg('them', j.reply, j.cta); setNpcLeft(j.remaining, j.limit); } }
     else if(r.status===429 && j.error==='daily_limit'){ setNpcLeft(0, j.limit); addMsg('sys', j.guest ? '오늘 비회원 대화 횟수('+j.limit+'번)를 다 썼어요\n회원이 되면 하루 100번까지 대화할 수 있어요' : '오늘 대화 횟수('+(j.limit||100)+'번)를 다 썼어요\n내일 다시 만나요!'); }
-    else { addMsg('sys','큐피드가 잠깐 자리를 비웠어요. 잠시 후 다시 말해 주세요'); }
+    else { addMsg('sys','키키가 잠깐 자리를 비웠어요. 잠시 후 다시 말해 주세요'); }
   }catch(e){ typing.remove(); addMsg('sys','네트워크 오류예요. 잠시 후 다시 시도해 주세요'); }
   finally{ npcBusy=false; chatText.disabled=false; chatText.focus(); } }
 function onChatMsg(from,nick,text,uid){
@@ -642,6 +711,7 @@ onAuthStateChanged(fbAuth, async (u)=>{
   myUid = fbUser ? fbUser.uid : null;
   // 로그인 확정이 입장보다 늦었을 때, uid를 서버에 다시 알려 1:1 대화 저장이 되게 한다
   if(fbUser && ws && ws.readyState===1 && mode==='playing'){ sendHello(); }
+  if(fbUser && consent) postConsent(consent); // 비회원 때 한 동의를 회원 계정에도 기록
   if(!fbUser){ member=false; return; }
   loadBlocks();
   try{
@@ -701,9 +771,10 @@ const raycaster=new THREE.Raycaster(); const ndc=new THREE.Vector2();
 let dragId=null, dragX=0, dragY=0, dragged=false;
 const canvasEl=renderer.domElement, reticle=document.getElementById('reticle');
 let locked=false, aimTarget=null;
-const modalOpen=()=> !noticeBox.hidden || !card.hidden || !chat.hidden || !joinBox.hidden || !reportBox.hidden || !confirmBox.hidden || !blockListBox.hidden;
-function pickProfile(prof){ if(!prof) return; if(prof.animal){ reactAnimal(prof); return; } if(member || prof.npc) openCard(prof); else openJoin(()=>openCard(prof)); }
-function raycastFromNDC(x,y){ ndc.set(x,y); raycaster.setFromCamera(ndc,camera); const groups=[...[...peers.values()].map(p=>p.group), ...animals, npcGroup]; const hits=raycaster.intersectObjects(groups,true); if(!hits.length) return null; let g=hits[0].object; while(g&&!g.userData.profile) g=g.parent; return g?g.userData.profile:null; }
+const modalOpen=()=> !consentBox.hidden || !noticeBox.hidden || !card.hidden || !chat.hidden || !joinBox.hidden || !reportBox.hidden || !confirmBox.hidden || !blockListBox.hidden;
+function pickProfile(prof){ if(!prof) return; if(prof.animal){ reactAnimal(prof); return; }
+  if(prof.taxi){ showNotice('택시', '서비스 준비 중이에요', '곧 택시를 타고 부산·서울 등<br>다른 지역 키링 월드로 이동할 수 있어요.'); return; } if(member || prof.npc) openCard(prof); else openJoin(()=>openCard(prof)); }
+function raycastFromNDC(x,y){ ndc.set(x,y); raycaster.setFromCamera(ndc,camera); const groups=[...[...peers.values()].map(p=>p.group), ...animals, ...taxiParts, npcGroup]; const hits=raycaster.intersectObjects(groups,true); if(!hits.length) return null; let g=hits[0].object; while(g&&!g.userData.profile) g=g.parent; return g?g.userData.profile:null; }
 
 // ── 데스크톱: 배그식 마우스룩(Pointer Lock) ──
 canvasEl.addEventListener('pointerdown',(e)=>{
@@ -726,6 +797,22 @@ addEventListener('pointermove',(e)=>{ if(e.pointerId!==dragId) return; const dx=
 addEventListener('pointerup',(e)=>{ if(e.pointerId!==dragId) return; const wasDrag=dragged; dragId=null;
   if(!wasDrag && mode==='playing' && !modalOpen()){ pickProfile(raycastFromNDC((e.clientX/innerWidth)*2-1, -(e.clientY/innerHeight)*2+1)); } });
 canvasEl.addEventListener('wheel',(e)=>{ camDist=Math.min(24,Math.max(7,camDist+Math.sign(e.deltaY)*1.3)); },{passive:true});
+
+// ── 키링 월드 입장 동의 (버전이 바뀌면 다시 받는다 — 예: 1:1 성사 후 프로필 사진 공개 기능 추가 시) ──
+const CONSENT_VER='2026-11-04', CONSENT_LS='kl_world_consent';
+var consent=null; try{ const v=JSON.parse(localStorage.getItem(CONSENT_LS)||'null'); if(v && v.v===CONSENT_VER) consent=v; }catch(e){}
+var consentBox=document.getElementById('consent');
+const C_ITEMS=['cAge','cRules','cPrivacy'], C_REQ=C_ITEMS;
+const cEl=(id)=>document.getElementById(id);
+function syncConsent(){ cEl('consentGo').disabled=!C_REQ.every(id=>cEl(id).checked); cEl('cAll').checked=C_ITEMS.every(id=>cEl(id).checked); }
+cEl('cAll').onchange=(e)=>{ for(const id of C_ITEMS) cEl(id).checked=e.target.checked; syncConsent(); };
+for(const id of C_ITEMS) cEl(id).onchange=syncConsent;
+document.querySelectorAll('#consent .c-more').forEach(b=>b.onclick=(e)=>{ e.preventDefault(); const d=b.closest('.c-row').querySelector('.c-detail'); d.hidden=!d.hidden; b.textContent=d.hidden?'보기':'접기'; });
+function saveConsent(c){ consent=c; try{ localStorage.setItem(CONSENT_LS, JSON.stringify(c)); }catch(e){} }
+async function postConsent(c){ try{ const init={ method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ dev:DEV_ID, age:true, rules:true, privacy:true }) };
+  const r=fbUser ? await authFetch('/api/plaza/consent',init) : await fetch('/api/plaza/consent',init); return r.ok; }catch(e){ return false; } }
+cEl('consentGo').onclick=async()=>{ const c={ v:CONSENT_VER, at:Date.now() }; saveConsent(c); consentBox.hidden=true; postConsent(c); };
+if(!consent) consentBox.hidden=false;
 
 // ── 루프 ──
 const clock=new THREE.Clock();
@@ -759,8 +846,8 @@ function tick(){
     if(moved>0.002){ g.rotation.y=pr.target.ry; pr.phase+=dt*9; const s=Math.sin(pr.phase); pr.refs.legL.rotation.x=s*0.5; pr.refs.legR.rotation.x=-s*0.5; pr.refs.armL.rotation.x=-s*0.45; pr.refs.armR.rotation.x=s*0.45; pr.root.position.y=Math.abs(Math.sin(pr.phase))*0.045; }
     else { pr.refs.legL.rotation.x=L(pr.refs.legL.rotation.x,0,0.2); pr.refs.legR.rotation.x=L(pr.refs.legR.rotation.x,0,0.2); pr.refs.armL.rotation.x=L(pr.refs.armL.rotation.x,0,0.2); pr.refs.armR.rotation.x=L(pr.refs.armR.rotation.x,0,0.2); pr.root.position.y=L(pr.root.position.y,0,0.2); }
   }
-  // 큐피드: 둥실둥실 + 가까이 오면 쳐다보기
-  { const u=npcGroup.userData; u.phase+=dt; u.root.position.y=Math.sin(u.phase*2)*0.04; u.halo.rotation.z+=dt*0.8;
+  // 키키(AI): 둥실둥실 + 가까이 오면 쳐다보기
+  { const u=npcGroup.userData; u.phase+=dt; u.root.position.y=Math.sin(u.phase*2)*0.04; u.halo.rotation.y=Math.sin(u.phase*1.3)*0.6; u.halo.children[1].rotation.z=Math.sin(u.phase*2.2)*0.3;
     u.bubble.position.y=3.05+Math.sin(u.phase*2.4)*0.08; u.glow.material.opacity=0.35+Math.sin(u.phase*3)*0.2;
     const dx=hero.position.x-npcGroup.position.x, dz=hero.position.z-npcGroup.position.z;
     if(mode==='playing' && dx*dx+dz*dz<49){ const want=Math.atan2(dx,dz); let d=want-npcGroup.rotation.y; d=Math.atan2(Math.sin(d),Math.cos(d)); npcGroup.rotation.y+=d*Math.min(1,dt*4); } }

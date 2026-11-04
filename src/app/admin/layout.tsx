@@ -30,9 +30,9 @@ const PAGE_TITLE: Record<string, string> = {
   '/admin/cms':           '콘텐츠 편집',
   '/admin/settings':      '시스템 설정',
   '/admin/sms-templates': 'SMS 템플릿',
-  '/admin/plaza-stats':   '광장 현황',
-  '/admin/plaza-chats':   '광장 대화',
-  '/admin/plaza-reports': '광장 신고',
+  '/admin/plaza-stats':   '키링 월드 현황',
+  '/admin/plaza-chats':   '키링 월드 대화',
+  '/admin/plaza-reports': '키링 월드 신고',
   '/admin/excel-cleaner': '참여자 엑셀 정리',
 };
 
@@ -88,6 +88,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [miniProgressPct, setMiniProgressPct] = useState<number>(0);
   const [miniOverallProgressPct, setMiniOverallProgressPct] = useState<number>(0);
 
+  const [groupOpen, setGroupOpen] = useState<Record<string, boolean>>({});
   const NAV = [
     { label: '대시보드',      icon: LayoutDashboard, path: '/admin' },
     { label: '회원 관리',      icon: Users,           path: '/admin/users' },
@@ -96,9 +97,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { label: '소개팅 진행',   icon: Timer,           path: '/admin/timer' },
     { label: '매출 통계',     icon: TrendingUp,      path: '/admin/revenue',       superOnly: true },
     { label: 'SMS 템플릿',     icon: MessageSquare,   path: '/admin/sms-templates' },
-    { label: '광장 현황',      icon: Activity,        path: '/admin/plaza-stats' },
-    { label: '광장 대화',      icon: MessageSquare,   path: '/admin/plaza-chats' },
-    { label: '광장 신고',      icon: Bell,            path: '/admin/plaza-reports' },
+    // 키링 월드(신개념 온라인 소개팅, 3D) 관련 메뉴는 하나로 묶는다(펼침/접힘)
+    { label: '키링 월드',           icon: Activity,        path: '/admin/plaza-stats', children: [
+      { label: '현황',  icon: Activity,      path: '/admin/plaza-stats' },
+      { label: '대화',  icon: MessageSquare, path: '/admin/plaza-chats' },
+      { label: '신고',  icon: Bell,          path: '/admin/plaza-reports' },
+    ] },
     { label: '콘텐츠 편집',   icon: FileText,        path: '/admin/cms' },
     { label: '시스템 설정',   icon: Settings,        path: '/admin/settings',       superOnly: true },
     { label: '엑셀 정리기',   icon: FileSpreadsheet, path: '/admin/excel-cleaner' },
@@ -667,13 +671,57 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto" style={{ padding: '16px 12px' }}>
-          {NAV.map(item => {
-            const active = pathname === item.path;
-            const locked = (item as any).superOnly && !isSuperAdmin;
+          {NAV.map((item: any) => {
+            const locked = item.superOnly && !isSuperAdmin;
 
             if (locked) {
               return null;
             }
+
+            // 묶음 메뉴(광장): 펼치면 하위 메뉴, 사이드바를 접은 상태면 아이콘 하나(첫 화면으로 이동)
+            if (item.children && showText) {
+              const inGroup = item.children.some((c: any) => pathname === c.path);
+              const open = groupOpen[item.label] ?? inGroup;
+              return (
+                <div key={item.label}>
+                  <button
+                    type="button"
+                    onClick={() => setGroupOpen(g => ({ ...g, [item.label]: !open }))}
+                    className="w-full flex items-center rounded-lg mb-0.5 transition-all duration-150"
+                    style={{ padding: '0 10px', height: 40, color: inGroup ? '#0F172A' : '#64748B', fontWeight: inGroup ? 600 : 500, fontSize: '0.9rem', background: 'transparent' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#F1F5F9'; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+                  >
+                    <span style={{ width: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <item.icon size={16} />
+                    </span>
+                    <span className="flex-1 whitespace-nowrap text-left" style={{ marginLeft: 10 }}>{item.label}</span>
+                    <ChevronDown size={15} style={{ transition: 'transform .15s', transform: open ? 'rotate(180deg)' : 'none' }} />
+                  </button>
+                  {open && (
+                    <div style={{ marginLeft: 19, paddingLeft: 10, borderLeft: '1px solid #E2E8F0', marginBottom: 4 }}>
+                      {item.children.map((c: any) => {
+                        const cActive = pathname === c.path;
+                        return (
+                          <Link
+                            key={c.path}
+                            href={c.path}
+                            onClick={() => setSidebarOpen(false)}
+                            className="flex items-center rounded-lg mb-0.5 transition-all duration-150"
+                            style={{ padding: '0 10px', height: 36, color: cActive ? '#fff' : '#64748B', background: cActive ? '#FF7E7E' : 'transparent', fontWeight: cActive ? 600 : 500, fontSize: '0.86rem', boxShadow: cActive ? '0 4px 12px rgba(255,126,126,0.25)' : 'none' }}
+                            onMouseEnter={e => { if (!cActive) (e.currentTarget as HTMLElement).style.background = '#F1F5F9'; }}
+                            onMouseLeave={e => { if (!cActive) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+                          >
+                            <span className="whitespace-nowrap">{c.label}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+            const active = item.children ? item.children.some((c: any) => pathname === c.path) : pathname === item.path;
 
 
             return (
