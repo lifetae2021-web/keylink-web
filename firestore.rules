@@ -28,7 +28,8 @@ service cloud.firestore {
 
     function serverOnlyFieldsKept() {
       return serverOnlyFieldKept('verifiedPhone') && serverOnlyFieldKept('phoneVerifiedAt') &&
-        serverOnlyFieldKept('mergedTo') && serverOnlyFieldKept('mergedFrom');
+        serverOnlyFieldKept('mergedTo') && serverOnlyFieldKept('mergedFrom') &&
+        serverOnlyFieldKept('guestPw') && serverOnlyFieldKept('guestPwHash'); // 비회원 비밀번호는 서버(/api/auth/guest-pin)만
     }
 
     function isSuperAdmin() {

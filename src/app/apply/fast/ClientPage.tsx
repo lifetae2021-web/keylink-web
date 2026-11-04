@@ -1086,7 +1086,6 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
 
       // Create temp user doc
       const birthStr = formData.birthDate.replace(/-/g, ''); // '971121'
-      const phoneLast4 = formData.phone.replace(/\D/g, '').slice(-4);
 
       batch.set(doc(db, 'users', uid), {
         uid,
@@ -1114,7 +1113,7 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
         loginMethod: 'anonymous',
         role: 'user',                 // Firestore 규칙을 통과하기 위해 필수
         guestId: birthStr,            // 생년월일 6자리
-        guestPw: customPin || phoneLast4, // 설정한 비밀번호 또는 전화번호 끝 4자리
+        // 비밀번호는 여기서 쓰지 않음 — 커밋 후 /api/auth/guest-pin 이 해시로만 저장
         createdAt: Timestamp.now(),
       });
 
@@ -1171,6 +1170,15 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
       }
 
       await batch.commit();
+
+      // 비회원 비밀번호: 설정한 PIN 또는 전화번호 끝 4자리 → 서버가 해시로 저장
+      const pinToken = await auth.currentUser!.getIdToken();
+      const pinRes = await fetch('/api/auth/guest-pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${pinToken}` },
+        body: JSON.stringify({ pin: customPin || null }),
+      });
+      if (!pinRes.ok) throw new Error('비밀번호 설정 실패 (' + pinRes.status + ')');
 
       // 인증한 번호를 비회원 계정에 기록 (나중에 카카오/구글 회원 전환 시 함께 옮겨짐)
       if (phoneTokenRef.current) {

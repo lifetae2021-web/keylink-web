@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { FieldValue } from 'firebase-admin/firestore';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
+import { hashGuestPw } from '@/lib/guestPassword';
 
 // 랜덤 임시 비밀번호 생성 (영문+숫자 8자리)
 function generateTempPassword(): string {
@@ -40,8 +42,8 @@ export async function POST(req: NextRequest) {
     if (isGuest) {
       const phoneDigits = (targetData.phone || '').replace(/[^0-9]/g, '');
       tempPassword = phoneDigits.slice(-4) || '0000';
-      // 비회원은 Firestore guestPw 업데이트
-      await adminDb.collection('users').doc(uid).update({ guestPw: tempPassword });
+      // 비회원은 해시로만 저장(평문 guestPw 는 삭제)
+      await adminDb.collection('users').doc(uid).update({ guestPwHash: await hashGuestPw(tempPassword), guestPw: FieldValue.delete() });
     } else {
       tempPassword = generateTempPassword();
       // 정규 회원의 경우 Firebase Auth 비밀번호 설정 (소셜 계정 포함, 어떤 계정이든 가능)
