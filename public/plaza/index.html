@@ -78,6 +78,13 @@
   .msg.me { align-self:flex-end; background:var(--accent); color:#fff; border-bottom-right-radius:5px; }
   .nick-hint { margin-top:6px; font-size:.78rem; color:#8a98ab; word-break:keep-all; }
   #nick[readonly] { background:rgba(120,160,210,.10); color:#8a98ab; cursor:not-allowed; }
+  .hud-link { pointer-events:auto; margin-top:6px; border:none; background:rgba(120,160,210,.14); color:#5b6f8c; font-family:inherit; font-size:.76rem; padding:4px 10px; border-radius:999px; cursor:pointer; }
+  #blockList { position:fixed; inset:0; z-index:29; display:grid; place-items:center; background:rgba(40,60,90,.32); padding:max(16px,env(safe-area-inset-top,0px)) 16px max(16px,env(safe-area-inset-bottom,0px)); }
+  .block-items { margin-top:14px; text-align:left; display:flex; flex-direction:column; gap:8px; }
+  .block-item { display:flex; align-items:center; gap:10px; padding:10px 12px; border:1px solid var(--card-border); border-radius:12px; background:rgba(255,255,255,.6); }
+  .block-item .nm { flex:1; min-width:0; word-break:keep-all; } .block-item .when { font-size:.75rem; color:#8a98ab; }
+  .block-item button { border:none; background:var(--pill); color:var(--pill-ink); font-family:inherit; font-size:.85rem; padding:6px 12px; border-radius:10px; cursor:pointer; flex:0 0 auto; }
+  .block-empty { text-align:center; color:#8a98ab; font-size:.9rem; padding:14px 0; }
   #bannedBox { position:fixed; inset:0; z-index:40; display:grid; place-items:center; background:rgba(30,40,60,.55); padding:16px; }
   .npc-tag { display:inline-block; margin-bottom:6px; padding:2px 10px; border-radius:999px; background:rgba(120,160,210,.16); color:#5b6f8c; font-size:.78rem; word-break:keep-all; }
   .safety-row { display:flex; justify-content:center; gap:14px; margin-top:12px; }
@@ -102,7 +109,7 @@
 <body>
 <canvas id="c"></canvas>
 <div id="hud" hidden>
-  <div class="panel"><h1 id="hudNick">키링크 광장</h1><p id="hudHelp">WASD·조이스틱 이동 · 마우스로 시야 · 스페이스 점프 · 사람 클릭</p></div>
+  <div class="panel"><h1 id="hudNick">키링크 광장</h1><p id="hudHelp">WASD·조이스틱 이동 · 마우스로 시야 · 스페이스 점프 · 사람 클릭</p><button type="button" id="blockListBtn" class="hud-link" hidden>🚫 차단 목록</button></div>
   <div id="net"><span class="dot off" id="netDot"></span><span id="netTxt">연결 중…</span></div>
   <div id="stick"><div id="knob"></div><div class="hint">드래그해서 이동</div></div>
   <button id="jumpBtn" aria-label="점프">점프</button>
@@ -145,6 +152,12 @@
   <div class="opts report-reasons" id="reportReasons"></div>
   <textarea id="reportDetail" maxlength="500" rows="3" placeholder="자세한 내용 (선택)"></textarea>
   <button id="reportSend" class="btn go">신고 접수</button>
+</div></div>
+<div id="blockList" hidden><div class="card-box">
+  <button id="blockListClose" class="card-x" aria-label="닫기">✕</button>
+  <div class="card-name">차단 목록</div>
+  <div class="card-meta">해제하면 다시 서로 보이고 1:1 신청도 받을 수 있어요.</div>
+  <div class="block-items" id="blockItems"></div>
 </div></div>
 <div id="confirmBox" hidden><div class="card-box">
   <div class="card-name" id="confirmTitle"></div>
@@ -236,6 +249,11 @@ const SPAWN=new THREE.Vector3(0,0,11);
 const hero=new THREE.Group(); hero.position.copy(SPAWN); scene.add(hero);
 const rig={};
 const obstacles=[];
+// 봇 목표 지점: 건물·분수·나무 안쪽은 피해서 고른다
+function pickBotTarget(){ for(let i=0;i<12;i++){ const a=Math.random()*Math.PI*2, rad=3+Math.random()*14; const x=Math.cos(a)*rad, z=Math.sin(a)*rad;
+  if(obstacles.every(o=>Math.hypot(x-o.x,z-o.z)>o.r+0.6)) return new THREE.Vector3(x,0,z); } return new THREE.Vector3(0,0,8); }
+// 서 있을 때 자세: 팔다리를 부드럽게 원위치
+function botIdlePose(u){ const L=THREE.MathUtils.lerp; for(const k of ['legL','legR','armL','armR']) u.refs[k].rotation.x=L(u.refs[k].rotation.x,0,0.2); u.root.position.y=L(u.root.position.y,0,0.2); }
 function pushOut(obj){ for(const o of obstacles){ const dx=obj.position.x-o.x, dz=obj.position.z-o.z; const d=Math.hypot(dx,dz); if(d>1e-4 && d<o.r){ obj.position.x=o.x+dx/d*o.r; obj.position.z=o.z+dz/d*o.r; } } }
 function clearHero(){ for(const ch of [...hero.children]){ hero.remove(ch); ch.traverse?.(o=>o.geometry?.dispose?.()); } }
 function buildHero(o){ clearHero(); const root=new THREE.Group(); hero.add(root); rig.root=root; const r=makeBody(root,o); Object.assign(rig,r); }
@@ -329,6 +347,8 @@ const WS_URL = _wsBase ? (_wsBase.replace(/\/+$/,'') + '/ws' + (_wsQuery.toStrin
 const peers=new Map(); // id -> { group, refs, target:{x,z,ry}, nick, phase, lastMove }
 const blocked=new Set();    // 내가 차단한 사람의 익명 키(회원) — 서버에 저장돼 다음에도 유지
 const blockedIds=new Set();  // 키가 없는 상대(손님)는 이번 접속 동안만 차단
+const hiddenPeers=new Map(); // 차단해서 숨긴 접속자(id→정보). 위치는 계속 갱신해 두었다가 해제 시 그 자리에 다시 보인다
+const blockedNames=new Map();// 차단 목록 화면용 이름(key 또는 id → {nick, at})
 let roomFullUntil=0, bannedUntil=0;
 function showBanned(until, reason){ bannedUntil=until||Date.now()+86400000; chat.hidden=true; card.hidden=true;
   const forever=bannedUntil>8e15; const d=new Date(bannedUntil);
@@ -339,7 +359,7 @@ function showBanned(until, reason){ bannedUntil=until||Date.now()+86400000; chat
 let ws=null, myId=null;
 const netDot=document.getElementById('netDot'), netTxt=document.getElementById('netTxt');
 function setNet(on, n){ netDot.className='dot '+(on?'on':'off'); netTxt.textContent = on ? ('접속 '+(n)+'명') : '오프라인 (혼자)'; }
-function addPeer(p){ if(p.id===myId||peers.has(p.id)) return; if((p.key && blocked.has(p.key)) || blockedIds.has(p.id)) return; /* 차단한 사람은 안 보임 */ const group=new THREE.Group(); const root=new THREE.Group(); group.add(root); const refs=makeBody(root, p.look||{clothes:'#5bb0d1',hairColor:'#6b4423',face:'round',hair:'short',eye:'round',nick:p.nick}); group.position.set(p.state?.x||0,0,p.state?.z||0); group.userData={ profile:{ nick:p.nick, id:p.id, key:p.key||null, gkey:p.gkey||null, gender:(p.look&&p.look.gender==='female')?'여':(p.look&&p.look.gender==='male')?'남':null } }; scene.add(group); peers.set(p.id,{ group, refs, root, key:p.key||null, target:{x:group.position.x,z:group.position.z,ry:0}, nick:p.nick, phase:Math.random()*10 }); updateCount(); }
+function addPeer(p){ if(p.id===myId||peers.has(p.id)) return; if((p.key && blocked.has(p.key)) || blockedIds.has(p.id)){ hiddenPeers.set(p.id,p); return; } /* 차단한 사람은 안 보임 */ const group=new THREE.Group(); const root=new THREE.Group(); group.add(root); const refs=makeBody(root, p.look||{clothes:'#5bb0d1',hairColor:'#6b4423',face:'round',hair:'short',eye:'round',nick:p.nick}); group.position.set(p.state?.x||0,0,p.state?.z||0); group.userData={ look:p.look||null, profile:{ nick:p.nick, id:p.id, key:p.key||null, gkey:p.gkey||null, gender:(p.look&&p.look.gender==='female')?'여':(p.look&&p.look.gender==='male')?'남':null } }; scene.add(group); peers.set(p.id,{ group, refs, root, key:p.key||null, target:{x:group.position.x,z:group.position.z,ry:0}, nick:p.nick, phase:Math.random()*10 }); updateCount(); }
 function updateCount(){ setNet(true, peers.size+1); }
 function connect(){
   if(!WS_URL){ setNet(false); return; } // 운영 실시간 서버 주소 미설정 → 혼자 모드(봇만)
@@ -352,8 +372,8 @@ function connect(){
     if(m.t==='banned'){ showBanned(m.until, m.reason); return; }
     if(m.t==='welcome'){ myId=m.id; if(m.nick && m.nick!==opts.nick) document.getElementById('hudNick').textContent=m.nick+' 님'; (m.peers||[]).forEach(addPeer); updateCount(); }
     else if(m.t==='join'){ addPeer(m); }
-    else if(m.t==='peer'){ const pr=peers.get(m.id); if(pr) pr.target={x:m.x,z:m.z,ry:m.ry}; }
-    else if(m.t==='leave'){ const pr=peers.get(m.id); if(pr){ scene.remove(pr.group); peers.delete(m.id); updateCount(); } if(currentChat && !currentChat.bot && currentChat.id===m.id){ addMsg('sys', (currentChat.nick||'상대')+'님이 대화방을 나가셨습니다.'); } }
+    else if(m.t==='peer'){ const pr=peers.get(m.id); if(pr) pr.target={x:m.x,z:m.z,ry:m.ry}; else { const h=hiddenPeers.get(m.id); if(h) h.state={x:m.x,z:m.z,ry:m.ry}; } }
+    else if(m.t==='leave'){ hiddenPeers.delete(m.id); const pr=peers.get(m.id); if(pr){ scene.remove(pr.group); peers.delete(m.id); updateCount(); } if(currentChat && !currentChat.bot && currentChat.id===m.id){ addMsg('sys', (currentChat.nick||'상대')+'님이 대화방을 나가셨습니다.'); } }
     else if(((m.key && blocked.has(m.key)) || blockedIds.has(m.from)) && (m.t==='req'||m.t==='accept'||m.t==='chat'||m.t==='chatbye')){ return; } // 차단한 사람
     else if(m.t==='req'){ showReq(m.from, m.nick, m.uid, m.key); }
     else if(m.t==='accept'){ toast(`💗 ${m.nick}님과 매칭!`); openChat({ id:m.from, nick:m.nick, uid:m.uid, key:m.key, bot:false }); }
@@ -407,7 +427,7 @@ const REPORT_REASONS=['욕설·비하','음란·성희롱','스팸·광고','사
 const reportBox=document.getElementById('report'), confirmBox=document.getElementById('confirmBox');
 let reportTarget=null, reportReason=REPORT_REASONS[0], confirmYesFn=null;
 async function authFetch(url,init={}){ const t=await fbUser.getIdToken(); return fetch(url,{ ...init, headers:{ ...(init.headers||{}), Authorization:'Bearer '+t } }); }
-async function loadBlocks(){ try{ const r=await authFetch('/api/plaza/block'); const j=await r.json().catch(()=>({})); (j.blocks||[]).forEach(b=>blocked.add(b.key)); for(const [id,pr] of [...peers]){ if(pr.key && blocked.has(pr.key)) removePeer(id); } }catch(e){} }
+async function loadBlocks(){ document.getElementById('blockListBtn').hidden=false; try{ const r=await authFetch('/api/plaza/block'); const j=await r.json().catch(()=>({})); (j.blocks||[]).forEach(b=>{ blocked.add(b.key); blockedNames.set(b.key,{ nick:b.nick||'(닉네임 없음)', at:b.at, guest:false }); }); for(const [id,pr] of [...peers]){ if(pr.key && blocked.has(pr.key)){ hiddenPeers.set(id,{ id, nick:pr.nick, look:pr.group.userData.look||null, key:pr.key, state:{ x:pr.group.position.x, z:pr.group.position.z, ry:pr.group.rotation.y } }); removePeer(id); } } }catch(e){} }
 function removePeer(id){ const pr=peers.get(id); if(pr){ scene.remove(pr.group); peers.delete(id); updateCount(); } }
 function renderReasons(){ const el=document.getElementById('reportReasons'); el.innerHTML=''; for(const r of REPORT_REASONS){ const b=document.createElement('button'); b.type='button'; b.className='pill'; b.textContent=r; b.setAttribute('aria-pressed',String(r===reportReason)); b.onclick=()=>{ reportReason=r; renderReasons(); }; el.appendChild(b); } }
 function openReport(t){ if(!t||t.bot) return; if(!fbUser){ openJoin(); return; } document.exitPointerLock?.(); reportTarget=t; reportReason=REPORT_REASONS[0]; document.getElementById('reportTitle').textContent=t.nick+'님 신고'; document.getElementById('reportDetail').value=''; renderReasons(); reportBox.hidden=false; }
@@ -423,12 +443,36 @@ document.getElementById('confirmYes').onclick=()=>{ confirmBox.hidden=true; cons
 function blockPerson(t){ if(!t) return;
   askConfirm(t.nick+'님 차단','차단하면 서로 보이지 않고, 1:1 신청과 메시지도 받지 않아요.', async()=>{
     if(t.key){ blocked.add(t.key); if(fbUser){ try{ await authFetch('/api/plaza/block',{ method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ key:t.key, nick:t.nick }) }); }catch(e){} } }
-    if(t.id) blockedIds.add(t.id);
+    if(t.id && !t.key) blockedIds.add(t.id);
+    blockedNames.set(t.bot ? 'bot:'+t.nick : (t.key||t.id), { nick:t.nick, at:Date.now(), guest:!t.key && !t.bot, bot:!!t.bot });
+    for(const [id,pr] of peers){ if((t.key && pr.key===t.key) || id===t.id){ hiddenPeers.set(id,{ id, nick:pr.nick, look:pr.group.userData.look||null, key:pr.key, gkey:pr.group.userData.profile?.gkey||null, state:{ x:pr.group.position.x, z:pr.group.position.z, ry:pr.group.rotation.y } }); } }
     if(t.bot){ const g=bots.find(b=>b.userData.profile===t); if(g) g.visible=false; }
     for(const [id,pr] of [...peers]){ if((t.key && pr.key===t.key) || id===t.id) removePeer(id); }
     if(currentChat && (currentChat.id===t.id || (t.key && currentChat.key===t.key))){ chat.hidden=true; currentChat=null; }
     card.hidden=true; toast(t.nick+'님을 차단했어요');
   }); }
+// ── 차단 목록 / 해제 ──
+const blockListBox=document.getElementById('blockList');
+function renderBlockList(){ const el=document.getElementById('blockItems'); el.innerHTML='';
+  const items=[...blockedNames.entries()].sort((a,b)=>(b[1].at||0)-(a[1].at||0));
+  if(!items.length){ el.innerHTML='<div class="block-empty">차단한 사람이 없어요.</div>'; return; }
+  for(const [k,v] of items){ const row=document.createElement('div'); row.className='block-item';
+    const d=v.at?new Date(v.at):null; const when=d?(d.getMonth()+1)+'/'+d.getDate()+' 차단':'';
+    const tag=v.bot?' · 가상 이웃':(v.guest?' · 손님(이번 접속만)':'');
+    row.innerHTML='<div class="nm"><div></div><div class="when"></div></div><button type="button">해제</button>';
+    row.querySelector('.nm div').textContent=v.nick; row.querySelector('.when').textContent=when+tag;
+    row.querySelector('button').onclick=()=>unblock(k,v);
+    el.appendChild(row); } }
+async function unblock(k,v){
+  blockedNames.delete(k);
+  if(v.bot){ const g=bots.find(b=>b.userData.profile?.nick===v.nick); if(g) g.visible=true; }
+  else if(v.guest){ blockedIds.delete(k); }
+  else { blocked.delete(k); if(fbUser){ try{ await authFetch('/api/plaza/block?key='+encodeURIComponent(k),{ method:'DELETE' }); }catch(e){} } }
+  for(const [id,p] of [...hiddenPeers]){ if((p.key && p.key===k) || id===k){ hiddenPeers.delete(id); addPeer(p); } } // 새로고침 없이 그 자리에 다시 보이게
+  renderBlockList(); toast(v.nick+'님 차단을 해제했어요'); }
+document.getElementById('blockListBtn').onclick=()=>{ document.exitPointerLock?.(); renderBlockList(); blockListBox.hidden=false; };
+document.getElementById('blockListClose').onclick=()=>{ blockListBox.hidden=true; };
+blockListBox.addEventListener('pointerdown',(e)=>{ if(e.target===blockListBox) blockListBox.hidden=true; });
 document.getElementById('cardReport').onclick=()=>{ const t=reqTarget; card.hidden=true; openReport(t); };
 document.getElementById('cardBlock').onclick=()=>blockPerson(reqTarget);
 document.getElementById('chatReport').onclick=()=>openReport(currentChat);
@@ -542,7 +586,7 @@ const raycaster=new THREE.Raycaster(); const ndc=new THREE.Vector2();
 let dragId=null, dragX=0, dragY=0, dragged=false;
 const canvasEl=renderer.domElement, reticle=document.getElementById('reticle');
 let locked=false, aimTarget=null;
-const modalOpen=()=> !card.hidden || !chat.hidden || !joinBox.hidden;
+const modalOpen=()=> !card.hidden || !chat.hidden || !joinBox.hidden || !reportBox.hidden || !confirmBox.hidden || !blockListBox.hidden;
 function pickProfile(prof){ if(!prof) return; if(member) openCard(prof); else openJoin(()=>openCard(prof)); }
 function raycastFromNDC(x,y){ ndc.set(x,y); raycaster.setFromCamera(ndc,camera); const groups=[...[...peers.values()].map(p=>p.group), ...bots]; const hits=raycaster.intersectObjects(groups,true); if(!hits.length) return null; let g=hits[0].object; while(g&&!g.userData.profile) g=g.parent; return g?g.userData.profile:null; }
 
@@ -602,9 +646,17 @@ function tick(){
   }
   // 가상 이웃 돌아다니기
   for(const b of bots){ const u=b.userData;
-    if(!u.target||b.position.distanceTo(u.target)<0.7){ const a=Math.random()*Math.PI*2, rad=3+Math.random()*14; u.target=new THREE.Vector3(Math.cos(a)*rad,0,Math.sin(a)*rad); }
+    // 도착하면 잠깐 서서 쉬기 → 다음 목표
+    if(u.rest>0){ u.rest-=dt; botIdlePose(u); continue; }
+    if(!u.target||b.position.distanceTo(u.target)<0.7){ if(u.target){ u.target=null; u.rest=1+Math.random()*2; botIdlePose(u); continue; } u.target=pickBotTarget(); u.stuck=0; }
     const dir=u.target.clone().sub(b.position); dir.y=0; const d=dir.length();
-    if(d>0.1){ dir.normalize(); b.position.addScaledVector(dir,2.2*dt); pushOut(b); b.rotation.y=Math.atan2(dir.x,dir.z); u.phase+=dt*8; const s=Math.sin(u.phase); u.refs.legL.rotation.x=s*0.5; u.refs.legR.rotation.x=-s*0.5; u.refs.armL.rotation.x=-s*0.45; u.refs.armR.rotation.x=s*0.45; u.root.position.y=Math.abs(Math.sin(u.phase))*0.045; } }
+    if(d>0.1){ dir.normalize(); const px=b.position.x, pz=b.position.z, step=2.2*dt;
+      b.position.addScaledVector(dir,step); pushOut(b);
+      // 건물 등에 막혀 거의 못 움직이면(0.6초) 다른 곳으로 — 제자리 걸음 방지
+      const moved=Math.hypot(b.position.x-px, b.position.z-pz);
+      u.stuck = moved < step*0.3 ? (u.stuck||0)+dt : 0;
+      if(u.stuck>0.6){ u.target=pickBotTarget(); u.stuck=0; }
+      b.rotation.y=Math.atan2(dir.x,dir.z); u.phase+=dt*8; const s=Math.sin(u.phase); u.refs.legL.rotation.x=s*0.5; u.refs.legR.rotation.x=-s*0.5; u.refs.armL.rotation.x=-s*0.45; u.refs.armR.rotation.x=s*0.45; u.root.position.y=Math.abs(Math.sin(u.phase))*0.045; } }
   renderer.render(scene,camera); requestAnimationFrame(tick);
 }
 tick();

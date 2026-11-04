@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { requireAdmin } from '@/lib/requireAdmin';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { format, subDays, startOfToday } from 'date-fns';
 
@@ -24,8 +25,10 @@ interface CachedDashboard {
 let serverDashboardCache: CachedDashboard | null = null;
 const SERVER_CACHE_TTL = 30 * 1000; // 30초 서버 인메모리 캐시
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
+    const gate = await requireAdmin(req);
+    if (gate instanceof NextResponse) return gate;
     if (serverDashboardCache && Date.now() - serverDashboardCache.ts < SERVER_CACHE_TTL) {
       return NextResponse.json({ success: true, data: serverDashboardCache.data, cached: true });
     }

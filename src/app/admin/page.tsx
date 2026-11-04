@@ -1,5 +1,6 @@
 'use client';
 
+import { adminFetch } from '@/lib/adminFetch';
 import { useState, useEffect } from 'react';
 import {
   Users, Heart, TrendingUp, Clock,
@@ -136,7 +137,7 @@ export default function AdminDashboard() {
       }
 
       try {
-        const res = await fetch('/api/admin/dashboard');
+        const res = await adminFetch('/api/admin/dashboard');
         if (!res.ok) throw new Error('Dashboard API error');
         const json = await res.json();
         if (!json.success || !json.data) throw new Error('Dashboard invalid payload');

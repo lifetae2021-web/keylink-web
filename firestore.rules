@@ -231,11 +231,6 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // ─────────────────────────────────────
-    // plazaChats (광장 1:1 영속 대화) 컬렉션
-    // convId = 두 회원 uid 정렬 결합. 저장은 서버(Admin SDK)만.
-    // 읽기는 대화 당사자 또는 관리자(음란·범죄 예방 모더레이션)만. 실제 조회는 서버 API로.
-    // ─────────────────────────────────────
     // plazaBlocks (광장 차단 목록): 본인·관리자만 읽기, 쓰기는 서버만
     match /plazaBlocks/{uid} {
       allow read: if isUser(uid) || isAdmin();
@@ -248,6 +243,11 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // ─────────────────────────────────────
+    // plazaChats (광장 1:1 영속 대화) 컬렉션
+    // convId = 두 회원 uid 정렬 결합. 저장은 서버(Admin SDK)만.
+    // 읽기는 대화 당사자 또는 관리자(음란·범죄 예방 모더레이션)만. 실제 조회는 서버 API로.
+    // ─────────────────────────────────────
     match /plazaChats/{convId} {
       allow read: if isAdmin() || (isSignedIn() && request.auth.uid in resource.data.participants);
       allow write: if false;

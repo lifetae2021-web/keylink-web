@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAdmin } from '@/lib/requireAdmin';
 import { adminDb, adminAuth } from '@/lib/firebaseAdmin';
 
 export const dynamic = 'force-dynamic';
@@ -6,8 +7,10 @@ export const dynamic = 'force-dynamic';
 let membersCache: { data: any[]; ts: number } | null = null;
 const MEMBERS_TTL = 30 * 1000; // 30초 캐시
 
-export async function GET(_req: NextRequest) {
+export async function GET(req: NextRequest) {
   try {
+    const gate = await requireAdmin(req);
+    if (gate instanceof NextResponse) return gate;
     if (membersCache && Date.now() - membersCache.ts < MEMBERS_TTL) {
       return NextResponse.json({ success: true, users: membersCache.data, cached: true });
     }
@@ -50,10 +53,20 @@ export async function GET(_req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const gate = await requireAdmin(req);
+    if (gate instanceof NextResponse) return gate;
     const { userId, role } = await req.json();
 
     if (!userId || !role) {
       return NextResponse.json({ success: false, error: 'Missing requirements' }, { status: 400 });
+    }
+    // 권한 변경은 최고 관리자만, 정해진 값으로만
+    const callerRole = (await adminDb.collection('users').doc(gate.uid).get()).data()?.role;
+    if (callerRole !== 'super_admin') {
+      return NextResponse.json({ success: false, error: 'Super admin only' }, { status: 403 });
+    }
+    if (!['user', 'guest', 'admin', 'super_admin'].includes(role)) {
+      return NextResponse.json({ success: false, error: 'Invalid role' }, { status: 400 });
     }
 
     await adminDb.collection('users').doc(userId).update({

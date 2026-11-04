@@ -1,5 +1,6 @@
 'use client';
 
+import { adminFetch } from '@/lib/adminFetch';
 import KLSelect from '@/components/ui/Select';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import dynamic from 'next/dynamic';
@@ -609,7 +610,7 @@ export default function UsersPage() {
     });
 
     // 가입 방식 조회
-    fetch('/api/admin/members')
+    adminFetch('/api/admin/members')
       .then(r => r.json())
       .then(data => {
         if (data.success) {

@@ -1,12 +1,15 @@
 import { NextResponse } from 'next/server';
+import { requireAdmin } from '@/lib/requireAdmin';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { subDays } from 'date-fns';
 
 let detailsCache: { data: any; ts: number } | null = null;
 const DETAILS_TTL = 30 * 1000; // 30초 캐시
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
+    const gate = await requireAdmin(req);
+    if (gate instanceof NextResponse) return gate;
     if (detailsCache && Date.now() - detailsCache.ts < DETAILS_TTL) {
       return NextResponse.json(detailsCache.data);
     }

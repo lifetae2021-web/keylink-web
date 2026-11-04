@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server';
+import { requireAdmin } from '@/lib/requireAdmin';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { subDays, format } from 'date-fns';
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
+    const gate = await requireAdmin(req);
+    if (gate instanceof NextResponse) return gate;
     const now = new Date();
     const stats: Record<string, any> = {};
     

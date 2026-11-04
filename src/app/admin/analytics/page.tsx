@@ -1,5 +1,6 @@
 'use client';
 
+import { adminFetch } from '@/lib/adminFetch';
 import { useState, useEffect, useMemo } from 'react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell 
@@ -142,7 +143,7 @@ export default function AnalyticsCalendarPage() {
 
       // 2. 백그라운드 최신 데이터 동기화 (SWR)
       try {
-        const res = await fetch(`/api/admin/analytics/calendar?month=${monthStr}`);
+        const res = await adminFetch(`/api/admin/analytics/calendar?month=${monthStr}`);
         const json = await res.json();
         
         if (json.success) {

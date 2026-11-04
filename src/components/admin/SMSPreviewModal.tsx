@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { adminFetch } from '@/lib/adminFetch';
 import { X, MessageSquare, Send, User, Calendar, MapPin, CreditCard, ChevronDown, Pencil, Save, Check, Clock } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { db } from '@/lib/firebase';
@@ -173,7 +174,7 @@ const SMSPreviewModal: React.FC<SMSPreviewModalProps> = ({
         setMessage(defaultMessage);
       }
 
-      fetch('/api/admin/solapi/balance')
+      adminFetch('/api/admin/solapi/balance')
         .then(res => res.json())
         .then(data => {
           console.log('[Solapi Balance Response]', data);

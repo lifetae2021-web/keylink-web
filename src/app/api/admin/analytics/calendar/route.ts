@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAdmin } from '@/lib/requireAdmin';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { startOfMonth, endOfMonth, parseISO } from 'date-fns';
 
@@ -10,6 +11,8 @@ const calendarCache: Record<string, CachedCalendar> = {};
 
 export async function GET(req: NextRequest) {
   try {
+    const gate = await requireAdmin(req);
+    if (gate instanceof NextResponse) return gate;
     const { searchParams } = new URL(req.url);
     const monthParam = searchParams.get('month'); // format: YYYY-MM
     
