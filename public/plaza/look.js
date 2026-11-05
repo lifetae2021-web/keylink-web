@@ -2,7 +2,7 @@
 // 허용된 값만 남기고 나머지는 버린다(다른 사람에게 그대로 전달되므로 외모 정보 외에는 절대 넣지 않는다).
 
 export const LOOK = {
-  style: ['chibi'],
+  style: ['block', 'chibi'],   // block: 블록 캐릭터(기본, 블록 맵과 어울림) · chibi: 귀여운 둥근 캐릭터
   gender: ['male', 'female'],
   hair: ['short', 'dandy', 'twoblock', 'spiky', 'bob', 'long', 'ponytail', 'bun'],
   top: ['tee', 'long', 'hoodie', 'shirt', 'dress'],
@@ -43,7 +43,7 @@ const num = (v, [lo, hi, def]) => { const n = Number(v); return Number.isFinite(
 
 export function defaultLook(gender = 'male') {
   const f = gender === 'female';
-  const look = { v: 2, style: 'chibi', gender: f ? 'female' : 'male', hair: f ? 'long' : 'short', top: f ? 'dress' : 'hoodie', bottom: 'pants',
+  const look = { v: 2, style: 'block', gender: f ? 'female' : 'male', hair: f ? 'long' : 'short', top: f ? 'dress' : 'hoodie', bottom: 'pants',
     shoes: 'sneakers', acc: [], eye: f ? 'sparkle' : 'round', brow: 'soft', mouth: 'smile',
     skin: '#ffdcc4', hair_c: '#4a2e1c', eyeColor: '#2b2020', top_c: f ? '#f4a6b8' : '#7fb3e6', bottom_c: '#2d3550', shoes_c: '#ffffff', acc_c: '#222222' };
   for (const [k, s] of Object.entries(LOOK.sliders)) look[k] = s[2];
@@ -73,6 +73,7 @@ function fromV1(o) {
 export function sanitizeLook(raw) {
   if (!raw || typeof raw !== 'object' || raw.v !== 2) return fromV1(raw);
   const d = defaultLook(raw.gender), c = raw.colors && typeof raw.colors === 'object' ? raw.colors : {};
+  // 저장된 캐릭터에 그림체가 없으면(예전 것) 귀여운 그대로
   const out = { v: 2, style: pick(raw.style, LOOK.style, 'chibi'), gender: pick(raw.gender, LOOK.gender, 'male') };
   for (const k of ['hair', 'top', 'bottom', 'shoes', 'eye', 'brow', 'mouth']) out[k] = pick(raw[k], LOOK[k], d[k]);
   const acc = Array.isArray(raw.acc) ? [...new Set(raw.acc.filter((a) => LOOK.acc.includes(a)))] : [];

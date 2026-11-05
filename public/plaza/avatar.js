@@ -73,9 +73,10 @@ export function createAvatar(rawLook, { faceSize = 512 } = {}) {
   const group = new THREE.Group(), self = { group, ready: false, look: sanitizeLook(rawLook), mixer: null, actions: {}, cur: null };
   const cv = document.createElement('canvas'); cv.width = faceSize; cv.height = faceSize / 2;
   const faceTex = new THREE.CanvasTexture(cv); faceTex.colorSpace = THREE.SRGBColorSpace; faceTex.flipY = false; faceTex.wrapS = THREE.RepeatWrapping;
-  let model = null, parts = [], morphMeshes = [], skinMats = [];
+  let model = null, parts = [], morphMeshes = [], skinMats = [], busy = null, hearts = [];
   self.setLook = (raw) => {
     self.look = sanitizeLook(raw); const L = self.look;
+    if (mounted && L.style !== mounted) { mount(L.style); }
     drawFace(cv, L); faceTex.needsUpdate = true;
     if (!model) return;
     const vis = visibleParts(L);
@@ -93,7 +94,6 @@ export function createAvatar(rawLook, { faceSize = 512 } = {}) {
     a.reset().setEffectiveWeight(1).fadeIn(fade).play(); if (self.cur) self.cur.fadeOut(fade); self.cur = a;
   };
   // 이모트·앉기: 움직이면 풀린다. 인사·춤은 몇 번 하고 저절로 서기로 돌아감
-  let busy = null, hearts = [];
   self.emote = (name) => {
     if (name === 'heart') { spawnHearts(); name = 'wave'; }
     const a = self.actions[name]; if (!a) return; busy = name; self.play(name, 0.2);
@@ -118,7 +118,14 @@ export function createAvatar(rawLook, { faceSize = 512 } = {}) {
   };
   self.dispose = () => { faceTex.dispose(); group.traverse((o) => { if (o.isMesh) { o.material?.dispose?.(); } }); };
   drawFace(cv, self.look);
-  loadAvatarAssets(self.look.style).then((gltf) => {
+  // 그림체(style)마다 파일이 다르다 — 바뀌면 모델을 통째로 다시 붙인다
+  let mounted = null;
+  function mount(style) {
+    mounted = style;
+    loadAvatarAssets(style).then((gltf) => {
+    if (mounted !== style) return;
+    if (model) { group.remove(model); model.traverse((o) => { if (o.isMesh && o.material && o.material !== gltf) o.material.dispose?.(); }); }
+    parts = []; morphMeshes = []; skinMats = []; self.actions = {}; self.cur = null; busy = null;
     model = SkeletonUtils.clone(gltf.scene); group.add(model);
     model.traverse((o) => {
       if (o.userData && o.userData.kl_part) parts.push(o);
@@ -137,6 +144,8 @@ export function createAvatar(rawLook, { faceSize = 512 } = {}) {
     self.mixer.addEventListener('finished', (e) => { if (e.action === self.actions.wave || e.action === self.actions.dance) { busy = null; self.play('idle'); } });
     self.ready = true; self.setLook(self.look); self.play('idle', 0);
     self.onReady && self.onReady(self);
-  }).catch((e) => console.error('avatar load', e));
+    }).catch((e) => console.error('avatar load', e));
+  }
+  mount(self.look.style);
   return self;
 }

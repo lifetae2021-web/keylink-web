@@ -6,12 +6,12 @@ Blender에서 만든 캐릭터를 GLB로 내보내고, 웹(three.js)이 불러�
 | 그림체 | id | 키 | 등신 | 느낌 |
 |---|---|---|---|---|
 | 귀여운 | `chibi` | 약 1.8m | 2.5등신 | 둥글둥글, 큰 머리. 지금 맵과 같은 로우폴리 계열 |
-| 세미리얼 | `semi` | 약 1.8m | 6등신 | 성인 비율, 단순화한 얼굴 |
+| 블록 | `block` | 약 1.86m | 약 3등신 | 상자 부위가 뼈 하나씩 따라가는 블록 캐릭터(기본값). 머리 앞면에 얼굴 그림 |
 
 ## 장면 구성(Blender)
 
 - 마을과 섞이지 않게 별도 장면 `KL_Avatar`에서 작업한다. 마을 내보내기(VILLAGE_*)에는 들어가지 않는다.
-- 그림체마다 컬렉션 `AVATAR_chibi`, `AVATAR_semi`를 두고, 각각 `avatar_chibi.glb`, `avatar_semi.glb`로 내보낸다.
+- 그림체마다 컬렉션 `AVATAR_chibi`, `AVATAR_block`을 두고, 각각 `avatar_chibi.glb`, `avatar_block.glb`로 내보낸다. 블록 캐릭터는 `build_avatar_block.py`로 만든다.
 - 단위는 미터, Z-up이다. 캐릭터는 Blender에서 -Y를 바라본다(웹에서는 +Z를 바라봄).
 
 ## 뼈대(두 그림체가 같은 이름을 쓴다)
@@ -41,7 +41,7 @@ Blender에서 만든 캐릭터를 GLB로 내보내고, 웹(three.js)이 불러�
 ## 웹 데이터(`look` v2)
 
 ```
-{ v:2, style:'chibi'|'semi', skin:'#hex', height:-1~1, build:-1~1, female:0~1,
+{ v:2, style:'block'|'chibi', skin:'#hex', height:-1~1, build:-1~1, female:0~1,
   face:{ long, vline, cheek }, eye:{ type, size, gap, y, color }, brow:{ type, thick }, mouth:{ type }, blush:0~1,
   hair:{ type, color }, top:{ type, color }, bottom:{ type, color }, shoes:{ type, color }, acc:[type...] }
 ```
@@ -54,5 +54,5 @@ Blender에서 만든 캐릭터를 GLB로 내보내고, 웹(three.js)이 불러�
 1. chibi 몸: 뼈대, 가중치, 얼굴 UV, 셰이프 키, idle/walk. 렌더로 확인한다.
 2. chibi 부위: 헤어, 의상, 신발, 액세서리.
 3. 웹: 배그식 편집 화면(전체 화면, 회전, 탭, 슬라이더), look v2, 서버 검사, 다른 사람에게 동기화, 애니메이션.
-4. semi 그림체: 같은 뼈 이름으로 만든다.
+4. 블록 그림체(2026-11-05, 세미리얼 대신): 같은 뼈 이름·동작·부위 이름. 키키도 블록 캐릭터.
 5. 마무리: 성능(휴대폰), 키키 NPC, 배포.

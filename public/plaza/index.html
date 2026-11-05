@@ -6,7 +6,7 @@
 <title>키링 월드 · 키링크 신개념 온라인 소개팅</title>
 <style>
   :root { --sky-top:#bfe3ff; --sky-bottom:#eaf7ff; --ink:#3a4a63; --card:rgba(255,255,255,.9); --card-border:rgba(140,170,210,.45);
-    --accent:#ff9a62; --accent-ink:#7a3c18; --stick:rgba(255,255,255,.5); --stick-knob:#ff9a62; --pill:rgba(120,160,210,.14); --pill-ink:#4a5a73; }
+    --accent:#6d5efc; --accent-ink:#3b2f99; --stick:rgba(16,20,32,.28); --stick-knob:#ffffff; --glass:rgba(16,20,32,.46); --glass-line:rgba(255,255,255,.22); --pill:rgba(120,160,210,.14); --pill-ink:#4a5a73; }
   html, body { height:100%; margin:0; }
   body { background:linear-gradient(var(--sky-top),var(--sky-bottom)); color:var(--ink); overflow:hidden;
     font-family:"Jua",system-ui,-apple-system,sans-serif; -webkit-user-select:none; user-select:none; -webkit-tap-highlight-color:transparent; touch-action:none; }
@@ -35,7 +35,7 @@
   .cr-tab[aria-selected="true"] { background:var(--accent); color:#fff; }
   .cr-body { flex:1 1 auto; overflow-y:auto; min-height:0; padding-right:2px; }
   .cr-pane[hidden] { display:none; }
-  .cr-gender { display:flex; align-items:center; gap:8px; margin-top:10px; font-size:.82rem; color:#5b6f8c; }
+  .cr-gender { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:10px; font-size:.82rem; color:#5b6f8c; }
   .cr-gender .seg { display:inline-flex; background:var(--pill); border-radius:12px; padding:3px; gap:2px; }
   .cr-gender .seg button { border:none; background:transparent; font-family:inherit; font-size:.9rem; color:var(--pill-ink); padding:6px 16px; border-radius:9px; cursor:pointer; }
   .cr-gender .seg button[aria-pressed="true"] { background:#fff; color:var(--accent-ink); box-shadow:0 1px 4px rgba(80,120,170,.25); }
@@ -65,7 +65,7 @@
   .sheet-btns { display:flex; gap:10px; margin-top:6px; }
   .btn { flex:1; border:none; font-family:inherit; font-size:1.02rem; padding:14px; border-radius:14px; cursor:pointer; }
   .btn.ghost { flex:0 0 auto; background:var(--pill); color:var(--pill-ink); }
-  .btn.go { background:var(--accent); color:#fff; box-shadow:0 8px 20px rgba(255,120,60,.4); }
+  .btn.go { background:var(--accent); color:#fff; box-shadow:0 8px 20px rgba(109,94,252,.35); }
   .btn:active { transform:scale(.97); }
   #stick { position:absolute; left:max(26px,calc(env(safe-area-inset-left,0px) + 20px)); bottom:calc(26px + env(safe-area-inset-bottom,0px));
     width:132px; height:132px; border-radius:50%; background:var(--stick); border:2px solid rgba(255,255,255,.7); pointer-events:auto; touch-action:none; box-shadow:0 6px 18px rgba(80,120,170,.2); }
@@ -96,7 +96,7 @@
   #req, #notice { position:fixed; left:50%; top:calc(36% + env(safe-area-inset-top,0px)); transform:translate(-50%,-50%); z-index:26; width:min(88vw,340px); background:#fff; border:1px solid var(--card-border); border-radius:20px; padding:20px 18px 16px; box-shadow:0 16px 40px rgba(40,70,120,.28); text-align:center; word-break:keep-all; animation:reqIn .22s ease-out; }
   @keyframes reqIn { from { opacity:0; transform:translate(-50%,-46%); } to { opacity:1; transform:translate(-50%,-50%); } }
   #notice { z-index:27; } #notice .req-btns button { flex:1; }
-  #req .req-label, #notice .req-label { display:inline-block; font-size:.74rem; letter-spacing:.04em; color:var(--accent); background:rgba(255,143,107,.12); padding:3px 10px; border-radius:999px; margin-bottom:10px; }
+  #req .req-label, #notice .req-label { display:inline-block; font-size:.74rem; letter-spacing:.04em; color:var(--accent); background:rgba(109,94,252,.12); padding:3px 10px; border-radius:999px; margin-bottom:10px; }
   #req .req-nick, #notice .req-nick { font-size:1.25rem; color:var(--ink); line-height:1.3; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   #notice .req-sub { line-height:1.55; }
   #req .req-sub, #notice .req-sub { font-size:.9rem; color:#6b7a90; margin:4px 0 16px; }
@@ -113,7 +113,7 @@
   .c-all { display:flex; align-items:center; gap:10px; padding:12px 14px; border-radius:14px; background:var(--pill); font-size:.98rem; cursor:pointer; }
   .c-row { border-bottom:1px solid rgba(140,170,210,.25); padding:10px 2px; }
   .c-line { display:flex; align-items:center; gap:10px; font-size:.9rem; word-break:keep-all; cursor:pointer; }
-  .c-line span { flex:1; } .c-tag { font-style:normal; font-size:.74rem; color:var(--accent-ink); background:rgba(255,154,98,.16); border-radius:6px; padding:1px 6px; margin-right:4px; white-space:nowrap; }
+  .c-line span { flex:1; } .c-tag { font-style:normal; font-size:.74rem; color:var(--accent-ink); background:rgba(109,94,252,.14); border-radius:6px; padding:1px 6px; margin-right:4px; white-space:nowrap; }
   .c-tag.opt { color:#5b6f8c; background:var(--pill); }
   .c-more { border:none; background:none; color:#8a98ab; font-family:inherit; font-size:.78rem; text-decoration:underline; cursor:pointer; flex:0 0 auto; }
   .c-detail { margin:8px 0 2px 30px; font-size:.8rem; color:#5b6f8c; line-height:1.65; word-break:keep-all; }
@@ -160,7 +160,7 @@
   #reportDetail { width:100%; box-sizing:border-box; font-family:inherit; font-size:.95rem; padding:10px 12px; border:1px solid var(--card-border); border-radius:12px; background:rgba(255,255,255,.7); color:var(--ink); resize:none; }
   .confirm-btns { display:flex; gap:10px; margin-top:16px; } .confirm-btns .btn { flex:1; }
   .msg.typing { opacity:.6; font-style:italic; }
-  .msg-cta { align-self:flex-start; margin-top:-2px; display:inline-block; text-decoration:none; background:var(--accent); color:#fff; font-size:.9rem; padding:9px 16px; border-radius:999px; box-shadow:0 4px 12px rgba(255,154,98,.35); word-break:keep-all; }
+  .msg-cta { align-self:flex-start; margin-top:-2px; display:inline-block; text-decoration:none; background:var(--accent); color:#fff; font-size:.9rem; padding:9px 16px; border-radius:999px; box-shadow:0 4px 12px rgba(109,94,252,.3); word-break:keep-all; }
   .msg.them, .msg.me { white-space:pre-wrap; word-break:keep-all; overflow-wrap:anywhere; }
   .msg.sys { align-self:center; max-width:90%; background:transparent; color:#8a98ab; font-size:.82rem; text-align:center; padding:4px 8px; word-break:keep-all; white-space:pre-line; line-height:1.55; }
   .npc-left { text-align:center; font-size:.78rem; color:#8a98ab; padding:6px 14px 0; word-break:keep-all; } .npc-left b { color:var(--accent-ink); }
@@ -169,6 +169,25 @@
   .chat-input button { border:none; background:var(--accent); color:#fff; font-family:inherit; font-size:.95rem; padding:0 18px; border-radius:12px; cursor:pointer; }
   [hidden] { display:none !important; }
   @media (prefers-reduced-motion: reduce) { * { transition:none !important; } }
+  /* ── 게임 화면(HUD): 어두운 반투명 유리 + 흰 선 아이콘 ── */
+  #hud .panel { background:var(--glass); border:1px solid var(--glass-line); color:#fff; box-shadow:0 8px 24px rgba(10,14,24,.25); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); }
+  #hud .panel p { opacity:.78; }
+  #hud .hud-link { background:rgba(255,255,255,.14); color:#fff; }
+  #hud #net { background:var(--glass); border:1px solid var(--glass-line); color:#fff; box-shadow:none; backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); }
+  #stick { background:var(--stick) !important; border:1.5px solid rgba(255,255,255,.55) !important; box-shadow:inset 0 0 0 10px rgba(255,255,255,.06), 0 6px 18px rgba(10,14,24,.18) !important; backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); }
+  #stick .hint { color:#fff; opacity:.8; }
+  #knob { width:50px !important; height:50px !important; margin:-25px 0 0 -25px !important; background:rgba(255,255,255,.94) !important; box-shadow:0 3px 10px rgba(10,14,24,.3), inset 0 0 0 5px rgba(16,20,32,.07) !important; }
+  #jumpBtn, .act-btn { display:inline-flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; background:var(--glass) !important; border:1.5px solid var(--glass-line) !important; color:#fff !important;
+    box-shadow:0 6px 18px rgba(10,14,24,.22) !important; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
+  #jumpBtn { width:78px !important; height:78px !important; font-size:.74rem !important; }
+  .act-btn { width:56px; height:56px; font-size:.66rem; }
+  #jumpBtn:active, .act-btn:active { background:rgba(16,20,32,.62) !important; }
+  .act-btn.on { background:var(--accent) !important; border-color:rgba(255,255,255,.5) !important; }
+  .hico { width:24px; height:24px; fill:none; stroke:#fff; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+  #jumpBtn .hico { width:28px; height:28px; }
+  #emoteMenu { background:var(--glass); border:1px solid var(--glass-line); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); }
+  #emoteMenu button { background:rgba(255,255,255,.14); color:#fff; }
+  #emoteMenu button:active { background:var(--accent); }
 </style>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&display=swap">
@@ -179,11 +198,11 @@
   <div class="panel"><h1 id="hudNick">키링 월드</h1><p id="hudHelp">WASD·조이스틱 이동 · 마우스로 시야 · 스페이스 점프 · 사람 클릭</p><div class="hud-links"><a class="hud-link" href="/"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/></svg>키링크 홈</a><button type="button" id="blockListBtn" class="hud-link" hidden><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m5.6 5.6 12.8 12.8"/></svg>차단 목록</button></div></div>
   <div id="net"><span class="dot off" id="netDot"></span><span id="netTxt">연결 중…</span></div>
   <div id="stick"><div id="knob"></div><div class="hint">드래그해서 이동</div></div>
-  <button id="jumpBtn" aria-label="점프">점프</button>
-  <div class="act-btns"><button class="act-btn" id="sitBtn" hidden>앉기</button>
-    <div style="position:relative"><button class="act-btn" id="emoteBtn" aria-expanded="false">표현</button>
+  <button id="jumpBtn" aria-label="점프"><svg class="hico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V6"/><path d="m6 11 6-6 6 6"/></svg><span>점프</span></button>
+  <div class="act-btns"><button class="act-btn" id="sitBtn" hidden><svg class="hico" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4v9h10"/><path d="M7 13v7"/><path d="M17 13v7"/><path d="M7 17h10"/></svg><span>앉기</span></button>
+    <div style="position:relative"><button class="act-btn" id="emoteBtn" aria-expanded="false"><svg class="hico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5a4.5 4.5 0 0 0 7 0"/><path d="M9 9.5h.01"/><path d="M15 9.5h.01"/></svg><span>표현</span></button>
       <div id="emoteMenu" hidden><button data-e="wave">인사</button><button data-e="dance">춤</button><button data-e="heart">하트</button></div></div>
-    <button class="act-btn" id="sayBtn">말하기</button></div>
+    <button class="act-btn" id="sayBtn"><svg class="hico" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 0 1-11.6 7.1L4 20l1-4.1A8 8 0 1 1 20 12z"/></svg><span>말하기</span></button></div>
   <form id="sayBox" hidden><input id="sayText" maxlength="40" placeholder="광장에 한마디 (40자)" autocomplete="off"><button type="submit">보내기</button></form>
   <div id="reticle" hidden></div>
 </div>
@@ -191,7 +210,7 @@
   <div class="cr-head"><h2>캐릭터 만들기</h2><a class="sheet-home" href="/">← 키링크 홈</a></div>
   <div id="genderStep" hidden><div class="gs-title">어떤 캐릭터로 시작할까요?</div><div class="gs-sub">성별에 맞는 헤어·의상·액세서리를 보여 드려요</div>
     <div class="gs-btns"><button type="button" class="m" data-g="male">남성</button><button type="button" class="f" data-g="female">여성</button></div></div>
-  <div class="cr-gender" id="crGenderRow">성별 <span class="seg" id="crGender"></span></div>
+  <div class="cr-gender" id="crGenderRow">성별 <span class="seg" id="crGender"></span><span style="margin-left:8px">그림체</span> <span class="seg" id="crStyle"></span></div>
   <div class="cr-tabs" role="tablist" id="crTabs"></div>
   <div class="cr-body">
     <div class="cr-pane" data-pane="profile">
@@ -462,6 +481,8 @@ function renderCreator(){
   document.querySelector('.cr-body').hidden=needGender; document.querySelector('.sheet-btns').hidden=needGender;
   const seg=document.getElementById('crGender'); seg.innerHTML='';
   for(const [label,val] of CHOICES.gender){ const b=document.createElement('button'); b.type='button'; b.textContent=label; b.setAttribute('aria-pressed',String(opts.gender===val)); b.onclick=()=>setGender(val); seg.appendChild(b); }
+  const sseg=document.getElementById('crStyle'); sseg.innerHTML='';
+  for(const [label,val] of [['블록','block'],['귀여운','chibi']]){ const b=document.createElement('button'); b.type='button'; b.textContent=label; b.setAttribute('aria-pressed',String(L().style===val)); b.onclick=()=>{ L().style=val; changed(); renderCreator(); }; sseg.appendChild(b); }
   document.querySelectorAll('.cr-pane').forEach(p=>p.hidden=p.dataset.pane!==crTab);
   renderPills('opt-region','region',CHOICES.region);
   const f=pane('face'); f.innerHTML=''; f.append(row('피부색',swatches('skin',PAL.skin)), row('눈 모양',typePills('eye')), row('눈동자 색',swatches('eyeColor',PAL.eyeColor),'반짝·나른한·날렵한 눈에서 보여요'),
@@ -643,10 +664,14 @@ function loadAnchoredModels(){ wantModels=true; if(!modelAnchors.length||loadAnc
 // ── AI NPC "키키": 광장 안내 + 소개팅 대화 연습 (대화는 /api/plaza/npc, 비회원도 가능) ──
 const NPC_PROFILE={ nick:'키키', id:'npc', npc:true };
 const npcGroup=(()=>{ const g=new THREE.Group(); const root=new THREE.Group(); g.add(root);
-  const refs=makeBody(root,{ nick:'키키', gender:'npc', face:'round', hair:'short', hairColor:'#f6a6c1', eye:'round', clothes:'#f2b84b' });
+  // 키키도 블록 캐릭터(분홍 똥머리·노란 후드). 이름표는 보라색(npc)
+  const av=createAvatar({ v:2, style:'block', gender:'female', hair:'bun', top:'hoodie', bottom:'pants', shoes:'sneakers', acc:[], eye:'sparkle', brow:'soft', mouth:'smile', blush:0.8,
+    colors:{ skin:'#ffe8d6', hair:'#f6a6c1', eyeColor:'#8a5bd1', top:'#f2b84b', bottom:'#ffffff', shoes:'#ff8f6b', acc:'#222222' } },{ faceSize:1024 });
+  root.add(av.group); { const nk=makeNickSprite('키키','npc'); nk.position.y=2.15; root.add(nk); }
   // 손에 든 열쇠고리(키링): 금색 고리 + 매달린 열쇠가 흔들린다 (머리 위는 이름표에 가려서 손으로)
   const gold=new THREE.MeshStandardMaterial({ color:'#ffd65a', emissive:'#ffb800', emissiveIntensity:0.55, metalness:0.3, roughness:0.35 });
-  const halo=new THREE.Group(); halo.position.set(0,-0.64,0.06); halo.scale.setScalar(0.95); refs.armR.add(halo); refs.armR.rotation.x=-0.5;
+  const halo=new THREE.Group(); halo.position.set(-0.36,0.5,0.06); halo.scale.setScalar(0.95); root.add(halo);
+  av.onReady=()=>{ const hand=av.group.getObjectByName('handR'); if(hand){ hand.add(halo); halo.position.set(0,0.02,0.12); halo.rotation.set(0,0,0); halo.scale.setScalar(0.85); } };   // 오른손에 쥐기
   halo.add(new THREE.Mesh(new THREE.TorusGeometry(0.17,0.035,8,28),gold));
   const key=new THREE.Group(); key.position.y=-0.17; halo.add(key);
   const bow=new THREE.Mesh(new THREE.TorusGeometry(0.07,0.028,8,20),gold); bow.position.y=-0.07; key.add(bow);
@@ -662,7 +687,7 @@ const npcGroup=(()=>{ const g=new THREE.Group(); const root=new THREE.Group(); g
   const bubble=new THREE.Sprite(new THREE.SpriteMaterial({ map:tex, transparent:true, depthTest:false })); bubble.scale.set(1.5,0.5,1); bubble.position.y=3.05; root.add(bubble);
   g.scale.setScalar(1.15);
   g.position.set(2.6,0,8.2); g.rotation.y=Math.PI*0.15;
-  g.userData={ root, refs, halo, glow, bubble, phase:0, profile:NPC_PROFILE }; scene.add(g); return g; })();
+  g.userData={ root, av, halo, glow, bubble, phase:0, profile:NPC_PROFILE }; scene.add(g); return g; })();
 
 // ── 입력 ──
 const move=new THREE.Vector2(0,0); const keys={};
@@ -780,7 +805,7 @@ const card=document.getElementById('card'); let reqTarget=null;
 function openCard(profile){ document.exitPointerLock?.(); reqTarget=profile; document.getElementById('cardName').textContent=profile.nick;
   const meta=document.getElementById('cardMeta');
   const reqBtn=document.getElementById('cardReq');
-  if(profile.npc){ meta.innerHTML='<span class="npc-tag">AI 캐릭터 · 실제 회원이 아니에요</span><br>분수대 광장에 사는 키키예요.<br>광장 구경, 소개팅 이야기, 대화 연습까지<br>편하게 말 걸어 보세요.'; reqBtn.textContent='키키와 대화하기'; reqBtn.hidden=false; }
+  if(profile.npc){ meta.innerHTML='분수대 광장에 사는 키키예요.<br>광장 구경, 소개팅 이야기, 대화 연습까지<br>편하게 말 걸어 보세요.'; reqBtn.textContent='키키와 대화하기'; reqBtn.hidden=false; }
   else { meta.textContent=(profile.gender?profile.gender+' · ':'')+'지금 광장에 접속 중'; reqBtn.textContent='1:1 대화 신청'; reqBtn.hidden=false; }
   document.getElementById('cardSafety').hidden=!!profile.npc;
   card.hidden=false; }
@@ -1076,7 +1101,7 @@ function tick(){
       hero.rotation.y=Math.atan2(vx,vz); }
     if(heroAv){ if(heroAv.actions.walk) heroAv.actions.walk.timeScale=1.35; heroAv.update(dt, len>0.08&&grounded); }
     if(!heroSeat){ if((keys['Space']||mobileJump)&&grounded){ vy=8; grounded=false; } mobileJump=false; vy-=22*dt; hero.position.y+=vy*dt; if(hero.position.y<=0){ hero.position.y=0; vy=0; grounded=true; } }
-    { const can=!heroSeat && nearSeat(); sitBtn.hidden=!(heroSeat||can); sitBtn.textContent=heroSeat?'일어나기':'앉기'; sitBtn.classList.toggle('on',!!heroSeat); }
+    { const can=!heroSeat && nearSeat(); sitBtn.hidden=!(heroSeat||can); sitBtn.querySelector('span').textContent=heroSeat?'일어나기':'앉기'; sitBtn.classList.toggle('on',!!heroSeat); }
     const target=hero.position.clone().add(camOff()); camera.position.lerp(target,1-Math.pow(0.0008,dt)); camera.lookAt(hero.position.x,hero.position.y+1.4,hero.position.z);
     if(locked){ aimTarget=raycastFromNDC(0,0); reticle.classList.toggle('on', !!aimTarget); } // 화면 중앙 조준
     sendPos(dt);
@@ -1084,8 +1109,8 @@ function tick(){
     // 패널에 가리지 않는 영역(PC: 왼쪽, 휴대폰: 위쪽) 가운데에 캐릭터. 보이는 높이가 작을수록 카메라를 멀리
     const W=innerWidth,H=innerHeight,sh=document.getElementById('sheet'), rc=sh?sh.getBoundingClientRect():{width:0,height:0}, side=W>760;
     const fw=side?W+rc.width:W, fh=side?H:H+rc.height, vis=side?H:Math.max(200,H-rc.height), k=(fh/vis)*(side?0.8:0.72);
-    const close=crTab==='face'||crTab==='hair', look=close?(side?1.46:1.38):0.92, sc=heroAv?heroAv.group.children[0]?.scale.x||1:1;
-    const target=new THREE.Vector3(SPAWN.x,SPAWN.y+(close?1.45:1.15)*sc,SPAWN.z+(close?2.0:4.6)*k*sc); camera.position.lerp(target,1-Math.pow(0.002,dt));
+    const close=crTab==='face'||crTab==='hair', fy=opts.look.style==='block'?1.54:1.38, look=close?(side?fy+0.08:fy):0.95, sc=heroAv?heroAv.group.children[0]?.scale.x||1:1;
+    const target=new THREE.Vector3(SPAWN.x,SPAWN.y+(close?fy+0.07:1.15)*sc,SPAWN.z+(close?2.0:4.6)*k*sc); camera.position.lerp(target,1-Math.pow(0.002,dt));
     camera.lookAt(SPAWN.x,SPAWN.y+look*sc,SPAWN.z); hero.rotation.y=L(hero.rotation.y,crYaw,0.2);
     if(sh){ if(camera.aspect!==fw/fh) camera.aspect=fw/fh; camera.setViewOffset(fw,fh,side?rc.width:0,side?0:rc.height,W,H); }
     if(heroAv) heroAv.update(dt,false); if(heroNick) heroNick.visible=false;
@@ -1102,7 +1127,7 @@ function tick(){
   { const now=performance.now(); for(const par of [hero, ...[...peers.values()].map(p=>p.root)]){ const sp=par.userData.say; if(sp && now>sp.userData.until){ par.remove(sp); sp.material.map.dispose(); sp.material.dispose(); par.userData.say=null; } } }
   for(const o of spinners) o.rotation.y+=dt*o.userData.kl_spin;
   // 키키(AI): 둥실둥실 + 가까이 오면 쳐다보기
-  { const u=npcGroup.userData; u.phase+=dt; u.root.position.y=Math.sin(u.phase*2)*0.04; u.halo.rotation.y=Math.sin(u.phase*1.3)*0.6; u.halo.children[1].rotation.z=Math.sin(u.phase*2.2)*0.3;
+  { const u=npcGroup.userData; u.phase+=dt; u.av.update(dt,false); u.root.position.y=Math.sin(u.phase*2)*0.04; u.halo.rotation.y=Math.sin(u.phase*1.3)*0.6; u.halo.children[1].rotation.z=Math.sin(u.phase*2.2)*0.3;
     u.bubble.position.y=3.05+Math.sin(u.phase*2.4)*0.08; u.glow.material.opacity=0.35+Math.sin(u.phase*3)*0.2;
     const dx=hero.position.x-npcGroup.position.x, dz=hero.position.z-npcGroup.position.z;
     if(mode==='playing' && dx*dx+dz*dz<49){ const want=Math.atan2(dx,dz); let d=want-npcGroup.rotation.y; d=Math.atan2(Math.sin(d),Math.cos(d)); npcGroup.rotation.y+=d*Math.min(1,dt*4); } }
