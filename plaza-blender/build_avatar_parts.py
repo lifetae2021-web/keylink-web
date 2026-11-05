@@ -280,9 +280,19 @@ def build_accessories(P, arm, body, coll, prefix):
     # 캡모자 / 비니(머리카락 위에 씀)
     cap = hair_shell(P, 1.14, lambda lon: 12 if abs(lon) < 60 else ramp(lon, 12, 2, -8), rows=8)
     sx, sy, _ = P['head_scale']; br_r = P['head_r'] * 1.14
-    brim = bm_cyl(1.0, 1.0, 0.02, seg=20); bmesh.ops.scale(brim, vec=(br_r * sx * 0.75, br_r * sy * 0.7, 1), verts=brim.verts)
-    bmesh.ops.delete(brim, geom=[v for v in brim.verts if v.co.y > 0.02], context='VERTS')
-    bmesh.ops.translate(brim, vec=head_point(P, 0, 12, 1.1) + Vector((0, -0.06, -0.01)), verts=brim.verts)
+    # 챙: 두께가 있는 반달 판을 이마 앞에 살짝 아래로 기울여 붙임(얇은 원판은 옆에서 보면 선처럼 보였음)
+    def half_disc(rx, ry, th, n=16):
+        bm = bmesh.new(); top = []; bot = []
+        for i in range(n + 1):
+            t = math.pi + math.pi * i / n; x, y = rx * math.cos(t), ry * math.sin(t)   # 앞쪽(-Y) 반달
+            top.append(bm.verts.new((x, y, th / 2))); bot.append(bm.verts.new((x, y, -th / 2)))
+        bm.faces.new(top); bm.faces.new(bot[::-1])
+        for i in range(n): bm.faces.new((bot[i], bot[i + 1], top[i + 1], top[i]))
+        bm.faces.new((bot[n], bot[0], top[0], top[n]))
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces); return bm
+    brim = half_disc(br_r * sx * 0.72, br_r * sy * 0.62, 0.035)
+    bmesh.ops.transform(brim, matrix=Matrix.Rotation(math.radians(16), 4, 'X'), verts=brim.verts)
+    bmesh.ops.translate(brim, vec=head_point(P, 0, 13, 1.1) + Vector((0, 0.05, -0.015)), verts=brim.verts)
     R('cap', bm_merge(cap, brim), 'acc', 'head', 'cap')
     bea = hair_shell(P, 1.16, lambda lon: ramp(lon, 22, 8, -5), rows=8, flare=lambda lon, lat: 1 + 0.04 * max(0, (lat - 40) / 50))
     rim = bm_torus(1.0, 0.07, seg=32, rseg=6); bmesh.ops.scale(rim, vec=(P['head_r'] * 1.15 * sx, P['head_r'] * 1.15 * sy, 0.5), verts=rim.verts)
