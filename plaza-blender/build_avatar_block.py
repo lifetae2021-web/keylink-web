@@ -241,3 +241,27 @@ def build_block_reward_accessories(coll, arm):
     K.add('hips', x - 0.012, -0.075, z - 0.24, x, -0.055, z - 0.1); K.add('hips', x - 0.012, -0.1, z - 0.22, x, -0.055, z - 0.2)
     made.append(part(K, 'block_ACC_goldkeyring', coll, arm, gold, 'acc', 'goldkeyring').name)
     return made
+
+def build_block_shop_accessories(coll, arm, J):
+    white = bpy.data.materials['FIX_wing']; halo = bpy.data.materials['FIX_halo']; pink = bpy.data.materials['FIX_balloon']; made = []
+    X, Y, z1 = HEAD['hx'], HEAD['hy'], HEAD['z1']
+    H = Boxes(); zh = z1 + 0.16; t = 0.04; e = 0.2   # 네모 천사 링
+    H.add('head', -e, -e, zh, e, -e + t, zh + t); H.add('head', -e, e - t, zh, e, e, zh + t); H.add('head', -e, -e, zh, -e + t, e, zh + t); H.add('head', e - t, -e, zh, e, e, zh + t)
+    made.append(part(H, 'block_ACC_halo', coll, arm, halo, 'acc', 'halo', keys=False).name)
+    W = Boxes(); y0, y1 = 0.16, 0.2   # 계단식 날개(등 뒤)
+    for s in (1, -1):
+        for k, (x0, x1, za, zb) in enumerate(((0.08, 0.22, 0.86, 1.22), (0.22, 0.36, 0.9, 1.28), (0.36, 0.5, 0.98, 1.3), (0.5, 0.6, 1.1, 1.28))):
+            W.add('chest', s * x0 if s > 0 else -x1, y0, za, s * x1 if s > 0 else -x0, y1, zb)
+    made.append(part(W, 'block_ACC_wings', coll, arm, white, 'acc', 'wings', keys=False).name)
+    h = J['hand.R']; B = Boxes(); bx, bz = h.x - 0.22, h.z + 1.45; px = 0.06   # 도트 하트 풍선 + 줄
+    heart = ['.XX.XX.', 'XXXXXXX', 'XXXXXXX', '.XXXXX.', '..XXX..', '...X...']
+    for r, row in enumerate(heart):
+        for c, ch in enumerate(row):
+            if ch == 'X': B.add('hand.R', bx + (c - 3) * px - px / 2, -0.04, bz - r * px, bx + (c - 3) * px + px / 2, 0.04, bz - r * px + px)
+    made.append(part(B, 'block_ACC_balloon', coll, arm, pink, 'acc', 'balloon', keys=False).name)
+    S = Boxes(); n = 14
+    for k in range(n):
+        t0, t1 = k / n, (k + 1) / n; x = h.x + (bx - h.x) * (t0 + t1) / 2
+        S.add('hand.R', x - 0.008, -0.008, h.z + (bz - 5 * px - h.z) * t0, x + 0.008, 0.008, h.z + (bz - 5 * px - h.z) * t1)
+    made.append(part(S, 'block_ACC_balloon_string', coll, arm, bpy.data.materials['FIX_detail'], 'acc', 'balloon', keys=False).name)
+    return made

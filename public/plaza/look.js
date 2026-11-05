@@ -1,6 +1,9 @@
 // 키링 월드 캐릭터 정보(look v2) — 웹·가입 API·워커가 같이 쓰는 규칙. 설계: plaza-blender/avatar_spec.md
 // 허용된 값만 남기고 나머지는 버린다(다른 사람에게 그대로 전달되므로 외모 정보 외에는 절대 넣지 않는다).
 
+import { PET_IDS, PET_NAME_MAX } from './pets.js';
+import { hasBadWord, isReservedNick } from './badwords.js';
+
 export const LOOK = {
   style: ['block', 'chibi'],   // block: 블록 캐릭터(기본, 블록 맵과 어울림) · chibi: 귀여운 둥근 캐릭터
   gender: ['male', 'female'],
@@ -8,7 +11,7 @@ export const LOOK = {
   top: ['tee', 'long', 'hoodie', 'shirt', 'dress'],
   bottom: ['pants', 'shorts', 'skirt'],
   shoes: ['sneakers', 'boots'],
-  acc: ['glasses', 'cap', 'beanie', 'earrings', 'crossbag', 'goldkeyring', 'crown'],
+  acc: ['glasses', 'cap', 'beanie', 'earrings', 'crossbag', 'goldkeyring', 'crown', 'balloon', 'halo', 'wings'],
   eye: ['round', 'sparkle', 'smile', 'sleepy', 'sharp'],
   brow: ['soft', 'straight', 'arched', 'thick'],
   mouth: ['smile', 'grin', 'small', 'cat', 'neutral'],
@@ -20,13 +23,16 @@ export const LOOK = {
 export const HATS = ['cap', 'beanie', 'crown'];
 // 황금 열쇠를 모은 날(누적)로 여는 꾸미기 — 잠금 해제 여부는 서버(plazaKeys/{uid}.unlocks)가 판단
 export const LOCKED_ACC = { goldkeyring: 3, crown: 10 };
+// 포인트로 사는 꾸미기(가격 P) — 산 것은 plazaKeys/{uid}.unlocks에 들어간다
+export const SHOP_ACC = { balloon: 300, halo: 500, wings: 1000 };
+export const isLockedAcc = (a) => a in LOCKED_ACC || a in SHOP_ACC;
 
 // 성별에 따라 편집 화면에 보여 줄 선택지(저장·검사는 전체 목록 기준이라 예전 캐릭터도 깨지지 않음)
 export const GENDER_OPTIONS = {
   male:   { hair: ['short', 'dandy', 'twoblock', 'spiky', 'bob'], top: ['tee', 'long', 'hoodie', 'shirt'], bottom: ['pants', 'shorts'],
-            shoes: ['sneakers', 'boots'], acc: ['glasses', 'cap', 'beanie', 'crossbag', 'goldkeyring', 'crown'] },
+            shoes: ['sneakers', 'boots'], acc: ['glasses', 'cap', 'beanie', 'crossbag', 'goldkeyring', 'crown', 'balloon', 'halo', 'wings'] },
   female: { hair: ['long', 'bob', 'ponytail', 'bun', 'short'], top: ['tee', 'long', 'hoodie', 'shirt', 'dress'], bottom: ['pants', 'shorts', 'skirt'],
-            shoes: ['sneakers', 'boots'], acc: ['glasses', 'earrings', 'cap', 'beanie', 'crossbag', 'goldkeyring', 'crown'] },
+            shoes: ['sneakers', 'boots'], acc: ['glasses', 'earrings', 'cap', 'beanie', 'crossbag', 'goldkeyring', 'crown', 'balloon', 'halo', 'wings'] },
 };
 
 // 성별을 바꾸면 그 성별에 없는 선택은 기본값으로 바꾼다(색은 그대로)
@@ -82,6 +88,11 @@ export function sanitizeLook(raw) {
   out.acc = acc.filter((a, i) => !HATS.includes(a) || acc.findIndex((b) => HATS.includes(b)) === i).slice(0, 4);   // 모자는 하나만
   out.colors = {}; for (const k of LOOK.colors) out.colors[k] = color(c[k], d.colors[k]);
   for (const [k, s] of Object.entries(LOOK.sliders)) out[k] = num(raw[k], s);
+  // 데리고 다니는 반려동물(이름표용). 소유 여부는 가입 API가 plazaPets로 확인
+  if (raw.pet && typeof raw.pet === 'object' && PET_IDS.includes(raw.pet.id)) {
+    const name = String(raw.pet.name ?? '').replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, PET_NAME_MAX);
+    if (name && !hasBadWord(name) && !isReservedNick(name)) out.pet = { id: raw.pet.id, name };
+  }
   return out;
 }
 

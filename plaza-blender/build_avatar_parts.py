@@ -350,3 +350,35 @@ def build_reward_accessories(P, arm, coll, prefix):
           bm_xform(bm_box(0.012, 0.04, 0.015), loc=(x, y - 0.02, z - 0.15))]
     k = obj_from_bm('%s_ACC_goldkeyring' % prefix, bm_merge(*kp), gold, coll); rigid(k, arm, 'hips'); k['kl_part'] = 'acc'; k['kl_type'] = 'goldkeyring'; made.append(k.name)
     return made
+
+# ── 상점 꾸미기(귀여운): 하트 풍선 · 천사 링 · 날개 — 색 고정(FIX_) ──
+def build_shop_accessories(P, arm, coll, prefix):
+    J = joints(P); made = []
+    white = mat('FIX_wing', (0.98, 0.97, 1.0), 0.6); edge = bpy.data.materials['FIX_gold']
+    halo = mat('FIX_halo', (1.0, 0.85, 0.35), 0.3, emit=(1.0, 0.8, 0.3), emit_str=1.6)
+    pink = mat('FIX_balloon', (1.0, 0.36, 0.55), 0.25)
+    def put(name, bm, m, bone, typ):
+        o = obj_from_bm('%s_ACC_%s' % (prefix, name), bm, m, coll)
+        for p in o.data.polygons: p.use_smooth = True
+        rigid(o, arm, bone); o['kl_part'] = 'acc'; o['kl_type'] = typ; made.append(o.name)
+    top = P['head_c'] + P['head_r'] * P['head_scale'][2]
+    put('halo', bm_xform(bm_torus(P['head_r'] * 0.55, 0.035, seg=32, rseg=8), loc=(0, 0.02, top + 0.16)), halo, 'head', 'halo')
+    # 날개: 깃털 끝이 물결치는 판을 등 뒤 좌우로
+    cy = P['r']['chest'][1] * 0.5 + 0.03; zc = P['chest']
+    pts = [(0, 0), (0.18, 0.16), (0.36, 0.26), (0.5, 0.24), (0.46, 0.12), (0.5, 0.02), (0.42, -0.06), (0.44, -0.16), (0.32, -0.18), (0.3, -0.28), (0.16, -0.22), (0.05, -0.12)]
+    for s in (1, -1):
+        b = bmesh.new(); f = [b.verts.new((s * x, 0, z)) for x, z in pts]; b_ = [b.verts.new((s * x, 0.035, z)) for x, z in pts]
+        b.faces.new(f if s > 0 else f[::-1]); b.faces.new(b_[::-1] if s > 0 else b_)
+        n = len(pts)
+        for i in range(n): b.faces.new((f[i], f[(i + 1) % n], b_[(i + 1) % n], b_[i]))
+        bmesh.ops.recalc_face_normals(b, faces=b.faces)
+        bmesh.ops.transform(b, matrix=Matrix.Rotation(-s * 0.35, 4, 'Z'), verts=b.verts)
+        bmesh.ops.translate(b, vec=(s * 0.06, cy, zc + 0.05), verts=b.verts)
+        put('wings_%s' % ('L' if s > 0 else 'R'), b, white, 'chest', 'wings')
+    # 하트 풍선: 오른손에서 위로 올라간 줄 + 하트
+    h = J['hand.R']; bx, bz = h.x - 0.2, h.z + 1.15
+    put('balloon', bm_xform(bm_heart(0.42, 0.18), loc=(bx, 0.0, bz)), pink, 'hand.R', 'balloon')
+    d = Vector((bx - h.x, 0, bz - 0.2 - h.z)); st = bm_box(0.008, 0.008, d.length)
+    bmesh.ops.transform(st, matrix=d.to_track_quat('Z', 'Y').to_matrix().to_4x4(), verts=st.verts); bmesh.ops.translate(st, vec=(h.x, 0, h.z), verts=st.verts)
+    put('balloon_string', st, bpy.data.materials['FIX_detail'], 'hand.R', 'balloon')
+    return made

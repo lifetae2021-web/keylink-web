@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { adminDb, adminAuth } from '@/lib/firebaseAdmin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { nickProblem, isReservedNick } from '../../../../../public/plaza/badwords.js';
-import { sanitizeLook, LOCKED_ACC } from '../../../../../public/plaza/look.js';
+import { sanitizeLook, isLockedAcc } from '../../../../../public/plaza/look.js';
+import { currentAff, AFF } from '../../../../../public/plaza/pets.js';
 import { plazaKey } from '@/lib/plazaKey';
 
 // 광장(플라자) 회원 가입/프로필 저장
@@ -32,10 +33,16 @@ export async function POST(req: Request) {
     const intro = str(body.intro, 40);
     // 캐릭터 외모(look v2): 허용된 값만 남김(공용 규칙 public/plaza/look.js)
     const look = sanitizeLook({ ...(body.look && typeof body.look === 'object' ? body.look : {}), gender });
-    // 열쇠 보상 꾸미기(황금 키링·왕관)는 잠금 해제한 회원만
-    if (look.acc.some((a: string) => a in LOCKED_ACC)) {
+    // 열쇠 보상·상점 꾸미기는 잠금 해제(또는 구매)한 회원만
+    if (look.acc.some((a: string) => isLockedAcc(a))) {
       const unlocks: string[] = (await adminDb.doc(`plazaKeys/${uid}`).get()).data()?.unlocks || [];
-      look.acc = look.acc.filter((a: string) => !(a in LOCKED_ACC) || unlocks.includes(a));
+      look.acc = look.acc.filter((a: string) => !isLockedAcc(a) || unlocks.includes(a));
+    }
+    // 반려동물 이름표는 실제로 데려간(adopted·active) 동물만
+    if (look.pet) {
+      const pd = (await adminDb.doc(`plazaPets/${uid}`).get()).data();
+      if (!pd || pd.active !== look.pet.id || !pd.adopted?.[look.pet.id] || currentAff(pd.aff?.[look.pet.id], pd.affAt?.[look.pet.id]) < AFF.follow) delete look.pet;   // 삐진(호감 30 미만) 반려동물은 안 따라옴
+      else look.pet.name = pd.adopted[look.pet.id];
     }
 
     if (!nick) return NextResponse.json({ error: 'nick_required' }, { status: 400 });

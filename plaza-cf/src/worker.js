@@ -30,6 +30,14 @@ async function handleAdmin(request, env, url) {
     return new Response('forbidden', { status: 403 });
   }
   const body = await request.text();
+  // 상점 결과(고양이 밥·소원)를 모든 방에 알림 — Next 서버가 포인트 차감을 끝낸 뒤에만 부른다
+  if (url.pathname === '/admin/announce') {
+    const rooms = ['plaza', ...((await (await registry(env).fetch('https://do/list')).json()).rooms || []).map((r) => r.name)];
+    for (const room of [...new Set(rooms)]) {
+      try { await env.PLAZA_ROOM.get(env.PLAZA_ROOM.idFromName(room)).fetch('https://do/announce', { method: 'POST', body }); } catch (e) {}
+    }
+    return Response.json({ ok: true });
+  }
   const res = await registry(env).fetch('https://do' + url.pathname, { method: 'POST', headers: { 'content-type': 'application/json' }, body });
   const out = await res.json();
   // 차단했으면 지금 접속 중인 방들에서도 바로 내보낸다

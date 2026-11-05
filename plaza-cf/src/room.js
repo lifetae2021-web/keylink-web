@@ -83,6 +83,13 @@ export class PlazaRoom {
     const url = new URL(request.url);
 
     // 관리자 차단 시 지금 접속 중인 대상 내보내기 (워커 /admin/ban 이 호출)
+    if (url.pathname === '/announce') {
+      const b = await request.json().catch(() => ({}));
+      const m = b.msg || {};
+      if (m.t === 'feed') this.broadcast(null, { t: 'feed', key: String(m.key || ''), nick: String(m.nick || '').slice(0, 12), aid: m.aid ? String(m.aid).slice(0, 16) : null });
+      else if (m.t === 'wish') this.broadcast(null, { t: 'wish', key: String(m.key || ''), nick: String(m.nick || '').slice(0, 12), text: String(m.text || '').slice(0, 40) });
+      return Response.json({ ok: true });
+    }
     if (url.pathname === '/kick') {
       const tid = url.searchParams.get('tid');
       const until = +url.searchParams.get('until') || 0;
