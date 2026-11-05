@@ -4,9 +4,10 @@ import Anthropic from '@anthropic-ai/sdk';
 import { FieldValue } from 'firebase-admin/firestore';
 import { adminDb, adminAuth } from '@/lib/firebaseAdmin';
 import { hitLimit, peekLimit, clientIp } from '@/lib/rateLimit';
+import { getActiveTheme } from '@/lib/plazaTheme';
 import {
   NPC_ID, NPC_NICK, NPC_DAILY_LIMIT, NPC_GUEST_DAILY_LIMIT, NPC_GUEST_GLOBAL_DAILY, NPC_HISTORY, NPC_SYSTEM_PROMPT, NPC_STYLE_REMINDER,
-  upcomingSessionsText, memoryBlock, foldOldMessagesIntoMemory, npcFaqText, NPC_ASK_RE,
+  upcomingSessionsText, memoryBlock, foldOldMessagesIntoMemory, npcFaqText, NPC_ASK_RE, replyLengthHint, NPC_XMAS_TEXT,
 } from '@/lib/plazaNpc';
 
 // 광장 AI NPC "키키"와 대화 — 회원(하루 NPC_DAILY_LIMIT회)과 비회원(기기당 NPC_GUEST_DAILY_LIMIT회) 모두 가능
@@ -84,11 +85,12 @@ export async function POST(req: Request) {
 
     const convId = convOf(uid, NPC_ID);
     const convRef = adminDb.collection('plazaChats').doc(convId);
-    const [convSnap, histSnap, sessionsText, faqText] = await Promise.all([
+    const [convSnap, histSnap, sessionsText, faqText, theme] = await Promise.all([
       convRef.get(),
       convRef.collection('messages').orderBy('createdAt', 'asc').limitToLast(NPC_HISTORY).get(),
       upcomingSessionsText(),
       npcFaqText().catch(() => null),
+      getActiveTheme().catch(() => 'default'),
     ]);
     const memory = memoryBlock(convSnap.get('npcMemory'));
     const messages: Anthropic.Beta.BetaMessageParam[] = histSnap.docs.map((d) => {
@@ -97,7 +99,8 @@ export async function POST(req: Request) {
     });
     while (messages.length && messages[0].role !== 'user') messages.shift(); // 첫 메시지는 user 여야 한다
     // 마지막 메시지까지 캐시 → 다음 턴에는 이전 대화가 캐시 읽기(1/10 가격)로 처리돼 긴 기억도 싸다
-    messages.push({ role: 'user', content: [{ type: 'text', text, cache_control: { type: 'ephemeral' } }] });
+    // 길이 메모는 캐시 지점 뒤에 붙여서 다음 턴의 캐시(저장된 대화 기록)와 어긋나지 않게 한다
+    messages.push({ role: 'user', content: [{ type: 'text', text, cache_control: { type: 'ephemeral' } }, { type: 'text', text: replyLengthHint(text) }] });
 
     const isHaiku = model.startsWith('claude-haiku');
     const response = await client.beta.messages.create({
@@ -107,6 +110,7 @@ export async function POST(req: Request) {
         { type: 'text', text: NPC_SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }, // 고정 부분 캐싱
         ...(memory ? [{ type: 'text' as const, text: memory }] : []),                     // 장기 기억(가끔 바뀜)
         ...(faqText ? [{ type: 'text' as const, text: faqText }] : []),                   // 운영진이 알려준 답(가끔 바뀜)
+        ...(theme === 'xmas' ? [{ type: 'text' as const, text: NPC_XMAS_TEXT }] : []),     // 크리스마스 테마일 때 마을 설명
         { type: 'text', text: sessionsText },                                            // 바뀌는 일정은 캐시 뒤에
         { type: 'text', text: NPC_STYLE_REMINDER },                                      // 말투 다짐은 맨 끝에
       ],
@@ -118,16 +122,25 @@ export async function POST(req: Request) {
 
     let reply = '';
     if (response.stop_reason === 'refusal') {
-      reply = '그 얘기는 제가 도와드리기 어려워요. 광장 사용법이나 소개팅 이야기라면 언제든 물어봐 주세요 😊';
+      reply = '그 얘기는 제가 도와드리기 어려워요. 광장 사용법이나 소개팅 이야기라면 언제든 물어봐 주세요.';
     } else {
       for (const block of response.content) if (block.type === 'text') reply += block.text;
       reply = reply.trim() || '앗, 잠깐 말이 막혔어요. 다시 한 번 말해 주시겠어요?';
+    }
+    // 모델이 규칙을 점검하는 혼잣말(영어 메모, "답변은 ~자" 등)을 답에 섞으면 그 문단은 버린다
+    {
+      const META = /^\s*(note|system|wait|rewriting|let me|actually)\b|system prompt|시스템 프롬프트|지시문|메모|\d+\s*자\s*(안쪽|이내)|키키가 [^.\n]{0,40}(줘야|해야) 해요|^[^가-힣ㄱ-ㅎㅏ-ㅣ]{4,}$/i;
+      // 혼잣말 뒤에 고쳐 쓴 답이 오면 그 뒤만 남기고, 아니면 혼잣말 문단만 뺀다
+      const paras = reply.split(/\n\s*\n/), last = paras.map((t) => META.test(t)).lastIndexOf(true);
+      const kept = last >= 0 && last < paras.length - 1 ? paras.slice(last + 1) : paras.filter((t) => !META.test(t));
+      if (kept.length && kept.length < paras.length) reply = kept.join('\n\n');
     }
     // [신청버튼] 표시 → 화면에 '신청하러 가기' 버튼. 채팅창은 링크를 못 누르므로 웹 주소는 지운다(주소가 있었으면 버튼으로 대신)
     let cta = /\[신청버튼\]/.test(reply) || /keylink\.kr/i.test(reply);
     // [운영진전달: 요약] 표시 → 관리자 화면(키키 질문)으로 넘기고 표시는 지운다
     const ask = reply.match(NPC_ASK_RE);
-    reply = reply.replace(new RegExp(NPC_ASK_RE.source, 'g'), '').replace(/\[신청버튼\]/g, '').replace(/\(?\s*https?:\/\/[^\s)]+\s*\)?/g, '').replace(/[ \t]{2,}/g, ' ').replace(/ +([.,!?])/g, '$1').trim();
+    // 이모지는 키키 말투 규칙상 쓰지 않으므로 혹시 나오면 지운다
+    reply = reply.replace(new RegExp(NPC_ASK_RE.source, 'g'), '').replace(/\[신청버튼\]/g, '').replace(/[\p{Extended_Pictographic}\u{1F3FB}-\u{1F3FF}\uFE0F\u200D]/gu, '').replace(/\(?\s*https?:\/\/[^\s)]+\s*\)?/g, '').replace(/[ \t]{2,}/g, ' ').replace(/ +([.,!?])/g, '$1').trim();
     if (!reply && ask) reply = '운영진한테 물어보고 답 받아 올게요. 답이 오면 여기로 알려 드릴게요.';
     if (!reply) { reply = '아래 버튼으로 신청할 수 있어요.'; cta = true; }
 

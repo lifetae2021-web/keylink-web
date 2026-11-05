@@ -9,7 +9,7 @@ async function uidOf(req: Request) {
   try { const d = await adminAuth.verifyIdToken(h.split('Bearer ')[1]); return d.firebase?.sign_in_provider === 'anonymous' ? null : d.uid; } catch { return null; }
 }
 const MSG: Record<string, string> = {
-  not_member: '포인트는 회원만 쓸 수 있어요', bad_item: '없는 상품이에요', owned: '이미 가지고 있어요', cooldown: '조금 있다가 다시 줄 수 있어요',
+  not_member: '포인트는 회원만 쓸 수 있어요', bad_item: '없는 상품이에요', owned: '이미 가지고 있어요', season_over: '지금은 살 수 없는 시즌 한정 상품이에요', cooldown: '조금 있다가 다시 줄 수 있어요',
   empty: '소원을 적어 주세요', bad_word: '그 말은 소원으로 보낼 수 없어요', poor: '포인트가 부족해요',
 };
 

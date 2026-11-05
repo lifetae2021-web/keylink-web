@@ -320,10 +320,11 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { nickProblem, isReservedNick } from '/plaza/badwords.js';
-import { LOOK, HATS, LOCKED_ACC, SHOP_ACC, isLockedAcc, GENDER_OPTIONS, sanitizeLook, defaultLook, fitToGender } from '/plaza/look.js';
+import { LOOK, HATS, LOCKED_ACC, SHOP_ACC, SEASON_ACC, isLockedAcc, GENDER_OPTIONS, sanitizeLook, defaultLook, fitToGender } from '/plaza/look.js';
 import { CAT_FOOD_PRICE, WISH_PRICE, WISH_MAX, FOUNTAIN } from '/plaza/shop.js';
 import { PETS, AFF, PET_NAME_MAX, AFF_DECAY_PER_DAY, petKindLabel } from '/plaza/pets.js';
 import { createAvatar } from '/plaza/avatar.js';
+import { THEMES, sanitizeTheme } from '/plaza/themes.js';
 const NICK_MSG={ jamo:'자음·모음만으로는 닉네임을 만들 수 없어요', bad:'사용할 수 없는 단어가 들어간 닉네임이에요', reserved:'운영자로 오해할 수 있는 닉네임은 쓸 수 없어요' };
 
 // 키링크 Firebase (공개 설정값 — 클라이언트 번들에 이미 노출되는 값과 동일)
@@ -345,7 +346,8 @@ renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.NoToneMapping;
 const scene = new THREE.Scene(); scene.background = new THREE.Color(0xbfe3ff); scene.fog = new THREE.Fog(0xd8efff, 70, 230);   // 하늘섬: 멀리 떠 있는 섬·구름 바다가 보이게
 // 하늘 그라데이션(위는 짙은 파랑 → 지평선은 밝게 → 아래 구름 바다 쪽은 하얗게)
-{ const sky=new THREE.Mesh(new THREE.SphereGeometry(320,32,16), new THREE.ShaderMaterial({ side:THREE.BackSide, depthWrite:false, fog:false,
+let skyMat=null;
+{ const sky=new THREE.Mesh(new THREE.SphereGeometry(320,32,16), skyMat=new THREE.ShaderMaterial({ side:THREE.BackSide, depthWrite:false, fog:false,
     uniforms:{ top:{ value:new THREE.Color(0x4f9dff) }, mid:{ value:new THREE.Color(0xcfeaff) }, low:{ value:new THREE.Color(0xf4fbff) } },
     vertexShader:'varying vec3 vP; void main(){ vP=normalize(position); gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
     fragmentShader:'uniform vec3 top; uniform vec3 mid; uniform vec3 low; varying vec3 vP; void main(){ float h=vP.y; vec3 c = h>0.0 ? mix(mid, top, pow(clamp(h,0.0,1.0),0.6)) : mix(mid, low, clamp(-h*3.0,0.0,1.0)); gl_FragColor=vec4(c,1.0); }' }));
@@ -354,24 +356,139 @@ const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 400); let camYaw=0, camPi
 function camOff(){ const cp=Math.cos(camPitch); return new THREE.Vector3(Math.sin(camYaw)*camDist*cp, Math.sin(camPitch)*camDist, Math.cos(camYaw)*camDist*cp); }
 // 따뜻한 오후 빛 + 부드러운 그림자(해 하나만 그림자를 만든다. 휴대폰은 그림자 해상도를 낮춰 가볍게)
 // 환경광(IBL): 위는 하늘색, 아래는 잔디색으로 사방에서 오는 은은한 바깥 빛 — 실사 나무·재질이 입체적으로 보인다
-const ENV_LIGHT = 0.35;
-{ const es=new THREE.Scene(), env=new THREE.Mesh(new THREE.SphereGeometry(10,32,16), new THREE.ShaderMaterial({ side:THREE.BackSide,
-    uniforms:{ top:{ value:new THREE.Color(0x5aa6ff).multiplyScalar(ENV_LIGHT) }, mid:{ value:new THREE.Color(0xe8f4ff).multiplyScalar(ENV_LIGHT) }, low:{ value:new THREE.Color(0x7f9f5f).multiplyScalar(ENV_LIGHT) } },
+// 세기는 밤낮(applyDayNight)이 정한다
+const envScene=new THREE.Scene(), envMat=new THREE.ShaderMaterial({ side:THREE.BackSide,
+    uniforms:{ top:{ value:new THREE.Color() }, mid:{ value:new THREE.Color() }, low:{ value:new THREE.Color() } },
     vertexShader:'varying vec3 vP; void main(){ vP=normalize(position); gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
-    fragmentShader:'uniform vec3 top; uniform vec3 mid; uniform vec3 low; varying vec3 vP; void main(){ float h=vP.y; vec3 c = h>0.0 ? mix(mid, top, pow(h,0.7)) : mix(mid, low, clamp(-h*2.0,0.0,1.0)); gl_FragColor=vec4(c,1.0); }' }));
-  es.add(env); const pm=new THREE.PMREMGenerator(renderer); scene.environment=pm.fromScene(es, 0.04).texture; pm.dispose(); }
-scene.add(new THREE.HemisphereLight(0xfffaf2, 0x9fbf7f, 1.4));
+    fragmentShader:'uniform vec3 top; uniform vec3 mid; uniform vec3 low; varying vec3 vP; void main(){ float h=vP.y; vec3 c = h>0.0 ? mix(mid, top, pow(h,0.7)) : mix(mid, low, clamp(-h*2.0,0.0,1.0)); gl_FragColor=vec4(c,1.0); }' });
+envScene.add(new THREE.Mesh(new THREE.SphereGeometry(10,32,16), envMat));
+let envK=-1;
+function buildEnv(k){
+  envK=k; envMat.uniforms.top.value.set(0x5aa6ff).multiplyScalar(k); envMat.uniforms.mid.value.set(0xe8f4ff).multiplyScalar(k); envMat.uniforms.low.value.set(0x7f9f5f).multiplyScalar(k);
+  const pm=new THREE.PMREMGenerator(renderer), old=scene.environment; scene.environment=pm.fromScene(envScene, 0.04).texture; pm.dispose(); if(old) old.dispose();
+}
+const hemi=new THREE.HemisphereLight(0xfffaf2, 0x9fbf7f, 1.4); scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xffeedb, 2.4); sun.position.set(20, 32, 14); scene.add(sun); scene.add(sun.target);
 renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 // 그림자는 내 캐릭터 주변(SHADOW_R m)만 그려서 또렷하게 — 해가 캐릭터를 따라온다(tick)
 const SHADOW_R = 24, SHADOW_K = matchMedia('(pointer:coarse)').matches ? 1024 : 2048;
 sun.castShadow = true; { const s=sun.shadow; s.mapSize.set(SHADOW_K,SHADOW_K);
   Object.assign(s.camera, { left:-SHADOW_R, right:SHADOW_R, top:SHADOW_R, bottom:-SHADOW_R, near:1, far:120 }); s.camera.updateProjectionMatrix(); s.bias=-0.0005; s.normalBias=0.025; }
+// 해(밤에는 달) 방향 — applyDayNight가 정한다
+const sunOff=new THREE.Vector3(20, 32, 14);
 function followSun(p){
   // 그림자 한 칸 단위로 맞춰 움직여야 걸을 때 그림자 테두리가 떨리지 않는다
   const t = SHADOW_R*2/SHADOW_K, x = Math.round(p.x/t)*t, z = Math.round(p.z/t)*t;
-  sun.target.position.set(x, 0, z); sun.position.set(x+20, 32, z+14);
+  sun.target.position.set(x, 0, z); sun.position.set(x+sunOff.x, sunOff.y, z+sunOff.z);
 }
+
+let themeId=null;
+// ── 밤낮: 서울 시간(KST)에 맞춰 하늘·해·조명이 바뀐다. 주소에 ?time=21.5 를 붙이면 그 시각으로 미리보기 ──
+const TIME_OVERRIDE=(()=>{ const v=parseFloat(new URLSearchParams(location.search).get('time')); return isFinite(v) ? ((v%24)+24)%24 : null; })();
+// 해 높이 elev: 1 한낮 ~ 0 해 뜨고 질 때 ~ -1 깊은 밤(해 진 뒤 3시간). 서울 위도 기준 낮 길이(여름 약 14.5시간·겨울 약 9.7시간), 남중 12:32
+function sunState(){
+  // 크리스마스처럼 늘 저녁~밤인 테마
+  if(themeId && THEMES[themeId]?.night) return { elev:-0.42, ph:0.5 };
+  const d=new Date(Date.now()+9*3600e3), doy=Math.floor((d-Date.UTC(d.getUTCFullYear(),0,0))/864e5);
+  const h=TIME_OVERRIDE ?? (d.getUTCHours()+d.getUTCMinutes()/60);
+  const L=12.1+2.4*Math.sin(2*Math.PI*(doy-80)/365), rise=12.53-L/2, ph=(h-rise)/L;
+  const elev = ph>=0 && ph<=1 ? Math.sin(Math.PI*ph) : -Math.min(1, Math.min(Math.abs(ph), Math.abs(ph-1))*L/3);
+  return { elev, ph:Math.min(1,Math.max(0,ph)) };
+}
+// 해 높이별 모습(사이는 섞는다): 깊은 밤 → 해 질 녘 보라 → 노을 → 낮
+const DAY_KEYS=[
+  { e:-1,   top:0x081226, mid:0x17264d, low:0x1d2b52, fog:0x152140, hs:0x7e8fc4, hg:0x26323a, hi:0.6,  sc:0xa9c0ff, si:0.55, env:0.12, cl:0.14, glow:1,   star:1,   tint:0.55 },
+  { e:-0.2, top:0x1f2f66, mid:0x6a5a8c, low:0x8a7aa8, fog:0x4a4a78, hs:0xb0a8d8, hg:0x3a4a40, hi:0.8,  sc:0xffb4a8, si:0.7,  env:0.18, cl:0.26, glow:1,   star:0.35, tint:0.7 },
+  { e:0.06, top:0x4f78c8, mid:0xffb889, low:0xffdcc0, fog:0xf0c8a8, hs:0xffdcc0, hg:0x8fa86f, hi:1.05, sc:0xffa868, si:1.7,  env:0.26, cl:0.45, glow:0.35, star:0,   tint:0.9 },
+  { e:0.35, top:0x4f9dff, mid:0xcfeaff, low:0xf4fbff, fog:0xd8efff, hs:0xfffaf2, hg:0x9fbf7f, hi:1.4,  sc:0xffeedb, si:2.4,  env:0.35, cl:0.55, glow:0,   star:0,   tint:1 },
+];
+const cloudMats=[], glowMats=new Map(), themeGlowMats=new Set(), themeExtras=[];
+// 가로등·조명 재질: 밤이 되면 스스로 빛나게(재질은 복제해서 다른 물체에 번지지 않게)
+function nightGlow(o, tag){
+  const ms=Array.isArray(o.material) ? o.material : [o.material];
+  o.material=Array.isArray(o.material) ? ms.map(m=>m.clone()) : ms[0].clone();
+  const lamp=/lamp/.test(o.name)||/lamp/.test(o.parent?.name||'');
+  for(const m of (Array.isArray(o.material) ? o.material : [o.material])){ if(!m.emissive) continue; if(lamp){ m.emissive.set(0xffb060); m.color.set(0xffd9a8); } else if(m.emissive.getHex()===0) m.emissive.copy(m.color||new THREE.Color(0xfff2c0)); glowMats.set(m, { base:m.emissiveIntensity||0, add:lamp?0.7:1.6 }); if(tag) themeGlowMats.add(m); }
+  // 가로등 아래 따뜻한 불빛 웅덩이(진짜 조명 대신 바닥에 빛 그림을 겹쳐 휴대폰도 가볍게)
+  if(lamp){ const p=o.getWorldPosition(new THREE.Vector3()), pool=new THREE.Mesh(new THREE.CircleGeometry(3.4,40), lampPoolMat); pool.rotation.x=-Math.PI/2; pool.position.set(p.x, 0.04, p.z); pool.renderOrder=1; scene.add(pool); if(tag) themeExtras.push(pool); }
+}
+const lampPoolMat=new THREE.MeshBasicMaterial({ map:(()=>{ const c=document.createElement('canvas'); c.width=c.height=128; const g=c.getContext('2d'), gr=g.createRadialGradient(64,64,0,64,64,64); gr.addColorStop(0,'rgba(255,214,150,1)'); gr.addColorStop(0.45,'rgba(255,196,120,0.45)'); gr.addColorStop(1,'rgba(255,190,110,0)'); g.fillStyle=gr; g.fillRect(0,0,128,128); const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; return t; })(),
+  transparent:true, opacity:0, depthWrite:false, blending:THREE.AdditiveBlending, fog:false });
+const stars=(()=>{ const n=700, p=new Float32Array(n*3); for(let i=0;i<n;i++){ const u=Math.random(), a=Math.random()*Math.PI*2, y=0.08+u*0.92, r=Math.sqrt(1-y*y); p[i*3]=Math.cos(a)*r*300; p[i*3+1]=y*300; p[i*3+2]=Math.sin(a)*r*300; }
+  const g=new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(p,3));
+  const s=new THREE.Points(g, new THREE.PointsMaterial({ color:0xffffff, size:2, sizeAttenuation:false, transparent:true, opacity:0, fog:false, depthWrite:false })); s.renderOrder=-1; s.visible=false; scene.add(s); return s; })();
+const _ca=new THREE.Color(), _cb=new THREE.Color();
+function mixKey(k){ let i=0; while(i<DAY_KEYS.length-2 && k>DAY_KEYS[i+1].e) i++; const a=DAY_KEYS[i], b=DAY_KEYS[i+1], t=Math.min(1,Math.max(0,(k-a.e)/(b.e-a.e)));
+  const out={}; for(const key of Object.keys(a)){ if(key==='e') continue; out[key] = ['top','mid','low','fog','hs','hg','sc'].includes(key) ? _ca.set(a[key]).lerp(_cb.set(b[key]), t).getHex() : a[key]+(b[key]-a[key])*t; } return out; }
+function applyDayNight(){
+  const s=sunState(), k=mixKey(s.elev);
+  skyMat.uniforms.top.value.set(k.top); skyMat.uniforms.mid.value.set(k.mid); skyMat.uniforms.low.value.set(k.low);
+  scene.fog.color.set(k.fog); scene.background.set(k.fog);
+  hemi.color.set(k.hs); hemi.groundColor.set(k.hg); hemi.intensity=k.hi;
+  sun.color.set(k.sc); sun.intensity=k.si;
+  // 해는 동쪽에서 떠서 남쪽을 지나 서쪽으로, 밤에는 달빛이 반대편 위에서. 그림자가 너무 길지 않게 높이는 18m 이상
+  const sx=30*Math.cos(Math.PI*s.ph), sz=4+18*Math.sin(Math.PI*s.ph), sy=18+16*Math.max(0,s.elev);
+  const day=Math.min(1,Math.max(0,(s.elev+0.15)/0.25));
+  sunOff.set(-18+(sx+18)*day, 34+(sy-34)*day, -10+(sz+10)*day);
+  if(Math.abs(k.env-envK)>0.02) buildEnv(k.env);
+  for(const m of cloudMats){ m.emissiveIntensity=k.cl; m.color.setScalar(0.45+0.55*k.tint); }
+  for(const [m,g] of glowMats) m.emissiveIntensity=g.base+k.glow*g.add;
+  lampPoolMat.opacity=k.glow*0.5;
+  stars.material.opacity=k.star; stars.visible=k.star>0.01;
+  snow.material.color.setScalar(0.55+0.45*k.tint);
+  // 판 소품·2D 동물(빛을 안 받는 그림)도 밤에는 어둡게
+  scene.traverse(o=>{ if(o.isSprite && o.material.alphaTest>0) o.material.color.setScalar(k.tint); });
+}
+let dayNightT=5;
+
+// ── 테마(관리자 화면 > 키링 월드 > 테마): 기본 지도 위에 테마 장식(themes/*.glb)을 덧씌운다. 주소에 ?theme=xmas 를 붙이면 미리보기 ──
+const THEME_PREVIEW=new URLSearchParams(location.search).get('theme');
+let themeRoot=null, themeSeq=0;
+async function fetchThemeId(){
+  let id='default';
+  try{ const j=await (await fetch('/api/plaza/theme', { cache:'no-store' })).json(); id=j.theme||'default'; }catch(e){}
+  if(THEME_PREVIEW && THEMES[THEME_PREVIEW]) id=THEME_PREVIEW;
+  return sanitizeTheme(id);
+}
+// 관리자가 테마를 바꿨을 때(실시간 알림): 지도까지 바뀌면 안내 후 새로 불러오고, 장식만 바뀌면 그 자리에서 바꾼다
+async function loadTheme(){
+  const id=await fetchThemeId();
+  if((THEMES[id].map||'/plaza/village.glb')!==mapFile){ toast('키링 월드가 '+THEMES[id].label+' 테마로 바뀌어요'); setTimeout(()=>location.reload(), 2500); return; }
+  applyTheme(id);
+}
+const wishPlace=()=>THEMES[themeId]?.wishPlace||'분수대';
+function startTheme(id){ themeId=null; applyTheme(id); }
+function clearTheme(){
+  if(themeRoot){ scene.remove(themeRoot); themeRoot=null; }
+  for(let i=obstacles.length-1;i>=0;i--) if(obstacles[i].tag==='theme') obstacles.splice(i,1);
+  for(const m of themeGlowMats) glowMats.delete(m); themeGlowMats.clear();
+  for(const x of themeExtras) scene.remove(x); themeExtras.length=0;
+}
+function applyTheme(id){
+  id=sanitizeTheme(id); if(id===themeId) return;
+  clearTheme(); themeId=id; const t=THEMES[id], seq=++themeSeq;
+  snow.visible=!!t.snow;
+  const wi=document.querySelector('#wishBox input'); if(wi) wi.placeholder=wishPlace()+'에 던질 소원 ('+WISH_PRICE+'P)';
+  // 키키도 테마 옷차림(크리스마스엔 산타 모자 + 목도리)
+  npcGroup.userData.av.setLook({ ...KIKI_LOOK, acc: id==='xmas' ? ['santa','scarf'] : [] });
+  if(npcGroup.userData_nick) npcGroup.userData_nick.position.y=2.15+(id==='xmas'?nickLift({ acc:['santa'] }):0);
+  if(id==='xmas') spawnWinterAnimals();
+  document.getElementById('keyCount').hidden = keySpots.length===0;
+  if(!t.file) return;
+  new GLTFLoader().load(t.file, (gltf)=>{ if(seq!==themeSeq) return; themeRoot=gltf.scene; scene.add(themeRoot); themeRoot.updateMatrixWorld(true); ingestWorld(themeRoot, 'theme'); applyDayNight(); }, undefined, (e)=>console.warn('[theme]', e));
+}
+// 내리는 눈(테마에 snow가 있을 때만): 내 캐릭터 주변 상자 안에서 떨어지고 바닥에 닿으면 위로 돌아간다
+const snow=(()=>{ const n=1400, p=new Float32Array(n*3); for(let i=0;i<n;i++){ p[i*3]=(Math.random()-0.5)*60; p[i*3+1]=Math.random()*30; p[i*3+2]=(Math.random()-0.5)*60; }
+  const g=new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(p,3));
+  const c=document.createElement('canvas'); c.width=c.height=32; const x=c.getContext('2d'), gr=x.createRadialGradient(16,16,0,16,16,16); gr.addColorStop(0,'rgba(255,255,255,1)'); gr.addColorStop(0.5,'rgba(255,255,255,0.7)'); gr.addColorStop(1,'rgba(255,255,255,0)'); x.fillStyle=gr; x.fillRect(0,0,32,32);
+  const s=new THREE.Points(g, new THREE.PointsMaterial({ size:0.22, map:new THREE.CanvasTexture(c), transparent:true, depthWrite:false, opacity:0.95 }));
+  s.visible=false; s.frustumCulled=false; scene.add(s); return s; })();
+function updateSnow(dt){
+  if(!snow.visible) return; const a=snow.geometry.attributes.position, p=a.array, t=clock.elapsedTime;
+  for(let i=0;i<p.length;i+=3){ p[i+1]-=dt*(1.1+(i%7)*0.12); p[i]+=Math.sin(t*0.7+i)*dt*0.25; if(p[i+1]<0) p[i+1]+=30; }
+  a.needsUpdate=true; snow.position.set(hero.position.x, 0, hero.position.z);
+}
+applyDayNight();
 function resize(){ const w=innerWidth,h=innerHeight; renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix(); }
 addEventListener('resize', resize); resize();
 
@@ -395,17 +512,6 @@ function makeAdminSprite(text){
   g.fillStyle='#1f1b4d'; g.fillText('키링 월드 개발자',210,34);
   const tex=new THREE.CanvasTexture(cv); tex.colorSpace=THREE.SRGBColorSpace;
   const sp=new THREE.Sprite(new THREE.SpriteMaterial({ map:tex, transparent:true, depthTest:false })); sp.scale.set(3.0,3.0*150/420,1); sp.position.y=2.4; sp.renderOrder=4; return sp; }
-// 관리자 발밑 금빛 고리(천천히 돌며 반짝임)
-function makeAdminAura(){ const g=new THREE.Group();
-  const ring=new THREE.Mesh(new THREE.RingGeometry(0.7,1.15,48), new THREE.MeshBasicMaterial({ color:'#ffcc33', transparent:true, opacity:0.85, side:THREE.DoubleSide, depthWrite:false }));
-  ring.rotation.x=-Math.PI/2; ring.position.y=0.05; ring.renderOrder=2; g.add(ring);
-  // 은은한 빛기둥(위로 갈수록 투명)
-  const cv=document.createElement('canvas'); cv.width=4; cv.height=64; const c=cv.getContext('2d'); const gr=c.createLinearGradient(0,64,0,0); gr.addColorStop(0,'rgba(255,214,90,0.55)'); gr.addColorStop(1,'rgba(255,214,90,0)'); c.fillStyle=gr; c.fillRect(0,0,4,64);
-  const beam=new THREE.Mesh(new THREE.CylinderGeometry(0.75,0.95,2.6,32,1,true), new THREE.MeshBasicMaterial({ map:new THREE.CanvasTexture(cv), transparent:true, side:THREE.DoubleSide, depthWrite:false }));
-  beam.position.y=1.3; g.add(beam);
-  for(let i=0;i<8;i++){ const s=new THREE.Mesh(new THREE.OctahedronGeometry(0.08), new THREE.MeshBasicMaterial({ color:'#fff3c4' })); const a=i/8*Math.PI*2; s.position.set(Math.cos(a)*1.0,0.3+(i%3)*0.5,Math.sin(a)*1.0); g.add(s); }
-  g.userData.aura=true; return g; }
-const auras=[];
 function makeNickSprite(text, gender){
   const label=(gender==='female'?'♀ ':gender==='male'?'♂ ':'')+text;
   const cv=document.createElement('canvas'); cv.width=320; cv.height=90; const g=cv.getContext('2d'); g.textAlign='center'; g.textBaseline='middle';
@@ -457,7 +563,8 @@ function pushOut(obj){ for(const o of obstacles){ const dx=obj.position.x-o.x, d
 function buildHero(o){ o.look=sanitizeLook({ ...o.look, gender:o.gender });
   if(!heroAv){ heroAv=createAvatar(o.look,{ faceSize:1024 }); hero.add(heroAv.group); } else heroAv.setLook(o.look);
   const label=(o.nick||'손님')+'|'+o.gender+'|'+(myAdmin?1:0); if(!heroNick||heroNick.userData.label!==label){ if(heroNick){ hero.remove(heroNick); heroNick.material.map.dispose(); } heroNick=myAdmin?makeAdminSprite(o.nick||'관리자'):makeNickSprite(o.nick||'손님',o.gender); heroNick.position.y=myAdmin?2.25:2.15; heroNick.userData.label=label; heroNick.visible=mode!=='creating'; hero.add(heroNick); }
-  if(myAdmin && !hero.userData.aura){ hero.userData.aura=makeAdminAura(); hero.add(hero.userData.aura); auras.push(hero.userData.aura); } }
+  // 산타 모자·뿔처럼 높은 꾸미기를 쓰면 이름표를 그만큼 올린다(이름표가 모자를 가리지 않게)
+  if(heroNick) heroNick.position.y=(myAdmin?2.25:2.15)+nickLift(o.look); }
 
 let shuttlePos=null; const spinners=[], seats=[], platforms=[], keySpots=[], bobbers=[];   // bobbers: 둥둥 떠 있는 작은 섬(kl_bob)
 let keyUnlocks=[], shopPoints=null;   // 잠금 해제된 꾸미기(서버 plazaKeys/{uid}.unlocks) — 편집 화면이 처음 그려질 때도 쓰므로 위쪽에 선언 // seats: Blender SEAT_* 표시점(앉는 면 높이·바라보는 방향)
@@ -481,8 +588,8 @@ function animTaxi(t){ if(!taxiSprite) return; const sp=taxiSprite, w=sp.userData
   const hop = cyc<0.35 ? Math.sin(cyc/0.35*Math.PI)*0.12 : 0;            // 3초마다 '통'
   const rumble = Math.sin(t*38)*0.012;                                  // 시동 떨림
   sp.position.y=hop; sp.scale.set(w*(1-rumble*0.6),2.0*(1+rumble),1); }
-new GLTFLoader().load('/plaza/village.glb', (gltf)=>{
-  const v=gltf.scene; scene.add(v); v.updateMatrixWorld(true);
+// 지도(기본 village.glb)와 테마 장식(themes/*.glb)을 같은 규칙으로 읽는다. 테마에서 나온 것은 tag='theme' — 테마를 바꿀 때 지운다
+function ingestWorld(v, tag){
   const anchors=[];
   v.traverse((o)=>{
     const role=o.userData&&o.userData.kl_role;
@@ -492,7 +599,7 @@ new GLTFLoader().load('/plaza/village.glb', (gltf)=>{
     if(role==='platform'){ const bb=new THREE.Box3().setFromObject(o); platforms.push({ x0:bb.min.x, x1:bb.max.x, z0:bb.min.z, z1:bb.max.z, top:bb.max.y }); }
     if(role==='key'){ keySpots.push({ id:o.userData.kl_id, pos:o.getWorldPosition(new THREE.Vector3()) }); return; }
     if(role==='seat'){ const p=o.getWorldPosition(new THREE.Vector3()), d=new THREE.Vector3(0,0,1).applyQuaternion(o.getWorldQuaternion(new THREE.Quaternion())); seats.push({ x:p.x, z:p.z, top:+o.userData.kl_h||0.5, yaw:Math.atan2(d.x,d.z) }); return; }
-    if(o.userData&&o.userData.kl_block){ const p=o.getWorldPosition(new THREE.Vector3()); obstacles.push({ x:p.x, z:p.z, r:+o.userData.kl_block }); if(role==='collider_circle') return; }
+    if(o.userData&&o.userData.kl_block){ const p=o.getWorldPosition(new THREE.Vector3()); obstacles.push({ x:p.x, z:p.z, r:+o.userData.kl_block, tag }); if(role==='collider_circle') return; }
     if(role==='collider'||role==='trigger'){ if(role==='trigger'){ shuttlePos=new THREE.Vector3(); o.getWorldPosition(shuttlePos); } o.visible=false; return; }
     if(o.name==='PRP_shuttle_body'){ o.visible=false; return; } // 예전 셔틀 모양 → 코드로 만든 택시(buildTaxi)로 대체
     if(o.name==='PRP_shuttle_stop_post'){ o.userData.profile=TAXI_PROFILE; taxiParts.push(o); }
@@ -502,20 +609,33 @@ new GLTFLoader().load('/plaza/village.glb', (gltf)=>{
       // 바닥(땅·광장·길·구역 바닥·물·언덕)은 그림자를 받기만, 구름(SKY_)은 그림자와 무관, 나머지는 그림자를 만든다
       o.receiveShadow=!/^SKY_/.test(n); o.castShadow=!/^(ENV_|SKY_|PRP_fountain_(bowl_)?water)/.test(n);
       if(/^SKY_clouds/.test(n)) o.material=new THREE.MeshLambertMaterial({ color:0xffffff, emissive:0xffffff, emissiveIntensity:0.55 });   // 구름은 아래 잔디색이 비치지 않게 늘 하얗게
+      if(/^SKY_clouds/.test(n)) cloudMats.push(o.material);
+      if(/(_light|_glow|_bulb)(_\d+)?$/.test(n) || /(_light|_glow|_bulb)$/.test(o.parent?.name||'')) nightGlow(o, tag);
       if((n.includes('cottage')&&n.includes('_body'))||n.includes('fountain_basin')||(n.includes('tree_')&&n.includes('trunk'))){
         const bb=new THREE.Box3().setFromObject(o), c=bb.getCenter(new THREE.Vector3()), sz=bb.getSize(new THREE.Vector3());
-        obstacles.push({ x:c.x, z:c.z, r:Math.max(sz.x,sz.z)/2 + 0.45 });
+        obstacles.push({ x:c.x, z:c.z, r:Math.max(sz.x,sz.z)/2 + 0.45, tag });
       }
     }
   });
+  return anchors;
+}
+// 테마를 먼저 묻고 그 테마의 지도를 불러온다(크리스마스처럼 지도 전체가 다른 테마가 있음)
+let mapFile=null;
+(async()=>{ themeId=await fetchThemeId(); mapFile=THEMES[themeId].map||'/plaza/village.glb'; applyDayNight();
+new GLTFLoader().load(mapFile, (gltf)=>{
+  const v=gltf.scene; scene.add(v); v.updateMatrixWorld(true);
+  const anchors=ingestWorld(v, null);
   for(const o of anchors){ const u=o.userData, p=o.getWorldPosition(new THREE.Vector3());
     if(u.kl_kind==='sprite') propSprite(A+u.kl_asset,+u.kl_h,p,!!u.kl_pixel,+u.kl_block||0);
     else if(u.kl_kind==='taxi') buildTaxi(p,+u.kl_h);
     else if(u.kl_kind==='model'){ modelAnchors.push(o); if(+u.kl_block) obstacles.push({ x:p.x, z:p.z, r:+u.kl_block }); } }
   if(wantModels) loadAnchoredModels();
   setupKeys();
+  startTheme(themeId);
+  applyDayNight();
   document.getElementById('loading').remove();
 }, undefined, (err)=>{ document.getElementById('loading').textContent='키링 월드를 불러오지 못했어요.'; console.error(err); });
+})();
 
 // ── 입장 UI ──
 // 캐릭터 편집(배그식): 탭 · 종류 버튼 · 색 팔레트(+자유 색) · 슬라이더. 저장 형식은 look v2(/plaza/look.js)
@@ -525,7 +645,7 @@ const PAL={ skin:['#ffe8d6','#ffdcc4','#f6c7a5','#e9b08a','#d08f63','#a96d45','#
   cloth:['#ffffff','#222222','#7fb3e6','#2d3550','#f4a6b8','#ff8f6b','#f0c04b','#9ad1a0','#3d8a5a','#c9b28a','#8a5bd1','#d14b4b'] };
 const LABEL={ hair:{short:'짧은머리',dandy:'댄디',twoblock:'투블럭',spiky:'삐죽',bob:'단발',long:'긴머리',ponytail:'포니테일',bun:'똥머리'},
   top:{tee:'반팔티',long:'긴팔티',hoodie:'후드티',shirt:'셔츠',dress:'원피스'}, bottom:{pants:'긴바지',shorts:'반바지',skirt:'치마'}, shoes:{sneakers:'운동화',boots:'부츠'},
-  acc:{glasses:'안경',cap:'캡모자',beanie:'비니',earrings:'귀걸이',crossbag:'크로스백',goldkeyring:'황금 키링',crown:'왕관',balloon:'하트 풍선',halo:'천사 링',wings:'날개'},
+  acc:{glasses:'안경',cap:'캡모자',beanie:'비니',earrings:'귀걸이',crossbag:'크로스백',goldkeyring:'황금 키링',crown:'왕관',balloon:'하트 풍선',halo:'천사 링',wings:'날개',santa:'산타 모자',antlers:'루돌프 뿔',scarf:'목도리'},
   eye:{round:'동글',sparkle:'반짝',smile:'웃는 눈',sleepy:'나른한',sharp:'날렵한'}, brow:{soft:'부드러운',straight:'일자',arched:'아치',thick:'진한'}, mouth:{smile:'미소',grin:'활짝',small:'오',cat:'고양이',neutral:'무표정'} };
 const LABEL_G={ male:{ hair:{ bob:'덮은머리' } }, female:{ hair:{ short:'숏컷' } } };
 const SLIDER_LABEL={ eyeSize:'눈 크기', eyeGap:'눈 사이', eyeY:'눈 높이', vline:'갸름한 턱', cheek:'볼살', long:'얼굴 길이', blush:'볼터치', height:'키', build:'체격', female:'허리 라인' };
@@ -555,7 +675,12 @@ function typePills(key, opt={}){ const box=document.createElement('div'); box.cl
   const draw=()=>{ box.innerHTML=''; for(const v of (opt.list||GENDER_OPTIONS[opts.gender][key]||LOOK[key])){ const b=document.createElement('button'); b.className='pill'; b.textContent=(LABEL_G[opts.gender][key]||{})[v]||LABEL[key][v];
     const on=opt.multi ? L().acc.includes(v) : L()[key]===v; b.setAttribute('aria-pressed',String(on)); if(opt.disabled&&opt.disabled()) b.disabled=true;
     if(key==='acc' && LOCKED_ACC[v] && !keyUnlocks.includes(v)){ b.disabled=true; b.textContent=LABEL.acc[v]+' · 열쇠 '+LOCKED_ACC[v]+'일'; b.title='황금 열쇠 8개를 모은 날이 누적 '+LOCKED_ACC[v]+'일이면 열려요(회원)'; }
-    if(key==='acc' && SHOP_ACC[v] && !keyUnlocks.includes(v)){ b.textContent=LABEL.acc[v]+' · '+SHOP_ACC[v].toLocaleString()+'P'; b.classList.add('shop'); b.onclick=()=>buyAcc(v); }
+    // 아직 안 산 상점 꾸미기는 누르면 구매 확인(시즌 한정은 그 테마일 때만 판매)
+    const forSale = key==='acc' && SHOP_ACC[v] && !keyUnlocks.includes(v);
+    if(forSale){ const season=SEASON_ACC[v];
+      if(season && season!==themeId){ b.disabled=true; b.textContent=LABEL.acc[v]+' · '+THEMES[season].label+' 한정'; b.title=THEMES[season].label+' 테마일 때만 살 수 있어요'; }
+      else { b.textContent=LABEL.acc[v]+' · '+SHOP_ACC[v].toLocaleString()+'P'; b.classList.add('shop'); } }
+    if(forSale){ b.onclick=()=>buyAcc(v); box.appendChild(b); continue; }
     b.onclick=()=>{ if(opt.multi){ let a=L().acc.filter(x=>x!==v); if(!on){ if(HATS.includes(v)) a=a.filter(x=>!HATS.includes(x)); a.push(v); } L().acc=a; } else L()[key]=v; changed(); renderCreator(); }; box.appendChild(b); } };
   draw(); return box; }
 function swatches(ckey, pal){ const box=document.createElement('div'); box.className='opts';
@@ -710,6 +835,73 @@ function makePigeon(){
   g.userData={ root, head, wings, kind:'pigeon', phase:Math.random()*10, rest:Math.random()*2, target:null, state:'ground', profile:{ animal:true, kind:'pigeon', nick:'비둘기' } };
   return g; }
 function addAnimal(g,pos){ g.position.copy(pos); g.rotation.y=Math.random()*Math.PI*2; scene.add(g); animals.push(g); }
+// ── 겨울 동물(크리스마스 테마에서만): 펭귄·흰 토끼·순록·북극여우는 네 발 동물 규칙(다리·머리·꼬리)으로 움직이고, 흰 부엉이는 높은 곳에 앉아 고개만 돌린다 ──
+// gait: waddle(뒤뚱) · hop(깡총) / speed: 걷는 빠르기(m/s)
+function makeWinterAnimal(kind,name){
+  const g=new THREE.Group(), root=new THREE.Group(); g.add(root);
+  const S=(r,c,x,y,z,sx=1,sy=1,sz=1,parent=root)=>{ const m=new THREE.Mesh(new THREE.SphereGeometry(r,16,12),std(c)); m.position.set(x,y,z); m.scale.set(sx,sy,sz); parent.add(m); return m; };
+  const C=(r,h,c,x,y,z,rx=0,parent=root)=>{ const m=new THREE.Mesh(new THREE.ConeGeometry(r,h,10),std(c)); m.position.set(x,y,z); m.rotation.x=rx; parent.add(m); return m; };
+  const eyes=(head,y,z,gap,r=0.025)=>{ for(const sx of [-gap,gap]){ const e=new THREE.Mesh(new THREE.SphereGeometry(r,8,6),animalDark); e.position.set(sx,y,z); head.add(e); } };
+  const u={ root, kind, phase:Math.random()*10, rest:Math.random()*3, target:null, profile:{ animal:true, kind, nick:name } };
+  if(kind==='penguin'){
+    S(0.22,'#20232b',0,0.36,0,1,1.35,0.95); S(0.17,'#f4f4f2',0,0.33,0.07,1,1.25,0.8);
+    const head=new THREE.Group(); head.position.set(0,0.7,0.02); root.add(head); S(0.15,'#20232b',0,0,0,1,1,1,head); S(0.1,'#f4f4f2',0,-0.01,0.08,1,0.9,0.6,head);
+    eyes(head,0.02,0.135,0.05,0.02); C(0.035,0.1,'#f29a2e',0,-0.03,0.17,Math.PI/2,head);
+    const feet=[-0.08,0.08].map(x=>{ const l=new THREE.Group(); l.position.set(x,0.06,0.04); const f=new THREE.Mesh(new THREE.BoxGeometry(0.09,0.04,0.14),std('#f29a2e')); f.position.set(0,-0.04,0.03); l.add(f); root.add(l); return l; });
+    const flips=[-1,1].map(sx=>{ const w=new THREE.Group(); w.position.set(sx*0.21,0.5,0); const m=new THREE.Mesh(new THREE.SphereGeometry(0.12,10,8),std('#20232b')); m.scale.set(0.25,1,0.5); m.position.y=-0.1; w.add(m); root.add(w); return w; });
+    Object.assign(u,{ head, legs:[feet[0],flips[0],flips[1],feet[1]], tail:new THREE.Group(), gait:'waddle', speed:0.8 }); g.scale.setScalar(0.95);
+  } else if(kind==='rabbit'){
+    S(0.2,'#f7f7f5',0,0.24,0,1,0.9,1.15); const head=new THREE.Group(); head.position.set(0,0.45,0.17); root.add(head);
+    S(0.13,'#f7f7f5',0,0,0,1,1,1,head); eyes(head,0.03,0.11,0.055,0.02); S(0.02,'#f29bb0',0,-0.02,0.13,1,1,1,head);
+    for(const sx of [-0.05,0.05]){ const ear=S(0.045,'#f7f7f5',sx,0.17,-0.03,0.7,2.4,0.5,head); ear.rotation.z=sx*1.6; S(0.03,'#f6c3cf',sx,0.17,-0.01,0.5,2.0,0.3,head).rotation.z=sx*1.6; }
+    const legs=[[-0.09,0.1],[0.09,0.1],[-0.1,-0.1],[0.1,-0.1]].map(([x,z])=>{ const l=new THREE.Group(); l.position.set(x,0.08,z); const m=new THREE.Mesh(new THREE.SphereGeometry(0.06,10,8),std('#f7f7f5')); m.scale.set(1,0.8,1.4); m.position.y=-0.04; l.add(m); root.add(l); return l; });
+    const tail=new THREE.Group(); tail.position.set(0,0.28,-0.22); S(0.06,'#ffffff',0,0,0,1,1,1,tail); root.add(tail);
+    Object.assign(u,{ head, legs, tail, gait:'hop', speed:1.8 }); g.scale.setScalar(0.9);
+  } else if(kind==='reindeer'){
+    const fur='#8a5a36', light='#e8d8c0';
+    const body=new THREE.Mesh(new THREE.CapsuleGeometry(0.24,0.6,6,12),std(fur)); body.rotation.x=Math.PI/2; body.position.y=0.95; root.add(body);
+    S(0.2,light,0,0.88,0.05,1,0.8,1.6);
+    const neck=new THREE.Mesh(new THREE.CapsuleGeometry(0.11,0.3,4,8),std(fur)); neck.position.set(0,1.2,0.42); neck.rotation.x=-0.6; root.add(neck);
+    const head=new THREE.Group(); head.position.set(0,1.42,0.6); root.add(head); S(0.15,fur,0,0,0,1,0.95,1.25,head); S(0.09,light,0,-0.05,0.15,1,0.8,1,head);
+    eyes(head,0.05,0.12,0.09,0.024); const nose=S(0.05,name==='루돌프'?'#ff2a3a':'#2b2b2b',0,-0.03,0.24,1,1,1,head);
+    // 루돌프 코는 스스로 빛난다(진짜 조명을 더하면 모든 재질이 다시 만들어져 휴대폰이 느려짐)
+    if(name==='루돌프'){ nose.material.emissive.set(0xff2233); nose.material.emissiveIntensity=1.4; }
+    for(const sx of [-1,1]){ S(0.04,fur,sx*0.13,0.1,-0.04,0.6,1.2,0.5,head);
+      const ant=new THREE.Group(); ant.position.set(sx*0.07,0.13,-0.05); head.add(ant);
+      const seg=(x,y,len,rz)=>{ const m=new THREE.Mesh(new THREE.CylinderGeometry(0.02,0.025,len,6),std('#5a3a20')); m.position.set(x,y,0); m.rotation.z=rz; ant.add(m); };
+      seg(sx*0.05,0.14,0.3,-sx*0.35); seg(sx*0.14,0.3,0.22,-sx*0.9); seg(sx*0.06,0.32,0.18,sx*0.2); seg(sx*0.2,0.18,0.14,-sx*1.3); }
+    const legs=[[-0.15,0.32],[0.15,0.32],[-0.15,-0.32],[0.15,-0.32]].map(([x,z])=>{ const l=limb(x,0.8,0.55,0.055,std(fur)); l.position.z=z; root.add(l); return l; });
+    const tail=new THREE.Group(); tail.position.set(0,1.05,-0.5); S(0.07,light,0,0,0,1,1,1,tail); root.add(tail);
+    Object.assign(u,{ head, legs, tail, speed:1.2, bubbleY:2.1 });
+  } else if(kind==='fox'){
+    const fur='#f3f1ec', tip='#9aa3b0';
+    const body=new THREE.Mesh(new THREE.CapsuleGeometry(0.15,0.4,6,12),std(fur)); body.rotation.x=Math.PI/2; body.position.y=0.4; root.add(body);
+    const head=new THREE.Group(); head.position.set(0,0.58,0.33); root.add(head); S(0.14,fur,0,0,0,1.1,0.95,1,head);
+    C(0.06,0.13,fur,0,-0.03,0.15,Math.PI/2,head); S(0.025,'#2b2b2b',0,-0.03,0.22,1,1,1,head); eyes(head,0.03,0.12,0.06,0.02);
+    for(const sx of [-0.08,0.08]){ C(0.05,0.13,fur,sx,0.15,-0.02,0,head); C(0.025,0.05,tip,sx,0.2,-0.015,0,head); }
+    const legs=[[-0.08,0.18],[0.08,0.18],[-0.08,-0.18],[0.08,-0.18]].map(([x,z])=>{ const l=limb(x,0.3,0.2,0.04,std(fur)); l.position.z=z; root.add(l); return l; });
+    const tail=new THREE.Group(); tail.position.set(0,0.42,-0.32); const tm=new THREE.Mesh(new THREE.CapsuleGeometry(0.09,0.3,5,10),std(fur)); tm.position.y=0.2; tail.add(tm); S(0.06,tip,0,0.42,0,1,1,1,tail); tail.rotation.x=-1.0; root.add(tail);
+    Object.assign(u,{ head, legs, tail, speed:2.0 });
+  } else if(kind==='owl'){
+    S(0.17,'#f4f4f6',0,0.2,0,1,1.25,0.95);
+    for(let i=0;i<9;i++){ const a=Math.random()*Math.PI*1.2-0.6, yy=0.1+Math.random()*0.25; S(0.018,'#3a3f4a',Math.sin(a)*0.15,yy,Math.cos(a)*0.15,1,0.6,0.4); }
+    const head=new THREE.Group(); head.position.set(0,0.45,0); root.add(head); S(0.14,'#f4f4f6',0,0,0,1.05,0.9,1,head);
+    for(const sx of [-0.055,0.055]){ const e=S(0.035,'#f5c518',sx,0.01,0.11,1,1,0.5,head); S(0.017,'#111111',sx,0.01,0.125,1,1,1,head); }
+    C(0.02,0.05,'#4a4a4a',0,-0.04,0.13,Math.PI/2,head);
+    Object.assign(u,{ head, style:'perch', bubbleY:0.85 });
+  }
+  g.userData=u; return g; }
+const WINTER_SAYS={ penguin:['뒤뚱뒤뚱','꽉꽉!','(배로 미끄러지고 싶다…)'], rabbit:['깡총!','(코 씰룩씰룩)','당근 있어요?'], reindeer:['딸랑~','썰매 끌 준비 완료!','(눈 위에 발자국 꾹)'], fox:['캥!','(꼬리 살랑)','눈밭 최고~'], owl:['부엉~','부-엉','(고개를 빙글)'] };
+let winterSpawned=false;
+function spawnWinterAnimals(){ if(winterSpawned) return; winterSpawned=true;
+  const add=(g,x,z)=>addAnimal(g,new THREE.Vector3(x,0,z));
+  add(makeWinterAnimal('penguin','펭이'),-3,-16); add(makeWinterAnimal('penguin','펭순'),-1.5,-17); add(makeWinterAnimal('penguin','펭돌'),2,-15.5);
+  add(makeWinterAnimal('rabbit','눈송이'),-11,9); add(makeWinterAnimal('rabbit','찹쌀'),9,11);
+  add(makeWinterAnimal('reindeer','루돌프'),15,1.2); add(makeWinterAnimal('reindeer','방울'),22,-1.2);
+  add(makeWinterAnimal('fox','설이'),-16,-10);
+  // 흰 부엉이: 가로등 위·트리 울타리 랜턴 위에 앉아 있다(움직이지 않음)
+  for(const [x,y,z] of [[7.5,3.72,7.5],[4.2,1.16,0]]){ const o=makeWinterAnimal('owl','흰 부엉이'); o.position.set(x,y,z); o.rotation.y=Math.atan2(-x,-z)+Math.PI; scene.add(o); animals.push(o); } }
+
 addAnimal(makeQuad('dog','#c98b4f','#8a5a2b','보리'), new THREE.Vector3(-6,0,6));
 addAnimal(makeQuad('cat','#f0a35a','#f0a35a','치즈'), new THREE.Vector3(-8,0,-6));
 addAnimal(makeVoxelQuad('cat','#e8a35a','#e8a35a','블록냥'), new THREE.Vector3(-4,0,-9));
@@ -738,7 +930,8 @@ function reactAnimal(prof){ const g=animals.find(a=>a.userData.profile===prof); 
   if(u.aid && mode==='playing'){ if(!u.held && !u.leash) animalBubble(g,pickA(ANIMAL_SAYS[u.kind])); openPetCard(g); return; }
   if(u.kind==='pigeon'){ animalBubble(g,'푸드덕!'); for(const p of animals) if(p.userData.kind==='pigeon' && p.userData.state==='ground' && p.position.distanceTo(g.position)<3) pigeonFly(p); return; }
   if(u.style==='model'){ animalBubble(g,pickA(u.says)); return; } // 자는 고양이는 깨지 않는다
-  animalBubble(g,pickA(ANIMAL_SAYS[u.kind])); u.rest=0; u.target=null; if(u.style==='sprite'){ u.rest=2.5; u.hop=0.0001; return; } g.rotation.y=Math.atan2(hero.position.x-g.position.x, hero.position.z-g.position.z);
+  if(u.style==='perch'){ animalBubble(g,pickA(WINTER_SAYS.owl)); u.head.rotation.y=Math.atan2(hero.position.x-g.position.x, hero.position.z-g.position.z)-g.rotation.y; return; }
+  animalBubble(g,pickA(ANIMAL_SAYS[u.kind]||WINTER_SAYS[u.kind]||['…'])); u.rest=0; u.target=null; if(u.style==='sprite'){ u.rest=2.5; u.hop=0.0001; return; } g.rotation.y=Math.atan2(hero.position.x-g.position.x, hero.position.z-g.position.z);
   if(u.kind==='dog'){ u.follow=6; u.hop=0.0001; } else { u.rest=2.5; } }
 
 // ── 키링 월드 구역 소품: 배치는 Blender 표시점(ANC_*)이 원본. 웹은 파일만 불러와 그 자리에 놓는다 ──
@@ -758,11 +951,14 @@ function loadAnchoredModels(){ wantModels=true; if(!modelAnchors.length||loadAnc
 
 // ── AI NPC "키키": 광장 안내 + 소개팅 대화 연습 (대화는 /api/plaza/npc, 비회원도 가능) ──
 const NPC_PROFILE={ nick:'키키', id:'npc', npc:true };
+// 높은 꾸미기를 쓰면 이름표를 올리는 높이(m)
+function nickLift(look){ const a=look?.acc||[]; return a.includes('santa')?0.42:a.includes('antlers')?0.3:a.includes('halo')||a.includes('crown')?0.12:0; }
+const KIKI_LOOK={ v:2, style:'block', gender:'female', hair:'bun', top:'hoodie', bottom:'pants', shoes:'sneakers', acc:[], eye:'sparkle', brow:'soft', mouth:'smile', blush:0.8,
+  colors:{ skin:'#ffe8d6', hair:'#f6a6c1', eyeColor:'#8a5bd1', top:'#f2b84b', bottom:'#ffffff', shoes:'#ff8f6b', acc:'#222222' } };
 const npcGroup=(()=>{ const g=new THREE.Group(); const root=new THREE.Group(); g.add(root);
   // 키키도 블록 캐릭터(분홍 똥머리·노란 후드). 이름표는 보라색(npc)
-  const av=createAvatar({ v:2, style:'block', gender:'female', hair:'bun', top:'hoodie', bottom:'pants', shoes:'sneakers', acc:[], eye:'sparkle', brow:'soft', mouth:'smile', blush:0.8,
-    colors:{ skin:'#ffe8d6', hair:'#f6a6c1', eyeColor:'#8a5bd1', top:'#f2b84b', bottom:'#ffffff', shoes:'#ff8f6b', acc:'#222222' } },{ faceSize:1024 });
-  root.add(av.group); { const nk=makeNickSprite('키키','npc'); nk.position.y=2.15; root.add(nk); }
+  const av=createAvatar(KIKI_LOOK,{ faceSize:1024 });
+  root.add(av.group); { const nk=makeNickSprite('키키','npc'); nk.position.y=2.15; root.add(nk); g.userData_nick=nk; }
   // 손에 든 열쇠고리(키링): 금색 고리 + 매달린 열쇠가 흔들린다 (머리 위는 이름표에 가려서 손으로)
   const gold=new THREE.MeshStandardMaterial({ color:'#ffd65a', emissive:'#ffb800', emissiveIntensity:0.55, metalness:0.3, roughness:0.35 });
   const halo=new THREE.Group(); halo.position.set(-0.36,0.5,0.06); halo.scale.setScalar(0.95); root.add(halo);
@@ -859,7 +1055,7 @@ function wishEffect(from, nick, text){
   g.fillStyle='#3a4a63'; let fs=38; do{ g.font='bold '+fs+'px Jua, sans-serif'; if(g.measureText(text).width<=500) break; fs-=2; } while(fs>20); g.fillText(text,280,112);
   const tex=new THREE.CanvasTexture(cv); tex.colorSpace=THREE.SRGBColorSpace;
   const sp=new THREE.Sprite(new THREE.SpriteMaterial({ map:tex, transparent:true, depthWrite:false })); sp.scale.set(3.6,3.6*170/560,1); sp.renderOrder=5;
-  sp.position.set(FOUNTAIN.x,6.5+wishNotes.length*1.15,FOUNTAIN.z); sp.userData={ t0:performance.now(), base:sp.position.y }; scene.add(sp); wishNotes.push(sp); }
+  sp.position.set(FOUNTAIN.x,(themeId==='xmas'?14.8:6.5)+wishNotes.length*1.15,FOUNTAIN.z); sp.userData={ t0:performance.now(), base:sp.position.y }; scene.add(sp); wishNotes.push(sp); }
 function updateWishNotes(){ const now=performance.now(); for(let i=wishNotes.length-1;i>=0;i--){ const sp=wishNotes[i], k=(now-sp.userData.t0)/18000;
   sp.position.y=sp.userData.base+k*1.2; sp.material.opacity=k>0.8?Math.max(0,(1-k)/0.2):1; if(k>=1){ scene.remove(sp); sp.material.map.dispose(); sp.material.dispose(); wishNotes.splice(i,1); } } }
 let myWishText=null;
@@ -868,7 +1064,7 @@ feedBtn.addEventListener('click',()=>{ if(!member){ toast('포인트는 회원�
 wishBtn.addEventListener('click',()=>{ if(!member){ toast('포인트는 회원만 쓸 수 있어요'); return; } wishBox.hidden=!wishBox.hidden; if(!wishBox.hidden){ document.exitPointerLock?.(); setTimeout(()=>wishText.focus(),30); } });
 wishBox.addEventListener('submit',(e)=>{ e.preventDefault(); const t=wishText.value.replace(/\s+/g,' ').trim().slice(0,WISH_MAX); if(!t) return;
   if(nickProblem(t)==='bad'){ toast('그 말은 소원으로 보낼 수 없어요'); return; }
-  askConfirm('분수대에 소원 던지기', WISH_PRICE+'P로 소원을 던질까요? 분수대 위에 잠시 떠올라 광장의 모두가 볼 수 있어요. '+POINT_NOTE+'.', async()=>{ myWishText=t; const j=await shopPost({ action:'wish', text:t }); if(!j){ myWishText=null; return; } wishText.value=''; wishBox.hidden=true; wishEffect(hero, opts.nick||'나', t); setTimeout(()=>{ myWishText=null; },6000); }); });
+  askConfirm(wishPlace()+'에 소원 던지기', WISH_PRICE+'P로 소원을 던질까요? '+wishPlace()+' 위에 잠시 떠올라 광장의 모두가 볼 수 있어요. '+POINT_NOTE+'.', async()=>{ myWishText=t; const j=await shopPost({ action:'wish', text:t }); if(!j){ myWishText=null; return; } wishText.value=''; wishBox.hidden=true; wishEffect(hero, opts.nick||'나', t); setTimeout(()=>{ myWishText=null; },6000); }); });
 // ── 동물 호감: 쓰다듬기·밥주기로 쌓고, 30 따라오기 · 60 안기 · 100 이름 짓고 반려동물로 ──
 let myPets={ aff:{}, adopted:{}, active:null, petLeft:{} }, petCardG=null;
 const animalById=(id)=>animals.find(a=>a.userData.aid===id);
@@ -997,8 +1193,7 @@ const netDot=document.getElementById('netDot'), netTxt=document.getElementById('
 function setNet(on, n){ netDot.className='dot '+(on?'on':'off'); netTxt.textContent = on ? ('접속 '+(n)+'명') : '오프라인 (혼자)'; }
 function addPeer(p){ if(p.id===myId||peers.has(p.id)) return; if((p.key && blocked.has(p.key)) || blockedIds.has(p.id)){ hiddenPeers.set(p.id,p); return; } /* 차단한 사람은 안 보임 */
   const look=sanitizeLook(p.look), group=new THREE.Group(), root=new THREE.Group(); group.add(root); const av=createAvatar(look); root.add(av.group);
-  const nk=p.admin?makeAdminSprite(p.nick||'관리자'):makeNickSprite(p.nick||'손님', look.gender); nk.position.y=p.admin?2.25:2.15; root.add(nk);
-  if(p.admin){ const au=makeAdminAura(); root.add(au); auras.push(au); }
+  const nk=p.admin?makeAdminSprite(p.nick||'관리자'):makeNickSprite(p.nick||'손님', look.gender); nk.position.y=(p.admin?2.25:2.15)+nickLift(look); root.add(nk);
   let petAid=null; if(look.pet){ const a=animalById(look.pet.id); if(a && !a.userData.mine && !a.userData.held){ a.userData.mine=false; leash(a, group, look.pet.name+' · '+(p.nick||'')+'의 '+petKindLabel(a.userData.kind,true)); petAid=look.pet.id; } }
   group.position.set(p.state?.x||0,0,p.state?.z||0); group.userData={ look, profile:{ nick:p.nick, id:p.id, key:p.key||null, gkey:p.gkey||null, gender:look.gender==='female'?'여':'남', admin:!!p.admin } }; scene.add(group);
   group.position.y=p.state?.y||0; if(p.state?.ry) group.rotation.y=p.state.ry; if(p.state?.p==='sit') av.setSit(true);
@@ -1023,6 +1218,7 @@ function connect(){
     else if(m.t==='say'){ const pr=peers.get(m.id); if(pr) showSay(pr.root, m.text); }
     else if(m.t==='saynope'){ toast('그 말은 광장에 보낼 수 없어요'); }
     else if(m.t==='keyok'){ if(m.n>=m.total) claimKeyReward(); }
+    else if(m.t==='theme'){ loadTheme(); }
     else if(m.t==='feed'){ const pr=[...peers.values()].find(x=>x.key&&x.key===m.key); if(pr){ feedEffect(pr.group, m.aid); showSay(pr.root, '밥을 줬어요'); } }
     else if(m.t==='wish'){ if(myWishText && m.text===myWishText){ myWishText=null; } else { const pr=[...peers.values()].find(x=>x.key&&x.key===m.key); wishEffect(pr?pr.group:null, m.nick, m.text); } }
     else if(m.t==='leave'){ hiddenPeers.delete(m.id); const pr=peers.get(m.id); if(pr){ scene.remove(pr.group); peers.delete(m.id); updateCount(); } if(currentChat && currentChat.id===m.id){ addMsg('sys', (currentChat.nick||'상대')+'님이 대화방을 나가셨습니다.'); } }
@@ -1044,7 +1240,7 @@ const card=document.getElementById('card'); let reqTarget=null;
 function openCard(profile){ document.exitPointerLock?.(); reqTarget=profile; document.getElementById('cardName').textContent=profile.nick;
   const meta=document.getElementById('cardMeta');
   const reqBtn=document.getElementById('cardReq');
-  if(profile.npc){ meta.innerHTML='분수대 광장에 사는 키키예요.<br>광장 구경, 소개팅 이야기, 대화 연습까지<br>편하게 말 걸어 보세요.'; reqBtn.textContent='키키와 대화하기'; reqBtn.hidden=false; }
+  if(profile.npc){ meta.innerHTML=(themeId==='xmas'?'겨울 마을 소원 트리 옆에 사는 키키예요.':'분수대 광장에 사는 키키예요.')+'<br>광장 구경, 소개팅 이야기, 대화 연습까지<br>편하게 말 걸어 보세요.'; reqBtn.textContent='키키와 대화하기'; reqBtn.hidden=false; }
   else if(profile.admin){ meta.innerHTML='<span class="npc-tag" style="background:#1f1b4d;color:#ffd65a">키링 월드 개발자</span><br>궁금한 점이나 불편한 점이 있으면 편하게 말 걸어 주세요.'; reqBtn.textContent='개발자에게 1:1 문의'; reqBtn.hidden=false; }
   else { meta.textContent=(profile.gender?profile.gender+' · ':'')+'지금 광장에 접속 중'; reqBtn.textContent='1:1 대화 신청'; reqBtn.hidden=false; }
   document.getElementById('cardSafety').hidden=!!profile.npc;
@@ -1377,7 +1573,6 @@ function tick(){
   animTaxi(clock.elapsedTime);
   { const now=performance.now(); for(const par of [hero, ...[...peers.values()].map(p=>p.root)]){ const sp=par.userData.say; if(sp && now>sp.userData.until){ par.remove(sp); sp.material.map.dispose(); sp.material.dispose(); par.userData.say=null; } } }
   for(const o of spinners) o.rotation.y+=dt*o.userData.kl_spin;
-  for(const a of auras){ a.rotation.y+=dt*0.8; a.children[0].material.opacity=0.55+Math.sin(clock.elapsedTime*2.5)*0.2; }
   updateWishNotes();
   for(const b of bobbers) b.o.position.y=b.y+Math.sin(clock.elapsedTime*b.w+b.p)*b.a;
   // 키키(AI): 둥실둥실 + 가까이 오면 쳐다보기
@@ -1400,6 +1595,7 @@ function tick(){
       const dir=u.target.clone().sub(g.position); dir.y=0; dir.normalize(); if(u.style==='sprite' && !sideways(dir)){ u.target=null; u.rest=0.5; continue; } g.position.addScaledVector(dir,0.7*dt); pushOut(g);
       if(u.style==='sprite'){ playAnim(u,'walk',dt,dir.dot(camRightVec())<0); continue; }
       g.rotation.y=Math.atan2(dir.x,dir.z); u.head.rotation.x=0; u.root.position.y=Math.abs(Math.sin(u.phase*14))*0.03; continue; }
+    if(u.style==='perch'){ u.head.rotation.y=Math.sin(u.phase*0.45)*1.1+(Math.sin(u.phase*0.13)>0.8?Math.PI*0.5:0); continue; }
     if(u.style==='model'){ u.root.scale.y=1+Math.sin(u.phase*1.7)*0.025; u.root.scale.x=u.root.scale.z=1-Math.sin(u.phase*1.7)*0.01; continue; }
     if(u.style==='sprite'){
       if(u.hop){ u.hop+=dt; u.root.position.y=Math.max(0,Math.sin(u.hop*Math.PI/0.35)*0.3); if(u.hop>0.35){ u.hop=0; u.root.position.y=0; } }
@@ -1413,16 +1609,20 @@ function tick(){
     if(u.hop){ u.hop+=dt; g.position.y=Math.max(0,Math.sin(u.hop*Math.PI/0.35)*0.35); if(u.hop>0.35){ u.hop=0; g.position.y=0; } }
     u.tail.rotation.z=Math.sin(u.phase*(u.kind==='dog'?(u.follow>0?18:8):2))*(u.kind==='dog'?0.5:0.25);
     if(u.follow>0){ u.follow-=dt; const off=hero.position.clone().sub(g.position); off.y=0; if(off.length()>1.6){ u.target=hero.position.clone().addScaledVector(off.normalize(),-1.2); u.rest=0; } else { u.target=null; u.rest=0.2; g.rotation.y=Math.atan2(off.x,off.z); } }
-    if(u.rest>0){ u.rest-=dt; for(const l of u.legs) l.rotation.x=L(l.rotation.x,0,0.2); u.root.position.y=L(u.root.position.y,0,0.2); continue; }
+    if(u.rest>0){ u.rest-=dt; for(const l of u.legs) l.rotation.x=L(l.rotation.x,0,0.2); u.root.position.y=L(u.root.position.y,0,0.2); u.root.rotation.z=L(u.root.rotation.z,0,0.2); continue; }
     if(!u.target||g.position.distanceTo(u.target)<0.5){ if(u.target){ u.target=null; u.rest=u.kind==='cat'?3+Math.random()*6:1+Math.random()*3; continue; } u.target=pickWanderTarget(); u.stuck=0; }
     const dir=u.target.clone().sub(g.position); dir.y=0; const d=dir.length();
-    if(d>0.05){ dir.normalize(); const px=g.position.x, pz=g.position.z, sp=(u.kind==='dog'?(u.follow>0?5.5:2.6):1.4)*dt;
+    if(d>0.05){ dir.normalize(); const px=g.position.x, pz=g.position.z, sp=(u.kind==='dog'?(u.follow>0?5.5:2.6):(u.speed||1.4))*dt;
       g.position.addScaledVector(dir,sp); pushOut(g);
       const r=Math.hypot(g.position.x,g.position.z); if(r>BOUNDARY){ g.position.x*=BOUNDARY/r; g.position.z*=BOUNDARY/r; }
       const moved=Math.hypot(g.position.x-px, g.position.z-pz); u.stuck = moved < sp*0.3 ? (u.stuck||0)+dt : 0; // 막히면 다른 곳으로(제자리 걸음 방지)
       if(u.stuck>0.6){ u.target=pickWanderTarget(); u.stuck=0; }
       g.rotation.y=Math.atan2(dir.x,dir.z); const s=Math.sin(u.phase*(u.kind==='dog'?14:10))*0.6;
-      u.legs[0].rotation.x=s; u.legs[3].rotation.x=s; u.legs[1].rotation.x=-s; u.legs[2].rotation.x=-s; u.root.position.y=Math.abs(s)*(u.style==='round'?0.09:0.03); } }
+      u.legs[0].rotation.x=s; u.legs[3].rotation.x=s; u.legs[1].rotation.x=-s; u.legs[2].rotation.x=-s; u.root.position.y=Math.abs(s)*(u.style==='round'?0.09:0.03);
+      if(u.gait==='waddle'){ u.root.rotation.z=Math.sin(u.phase*8)*0.2; u.legs[1].rotation.x=u.legs[2].rotation.x=0; u.legs[1].rotation.z=-0.4-Math.abs(s)*0.4; u.legs[2].rotation.z=0.4+Math.abs(s)*0.4; }
+      else if(u.gait==='hop') u.root.position.y=Math.abs(Math.sin(u.phase*7))*0.22; } }
+  dayNightT-=dt; if(dayNightT<=0){ dayNightT=5; applyDayNight(); }
+  updateSnow(dt);
   followSun(hero.position);
   renderer.render(scene,camera); requestAnimationFrame(tick);
 }

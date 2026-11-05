@@ -88,6 +88,8 @@ export class PlazaRoom {
       const m = b.msg || {};
       if (m.t === 'feed') this.broadcast(null, { t: 'feed', key: String(m.key || ''), nick: String(m.nick || '').slice(0, 12), aid: m.aid ? String(m.aid).slice(0, 16) : null });
       else if (m.t === 'wish') this.broadcast(null, { t: 'wish', key: String(m.key || ''), nick: String(m.nick || '').slice(0, 12), text: String(m.text || '').slice(0, 40) });
+      // 관리자가 테마를 바꿈 → 각자 새 테마를 다시 불러온다
+      else if (m.t === 'theme') this.broadcast(null, { t: 'theme' });
       return Response.json({ ok: true });
     }
     if (url.pathname === '/kick') {

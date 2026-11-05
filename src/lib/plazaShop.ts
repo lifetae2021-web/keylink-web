@@ -1,7 +1,8 @@
 import { adminDb } from '@/lib/firebaseAdmin';
 import { spendMemberPointsInTx } from '@/lib/points';
 import { plazaKey } from '@/lib/plazaKey';
-import { SHOP_ACC, CAT_FOOD_PRICE, WISH_PRICE, WISH_MAX } from '../../public/plaza/shop.js';
+import { SHOP_ACC, SEASON_ACC, CAT_FOOD_PRICE, WISH_PRICE, WISH_MAX } from '../../public/plaza/shop.js';
+import { getActiveTheme } from '@/lib/plazaTheme';
 import { hasBadWord } from '../../public/plaza/badwords.js';
 import { AFF_FEED, PET_IDS } from '../../public/plaza/pets.js';
 import { feedAffInTx, petRef } from '@/lib/plazaPets';
@@ -37,6 +38,9 @@ export async function shopState(uid: string) {
 export async function buyItem(uid: string, item: string) {
   const price = (SHOP_ACC as Record<string, number>)[item];
   if (!price) throw new ShopError('bad_item');
+  // 시즌 한정 꾸미기는 그 테마일 때만 판다(화면 조작으로 시즌 밖에 사지 못하게 서버가 확인)
+  const season = (SEASON_ACC as Record<string, string>)[item];
+  if (season && (await getActiveTheme()) !== season) throw new ShopError('season_over');
   await memberInfo(uid);
   await adminDb.runTransaction(async (tx) => {
     const ref = adminDb.doc(`plazaKeys/${uid}`);
