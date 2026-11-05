@@ -58,7 +58,15 @@ export function drawFace(cv, look) {
   else { g.arc(mx, my - 6 * k, 10 * k, Math.PI * 0.2, Math.PI * 0.8); g.stroke(); }
 }
 
-const ACT = { idle: 'idle', walk: 'walk', wave: 'wave', sit: 'sit' };
+const ACT = { idle: 'idle', walk: 'walk', wave: 'wave', sit: 'sit', dance: 'dance' };
+let _heart = null;   // 하트 이모트 그림(한 번만 그려서 같이 씀)
+function heartTex() {
+  if (_heart) return _heart;
+  const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d');
+  g.fillStyle = '#ff6f91'; g.beginPath(); g.moveTo(32, 54); g.bezierCurveTo(4, 34, 8, 8, 32, 20); g.bezierCurveTo(56, 8, 60, 34, 32, 54); g.fill();
+  g.fillStyle = 'rgba(255,255,255,.7)'; g.beginPath(); g.arc(22, 22, 5, 0, Math.PI * 2); g.fill();
+  _heart = new THREE.CanvasTexture(c); _heart.colorSpace = THREE.SRGBColorSpace; return _heart;
+}
 
 // 캐릭터 하나 만들기: 바로 빈 그룹을 돌려주고, 파일이 준비되면 채운다
 export function createAvatar(rawLook, { faceSize = 512 } = {}) {
@@ -84,7 +92,30 @@ export function createAvatar(rawLook, { faceSize = 512 } = {}) {
     const a = self.actions[name]; if (!a || self.cur === a) return;
     a.reset().setEffectiveWeight(1).fadeIn(fade).play(); if (self.cur) self.cur.fadeOut(fade); self.cur = a;
   };
-  self.update = (dt, moving) => { if (!self.mixer) return; if (self.cur !== self.actions.wave && self.cur !== self.actions.sit) self.play(moving ? 'walk' : 'idle'); self.mixer.update(dt); };
+  // 이모트·앉기: 움직이면 풀린다. 인사·춤은 몇 번 하고 저절로 서기로 돌아감
+  let busy = null, hearts = [];
+  self.emote = (name) => {
+    if (name === 'heart') { spawnHearts(); name = 'wave'; }
+    const a = self.actions[name]; if (!a) return; busy = name; self.play(name, 0.2);
+  };
+  self.setSit = (on) => { if (on) { busy = 'sit'; self.play('sit', 0.25); } else if (busy === 'sit') { busy = null; self.play('idle', 0.25); } };
+  self.isSitting = () => busy === 'sit';
+  function spawnHearts() {
+    for (let i = 0; i < 5; i++) {
+      const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: heartTex(), transparent: true, depthWrite: false }));
+      s.scale.setScalar(0.32); s.position.set((Math.random() - 0.5) * 0.7, 1.9 + Math.random() * 0.2, (Math.random() - 0.5) * 0.3);
+      s.userData = { t: -i * 0.18, vx: (Math.random() - 0.5) * 0.3 }; group.add(s); hearts.push(s);
+    }
+  }
+  self.update = (dt, moving) => {
+    for (const h of [...hearts]) { const u = h.userData; u.t += dt; if (u.t < 0) { h.visible = false; continue; } h.visible = true;
+      h.position.y += dt * 0.7; h.position.x += u.vx * dt; h.material.opacity = Math.max(0, 1 - u.t / 1.6);
+      if (u.t > 1.6) { group.remove(h); h.material.dispose(); hearts.splice(hearts.indexOf(h), 1); } }
+    if (!self.mixer) return;
+    if (moving) { busy = null; self.play('walk'); }
+    else if (!busy) self.play('idle');
+    self.mixer.update(dt);
+  };
   self.dispose = () => { faceTex.dispose(); group.traverse((o) => { if (o.isMesh) { o.material?.dispose?.(); } }); };
   drawFace(cv, self.look);
   loadAvatarAssets(self.look.style).then((gltf) => {
@@ -101,8 +132,9 @@ export function createAvatar(rawLook, { faceSize = 512 } = {}) {
     });
     self.mixer = new THREE.AnimationMixer(model);
     for (const clip of gltf.animations) { const key = clip.name.replace(/^[a-z]+_/, ''); if (ACT[key]) self.actions[key] = self.mixer.clipAction(clip); }
-    if (self.actions.wave) { self.actions.wave.setLoop(THREE.LoopRepeat, 2); self.actions.wave.clampWhenFinished = false; }
-    self.mixer.addEventListener('finished', (e) => { if (e.action === self.actions.wave) { self.cur = null; self.play('idle'); } });
+    if (self.actions.wave) self.actions.wave.setLoop(THREE.LoopRepeat, 2);
+    if (self.actions.dance) self.actions.dance.setLoop(THREE.LoopRepeat, 3);
+    self.mixer.addEventListener('finished', (e) => { if (e.action === self.actions.wave || e.action === self.actions.dance) { busy = null; self.play('idle'); } });
     self.ready = true; self.setLook(self.look); self.play('idle', 0);
     self.onReady && self.onReady(self);
   }).catch((e) => console.error('avatar load', e));

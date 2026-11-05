@@ -324,7 +324,7 @@ def export_avatar(style):
     for o in C.objects: o.select_set(True)
     bpy.context.view_layer.objects.active = arm
     dst = os.path.expanduser('~/Desktop/keylink/public/plaza/assets/avatar_%s.glb' % style)
-    bpy.ops.export_scene.gltf(filepath=dst, export_format='GLB', use_selection=True, export_extras=True, export_yup=True, export_apply=False,
+    bpy.ops.export_scene.gltf(filepath=dst, export_format='GLB', use_selection=True, use_active_scene=True, export_extras=True, export_yup=True, export_apply=False,
         export_animations=True, export_animation_mode='ACTIONS', export_skins=True, export_morph=True, export_morph_normal=False, export_cameras=False, export_lights=False)
     for o in C.objects: o.select_set(False)
     for o in hidden: o.hide_set(True)

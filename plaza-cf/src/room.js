@@ -7,13 +7,13 @@
 //   gkey : 기기 표식 해시 — 손님 구분(신고용)
 //   ip/dev : IP·기기 해시 — 입장 금지에만 쓰고 다른 사람에게는 절대 보내지 않음
 //   tid  : 신고·차단 대상 ID = 'k:'+key(회원) 또는 'g:'+gkey(손님)
-import { nickProblem } from '../../public/plaza/badwords.js';
+import { nickProblem, hasBadWord } from '../../public/plaza/badwords.js';
 import { sanitizeLook } from '../../public/plaza/look.js';
 import { shortHash } from './hash.js';
 import { verifyFirebaseIdToken } from './firebaseToken.js';
 
 // 도배 방지: 연결마다 종류별 초당 허용량(토큰 버킷). 넘치면 조용히 버린다.
-const RATE = { pos: [15, 20], chat: [2, 6], req: [0.5, 3], accept: [1, 5], acceptwait: [1, 5], chatbye: [1, 5], report: [0.2, 3], hello: [0.5, 3] };
+const RATE = { pos: [15, 20], emote: [0.5, 3], say: [0.35, 3], chat: [2, 6], req: [0.5, 3], accept: [1, 5], acceptwait: [1, 5], chatbye: [1, 5], report: [0.2, 3], hello: [0.5, 3] };
 const buckets = new WeakMap(); // ws → { type: { t, at } } (재우면 초기화돼도 무방)
 function allow(ws, type) {
   const [rate, burst] = RATE[type] || [5, 10];
@@ -163,9 +163,19 @@ export class PlazaRoom {
       this.send(ws, { t: 'welcome', id: a.id, room: a.room, nick: a.nick, peers });
       this.broadcast(ws, { t: 'join', id: a.id, nick: a.nick, look: a.look, state: a.st, key: a.key || null, gkey: a.gkey || null });
     } else if (m.t === 'pos') {
-      a.st = { x: +m.x || 0, z: +m.z || 0, ry: +m.ry || 0 };
+      a.st = { x: +m.x || 0, z: +m.z || 0, y: Math.max(-1, Math.min(3, +m.y || 0)), ry: +m.ry || 0, p: m.p === 'sit' ? 'sit' : '' }; // p: 앉아 있음(새로 들어온 사람도 앉은 모습으로 보이게 저장)
       this.save(ws, a);
-      this.broadcast(ws, { t: 'peer', id: a.id, x: a.st.x, z: a.st.z, ry: a.st.ry });
+      this.broadcast(ws, { t: 'peer', id: a.id, x: a.st.x, z: a.st.z, y: a.st.y, ry: a.st.ry, p: a.st.p });
+    } else if (m.t === 'emote') {
+      // 이모트(인사·춤·하트): 정해진 것만 방 전체에
+      if (a.nick && ['wave', 'dance', 'heart'].includes(m.e)) this.broadcast(ws, { t: 'emote', id: a.id, e: m.e });
+    } else if (m.t === 'say') {
+      // 머리 위 말풍선(광장 공개): 40자, 제어문자 제거, 비속어는 보내지 않고 본인에게만 알림
+      if (!a.nick) return;
+      const text = String(m.text ?? '').replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 40);
+      if (!text) return;
+      if (hasBadWord(text)) { this.send(ws, { t: 'saynope' }); return; }
+      this.broadcast(ws, { t: 'say', id: a.id, text });
     } else if (m.t === 'report') {
       // 회원만 신고 집계에 참여 (악용 방지: 서로 다른 회원 5명이어야 자동 조치)
       if (!a.key) return;

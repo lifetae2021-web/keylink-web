@@ -243,8 +243,16 @@ def build_actions(arm, style):
                 'lower_leg.L': [((1, 0, 0), 85)], 'lower_leg.R': [((1, 0, 0), 85)],
                 'upper_arm.L': [((1, 0, 0), -20)], 'upper_arm.R': [((1, 0, 0), -20)],
                 'chest': [((1, 0, 0), 3 * S(T * t))], 'hips_up': -0.0}
+    def dance(f, t):   # 두 팔 번갈아 흔들며 들썩이는 춤(1초에 두 박자)
+        b = S(T * t * 2); c = S(T * t)
+        return {'upper_arm.L': [((0, 1, 0), -70 - 35 * max(0, c)), ((1, 0, 0), -15)], 'upper_arm.R': [((0, 1, 0), 70 + 35 * max(0, -c)), ((1, 0, 0), -15)],
+                'lower_arm.L': [((0, 1, 0), -40 * max(0, c))], 'lower_arm.R': [((0, 1, 0), 40 * max(0, -c))],
+                'hips': [((0, 1, 0), 8 * c)], 'chest': [((0, 1, 0), -10 * c)], 'head': [((0, 1, 0), 8 * c)],
+                'lower_leg.L': [((1, 0, 0), 18 * max(0, b))], 'lower_leg.R': [((1, 0, 0), 18 * max(0, -b))],
+                'upper_leg.L': [((1, 0, 0), -10 * max(0, b))], 'upper_leg.R': [((1, 0, 0), -10 * max(0, -b))],
+                'hips_up': 0.03 * abs(b)}
     return [make_action(arm, style + '_idle', 48, idle), make_action(arm, style + '_walk', 24, walk),
-            make_action(arm, style + '_wave', 36, wave), make_action(arm, style + '_sit', 48, sit)]
+            make_action(arm, style + '_wave', 36, wave), make_action(arm, style + '_sit', 48, sit), make_action(arm, style + '_dance', 48, dance)]
 
 def chest_weight_fix(body, P):
     """윗몸통 가운데가 팔뼈를 따라가면 팔을 흔들 때 가슴이 찌그러진다 → chest 뼈로 옮김."""
