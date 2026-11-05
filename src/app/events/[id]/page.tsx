@@ -403,6 +403,33 @@ export default function EventDetailPage() {
         return;
       }
 
+      // 1-2. 같은 번호로 다른 기록(예: 가입 전 비회원 빠른 신청)에 낸 신청서도 확인 — 빠른 신청과 같은 서버 확인.
+      // 문자 인증된 번호면 서버가 그 신청서를 내 계정으로 옮겨 주고, 새 신청서는 만들지 않는다(중복 신청 방지).
+      if (form.phone) {
+        const token = await currentUser.getIdToken();
+        const res = await fetch('/api/applications/existing', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            sessionIds: [sessionId], phone: form.phone,
+            profile: { name: form.name || '', gender: form.gender || '', birthDate: form.birthDate || '', job: form.workplace || '', residence: form.residence || '' },
+          }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || '신청 내역 확인에 실패했어요.');
+        const result = data.results?.[sessionId];
+        if (result === 'mine' || result === 'transferred') {
+          toast.success(result === 'transferred' ? '이 번호로 먼저 낸 신청서를 회원 계정으로 옮겼어요. 새로 신청하지 않아도 돼요.' : '이미 이 기수에 신청하셨습니다.');
+          setIsSubmitting(false);
+          return;
+        }
+        if (result === 'taken') {
+          toast.error('이 번호로 이미 신청된 내역이 있어요. 휴대폰 인증 후 다시 시도하거나 문의해 주세요.');
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
       // 2. 사진 업로드
       const uploadedUrls = await Promise.all(
         photos.map(async (photo, index) => {
