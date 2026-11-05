@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { auth } from '@/lib/firebase';
 import { Loader2, RefreshCw, Activity, Search } from 'lucide-react';
 
-interface Visit { id: number; room: string; nick: string; member: number; uid: string | null; enter_at: number; leave_at: number | null; online: boolean }
+interface Visit { id: number; room: string; nick: string; name?: string | null; member: number; uid: string | null; enter_at: number; leave_at: number | null; online: boolean }
 interface Stats {
   now: { total: number; rooms: Record<string, number> };
   todayPeak: number;
@@ -195,7 +195,7 @@ export default function PlazaStatsPage() {
                   ) : data.visits.map((v) => (
                     <tr key={v.id}>
                       <td style={{ padding: '8px 10px', borderBottom: '1px solid #f3f5f9', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{dt(v.enter_at)}</td>
-                      <td style={{ padding: '8px 10px', borderBottom: '1px solid #f3f5f9', fontWeight: 600, wordBreak: 'keep-all' }}>{v.nick || '-'}</td>
+                      <td style={{ padding: '8px 10px', borderBottom: '1px solid #f3f5f9', fontWeight: 600, wordBreak: 'keep-all' }}>{v.nick || '-'}{v.name && <span style={{ fontWeight: 400, color: SUB, marginLeft: 6 }}>({v.name})</span>}</td>
                       <td style={{ padding: '8px 10px', borderBottom: '1px solid #f3f5f9' }}>
                         <span style={{ background: v.member ? '#e8f0ff' : '#f1f1f1', color: '#33415a', borderRadius: 6, padding: '2px 8px', fontSize: 12, whiteSpace: 'nowrap' }}>{v.member ? '회원' : '비회원'}</span>
                       </td>

@@ -336,7 +336,7 @@ addEventListener('resize', resize); resize();
 const skinMat = new THREE.MeshStandardMaterial({ color:0xffe0c4, roughness:0.85 });
 const darkMat = new THREE.MeshStandardMaterial({ color:0x3a3a3a });
 function roundRect(g,x,y,w,h,r){ g.beginPath(); g.moveTo(x+r,y); g.arcTo(x+w,y,x+w,y+h,r); g.arcTo(x+w,y+h,x,y+h,r); g.arcTo(x,y+h,x,y,r); g.arcTo(x,y,x+w,y,r); g.closePath(); }
-// 관리자 이름표: 금색 테두리 + 진한 남색 바탕 + 왕관 + "운영자" 표시(서버가 관리자로 확인한 사람만)
+// 관리자 이름표: 금색 테두리 + 진한 남색 바탕 + 왕관 + "키링 월드 개발자" 표시(서버가 관리자로 확인한 사람만)
 function makeAdminSprite(text){
   const cv=document.createElement('canvas'); cv.width=420; cv.height=150; const g=cv.getContext('2d'); g.textAlign='center'; g.textBaseline='middle';
   let fs=42; do{ g.font='bold '+fs+'px Jua, sans-serif'; if(g.measureText(text).width<=250) break; fs-=2; } while(fs>18);
@@ -349,8 +349,8 @@ function makeAdminSprite(text){
   g.fillStyle='#ff6f91'; g.beginPath(); g.arc(cx,cy+3,3.5,0,Math.PI*2); g.fill();
   g.fillStyle='#fff'; g.font='bold '+fs+'px Jua, sans-serif'; g.fillText(text,px+pw/2+20,py+ph/2+1);
   // 위 작은 배지
-  g.font='bold 26px Jua, sans-serif'; const bw=g.measureText('키링 월드 운영자').width+30; g.fillStyle='#f5b922'; roundRect(g,210-bw/2,14,bw,38,19); g.fill();
-  g.fillStyle='#1f1b4d'; g.fillText('키링 월드 운영자',210,34);
+  g.font='bold 26px Jua, sans-serif'; const bw=g.measureText('키링 월드 개발자').width+30; g.fillStyle='#f5b922'; roundRect(g,210-bw/2,14,bw,38,19); g.fill();
+  g.fillStyle='#1f1b4d'; g.fillText('키링 월드 개발자',210,34);
   const tex=new THREE.CanvasTexture(cv); tex.colorSpace=THREE.SRGBColorSpace;
   const sp=new THREE.Sprite(new THREE.SpriteMaterial({ map:tex, transparent:true, depthTest:false })); sp.scale.set(3.0,3.0*150/420,1); sp.position.y=2.4; sp.renderOrder=4; return sp; }
 // 관리자 발밑 금빛 고리(천천히 돌며 반짝임)
@@ -890,7 +890,7 @@ function openCard(profile){ document.exitPointerLock?.(); reqTarget=profile; doc
   const meta=document.getElementById('cardMeta');
   const reqBtn=document.getElementById('cardReq');
   if(profile.npc){ meta.innerHTML='분수대 광장에 사는 키키예요.<br>광장 구경, 소개팅 이야기, 대화 연습까지<br>편하게 말 걸어 보세요.'; reqBtn.textContent='키키와 대화하기'; reqBtn.hidden=false; }
-  else if(profile.admin){ meta.innerHTML='<span class="npc-tag" style="background:#1f1b4d;color:#ffd65a">키링 월드 운영자</span><br>궁금한 점이나 불편한 점이 있으면 편하게 말 걸어 주세요.'; reqBtn.textContent='운영자에게 1:1 문의'; reqBtn.hidden=false; }
+  else if(profile.admin){ meta.innerHTML='<span class="npc-tag" style="background:#1f1b4d;color:#ffd65a">키링 월드 개발자</span><br>궁금한 점이나 불편한 점이 있으면 편하게 말 걸어 주세요.'; reqBtn.textContent='개발자에게 1:1 문의'; reqBtn.hidden=false; }
   else { meta.textContent=(profile.gender?profile.gender+' · ':'')+'지금 광장에 접속 중'; reqBtn.textContent='1:1 대화 신청'; reqBtn.hidden=false; }
   document.getElementById('cardSafety').hidden=!!profile.npc;
   card.hidden=false; }

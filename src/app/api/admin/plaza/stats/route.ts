@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/requireAdmin';
+import { adminDb } from '@/lib/firebaseAdmin';
 
 // 관리자: 광장 현황(지금 접속·동시접속 추이·일별 요약·접속 기록) → Cloudflare 실시간 서버 /admin/stats
 // 둘 사이는 비밀키(PLAZA_ADMIN_SECRET)로만 통한다.
@@ -22,6 +23,16 @@ export async function GET(req: Request) {
       cache: 'no-store',
     });
     const j = await r.json().catch(() => ({ error: 'worker_error' }));
+    // 회원 접속 기록에 회원 이름(users/{uid}.name)을 붙인다 — 관리자 화면 전용
+    if (r.ok && Array.isArray(j.visits)) {
+      const uids = [...new Set(j.visits.map((v: { uid?: string | null }) => v.uid).filter(Boolean))] as string[];
+      const names: Record<string, string> = {};
+      for (let i = 0; i < uids.length; i += 100) {
+        const snaps = await adminDb.getAll(...uids.slice(i, i + 100).map((u) => adminDb.doc(`users/${u}`)));
+        for (const s of snaps) { const n = s.data()?.name; if (n) names[s.id] = String(n); }
+      }
+      j.visits = j.visits.map((v: { uid?: string | null }) => ({ ...v, name: v.uid ? names[v.uid] || null : null }));
+    }
     return NextResponse.json(j, { status: r.status });
   } catch {
     return NextResponse.json({ error: '실시간 서버에 연결하지 못했어요' }, { status: 502 });
