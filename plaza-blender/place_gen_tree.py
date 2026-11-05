@@ -2,7 +2,7 @@
 # Higgsfield tripo_3d(텍스트→3D)로 만든 나무(gen/tree_tripo_0b7b37b2.glb, job 0b7b37b2-f4cc-4cbe-95a9-02e16f12f6d8)를
 # 분수대 근처 블록 나무 PRP_tree_11_* 자리에 놓는다. 먼저 bl_import_model로 GLB를 불러온 뒤 실행.
 # - 크기: 원본 1m → 높이 HEIGHT m, 원점은 줄기 밑동(땅 z=0)
-# - 텍스처: 4K 3장 → 웹용으로 줄여 JPEG로 저장(색·법선 1024, ORM 512)
+# - 텍스처: 4K 3장 → 웹용으로 줄여 JPEG로 저장(색·법선 2048 — 가까이서도 또렷하게, ORM은 쓰지 않음)
 # - 충돌: 이름에 trunk가 없으니 kl_block(반지름 m)으로 웹이 장애물을 만든다
 # 원래 블록 나무는 RETIRED 컬렉션으로 옮겨 숨긴다(되돌리기 가능).
 import bpy, os
@@ -50,7 +50,7 @@ src['kl_block'] = 0.6
 
 # 텍스처 줄이기
 mat = src.material_slots[0].material; mat.name = 'GEN_tree_' + str(TREE)
-sizes = {'Color': 1024, 'NormalGL': 1024, 'ORM': 512}
+sizes = {'Color': 2048, 'NormalGL': 2048, 'ORM': 512}
 saved = {}
 for n in mat.node_tree.nodes:
     if n.type != 'TEX_IMAGE' or not n.image: continue
