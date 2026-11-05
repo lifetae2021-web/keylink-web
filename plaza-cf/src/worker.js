@@ -7,6 +7,8 @@
 //   (로컬: plaza-cf/.dev.vars, 운영: npx wrangler secret put PLAZA_ADMIN_SECRET)
 // 로컬 실행:  cd plaza-cf && npx wrangler dev      (ws://127.0.0.1:8787/ws)
 // 배포:       npx wrangler deploy
+// - 운영 점검용 테스트 접속: ?kltest=<PLAZA_TEST_KEY> 가 맞으면 접속 기록·동시접속 통계에서 뺀다
+//   (키를 모르는 일반 이용자는 기록에서 숨을 수 없음. 운영: npx wrangler secret put PLAZA_TEST_KEY)
 import { shortHash } from './hash.js';
 export { PlazaRoom } from './room.js';
 export { PlazaRegistry } from './registry.js';
@@ -77,7 +79,8 @@ export default {
       const ip = ipRaw ? await shortHash('kl-ip:', ipRaw) : '';
       const dev = devRaw ? await shortHash('kl-dev:', devRaw) : '';
       const stub = env.PLAZA_ROOM.get(env.PLAZA_ROOM.idFromName(room));
-      const q = new URLSearchParams({ room, cap: String(cap), ip, dev });
+      const test = env.PLAZA_TEST_KEY && url.searchParams.get('kltest') === env.PLAZA_TEST_KEY ? '1' : '';
+      const q = new URLSearchParams({ room, cap: String(cap), ip, dev, test });
       return stub.fetch(new Request('https://do/ws?' + q.toString(), request));
     }
 

@@ -46,7 +46,7 @@ export class PlazaRoom {
   // (배포·재시작으로 연결이 강제로 끊기면 퇴장 신호가 안 와서, 더하기·빼기 방식은 인원이 계속 부풀었다)
   live(except) {
     let n = 0; const vids = [];
-    for (const ws of this.state.getWebSockets()) { if (ws === except) continue; const a = this.attach(ws); if (a && !a.gone) { n++; if (a.vid) vids.push(a.vid); } }
+    for (const ws of this.state.getWebSockets()) { if (ws === except) continue; const a = this.attach(ws); if (a && !a.gone && !a.test) { n++; if (a.vid) vids.push(a.vid); } }
     return { n, vids };
   }
   async reportCount(room, except) {
@@ -98,6 +98,7 @@ export class PlazaRoom {
     const cap = +url.searchParams.get('cap') || 30;
     const ip = this.clean(url.searchParams.get('ip'), 16);
     const dev = this.clean(url.searchParams.get('dev'), 16);
+    const test = url.searchParams.get('test') === '1';   // 운영 점검용 테스트 접속(워커가 비밀 키로 확인) → 기록·통계 제외
 
     if (request.headers.get('Upgrade') !== 'websocket') {
       return new Response('expected websocket', { status: 426 });
@@ -116,7 +117,7 @@ export class PlazaRoom {
     const id = 'u' + Math.random().toString(36).slice(2, 8);
 
     this.state.acceptWebSocket(server);
-    this.save(server, { id, room, ip, dev, nick: null, look: null, st: { x: 0, z: 11, ry: 0 } });
+    this.save(server, { id, room, ip, dev, test, nick: null, look: null, st: { x: 0, z: 11, ry: 0 } });
     try { await this.state.storage.put('room', room); } catch (e) {}
     await this.reportCount(room);
 
@@ -148,7 +149,7 @@ export class PlazaRoom {
       } catch (e) {}
       try { await this.reg('/seen', { tid: a.tid, ip: a.ip, dev: a.dev, key: a.key, nick: a.nick }); } catch (e) {}
       // 접속 기록(관리자 '광장 현황'): 처음 인사면 새 기록, 로그인 후 다시 인사하면 같은 기록을 갱신
-      try {
+      if (!a.test) try {
         const v = { room: a.room, tid: a.tid, nick: a.nick, member: a.key ? 1 : 0, uid: a.uid || null };
         if (a.vid) await this.reg('/visit/update', { id: a.vid, ...v });
         else a.vid = (await (await this.reg('/visit/start', v)).json()).id;

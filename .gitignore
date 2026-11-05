@@ -57,3 +57,5 @@ replace.js
 npm_cache/
 scratch/
 .blender_checkpoints/
+
+.secrets/

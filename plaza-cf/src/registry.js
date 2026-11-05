@@ -191,6 +191,14 @@ export class PlazaRegistry {
       this.cleanupOld(now);
       return Response.json({ n: this.rows('SELECT COUNT(*) AS n FROM keyclaims WHERE day = ? AND uid = ?', String(b.day), String(b.uid))[0].n });
     }
+    // 관리자: 접속 기록 지우기(운영 점검용 테스트 접속 정리) — 번호(id)로만
+    if (url.pathname === '/admin/visits/delete') {
+      const b = await request.json();
+      const ids = (Array.isArray(b.ids) ? b.ids : []).map((x) => +x).filter((x) => Number.isInteger(x) && x > 0).slice(0, 200);
+      let n = 0;
+      for (const id of ids) { this.sql().exec('DELETE FROM visits WHERE id = ?', id); n++; }
+      return Response.json({ ok: true, deleted: n });
+    }
     if (url.pathname === '/admin/keys') {
       const b = await request.json();
       const ids = this.rows('SELECT kid FROM keyclaims WHERE day = ? AND uid = ?', String(b.day), String(b.uid)).map((r) => r.kid);
