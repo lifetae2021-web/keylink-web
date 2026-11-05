@@ -8,7 +8,7 @@
 //   ip/dev : IP·기기 해시 — 입장 금지에만 쓰고 다른 사람에게는 절대 보내지 않음
 //   tid  : 신고·차단 대상 ID = 'k:'+key(회원) 또는 'g:'+gkey(손님)
 import { nickProblem, hasBadWord, isReservedNick } from '../../public/plaza/badwords.js';
-import { sanitizeLook } from '../../public/plaza/look.js';
+import { sanitizeLook, isLockedAcc } from '../../public/plaza/look.js';
 import { KEY_SPOTS } from '../../public/plaza/keys.js';
 import { shortHash } from './hash.js';
 import { verifyFirebaseIdToken } from './firebaseToken.js';
@@ -151,6 +151,20 @@ export class PlazaRoom {
       // 관리자: 로그인 토큰으로 검증된 uid가 PLAZA_ADMIN_UIDS(wrangler.toml)에 있을 때만. 운영자 사칭 닉네임은 일반 이용자에게 허용 안 함
       a.admin = !!a.uid && String(this.env.PLAZA_ADMIN_UIDS || '').split(',').map((x) => x.trim()).includes(a.uid);
       if (!a.admin && isReservedNick(a.nick)) a.nick = '손님';
+      // 잠금 꾸미기(열쇠 보상·상점)와 반려동물은 실제로 가진 회원만 — 웹 서버에 물어 확인(화면 조작 방지)
+      if (a.look.acc.some(isLockedAcc) || a.look.pet) {
+        let owned = { unlocks: [], pet: null };
+        if (a.uid) {
+          try {
+            const site = this.env.PLAZA_SITE_URL || 'https://www.keylink.kr';
+            const r = await fetch(site + '/api/plaza/internal/owned', { method: 'POST', headers: { 'content-type': 'application/json', 'x-plaza-secret': this.env.PLAZA_ADMIN_SECRET || '' }, body: JSON.stringify({ uid: a.uid }) });
+            if (r.ok) owned = await r.json();
+          } catch (e) {}
+        }
+        a.look.acc = a.look.acc.filter((x) => !isLockedAcc(x) || (owned.unlocks || []).includes(x));
+        if (a.look.pet && !(owned.pet && owned.pet.id === a.look.pet.id)) delete a.look.pet;
+        else if (a.look.pet) a.look.pet.name = owned.pet.name;
+      }
 
       // 입장 금지 확인 (IP·기기·회원 중 하나라도 걸리면)
       try {

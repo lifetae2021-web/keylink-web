@@ -1283,6 +1283,11 @@ export default function UsersPage() {
                           <div className="flex flex-col cursor-pointer" onClick={() => setSelectedUserForProfile(u)}>
                             <div className="flex items-center gap-1.5">
                               <span className="text-[0.88rem] font-bold text-slate-800 hover:text-[#FF7E7E] transition-colors">{u.name || '미입력'}</span>
+                              {u.verifiedPhone && (
+                                <span title="휴대폰 문자 인증 완료" aria-label="휴대폰 인증" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 15, height: 15, borderRadius: '50%', background: '#10B981', color: '#fff', flexShrink: 0 }}>
+                                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12.5 10 17 19 7" /></svg>
+                                </span>
+                              )}
                               {(() => {
                                 const p = u.loginMethod || providerMap[u.id];
                                 if (!p) return null;
@@ -1521,16 +1526,16 @@ export default function UsersPage() {
                             {filter === 'waitpool' ? (
                               <>
                                 {(u.proposalCount || 0) > 0 && (
-                                  <button onClick={() => setProposalHistoryTarget(u)} title="제안 내역 보기" style={{ fontSize: '0.7rem', fontWeight: 800, padding: '2px 8px', borderRadius: 8, background: '#FFFBEB', color: '#B45309', border: '1px solid #FDE68A', cursor: 'pointer' }}>
+                                  <button onClick={() => setProposalHistoryTarget(u)} title="제안 내역 보기" style={{ fontSize: '0.7rem', fontWeight: 800, padding: '2px 8px', borderRadius: 8, background: '#FFFBEB', color: '#B45309', border: '1px solid #FDE68A', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
                                     제안 {u.proposalCount}회
                                   </button>
                                 )}
                                 <button
                                   onClick={() => setProposeTarget(u)}
                                   className="flex items-center gap-1.5 rounded-lg transition-all hover:brightness-95"
-                                  style={{ padding: '6px 14px', fontSize: '0.78rem', fontWeight: 800, background: '#F59E0B', color: '#fff', border: 'none' }}
+                                  style={{ padding: '6px 14px', fontSize: '0.78rem', fontWeight: 800, background: '#F59E0B', color: '#fff', border: 'none', whiteSpace: 'nowrap', flexShrink: 0 }}
                                 >
-                                  💌 제안
+                                  제안
                                 </button>
                                 <button
                                   onClick={() => removeFromWaitpool(u.id, u.name)}
@@ -1650,6 +1655,11 @@ export default function UsersPage() {
                         <div className="flex items-center justify-between mb-1">
                           <div className="flex items-center gap-1.5">
                             <span className="text-[1rem] font-extrabold text-slate-900">{u.name || '미입력'}</span>
+                            {u.verifiedPhone && (
+                              <span title="휴대폰 문자 인증 완료" aria-label="휴대폰 인증" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 16, height: 16, borderRadius: '50%', background: '#10B981', color: '#fff', flexShrink: 0 }}>
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12.5 10 17 19 7" /></svg>
+                              </span>
+                            )}
                             <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${u.gender === 'male' ? 'bg-blue-50 text-blue-500' : 'bg-rose-50 text-rose-500'}`}>
                               {u.gender === 'male' ? '남성' : '여성'}
                             </span>
@@ -1850,9 +1860,9 @@ export default function UsersPage() {
                           <button
                             onClick={() => setProposeTarget(u)}
                             className="flex items-center gap-1.5 rounded-xl transition-all hover:brightness-95"
-                            style={{ padding: '9px 18px', fontSize: '0.82rem', fontWeight: 800, background: '#F59E0B', color: '#fff', border: 'none' }}
+                            style={{ padding: '9px 18px', fontSize: '0.82rem', fontWeight: 800, background: '#F59E0B', color: '#fff', border: 'none', whiteSpace: 'nowrap', flexShrink: 0 }}
                           >
-                            💌 제안하기
+                            제안하기
                           </button>
                           <button
                             onClick={() => removeFromWaitpool(u.id, u.name)}

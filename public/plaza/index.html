@@ -184,6 +184,8 @@
     background:var(--glass); border:1px solid var(--glass-line); color:#fff; border-radius:14px; padding:6px 11px; font-size:.8rem; backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); white-space:nowrap; }
   #keyCount svg { width:16px; height:16px; fill:none; stroke:#ffd65a; stroke-width:2.2; stroke-linecap:round; }
   #keyCount.done { border-color:rgba(255,214,90,.7); }
+  #verBadge { position:fixed; right:max(16px,env(safe-area-inset-right,0px)); bottom:calc(6px + env(safe-area-inset-bottom,0px)); z-index:9999; pointer-events:none;
+    background:#0F172A; color:#fff; font-size:.7rem; font-weight:800; padding:4px 11px; border-radius:100px; box-shadow:0 4px 12px rgba(0,0,0,.15); font-family:system-ui,-apple-system,sans-serif; }
   #hud .panel { background:var(--glass); border:1px solid var(--glass-line); color:#fff; box-shadow:0 8px 24px rgba(10,14,24,.25); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); }
   #hud .panel p { opacity:.78; }
   #hud .hud-link { background:rgba(255,255,255,.14); color:#fff; }
@@ -305,6 +307,7 @@
   <div class="chat-msgs" id="chatMsgs"></div>
   <form class="chat-input" id="chatForm"><input id="chatText" placeholder="메시지 입력" autocomplete="off" maxlength="200"><button type="submit">전송</button></form>
 </div></div>
+<div id="verBadge" hidden></div>
 <div id="loading">키링 월드에 들어가는 중…</div>
 
 <script type="importmap">
@@ -426,7 +429,9 @@ function makeBody(root,o){
 
 const SPAWN=new THREE.Vector3(0,0,13);
 const hero=new THREE.Group(); hero.position.copy(SPAWN); scene.add(hero);
-let heroAv=null, heroNick=null, myAdmin=false;   // 내 캐릭터(avatar.js)와 머리 위 닉네임
+let heroAv=null, heroNick=null, myAdmin=false;
+// 관리자에게만 오른쪽 아래 버전 표시(사이트·관리자 페이지와 같게)
+async function showVersion(){ try{ const j=await (await fetch('/api/version',{ cache:'no-store' })).json(); const b=document.getElementById('verBadge'); b.textContent='v'+j.version; b.hidden=false; }catch(e){} }   // 내 캐릭터(avatar.js)와 머리 위 닉네임
 const obstacles=[];
 // 동물 목표 지점: 건물·분수·나무 안쪽은 피해서 고른다
 function pickWanderTarget(minR=3,maxR=22){ for(let i=0;i<12;i++){ const a=Math.random()*Math.PI*2, rad=minR+Math.random()*(maxR-minR); const x=Math.cos(a)*rad, z=Math.sin(a)*rad;
@@ -994,7 +999,7 @@ function connect(){
   ws.onmessage=(ev)=>{ let m; try{ m=JSON.parse(ev.data); }catch(e){ return; }
     if(m.t==='full'){ roomFullUntil=Date.now()+30000; toast('광장이 꽉 찼어요. 잠시 후 다시 연결할게요'); return; }
     if(m.t==='banned'){ showBanned(m.until, m.reason); return; }
-    if(m.t==='welcome'){ myId=m.id; if(m.admin && !myAdmin){ myAdmin=true; buildHero(opts); } if(m.nick && m.nick!==opts.nick) document.getElementById('hudNick').textContent=m.nick+' 님'; (m.peers||[]).forEach(addPeer); updateCount(); tryPendingAccept(); }
+    if(m.t==='welcome'){ myId=m.id; if(m.admin && !myAdmin){ myAdmin=true; buildHero(opts); showVersion(); } if(m.nick && m.nick!==opts.nick) document.getElementById('hudNick').textContent=m.nick+' 님'; (m.peers||[]).forEach(addPeer); updateCount(); tryPendingAccept(); }
     else if(m.t==='join'){ if(peers.has(m.id)) removePeer(m.id); addPeer(m); tryPendingAccept(); }   // 다시 인사(모습·반려동물 변경)면 새로 그림
     else if(m.t==='peer'){ const pr=peers.get(m.id); if(pr){ pr.target={x:m.x,z:m.z,y:m.y||0,ry:m.ry}; pr.av.setSit(m.p==='sit'); } else { const h=hiddenPeers.get(m.id); if(h) h.state={x:m.x,z:m.z,y:m.y||0,ry:m.ry,p:m.p}; } }
     else if(m.t==='emote'){ const pr=peers.get(m.id); if(pr) pr.av.emote(m.e); }
