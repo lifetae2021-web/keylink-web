@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth, adminDb, adminStorage } from '@/lib/firebaseAdmin';
+import { purgePlazaOnWithdraw } from '@/lib/plazaPurge';
 
 export async function POST(req: NextRequest) {
   try {
@@ -34,6 +35,9 @@ export async function POST(req: NextRequest) {
       appsSnap.docs.forEach(d => batch.delete(d.ref));
       await batch.commit();
     }
+
+    // 2-1. 키링 월드 기록 정리(활동 기록은 즉시 삭제, 대화·소원은 1년 뒤 삭제 예약)
+    await purgePlazaOnWithdraw(uid);
 
     // 3. Firestore users 문서 삭제
     await adminDb.collection('users').doc(uid).delete();

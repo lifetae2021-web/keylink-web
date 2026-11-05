@@ -23,6 +23,7 @@ import { MIN_REDEEM_POINTS, REDEEM_UNIT_POINTS } from '@/lib/pointsConfig';
 import { detectInAppBrowser, InAppInfo } from '@/lib/inAppBrowser';
 import InAppBrowserSheet from '@/components/InAppBrowserSheet';
 import { PhoneVerifyField, LinkAccountModal, claimVerifiedPhone, type ExistingAccount } from '@/components/PhoneVerification';
+import PolicyModal, { PolicyViewButton, type PolicyKey } from '@/components/PolicyModal';
 import { EventCalendar } from '@/components/EventsSection';
 import { KeylinkEvent } from '@/types';
 
@@ -242,6 +243,7 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
 
   // ── Agreements state ──
   const [showRefundPolicy, setShowRefundPolicy] = useState(false);
+  const [policy, setPolicy] = useState<PolicyKey | null>(null);
   const [agreements, setAgreements] = useState({
     terms: false,
     privacy: false,
@@ -1679,6 +1681,7 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
                 {agreements[key as keyof typeof agreements] ? <CheckCircle color="#FF6F61" size={18} fill="rgba(255,111,97,0.1)" /> : <div style={{ width: 18, height: 18, borderRadius: '50%', border: '1.5px solid #CBD5E1' }} />}
                 <span style={{ fontSize: '0.85rem', color: '#64748B', fontWeight: '500' }}>{label}</span>
               </div>
+              {key !== 'refund' && <PolicyViewButton onClick={() => setPolicy(key === 'terms' ? 'terms' : 'privacy')} />}
               {key === 'refund' && (
                 <button type="button" onClick={(e) => { e.stopPropagation(); setShowRefundPolicy(true); }} style={{ background: 'none', border: 'none', padding: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
                   <ChevronRight size={18} color="#94A3B8" />
@@ -1731,6 +1734,7 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
   return (
     <div style={{ minHeight: '100vh', background: 'radial-gradient(ellipse at 50% 0%, rgba(255,111,97,0.07) 0%, transparent 60%)', paddingBottom: '120px' }}>
 
+      {policy && <PolicyModal policy={policy} onClose={() => setPolicy(null)} />}
       {showRefundPolicy && (
         <div style={{
           position: 'fixed', inset: 0, zIndex: 4000,

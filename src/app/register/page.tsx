@@ -11,6 +11,7 @@ import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { formatBirthDate, isValidBirthDate } from '@/lib/utils';
 import { PhoneVerifyField, ExistingAccountModal, claimVerifiedPhone, type ExistingAccount } from '@/components/PhoneVerification';
+import PolicyModal, { PolicyViewButton, type PolicyKey } from '@/components/PolicyModal';
 
 function RegisterForm() {
   const router = useRouter();
@@ -47,6 +48,7 @@ function RegisterForm() {
   const [idChecked, setIdChecked] = useState(false);
   const [phoneToken, setPhoneToken] = useState<string | null>(null);
   const [existingAccount, setExistingAccount] = useState<ExistingAccount | null>(null);
+  const [policy, setPolicy] = useState<PolicyKey | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
 
@@ -373,7 +375,8 @@ function RegisterForm() {
                     <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
                       onClick={() => setAgreements(a => ({ ...a, [key]: !a[key as keyof typeof agreements] }))}>
                       {agreements[key as keyof typeof agreements] ? <CheckCircle color="#FF6F61" size={16} fill="rgba(255,111,97,0.1)" /> : <div style={{ width: 16, height: 16, borderRadius: '50%', border: '1.2px solid #ccc' }} />}
-                      <span style={{ fontSize: '0.8rem', color: '#777', fontWeight: '500' }}>{label}</span>
+                      <span style={{ fontSize: '0.8rem', color: '#777', fontWeight: '500', flex: 1, wordBreak: 'keep-all' }}>{label}</span>
+                      <PolicyViewButton onClick={() => setPolicy(key === 'terms' ? 'terms' : 'privacy')} />
                     </div>
                   ))}
                 </div>
@@ -419,6 +422,7 @@ function RegisterForm() {
           </div>
         )}
       </div>
+      {policy && <PolicyModal policy={policy} onClose={() => setPolicy(null)} />}
       {existingAccount && <ExistingAccountModal existing={existingAccount} onClose={() => setExistingAccount(null)} />}
       <style>{`
         @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }

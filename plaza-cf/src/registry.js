@@ -8,6 +8,7 @@
 const SESS_TTL = 7 * 24 * 60 * 60 * 1000;
 const DAY = 24 * 60 * 60 * 1000;
 const VISIT_TTL = 30 * DAY, CONC_TTL = 90 * DAY, BUCKET = 5 * 60 * 1000;
+const BAN_KEEP = 365 * DAY;
 const KST = 9 * 60 * 60 * 1000;
 const STALE = 12 * 60 * 60 * 1000;
 const COUNT_STALE = 3 * 60 * 1000; // 방이 3분 넘게 인원 보고(1분 하트비트)를 안 하면 0명으로 본다 // 퇴장 기록 없이 12시간 지나면 '접속 중'으로 보지 않음(서버 재시작 등)
@@ -41,6 +42,14 @@ export class PlazaRegistry {
     this.sql().exec('DELETE FROM visits WHERE enter_at < ?', now - VISIT_TTL);
     this.sql().exec('DELETE FROM conc WHERE bucket < ?', Math.floor((now - CONC_TTL) / BUCKET));
     this.sql().exec('DELETE FROM keyclaims WHERE at < ?', now - 40 * DAY);
+    this.pruneBans(now).catch(() => {});
+  }
+  // 이용 제한 기록은 제한이 끝난 뒤 1년 보관(개인정보처리방침·입장 동의 안내와 같은 숫자)
+  async pruneBans(now) {
+    const bans = await this.get('bans', {});
+    let changed = false;
+    for (const [id, until] of Object.entries(bans)) if (until < now - BAN_KEEP) { delete bans[id]; changed = true; }
+    if (changed) await this.state.storage.put('bans', bans);
   }
   roomName(prefix, i) { return prefix + '-' + String(i).padStart(2, '0'); }
 

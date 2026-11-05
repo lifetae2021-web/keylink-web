@@ -1,3 +1,6 @@
 {
-  "regions": ["icn1"]
+  "regions": ["icn1"],
+  "crons": [
+    { "path": "/api/cron/plaza-retention", "schedule": "0 19 * * *" }
+  ]
 }

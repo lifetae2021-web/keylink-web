@@ -11,6 +11,7 @@ import { doc, setDoc, serverTimestamp, getDoc, collection, addDoc, query, where,
 import { getAuthErrorMessage } from '@/lib/auth-errors';
 import { formatBirthDate, isValidBirthDate } from '@/lib/utils';
 import { PhoneVerifyField, LinkAccountModal, claimVerifiedPhone, type ExistingAccount } from '@/components/PhoneVerification';
+import PolicyModal, { PolicyViewButton, type PolicyKey } from '@/components/PolicyModal';
 
 export default function SocialProfilePage() {
   const router = useRouter();
@@ -21,6 +22,7 @@ export default function SocialProfilePage() {
   const [emailError, setEmailError] = useState<string | null>(null);
   const [phoneToken, setPhoneToken] = useState<string | null>(null);
   const [linkInfo, setLinkInfo] = useState<{ existing: ExistingAccount; token: string } | null>(null);
+  const [policy, setPolicy] = useState<PolicyKey | null>(null);
 
   const [agreements, setAgreements] = useState({
     terms: false,
@@ -303,7 +305,8 @@ export default function SocialProfilePage() {
                   <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
                     onClick={() => setAgreements(a => ({ ...a, [key]: !a[key as keyof typeof agreements] }))}>
                     {agreements[key as keyof typeof agreements] ? <CheckCircle color="#FF6F61" size={16} fill="rgba(255,111,97,0.1)" /> : <div style={{ width: 16, height: 16, borderRadius: '50%', border: '1.2px solid #ccc' }} />}
-                    <span style={{ fontSize: '0.8rem', color: '#777', fontWeight: '500' }}>{label}</span>
+                    <span style={{ fontSize: '0.8rem', color: '#777', fontWeight: '500', flex: 1, wordBreak: 'keep-all' }}>{label}</span>
+                    <PolicyViewButton onClick={() => setPolicy(key === 'terms' ? 'terms' : 'privacy')} />
                   </div>
                 ))}
               </div>
@@ -337,6 +340,7 @@ export default function SocialProfilePage() {
           onClose={() => setLinkInfo(null)}
         />
       )}
+      {policy && <PolicyModal policy={policy} onClose={() => setPolicy(null)} />}
     </div>
   );
 }
