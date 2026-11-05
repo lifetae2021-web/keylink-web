@@ -7,7 +7,7 @@
 //   gkey : 기기 표식 해시 — 손님 구분(신고용)
 //   ip/dev : IP·기기 해시 — 입장 금지에만 쓰고 다른 사람에게는 절대 보내지 않음
 //   tid  : 신고·차단 대상 ID = 'k:'+key(회원) 또는 'g:'+gkey(손님)
-import { nickProblem, hasBadWord } from '../../public/plaza/badwords.js';
+import { nickProblem, hasBadWord, isReservedNick } from '../../public/plaza/badwords.js';
 import { sanitizeLook } from '../../public/plaza/look.js';
 import { KEY_SPOTS } from '../../public/plaza/keys.js';
 import { shortHash } from './hash.js';
@@ -141,6 +141,9 @@ export class PlazaRoom {
       a.key = a.uid ? await shortHash('kl-plaza:', a.uid) : null;
       a.gkey = a.key ? null : await shortHash('kl-guest:', a.dev || a.id);
       a.tid = a.key ? 'k:' + a.key : 'g:' + a.gkey;
+      // 관리자: 로그인 토큰으로 검증된 uid가 PLAZA_ADMIN_UIDS(wrangler.toml)에 있을 때만. 운영자 사칭 닉네임은 일반 이용자에게 허용 안 함
+      a.admin = !!a.uid && String(this.env.PLAZA_ADMIN_UIDS || '').split(',').map((x) => x.trim()).includes(a.uid);
+      if (!a.admin && isReservedNick(a.nick)) a.nick = '손님';
 
       // 입장 금지 확인 (IP·기기·회원 중 하나라도 걸리면)
       try {
@@ -160,10 +163,10 @@ export class PlazaRoom {
       for (const p of this.state.getWebSockets()) {
         if (p === ws) continue;
         const pa = this.attach(p);
-        if (pa && pa.nick) peers.push({ id: pa.id, nick: pa.nick, look: pa.look, state: pa.st, key: pa.key || null, gkey: pa.gkey || null });
+        if (pa && pa.nick) peers.push({ id: pa.id, nick: pa.nick, look: pa.look, state: pa.st, key: pa.key || null, gkey: pa.gkey || null, admin: !!pa.admin });
       }
-      this.send(ws, { t: 'welcome', id: a.id, room: a.room, nick: a.nick, peers });
-      this.broadcast(ws, { t: 'join', id: a.id, nick: a.nick, look: a.look, state: a.st, key: a.key || null, gkey: a.gkey || null });
+      this.send(ws, { t: 'welcome', id: a.id, room: a.room, nick: a.nick, admin: !!a.admin, peers });
+      this.broadcast(ws, { t: 'join', id: a.id, nick: a.nick, look: a.look, state: a.st, key: a.key || null, gkey: a.gkey || null, admin: !!a.admin });
     } else if (m.t === 'pos') {
       a.st = { x: +m.x || 0, z: +m.z || 0, y: Math.max(-1, Math.min(12, +m.y || 0)), ry: +m.ry || 0, p: m.p === 'sit' ? 'sit' : '' }; // p: 앉아 있음(새로 들어온 사람도 앉은 모습으로 보이게 저장)
       this.save(ws, a);

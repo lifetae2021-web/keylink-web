@@ -38,6 +38,13 @@ export function nickProblem(s) {
   return null;
 }
 
+// 운영자처럼 보이는 닉네임 — 관리자(서버가 확인한 계정)만 쓸 수 있다
+const RESERVED = ['관리자', '운영자', '운영진', '운영팀', '키링크', 'keylink', 'admin', '어드민', '스태프', 'staff'].map(normalizeNick);
+export function isReservedNick(s) {
+  const n = normalizeNick(s);
+  return !!n && RESERVED.some((w) => n.includes(w));
+}
+
 export function hasBadWord(s) {
   const n = normalizeNick(s);
   if (!n) return false;

@@ -16,3 +16,7 @@ class_name = "PlazaRegistry"
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["PlazaRoom", "PlazaRegistry"]
+
+# 키링 월드 관리자(운영자 표시·운영자 닉네임 허용) — Firebase uid, 쉼표로 여러 명
+[vars]
+PLAZA_ADMIN_UIDS = "o7uRGwpxmdh6BIuZPmVcZEXRs3i1"

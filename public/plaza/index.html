@@ -295,10 +295,10 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-import { nickProblem } from '/plaza/badwords.js';
+import { nickProblem, isReservedNick } from '/plaza/badwords.js';
 import { LOOK, HATS, LOCKED_ACC, GENDER_OPTIONS, sanitizeLook, defaultLook, fitToGender } from '/plaza/look.js';
 import { createAvatar } from '/plaza/avatar.js';
-const NICK_MSG={ jamo:'자음·모음만으로는 닉네임을 만들 수 없어요', bad:'사용할 수 없는 단어가 들어간 닉네임이에요' };
+const NICK_MSG={ jamo:'자음·모음만으로는 닉네임을 만들 수 없어요', bad:'사용할 수 없는 단어가 들어간 닉네임이에요', reserved:'운영자로 오해할 수 있는 닉네임은 쓸 수 없어요' };
 
 // 키링크 Firebase (공개 설정값 — 클라이언트 번들에 이미 노출되는 값과 동일)
 const fbApp = initializeApp({
@@ -336,6 +336,34 @@ addEventListener('resize', resize); resize();
 const skinMat = new THREE.MeshStandardMaterial({ color:0xffe0c4, roughness:0.85 });
 const darkMat = new THREE.MeshStandardMaterial({ color:0x3a3a3a });
 function roundRect(g,x,y,w,h,r){ g.beginPath(); g.moveTo(x+r,y); g.arcTo(x+w,y,x+w,y+h,r); g.arcTo(x+w,y+h,x,y+h,r); g.arcTo(x,y+h,x,y,r); g.arcTo(x,y,x+w,y,r); g.closePath(); }
+// 관리자 이름표: 금색 테두리 + 진한 남색 바탕 + 왕관 + "운영자" 표시(서버가 관리자로 확인한 사람만)
+function makeAdminSprite(text){
+  const cv=document.createElement('canvas'); cv.width=420; cv.height=150; const g=cv.getContext('2d'); g.textAlign='center'; g.textBaseline='middle';
+  let fs=42; do{ g.font='bold '+fs+'px Jua, sans-serif'; if(g.measureText(text).width<=250) break; fs-=2; } while(fs>18);
+  const tw=g.measureText(text).width, pw=Math.min(400,tw+120), ph=62, px=(420-pw)/2, py=62;
+  const gr=g.createLinearGradient(px,0,px+pw,0); gr.addColorStop(0,'#ffe27a'); gr.addColorStop(0.5,'#fff3c4'); gr.addColorStop(1,'#f5b922');
+  g.fillStyle=gr; roundRect(g,px-4,py-4,pw+8,ph+8,35); g.fill();
+  g.fillStyle='#1f1b4d'; roundRect(g,px,py,pw,ph,31); g.fill();
+  // 왕관
+  const cx=px+38, cy=py+ph/2+2; g.fillStyle='#ffd65a'; g.beginPath(); g.moveTo(cx-17,cy+10); g.lineTo(cx-19,cy-10); g.lineTo(cx-8,cy-1); g.lineTo(cx,cy-14); g.lineTo(cx+8,cy-1); g.lineTo(cx+19,cy-10); g.lineTo(cx+17,cy+10); g.closePath(); g.fill();
+  g.fillStyle='#ff6f91'; g.beginPath(); g.arc(cx,cy+3,3.5,0,Math.PI*2); g.fill();
+  g.fillStyle='#fff'; g.font='bold '+fs+'px Jua, sans-serif'; g.fillText(text,px+pw/2+20,py+ph/2+1);
+  // 위 작은 배지
+  g.font='bold 26px Jua, sans-serif'; const bw=g.measureText('키링 월드 운영자').width+30; g.fillStyle='#f5b922'; roundRect(g,210-bw/2,14,bw,38,19); g.fill();
+  g.fillStyle='#1f1b4d'; g.fillText('키링 월드 운영자',210,34);
+  const tex=new THREE.CanvasTexture(cv); tex.colorSpace=THREE.SRGBColorSpace;
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({ map:tex, transparent:true, depthTest:false })); sp.scale.set(3.0,3.0*150/420,1); sp.position.y=2.4; sp.renderOrder=4; return sp; }
+// 관리자 발밑 금빛 고리(천천히 돌며 반짝임)
+function makeAdminAura(){ const g=new THREE.Group();
+  const ring=new THREE.Mesh(new THREE.RingGeometry(0.7,1.15,48), new THREE.MeshBasicMaterial({ color:'#ffcc33', transparent:true, opacity:0.85, side:THREE.DoubleSide, depthWrite:false }));
+  ring.rotation.x=-Math.PI/2; ring.position.y=0.05; ring.renderOrder=2; g.add(ring);
+  // 은은한 빛기둥(위로 갈수록 투명)
+  const cv=document.createElement('canvas'); cv.width=4; cv.height=64; const c=cv.getContext('2d'); const gr=c.createLinearGradient(0,64,0,0); gr.addColorStop(0,'rgba(255,214,90,0.55)'); gr.addColorStop(1,'rgba(255,214,90,0)'); c.fillStyle=gr; c.fillRect(0,0,4,64);
+  const beam=new THREE.Mesh(new THREE.CylinderGeometry(0.75,0.95,2.6,32,1,true), new THREE.MeshBasicMaterial({ map:new THREE.CanvasTexture(cv), transparent:true, side:THREE.DoubleSide, depthWrite:false }));
+  beam.position.y=1.3; g.add(beam);
+  for(let i=0;i<8;i++){ const s=new THREE.Mesh(new THREE.OctahedronGeometry(0.08), new THREE.MeshBasicMaterial({ color:'#fff3c4' })); const a=i/8*Math.PI*2; s.position.set(Math.cos(a)*1.0,0.3+(i%3)*0.5,Math.sin(a)*1.0); g.add(s); }
+  g.userData.aura=true; return g; }
+const auras=[];
 function makeNickSprite(text, gender){
   const label=(gender==='female'?'♀ ':gender==='male'?'♂ ':'')+text;
   const cv=document.createElement('canvas'); cv.width=320; cv.height=90; const g=cv.getContext('2d'); g.textAlign='center'; g.textBaseline='middle';
@@ -376,7 +404,7 @@ function makeBody(root,o){
 
 const SPAWN=new THREE.Vector3(0,0,13);
 const hero=new THREE.Group(); hero.position.copy(SPAWN); scene.add(hero);
-let heroAv=null, heroNick=null;   // 내 캐릭터(avatar.js)와 머리 위 닉네임
+let heroAv=null, heroNick=null, myAdmin=false;   // 내 캐릭터(avatar.js)와 머리 위 닉네임
 const obstacles=[];
 // 동물 목표 지점: 건물·분수·나무 안쪽은 피해서 고른다
 function pickWanderTarget(minR=3,maxR=22){ for(let i=0;i<12;i++){ const a=Math.random()*Math.PI*2, rad=minR+Math.random()*(maxR-minR); const x=Math.cos(a)*rad, z=Math.sin(a)*rad;
@@ -384,7 +412,8 @@ function pickWanderTarget(minR=3,maxR=22){ for(let i=0;i<12;i++){ const a=Math.r
 function pushOut(obj){ for(const o of obstacles){ const dx=obj.position.x-o.x, dz=obj.position.z-o.z; const d=Math.hypot(dx,dz); if(d>1e-4 && d<o.r){ obj.position.x=o.x+dx/d*o.r; obj.position.z=o.z+dz/d*o.r; } } }
 function buildHero(o){ o.look=sanitizeLook({ ...o.look, gender:o.gender });
   if(!heroAv){ heroAv=createAvatar(o.look,{ faceSize:1024 }); hero.add(heroAv.group); } else heroAv.setLook(o.look);
-  const label=(o.nick||'손님')+'|'+o.gender; if(!heroNick||heroNick.userData.label!==label){ if(heroNick){ hero.remove(heroNick); heroNick.material.map.dispose(); } heroNick=makeNickSprite(o.nick||'손님',o.gender); heroNick.position.y=2.15; heroNick.userData.label=label; hero.add(heroNick); } }
+  const label=(o.nick||'손님')+'|'+o.gender+'|'+(myAdmin?1:0); if(!heroNick||heroNick.userData.label!==label){ if(heroNick){ hero.remove(heroNick); heroNick.material.map.dispose(); } heroNick=myAdmin?makeAdminSprite(o.nick||'관리자'):makeNickSprite(o.nick||'손님',o.gender); heroNick.position.y=myAdmin?2.25:2.15; heroNick.userData.label=label; heroNick.visible=mode!=='creating'; hero.add(heroNick); }
+  if(myAdmin && !hero.userData.aura){ hero.userData.aura=makeAdminAura(); hero.add(hero.userData.aura); auras.push(hero.userData.aura); } }
 
 let shuttlePos=null; const spinners=[], seats=[], platforms=[], keySpots=[], bobbers=[];   // bobbers: 둥둥 떠 있는 작은 섬(kl_bob)
 let keyUnlocks=[];   // 잠금 해제된 꾸미기(서버 plazaKeys/{uid}.unlocks) — 편집 화면이 처음 그려질 때도 쓰므로 위쪽에 선언 // seats: Blender SEAT_* 표시점(앉는 면 높이·바라보는 방향)
@@ -526,7 +555,7 @@ let crYaw=0; { let dragX=null; canvas.addEventListener('pointerdown',(e)=>{ if(m
   addEventListener('pointermove',(e)=>{ if(mode==='creating'&&dragX!=null){ crYaw+=(e.clientX-dragX)*0.012; dragX=e.clientX; document.getElementById('dragHint')?.remove(); } });
   addEventListener('pointerup',()=>{ dragX=null; }); }
 let mode='creating';
-document.getElementById('enterBtn').onclick=async()=>{ if(!consent){ consentBox.hidden=false; return; } { const np=nickProblem(opts.nick); if(np){ crTab='profile'; renderCreator(); toast(NICK_MSG[np]); nickInput.focus(); return; } } if(!opts.region){ crTab='profile'; renderCreator(); toast('지역을 선택해 주세요'); return; } if(!/^(19|20)\d\d$/.test(opts.age)){ crTab='profile'; renderCreator(); toast('출생연도를 네 자리로 입력해 주세요'); return; } if(!opts.nick){ opts.nick=NICKS[Math.floor(Math.random()*NICKS.length)]; nickInput.value=opts.nick; buildHero(opts); }
+document.getElementById('enterBtn').onclick=async()=>{ if(!consent){ consentBox.hidden=false; return; } { const np=nickProblem(opts.nick); if(np){ crTab='profile'; renderCreator(); toast(NICK_MSG[np]); nickInput.focus(); return; } } if(isReservedNick(opts.nick) && opts.nick!==profileNick){ crTab='profile'; renderCreator(); toast(NICK_MSG.reserved); nickInput.focus(); return; } if(!opts.region){ crTab='profile'; renderCreator(); toast('지역을 선택해 주세요'); return; } if(!/^(19|20)\d\d$/.test(opts.age)){ crTab='profile'; renderCreator(); toast('출생연도를 네 자리로 입력해 주세요'); return; } if(!opts.nick){ opts.nick=NICKS[Math.floor(Math.random()*NICKS.length)]; nickInput.value=opts.nick; buildHero(opts); }
   if(member && fbUser && profileNick && opts.nick!==profileNick){ if(!(await saveNickChange())) return; }
   try{ localStorage.setItem('kl_char',JSON.stringify(opts)); }catch(e){} document.getElementById('entry').remove(); camera.clearViewOffset(); resize(); if(heroNick) heroNick.visible=true; document.getElementById('hud').hidden=false; document.getElementById('hudNick').textContent=opts.nick+' 님'; mode='playing'; connect(); setTimeout(loadAnchoredModels,800); };
 renderAll(); buildHero(opts);
@@ -816,8 +845,9 @@ const netDot=document.getElementById('netDot'), netTxt=document.getElementById('
 function setNet(on, n){ netDot.className='dot '+(on?'on':'off'); netTxt.textContent = on ? ('접속 '+(n)+'명') : '오프라인 (혼자)'; }
 function addPeer(p){ if(p.id===myId||peers.has(p.id)) return; if((p.key && blocked.has(p.key)) || blockedIds.has(p.id)){ hiddenPeers.set(p.id,p); return; } /* 차단한 사람은 안 보임 */
   const look=sanitizeLook(p.look), group=new THREE.Group(), root=new THREE.Group(); group.add(root); const av=createAvatar(look); root.add(av.group);
-  const nk=makeNickSprite(p.nick||'손님', look.gender); nk.position.y=2.15; root.add(nk);
-  group.position.set(p.state?.x||0,0,p.state?.z||0); group.userData={ look, profile:{ nick:p.nick, id:p.id, key:p.key||null, gkey:p.gkey||null, gender:look.gender==='female'?'여':'남' } }; scene.add(group);
+  const nk=p.admin?makeAdminSprite(p.nick||'관리자'):makeNickSprite(p.nick||'손님', look.gender); nk.position.y=p.admin?2.25:2.15; root.add(nk);
+  if(p.admin){ const au=makeAdminAura(); root.add(au); auras.push(au); }
+  group.position.set(p.state?.x||0,0,p.state?.z||0); group.userData={ look, profile:{ nick:p.nick, id:p.id, key:p.key||null, gkey:p.gkey||null, gender:look.gender==='female'?'여':'남', admin:!!p.admin } }; scene.add(group);
   group.position.y=p.state?.y||0; if(p.state?.ry) group.rotation.y=p.state.ry; if(p.state?.p==='sit') av.setSit(true);
   peers.set(p.id,{ group, av, root, key:p.key||null, target:{x:group.position.x,z:group.position.z,y:group.position.y,ry:p.state?.ry||0}, nick:p.nick, phase:Math.random()*10 }); updateCount(); }
 function updateCount(){ setNet(true, peers.size+1); }
@@ -833,7 +863,7 @@ function connect(){
   ws.onmessage=(ev)=>{ let m; try{ m=JSON.parse(ev.data); }catch(e){ return; }
     if(m.t==='full'){ roomFullUntil=Date.now()+30000; toast('광장이 꽉 찼어요. 잠시 후 다시 연결할게요'); return; }
     if(m.t==='banned'){ showBanned(m.until, m.reason); return; }
-    if(m.t==='welcome'){ myId=m.id; if(m.nick && m.nick!==opts.nick) document.getElementById('hudNick').textContent=m.nick+' 님'; (m.peers||[]).forEach(addPeer); updateCount(); tryPendingAccept(); }
+    if(m.t==='welcome'){ myId=m.id; if(m.admin && !myAdmin){ myAdmin=true; buildHero(opts); } if(m.nick && m.nick!==opts.nick) document.getElementById('hudNick').textContent=m.nick+' 님'; (m.peers||[]).forEach(addPeer); updateCount(); tryPendingAccept(); }
     else if(m.t==='join'){ addPeer(m); tryPendingAccept(); }
     else if(m.t==='peer'){ const pr=peers.get(m.id); if(pr){ pr.target={x:m.x,z:m.z,y:m.y||0,ry:m.ry}; pr.av.setSit(m.p==='sit'); } else { const h=hiddenPeers.get(m.id); if(h) h.state={x:m.x,z:m.z,y:m.y||0,ry:m.ry,p:m.p}; } }
     else if(m.t==='emote'){ const pr=peers.get(m.id); if(pr) pr.av.emote(m.e); }
@@ -860,6 +890,7 @@ function openCard(profile){ document.exitPointerLock?.(); reqTarget=profile; doc
   const meta=document.getElementById('cardMeta');
   const reqBtn=document.getElementById('cardReq');
   if(profile.npc){ meta.innerHTML='분수대 광장에 사는 키키예요.<br>광장 구경, 소개팅 이야기, 대화 연습까지<br>편하게 말 걸어 보세요.'; reqBtn.textContent='키키와 대화하기'; reqBtn.hidden=false; }
+  else if(profile.admin){ meta.innerHTML='<span class="npc-tag" style="background:#1f1b4d;color:#ffd65a">키링 월드 운영자</span><br>궁금한 점이나 불편한 점이 있으면 편하게 말 걸어 주세요.'; reqBtn.textContent='운영자에게 1:1 문의'; reqBtn.hidden=false; }
   else { meta.textContent=(profile.gender?profile.gender+' · ':'')+'지금 광장에 접속 중'; reqBtn.textContent='1:1 대화 신청'; reqBtn.hidden=false; }
   document.getElementById('cardSafety').hidden=!!profile.npc;
   card.hidden=false; }
@@ -1054,7 +1085,7 @@ async function submitJoin(){
     if(r.ok && j.ok){ member=true; if(j.profile){ profileNick=j.profile.nick; nickLockedUntil=j.profile.nickLockedUntil||null; updateNickLock(); } try{ localStorage.removeItem('kl_plaza_pending'); }catch(e){} joinBox.hidden=true; toast('가입 완료! 환영해요'); tryPendingAccept(); const a=pendingAfterJoin; pendingAfterJoin=null; if(a) setTimeout(a,300); return true; }
     if(r.status===429 && j.nick){ opts.nick=j.nick; nickInput.value=j.nick; profileNick=j.nick; nickLockedUntil=j.nickLockedUntil||null; return submitJoin(); }
     if(r.status===409){ promptNickFix(); return false; }
-    if(j.error==='nick_bad'||j.error==='nick_jamo'){ promptNickFix(NICK_MSG[j.error==='nick_bad'?'bad':'jamo']+'.'); return false; }
+    if(j.error==='nick_bad'||j.error==='nick_jamo'||j.error==='nick_reserved'){ promptNickFix(NICK_MSG[j.error==='nick_bad'?'bad':j.error==='nick_reserved'?'reserved':'jamo']+'.'); return false; }
     if(j.error==='region_required'||j.error==='birthYear_invalid'||j.error==='nick_required'){ toast('기본 정보를 먼저 입력해 주세요'); return false; }
     toast('가입 처리 중 문제가 생겼어요. 다시 시도해 주세요'); return false;
   }catch(e){ toast('네트워크 오류예요. 잠시 후 다시 시도해 주세요'); return false; }
@@ -1069,7 +1100,7 @@ async function saveNickChange(){
     if(r.ok && j.ok){ profileNick=j.profile.nick; nickLockedUntil=j.profile.nickLockedUntil||null; toast('닉네임을 '+profileNick+'(으)로 바꿨어요'); return true; }
     if(r.status===429){ nickLockedUntil=j.nickLockedUntil||nickLockedUntil; if(j.nick) profileNick=j.nick; updateNickLock(); toast('닉네임은 '+lockLeftText(nickLockedUntil-Date.now())+' 후 바꿀 수 있어요'); return false; }
     if(r.status===409){ toast('이미 사용 중인 닉네임이에요'); nickInput.focus(); return false; }
-    if(j.error==='nick_bad'||j.error==='nick_jamo'){ toast(NICK_MSG[j.error==='nick_bad'?'bad':'jamo']); nickInput.focus(); return false; }
+    if(j.error==='nick_bad'||j.error==='nick_jamo'||j.error==='nick_reserved'){ toast(NICK_MSG[j.error==='nick_bad'?'bad':j.error==='nick_reserved'?'reserved':'jamo']); nickInput.focus(); return false; }
     toast('닉네임 저장 실패: '+(j.error||r.status)); return false;
   }catch(e){ toast('네트워크 오류예요'); return false; }
 }
@@ -1186,6 +1217,7 @@ function tick(){
   animTaxi(clock.elapsedTime);
   { const now=performance.now(); for(const par of [hero, ...[...peers.values()].map(p=>p.root)]){ const sp=par.userData.say; if(sp && now>sp.userData.until){ par.remove(sp); sp.material.map.dispose(); sp.material.dispose(); par.userData.say=null; } } }
   for(const o of spinners) o.rotation.y+=dt*o.userData.kl_spin;
+  for(const a of auras){ a.rotation.y+=dt*0.8; a.children[0].material.opacity=0.55+Math.sin(clock.elapsedTime*2.5)*0.2; }
   for(const b of bobbers) b.o.position.y=b.y+Math.sin(clock.elapsedTime*b.w+b.p)*b.a;
   // 키키(AI): 둥실둥실 + 가까이 오면 쳐다보기
   { const u=npcGroup.userData; u.phase+=dt; u.av.update(dt,false); u.root.position.y=Math.sin(u.phase*2)*0.04; u.halo.rotation.y=Math.sin(u.phase*1.3)*0.6; u.halo.children[1].rotation.z=Math.sin(u.phase*2.2)*0.3;

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { adminDb, adminAuth } from '@/lib/firebaseAdmin';
 import { FieldValue } from 'firebase-admin/firestore';
-import { nickProblem } from '../../../../../public/plaza/badwords.js';
+import { nickProblem, isReservedNick } from '../../../../../public/plaza/badwords.js';
 import { sanitizeLook, LOCKED_ACC } from '../../../../../public/plaza/look.js';
 import { plazaKey } from '@/lib/plazaKey';
 
@@ -42,6 +42,10 @@ export async function POST(req: Request) {
     const np = nickProblem(nick);
     if (np === 'jamo') return NextResponse.json({ error: 'nick_jamo' }, { status: 400 });
     if (np === 'bad') return NextResponse.json({ error: 'nick_bad' }, { status: 400 });
+    if (isReservedNick(nick)) {
+      const role = (await adminDb.doc(`users/${uid}`).get()).data()?.role;
+      if (role !== 'admin' && role !== 'super_admin') return NextResponse.json({ error: 'nick_reserved' }, { status: 400 });
+    }
     if (!region) return NextResponse.json({ error: 'region_required' }, { status: 400 });
     if (!/^(19|20)\d\d$/.test(birthYear)) return NextResponse.json({ error: 'birthYear_invalid' }, { status: 400 });
 
