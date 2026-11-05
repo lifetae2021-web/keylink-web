@@ -54,8 +54,8 @@ def cube(bm, x0, y0, z0, x1, y1, z1):
     b = bm_box(x1 - x0, y1 - y0, z1 - z0); bmesh.ops.translate(b, vec=((x0 + x1) / 2, (y0 + y1) / 2, z0), verts=b.verts)
     me = bpy.data.meshes.new('_c'); b.to_mesh(me); bm.from_mesh(me); b.free(); bpy.data.meshes.remove(me)
 
-def voxel_slab(cells, z0, z1, size=1.0):
-    """칸 집합(정수 i,j) → 위·아래·바깥 옆면만 있는 블록 판(안쪽 면은 만들지 않아 가볍다)."""
+def voxel_slab(cells, z0, z1, size=1.0, top=True, bottom=False, below=None):
+    """칸 집합(정수 i,j) → 바깥 옆면 + 윗면(top) + 아랫면(bottom, below에 없는 칸만 = 아래층보다 튀어나온 부분)만 있는 블록 판."""
     bm = bmesh.new(); vcache = {}
     def V(x, y, z):
         k = (round(x, 4), round(y, 4), round(z, 4))
@@ -64,7 +64,8 @@ def voxel_slab(cells, z0, z1, size=1.0):
     s = size
     for (i, j) in cells:
         x0, y0, x1, y1 = i * s, j * s, (i + 1) * s, (j + 1) * s
-        bm.faces.new((V(x0, y0, z1), V(x1, y0, z1), V(x1, y1, z1), V(x0, y1, z1)))
+        if top: bm.faces.new((V(x0, y0, z1), V(x1, y0, z1), V(x1, y1, z1), V(x0, y1, z1)))
+        if bottom and not (below and (i, j) in below): bm.faces.new((V(x0, y1, z0), V(x1, y1, z0), V(x1, y0, z0), V(x0, y0, z0)))
         if (i - 1, j) not in cells: bm.faces.new((V(x0, y1, z0), V(x0, y0, z0), V(x0, y0, z1), V(x0, y1, z1)))
         if (i + 1, j) not in cells: bm.faces.new((V(x1, y0, z0), V(x1, y1, z0), V(x1, y1, z1), V(x1, y0, z1)))
         if (i, j - 1) not in cells: bm.faces.new((V(x0, y0, z0), V(x1, y0, z0), V(x1, y0, z1), V(x0, y0, z1)))

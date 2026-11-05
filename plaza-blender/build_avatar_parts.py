@@ -331,3 +331,22 @@ def export_avatar(style):
     if tex:   # Blender 미리보기용으로 다시 연결
         b = [n for n in nt.nodes if n.type == 'BSDF_PRINCIPLED'][0]; nt.links.new(tex.outputs['Color'], b.inputs['Base Color'])
     return os.path.getsize(dst)
+
+
+# ── 열쇠 보상 액세서리(귀여운): 황금 키링(누적 3일) · 왕관(누적 10일) ──
+def build_reward_accessories(P, arm, coll, prefix):
+    gold = bpy.data.materials['FIX_gold']; gem = mat('FIX_gem', (1.0, 0.45, 0.7), 0.3, emit=(1.0, 0.3, 0.6), emit_str=0.6); made = []
+    # 왕관: 머리카락 위 금색 띠 + 뾰족 5개 + 보석
+    top = P['head_c'] + P['head_r'] * P['head_scale'][2] * 0.9; r = P['head_r'] * 0.62
+    parts = [bm_xform(bm_ring(r, r - 0.025, 0.09, seg=24), loc=(0, 0, top - 0.02))]
+    for i in range(5):
+        a = 2 * math.pi * i / 5; parts.append(bm_xform(bm_cyl(0.04, 0.0, 0.11, seg=6), loc=(r * math.sin(a) * 0.96, -r * math.cos(a) * 0.96, top + 0.07)))
+    o = obj_from_bm('%s_ACC_crown' % prefix, bm_merge(*parts), gold, coll); rigid(o, arm, 'head'); o['kl_part'] = 'acc'; o['kl_type'] = 'crown'; made.append(o.name)
+    g = obj_from_bm('%s_ACC_crown_gem' % prefix, bm_xform(bm_ball(0.03, sub=1), loc=(0, -r - 0.005, top + 0.025)), gem, coll); rigid(g, arm, 'head'); g['kl_part'] = 'acc'; g['kl_type'] = 'crown'; made.append(g.name)
+    # 황금 키링: 오른쪽 허리춤에 달린 고리 + 열쇠
+    x = -P['r']['pelvis'][0] * 0.62; z = P['pelvis'] - 0.02; y = -P['r']['pelvis'][1] * 0.35
+    kp = [bm_xform(bm_torus(0.06, 0.012, seg=16, rseg=5), loc=(x, y, z), rot=(0, math.pi / 2, 0)),
+          bm_xform(bm_box(0.012, 0.02, 0.12), loc=(x, y, z - 0.17)), bm_xform(bm_torus(0.025, 0.01, seg=12, rseg=4), loc=(x, y, z - 0.06), rot=(0, math.pi / 2, 0)),
+          bm_xform(bm_box(0.012, 0.04, 0.015), loc=(x, y - 0.02, z - 0.15))]
+    k = obj_from_bm('%s_ACC_goldkeyring' % prefix, bm_merge(*kp), gold, coll); rigid(k, arm, 'hips'); k['kl_part'] = 'acc'; k['kl_type'] = 'goldkeyring'; made.append(k.name)
+    return made

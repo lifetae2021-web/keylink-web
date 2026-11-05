@@ -23,6 +23,7 @@ export class PlazaRegistry {
       s.exec('CREATE TABLE IF NOT EXISTS visits(id INTEGER PRIMARY KEY AUTOINCREMENT, room TEXT, tid TEXT, nick TEXT, member INTEGER, uid TEXT, enter_at INTEGER, leave_at INTEGER)');
       s.exec('CREATE INDEX IF NOT EXISTS visits_enter ON visits(enter_at)');
       s.exec('CREATE TABLE IF NOT EXISTS conc(bucket INTEGER PRIMARY KEY, peak INTEGER, last INTEGER)');
+      s.exec('CREATE TABLE IF NOT EXISTS keyclaims(day TEXT, uid TEXT, kid TEXT, at INTEGER, PRIMARY KEY(day, uid, kid))');   // 황금 열쇠(회원, 한국 날짜)
       this.sqlReady = true;
     }
     return s;
@@ -39,6 +40,7 @@ export class PlazaRegistry {
     if (Math.random() > 0.02) return;
     this.sql().exec('DELETE FROM visits WHERE enter_at < ?', now - VISIT_TTL);
     this.sql().exec('DELETE FROM conc WHERE bucket < ?', Math.floor((now - CONC_TTL) / BUCKET));
+    this.sql().exec('DELETE FROM keyclaims WHERE at < ?', now - 40 * DAY);
   }
   roomName(prefix, i) { return prefix + '-' + String(i).padStart(2, '0'); }
 
@@ -181,6 +183,18 @@ export class PlazaRegistry {
       for (const id of this.identsOf(sess[b.tid])) delete bans[id];
       await this.state.storage.put('bans', bans);
       return Response.json({ ok: true });
+    }
+    // 황금 열쇠 기록(방에서 위치 확인 후 호출) / 오늘 몇 개 모았는지(Next 서버가 보상 줄 때 확인)
+    if (url.pathname === '/key') {
+      const b = await request.json();
+      this.sql().exec('INSERT OR IGNORE INTO keyclaims(day, uid, kid, at) VALUES (?, ?, ?, ?)', String(b.day), String(b.uid), String(b.id), now);
+      this.cleanupOld(now);
+      return Response.json({ n: this.rows('SELECT COUNT(*) AS n FROM keyclaims WHERE day = ? AND uid = ?', String(b.day), String(b.uid))[0].n });
+    }
+    if (url.pathname === '/admin/keys') {
+      const b = await request.json();
+      const ids = this.rows('SELECT kid FROM keyclaims WHERE day = ? AND uid = ?', String(b.day), String(b.uid)).map((r) => r.kid);
+      return Response.json({ n: ids.length, ids });
     }
     if (url.pathname === '/admin/status') {
       const b = await request.json();

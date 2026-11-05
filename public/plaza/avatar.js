@@ -58,7 +58,7 @@ export function drawFace(cv, look) {
   else { g.arc(mx, my - 6 * k, 10 * k, Math.PI * 0.2, Math.PI * 0.8); g.stroke(); }
 }
 
-const ACT = { idle: 'idle', walk: 'walk', wave: 'wave', sit: 'sit', dance: 'dance' };
+const ACT = { idle: 'idle', walk: 'walk', wave: 'wave', sit: 'sit', dance: 'dance', run: 'run' };
 let _heart = null;   // 하트 이모트 그림(한 번만 그려서 같이 씀)
 function heartTex() {
   if (_heart) return _heart;
@@ -107,12 +107,12 @@ export function createAvatar(rawLook, { faceSize = 512 } = {}) {
       s.userData = { t: -i * 0.18, vx: (Math.random() - 0.5) * 0.3 }; group.add(s); hearts.push(s);
     }
   }
-  self.update = (dt, moving) => {
+  self.update = (dt, moving, running = false) => {
     for (const h of [...hearts]) { const u = h.userData; u.t += dt; if (u.t < 0) { h.visible = false; continue; } h.visible = true;
       h.position.y += dt * 0.7; h.position.x += u.vx * dt; h.material.opacity = Math.max(0, 1 - u.t / 1.6);
       if (u.t > 1.6) { group.remove(h); h.material.dispose(); hearts.splice(hearts.indexOf(h), 1); } }
     if (!self.mixer) return;
-    if (moving) { busy = null; self.play('walk'); }
+    if (moving) { busy = null; self.play(running && self.actions.run ? 'run' : 'walk', 0.18); }
     else if (!busy) self.play('idle');
     self.mixer.update(dt);
   };
@@ -138,7 +138,11 @@ export function createAvatar(rawLook, { faceSize = 512 } = {}) {
       }
     });
     self.mixer = new THREE.AnimationMixer(model);
-    for (const clip of gltf.animations) { const key = clip.name.replace(/^[a-z]+_/, ''); if (ACT[key]) self.actions[key] = self.mixer.clipAction(clip); }
+    // 두 그림체가 뼈 이름이 같아서 파일에 다른 그림체 동작도 같이 들어 있다 → 자기 그림체(style_) 동작을 우선
+    for (const clip of gltf.animations) {
+      const m = clip.name.match(/^([a-z]+)_(.+)$/); if (!m || !ACT[m[2]]) continue;
+      if (m[1] === style || !self.actions[m[2]]) self.actions[m[2]] = self.mixer.clipAction(clip);
+    }
     if (self.actions.wave) self.actions.wave.setLoop(THREE.LoopRepeat, 2);
     if (self.actions.dance) self.actions.dance.setLoop(THREE.LoopRepeat, 3);
     self.mixer.addEventListener('finished', (e) => { if (e.action === self.actions.wave || e.action === self.actions.dance) { busy = null; self.play('idle'); } });

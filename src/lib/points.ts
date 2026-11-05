@@ -130,6 +130,11 @@ function addMemberLot(tx: FirebaseFirestore.Transaction, uid: string, amount: nu
   tx.update(adminDb.doc(`users/${uid}`), { points: FieldValue.increment(amount) });
 }
 
+/** 다른 기능(키링 월드 황금 열쇠 등)이 자기 트랜잭션 안에서 회원 포인트를 적립할 때 */
+export function earnMemberPointsInTx(tx: FirebaseFirestore.Transaction, uid: string, amount: number, source: string, reason: string) {
+  addMemberLot(tx, uid, amount, source, reason);
+}
+
 async function readSpendableLots(tx: FirebaseFirestore.Transaction, uid: string) {
   const snap = await tx.get(adminDb.collection(`users/${uid}/pointHistory`).where('remaining', '>', 0));
   const now = Date.now();

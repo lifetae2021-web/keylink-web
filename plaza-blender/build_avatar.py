@@ -251,8 +251,18 @@ def build_actions(arm, style):
                 'lower_leg.L': [((1, 0, 0), 18 * max(0, b))], 'lower_leg.R': [((1, 0, 0), 18 * max(0, -b))],
                 'upper_leg.L': [((1, 0, 0), -10 * max(0, b))], 'upper_leg.R': [((1, 0, 0), -10 * max(0, -b))],
                 'hips_up': 0.03 * abs(b)}
+    def run(f, t):     # 달리기: 다리·팔을 크게, 팔꿈치 굽히고 몸을 앞으로 기울임(0.67초 루프)
+        s_ = S(T * t); c = math.cos(T * t)
+        return {'upper_leg.L': [((1, 0, 0), -48 * s_)], 'upper_leg.R': [((1, 0, 0), 48 * s_)],
+                'lower_leg.L': [((1, 0, 0), 20 + 55 * max(0, c))], 'lower_leg.R': [((1, 0, 0), 20 + 55 * max(0, -c))],
+                'foot.L': [((1, 0, 0), -15 * s_)], 'foot.R': [((1, 0, 0), 15 * s_)],
+                'upper_arm.L': [((1, 0, 0), 50 * s_)], 'upper_arm.R': [((1, 0, 0), -50 * s_)],
+                'lower_arm.L': [((1, 0, 0), -70)], 'lower_arm.R': [((1, 0, 0), -70)],
+                'chest': [((1, 0, 0), 9), ((0, 0, 1), -6 * s_)], 'hips': [((0, 0, 1), 6 * s_)], 'head': [((1, 0, 0), -6)],
+                'hips_up': 0.05 * abs(S(T * t))}
     return [make_action(arm, style + '_idle', 48, idle), make_action(arm, style + '_walk', 24, walk),
-            make_action(arm, style + '_wave', 36, wave), make_action(arm, style + '_sit', 48, sit), make_action(arm, style + '_dance', 48, dance)]
+            make_action(arm, style + '_wave', 36, wave), make_action(arm, style + '_sit', 48, sit), make_action(arm, style + '_dance', 48, dance),
+            make_action(arm, style + '_run', 16, run)]
 
 def chest_weight_fix(body, P):
     """윗몸통 가운데가 팔뼈를 따라가면 팔을 흔들 때 가슴이 찌그러진다 → chest 뼈로 옮김."""

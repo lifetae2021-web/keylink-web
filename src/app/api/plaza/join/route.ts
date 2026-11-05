@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { adminDb, adminAuth } from '@/lib/firebaseAdmin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { nickProblem } from '../../../../../public/plaza/badwords.js';
-import { sanitizeLook } from '../../../../../public/plaza/look.js';
+import { sanitizeLook, LOCKED_ACC } from '../../../../../public/plaza/look.js';
 import { plazaKey } from '@/lib/plazaKey';
 
 // 광장(플라자) 회원 가입/프로필 저장
@@ -32,6 +32,11 @@ export async function POST(req: Request) {
     const intro = str(body.intro, 40);
     // 캐릭터 외모(look v2): 허용된 값만 남김(공용 규칙 public/plaza/look.js)
     const look = sanitizeLook({ ...(body.look && typeof body.look === 'object' ? body.look : {}), gender });
+    // 열쇠 보상 꾸미기(황금 키링·왕관)는 잠금 해제한 회원만
+    if (look.acc.some((a: string) => a in LOCKED_ACC)) {
+      const unlocks: string[] = (await adminDb.doc(`plazaKeys/${uid}`).get()).data()?.unlocks || [];
+      look.acc = look.acc.filter((a: string) => !(a in LOCKED_ACC) || unlocks.includes(a));
+    }
 
     if (!nick) return NextResponse.json({ error: 'nick_required' }, { status: 400 });
     const np = nickProblem(nick);

@@ -1,6 +1,6 @@
 {
   "name": "keylink",
-  "version": "1.2.26",
+  "version": "1.2.27",
   "private": true,
   "scripts": {
     "dev": "NODE_OPTIONS='--dns-result-order=ipv4first' next dev --webpack -p 3000",

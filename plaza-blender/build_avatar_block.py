@@ -224,3 +224,20 @@ def build_block_accessories(coll, arm):
         B.add(bone, x - 0.03, -0.175, z - 0.03, x + 0.03, -0.155, z + 0.03); B.add(bone, -x - 0.03, 0.155, z - 0.03, -x + 0.03, 0.175, z + 0.03)
     B.add('hips', 0.2, -0.2, 0.62, 0.36, -0.08, 0.76); mk('crossbag', B)
     return made
+
+
+def build_block_reward_accessories(coll, arm):
+    gold = bpy.data.materials['FIX_gold']; gem = bpy.data.materials['FIX_gem']; X, Y, z1 = HEAD['hx'], HEAD['hy'], HEAD['z1']; made = []
+    B = Boxes(); t = 0.035; h = 0.1; zb = z1 + 0.04   # 네모 왕관: 띠 + 모서리·가운데 뾰족
+    B.add('head', -X + 0.04, -Y + 0.04, zb, X - 0.04, -Y + 0.04 + t, zb + h); B.add('head', -X + 0.04, Y - 0.04 - t, zb, X - 0.04, Y - 0.04, zb + h)
+    B.add('head', -X + 0.04, -Y + 0.04, zb, -X + 0.04 + t, Y - 0.04, zb + h); B.add('head', X - 0.04 - t, -Y + 0.04, zb, X - 0.04, Y - 0.04, zb + h)
+    for x in (-X + 0.04, -0.02, X - 0.04 - 0.04):
+        for y in (-Y + 0.04, Y - 0.04 - t): B.add('head', x, y, zb + h, x + 0.04, y + t, zb + h + 0.07)
+    o = part(B, 'block_ACC_crown', coll, arm, gold, 'acc', 'crown', keys=False); made.append(o.name)
+    G = Boxes(); G.add('head', -0.03, -Y + 0.02, zb + 0.03, 0.03, -Y + 0.045, zb + 0.08); made.append(part(G, 'block_ACC_crown_gem', coll, arm, gem, 'acc', 'crown', keys=False).name)
+    K = Boxes(); x = -0.27; z = 0.74   # 오른쪽 허리춤 네모 고리 + 열쇠
+    K.add('hips', x - 0.012, -0.11, z - 0.01, x, -0.02, z + 0.012); K.add('hips', x - 0.012, -0.11, z - 0.1, x, -0.02, z - 0.088)
+    K.add('hips', x - 0.012, -0.11, z - 0.1, x, -0.098, z + 0.012); K.add('hips', x - 0.012, -0.032, z - 0.1, x, -0.02, z + 0.012)
+    K.add('hips', x - 0.012, -0.075, z - 0.24, x, -0.055, z - 0.1); K.add('hips', x - 0.012, -0.1, z - 0.22, x, -0.055, z - 0.2)
+    made.append(part(K, 'block_ACC_goldkeyring', coll, arm, gold, 'acc', 'goldkeyring').name)
+    return made

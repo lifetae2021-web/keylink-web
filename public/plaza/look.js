@@ -8,7 +8,7 @@ export const LOOK = {
   top: ['tee', 'long', 'hoodie', 'shirt', 'dress'],
   bottom: ['pants', 'shorts', 'skirt'],
   shoes: ['sneakers', 'boots'],
-  acc: ['glasses', 'cap', 'beanie', 'earrings', 'crossbag'],
+  acc: ['glasses', 'cap', 'beanie', 'earrings', 'crossbag', 'goldkeyring', 'crown'],
   eye: ['round', 'sparkle', 'smile', 'sleepy', 'sharp'],
   brow: ['soft', 'straight', 'arched', 'thick'],
   mouth: ['smile', 'grin', 'small', 'cat', 'neutral'],
@@ -17,14 +17,16 @@ export const LOOK = {
   sliders: { height: [-1, 1, 0], build: [-1, 1, 0], female: [0, 1, 0], long: [0, 1, 0], vline: [0, 1, 0.3], cheek: [0, 1, 0.2],
              eyeSize: [-1, 1, 0], eyeGap: [-1, 1, 0], eyeY: [-1, 1, 0], blush: [0, 1, 0.6] },
 };
-export const HATS = ['cap', 'beanie'];
+export const HATS = ['cap', 'beanie', 'crown'];
+// 황금 열쇠를 모은 날(누적)로 여는 꾸미기 — 잠금 해제 여부는 서버(plazaKeys/{uid}.unlocks)가 판단
+export const LOCKED_ACC = { goldkeyring: 3, crown: 10 };
 
 // 성별에 따라 편집 화면에 보여 줄 선택지(저장·검사는 전체 목록 기준이라 예전 캐릭터도 깨지지 않음)
 export const GENDER_OPTIONS = {
   male:   { hair: ['short', 'dandy', 'twoblock', 'spiky', 'bob'], top: ['tee', 'long', 'hoodie', 'shirt'], bottom: ['pants', 'shorts'],
-            shoes: ['sneakers', 'boots'], acc: ['glasses', 'cap', 'beanie', 'crossbag'] },
+            shoes: ['sneakers', 'boots'], acc: ['glasses', 'cap', 'beanie', 'crossbag', 'goldkeyring', 'crown'] },
   female: { hair: ['long', 'bob', 'ponytail', 'bun', 'short'], top: ['tee', 'long', 'hoodie', 'shirt', 'dress'], bottom: ['pants', 'shorts', 'skirt'],
-            shoes: ['sneakers', 'boots'], acc: ['glasses', 'earrings', 'cap', 'beanie', 'crossbag'] },
+            shoes: ['sneakers', 'boots'], acc: ['glasses', 'earrings', 'cap', 'beanie', 'crossbag', 'goldkeyring', 'crown'] },
 };
 
 // 성별을 바꾸면 그 성별에 없는 선택은 기본값으로 바꾼다(색은 그대로)
