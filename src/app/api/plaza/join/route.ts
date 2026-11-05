@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { adminDb, adminAuth } from '@/lib/firebaseAdmin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { nickProblem } from '../../../../../public/plaza/badwords.js';
+import { sanitizeLook } from '../../../../../public/plaza/look.js';
 import { plazaKey } from '@/lib/plazaKey';
 
 // 광장(플라자) 회원 가입/프로필 저장
@@ -29,13 +30,8 @@ export async function POST(req: Request) {
     const birthYear = str(body.birthYear, 4);
     const job = str(body.job, 20);
     const intro = str(body.intro, 40);
-    const look = (body.look && typeof body.look === 'object') ? {
-      face: str(body.look.face, 16),
-      hair: str(body.look.hair, 16),
-      hairColor: str(body.look.hairColor, 9),
-      eye: str(body.look.eye, 16),
-      clothes: str(body.look.clothes, 9),
-    } : {};
+    // 캐릭터 외모(look v2): 허용된 값만 남김(공용 규칙 public/plaza/look.js)
+    const look = sanitizeLook({ ...(body.look && typeof body.look === 'object' ? body.look : {}), gender });
 
     if (!nick) return NextResponse.json({ error: 'nick_required' }, { status: 400 });
     const np = nickProblem(nick);

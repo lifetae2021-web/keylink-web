@@ -8,6 +8,7 @@
 //   ip/dev : IP·기기 해시 — 입장 금지에만 쓰고 다른 사람에게는 절대 보내지 않음
 //   tid  : 신고·차단 대상 ID = 'k:'+key(회원) 또는 'g:'+gkey(손님)
 import { nickProblem } from '../../public/plaza/badwords.js';
+import { sanitizeLook } from '../../public/plaza/look.js';
 import { shortHash } from './hash.js';
 import { verifyFirebaseIdToken } from './firebaseToken.js';
 
@@ -132,7 +133,7 @@ export class PlazaRoom {
     if (m.t === 'hello') {
       a.nick = this.clean(m.nick || '손님', 12);
       if (nickProblem(a.nick)) a.nick = '손님'; // 비속어·자음만 닉네임 차단
-      a.look = (m.look && typeof m.look === 'object') ? m.look : {};
+      a.look = sanitizeLook(m.look); // 외모 정보만 허용값으로(다른 사람에게 그대로 전달되므로 출생연도·직업 등은 절대 통과시키지 않음)
       // 회원 uid는 클라이언트 주장을 믿지 않고, Firebase 로그인 토큰을 구글 공개키로 검증해서만 얻는다(위조 방지).
       a.uid = m.idToken ? await verifyFirebaseIdToken(m.idToken) : null;
       a.key = a.uid ? await shortHash('kl-plaza:', a.uid) : null;

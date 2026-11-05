@@ -5,7 +5,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { adminDb, adminAuth } from '@/lib/firebaseAdmin';
 import { hitLimit, peekLimit, clientIp } from '@/lib/rateLimit';
 import {
-  NPC_ID, NPC_NICK, NPC_DAILY_LIMIT, NPC_GUEST_DAILY_LIMIT, NPC_GUEST_GLOBAL_DAILY, NPC_HISTORY, NPC_SYSTEM_PROMPT,
+  NPC_ID, NPC_NICK, NPC_DAILY_LIMIT, NPC_GUEST_DAILY_LIMIT, NPC_GUEST_GLOBAL_DAILY, NPC_HISTORY, NPC_SYSTEM_PROMPT, NPC_STYLE_REMINDER,
   upcomingSessionsText, memoryBlock, foldOldMessagesIntoMemory,
 } from '@/lib/plazaNpc';
 
@@ -102,6 +102,7 @@ export async function POST(req: Request) {
         { type: 'text', text: NPC_SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }, // 고정 부분 캐싱
         ...(memory ? [{ type: 'text' as const, text: memory }] : []),                     // 장기 기억(가끔 바뀜)
         { type: 'text', text: sessionsText },                                            // 바뀌는 일정은 캐시 뒤에
+        { type: 'text', text: NPC_STYLE_REMINDER },                                      // 말투 다짐은 맨 끝에
       ],
       messages,
       output_config: { effort: 'low' }, // 잡담·안내는 낮은 노력으로 충분
