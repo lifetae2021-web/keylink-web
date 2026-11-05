@@ -49,10 +49,10 @@ export async function POST(req: Request) {
     const np = nickProblem(nick);
     if (np === 'jamo') return NextResponse.json({ error: 'nick_jamo' }, { status: 400 });
     if (np === 'bad') return NextResponse.json({ error: 'nick_bad' }, { status: 400 });
-    if (isReservedNick(nick)) {
-      const role = (await adminDb.doc(`users/${uid}`).get()).data()?.role;
-      if (role !== 'admin' && role !== 'super_admin') return NextResponse.json({ error: 'nick_reserved' }, { status: 400 });
-    }
+    // 관리자는 예약 닉네임(관리자·운영자 등)도 쓸 수 있고 닉네임 변경 잠금도 없다
+    const role = (await adminDb.doc(`users/${uid}`).get()).data()?.role;
+    const isStaff = role === 'admin' || role === 'super_admin';
+    if (isReservedNick(nick) && !isStaff) return NextResponse.json({ error: 'nick_reserved' }, { status: 400 });
     if (!region) return NextResponse.json({ error: 'region_required' }, { status: 400 });
     if (!/^(19|20)\d\d$/.test(birthYear)) return NextResponse.json({ error: 'birthYear_invalid' }, { status: 400 });
 
@@ -70,10 +70,10 @@ export async function POST(req: Request) {
     const existed = prev.exists;
     const prevData = prev.data() || {};
 
-    // 닉네임은 한 번 정하면 24시간 동안 변경 불가
+    // 닉네임은 한 번 정하면 24시간 동안 변경 불가(관리자는 예외)
     const nickChanged = !existed || prevData.nickLower !== nickLower;
     const changedAtMs: number | null = prevData.nickChangedAt?.toMillis?.() ?? null;
-    if (existed && nickChanged && changedAtMs && Date.now() - changedAtMs < NICK_LOCK_MS) {
+    if (!isStaff && existed && nickChanged && changedAtMs && Date.now() - changedAtMs < NICK_LOCK_MS) {
       return NextResponse.json({
         error: 'nick_locked',
         nickLockedUntil: changedAtMs + NICK_LOCK_MS,
@@ -88,7 +88,7 @@ export async function POST(req: Request) {
       ...(existed ? {} : { createdAt: FieldValue.serverTimestamp() }),
     }, { merge: true });
 
-    const lockedFrom = nickChanged ? Date.now() : changedAtMs;
+    const lockedFrom = isStaff ? null : nickChanged ? Date.now() : changedAtMs;
     return NextResponse.json({
       ok: true,
       profile: { nick, gender, region, birthYear, job, intro, look, nickLockedUntil: lockedFrom ? lockedFrom + NICK_LOCK_MS : null },

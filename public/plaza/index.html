@@ -1016,7 +1016,7 @@ function connect(){
   ws.onmessage=(ev)=>{ let m; try{ m=JSON.parse(ev.data); }catch(e){ return; }
     if(m.t==='full'){ roomFullUntil=Date.now()+30000; toast('광장이 꽉 찼어요. 잠시 후 다시 연결할게요'); return; }
     if(m.t==='banned'){ showBanned(m.until, m.reason); return; }
-    if(m.t==='welcome'){ myId=m.id; if(m.admin && !myAdmin){ myAdmin=true; buildHero(opts); showVersion(); } if(m.nick && m.nick!==opts.nick) document.getElementById('hudNick').textContent=m.nick+' 님'; (m.peers||[]).forEach(addPeer); updateCount(); tryPendingAccept(); }
+    if(m.t==='welcome'){ myId=m.id; if(m.admin && !myAdmin){ myAdmin=true; buildHero(opts); showVersion(); } if(m.nick && m.nick!==opts.nick) document.getElementById('hudNick').textContent=m.nick+' 님'; (m.peers||[]).forEach(addPeer); updateCount(); tryPendingAccept(); checkNpcNews(); }
     else if(m.t==='join'){ if(peers.has(m.id)) removePeer(m.id); addPeer(m); tryPendingAccept(); }   // 다시 인사(모습·반려동물 변경)면 새로 그림
     else if(m.t==='peer'){ const pr=peers.get(m.id); if(pr){ pr.target={x:m.x,z:m.z,y:m.y||0,ry:m.ry}; pr.av.setSit(m.p==='sit'); } else { const h=hiddenPeers.get(m.id); if(h) h.state={x:m.x,z:m.z,y:m.y||0,ry:m.ry,p:m.p}; } }
     else if(m.t==='emote'){ const pr=peers.get(m.id); if(pr) pr.av.emote(m.e); }
@@ -1085,6 +1085,9 @@ async function openChat(p){ document.exitPointerLock?.(); currentChat=p; setNpcL
   if(!loaded) addMsg('them', p.npc ? '어, 안녕하세요! 저는 키키예요. 광장에서 처음 보는 얼굴이네요. 오늘은 구경 왔어요, 아니면 좋은 인연 찾으러 왔어요?' : '1:1 대화가 연결됐어요! 인사 나눠보세요');
   if(p.npc){ addMsg('sys', fbUser ? '키키는 AI 캐릭터예요\n회원은 하루 100번까지 대화할 수 있어요' : '키키는 AI 캐릭터예요\n비회원은 하루 30번, 회원은 100번까지\n대화할 수 있어요'); }
   else { if(!fbUser) addMsg('sys','로그인하지 않아 이 대화는 저장되지 않아요'); else if(!p.uid) addMsg('sys','상대가 회원 로그인 전이라 이 대화는 저장되지 않아요'); } }
+// 운영진 답을 키키가 받아 왔으면 입장할 때 한 번 알려 준다
+let npcNewsShown=false;
+async function checkNpcNews(){ if(npcNewsShown) return; try{ const r=fbUser ? await authFetch('/api/plaza/npc?peek=1') : await fetch('/api/plaza/npc?peek=1&dev='+encodeURIComponent(DEV_ID)); const j=await r.json().catch(()=>({})); if(j.news){ npcNewsShown=true; toast('키키가 운영진 답을 받아 왔어요'); } }catch(e){} }
 async function loadNpcHistory(){ try{ const r=fbUser ? await authFetch('/api/plaza/npc') : await fetch('/api/plaza/npc?dev='+encodeURIComponent(DEV_ID)); const j=await r.json().catch(()=>({})); setNpcLeft(j.remaining, j.limit); const msgs=j.messages||[]; if(!msgs.length) return false; for(const m of msgs) addMsg(m.mine?'me':'them', m.text, m.cta); return true; }catch(e){ return false; } }
 async function loadChatHistory(uid){ try{ const t=await fbUser.getIdToken(); const r=await fetch('/api/plaza/chat/history?with='+encodeURIComponent(uid),{ headers:{ Authorization:'Bearer '+t } }); const j=await r.json().catch(()=>({})); const msgs=j.messages||[]; if(!msgs.length) return false; for(const m of msgs) addMsg(m.mine?'me':'them', m.text, m.cta); return true; }catch(e){ return false; } }
 function addMsg(who,text,cta){ const d=document.createElement('div'); d.className='msg '+who; d.textContent=text; chatMsgs.appendChild(d);

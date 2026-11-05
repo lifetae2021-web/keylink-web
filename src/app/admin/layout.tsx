@@ -13,7 +13,7 @@ import {
   Settings, LogOut, Bell, Menu, X,
   ExternalLink, ChevronDown,
   FileText, Loader2, Timer, ChevronsLeft, ChevronsRight, MessageSquare,
-  UserPlus, ClipboardList, Clock, Zap, Lock, Crown, FileSpreadsheet, Coins, Activity
+  UserPlus, ClipboardList, Clock, Zap, Lock, Crown, FileSpreadsheet, Coins, Activity, HelpCircle
 } from 'lucide-react';
 import Link from 'next/link';
 import { format } from 'date-fns';
@@ -33,6 +33,7 @@ const PAGE_TITLE: Record<string, string> = {
   '/admin/plaza-stats':   '키링 월드 현황',
   '/admin/plaza-chats':   '키링 월드 대화',
   '/admin/plaza-reports': '키링 월드 신고',
+  '/admin/plaza-kiki':    '키키 질문',
   '/admin/excel-cleaner': '참여자 엑셀 정리',
 };
 
@@ -102,6 +103,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       { label: '현황',  icon: Activity,      path: '/admin/plaza-stats' },
       { label: '대화',  icon: MessageSquare, path: '/admin/plaza-chats' },
       { label: '신고',  icon: Bell,          path: '/admin/plaza-reports' },
+      { label: '키키 질문', icon: HelpCircle, path: '/admin/plaza-kiki' },
     ] },
     { label: '콘텐츠 편집',   icon: FileText,        path: '/admin/cms' },
     { label: '시스템 설정',   icon: Settings,        path: '/admin/settings',       superOnly: true },

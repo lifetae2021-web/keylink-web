@@ -6,7 +6,7 @@ import { adminDb, adminAuth } from '@/lib/firebaseAdmin';
 import { hitLimit, peekLimit, clientIp } from '@/lib/rateLimit';
 import {
   NPC_ID, NPC_NICK, NPC_DAILY_LIMIT, NPC_GUEST_DAILY_LIMIT, NPC_GUEST_GLOBAL_DAILY, NPC_HISTORY, NPC_SYSTEM_PROMPT, NPC_STYLE_REMINDER,
-  upcomingSessionsText, memoryBlock, foldOldMessagesIntoMemory,
+  upcomingSessionsText, memoryBlock, foldOldMessagesIntoMemory, npcFaqText, NPC_ASK_RE,
 } from '@/lib/plazaNpc';
 
 // 광장 AI NPC "키키"와 대화 — 회원(하루 NPC_DAILY_LIMIT회)과 비회원(기기당 NPC_GUEST_DAILY_LIMIT회) 모두 가능
@@ -46,10 +46,14 @@ async function guestGlobalOk(): Promise<boolean> {
 
 // 키키(AI) 대화 기록 + 오늘 남은 대화 횟수 불러오기(회원은 로그인 토큰, 비회원은 기기 id)
 export async function GET(req: Request) {
-  const who = await whoIs(req, new URL(req.url).searchParams.get('dev'));
+  const sp = new URL(req.url).searchParams;
+  const who = await whoIs(req, sp.get('dev'));
   if (!who) return NextResponse.json({ error: 'bad_identity' }, { status: 400 });
-  const snap = await adminDb.collection('plazaChats').doc(convOf(who.id, NPC_ID))
-    .collection('messages').orderBy('createdAt', 'asc').limitToLast(100).get();
+  const convRef = adminDb.collection('plazaChats').doc(convOf(who.id, NPC_ID));
+  // 운영진 답을 키키가 가져왔는지만 확인(입장할 때 알림용, 기록은 읽지 않음)
+  if (sp.get('peek') === '1') return NextResponse.json({ news: (await convRef.get()).get('npcUnread') === true });
+  const [conv, snap] = await Promise.all([convRef.get(), convRef.collection('messages').orderBy('createdAt', 'asc').limitToLast(100).get()]);
+  if (conv.get('npcUnread') === true) await convRef.update({ npcUnread: false });
   const messages = snap.docs.map((d) => {
     const x = d.data() as { from?: string; text?: string; cta?: string };
     return { text: x.text, mine: x.from !== NPC_ID, cta: x.cta || null };
@@ -80,10 +84,11 @@ export async function POST(req: Request) {
 
     const convId = convOf(uid, NPC_ID);
     const convRef = adminDb.collection('plazaChats').doc(convId);
-    const [convSnap, histSnap, sessionsText] = await Promise.all([
+    const [convSnap, histSnap, sessionsText, faqText] = await Promise.all([
       convRef.get(),
       convRef.collection('messages').orderBy('createdAt', 'asc').limitToLast(NPC_HISTORY).get(),
       upcomingSessionsText(),
+      npcFaqText().catch(() => null),
     ]);
     const memory = memoryBlock(convSnap.get('npcMemory'));
     const messages: Anthropic.Beta.BetaMessageParam[] = histSnap.docs.map((d) => {
@@ -101,6 +106,7 @@ export async function POST(req: Request) {
       system: [
         { type: 'text', text: NPC_SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }, // 고정 부분 캐싱
         ...(memory ? [{ type: 'text' as const, text: memory }] : []),                     // 장기 기억(가끔 바뀜)
+        ...(faqText ? [{ type: 'text' as const, text: faqText }] : []),                   // 운영진이 알려준 답(가끔 바뀜)
         { type: 'text', text: sessionsText },                                            // 바뀌는 일정은 캐시 뒤에
         { type: 'text', text: NPC_STYLE_REMINDER },                                      // 말투 다짐은 맨 끝에
       ],
@@ -119,7 +125,10 @@ export async function POST(req: Request) {
     }
     // [신청버튼] 표시 → 화면에 '신청하러 가기' 버튼. 채팅창은 링크를 못 누르므로 웹 주소는 지운다(주소가 있었으면 버튼으로 대신)
     let cta = /\[신청버튼\]/.test(reply) || /keylink\.kr/i.test(reply);
-    reply = reply.replace(/\[신청버튼\]/g, '').replace(/\(?\s*https?:\/\/[^\s)]+\s*\)?/g, '').replace(/[ \t]{2,}/g, ' ').replace(/ +([.,!?])/g, '$1').trim();
+    // [운영진전달: 요약] 표시 → 관리자 화면(키키 질문)으로 넘기고 표시는 지운다
+    const ask = reply.match(NPC_ASK_RE);
+    reply = reply.replace(new RegExp(NPC_ASK_RE.source, 'g'), '').replace(/\[신청버튼\]/g, '').replace(/\(?\s*https?:\/\/[^\s)]+\s*\)?/g, '').replace(/[ \t]{2,}/g, ' ').replace(/ +([.,!?])/g, '$1').trim();
+    if (!reply && ask) reply = '운영진한테 물어보고 답 받아 올게요. 답이 오면 여기로 알려 드릴게요.';
     if (!reply) { reply = '아래 버튼으로 신청할 수 있어요.'; cta = true; }
 
     // 저장(회원 1:1과 같은 구조 → 기록 이어짐, 관리자 열람 가능)
@@ -134,6 +143,19 @@ export async function POST(req: Request) {
       ...(who.guest ? { isGuest: true } : {}),
       ...(convSnap.exists ? {} : { createdAt: now }),
     }, { merge: true });
+
+    if (ask) {
+      const context = histSnap.docs.slice(-6).map((d) => {
+        const x = d.data() as { from?: string; text?: string };
+        return { who: x.from === NPC_ID ? 'npc' : 'user', text: String(x.text ?? '').slice(0, 300) };
+      });
+      await adminDb.collection('plazaNpcQuestions').add({
+        who: uid, guest: who.guest, convId, nick: myNick || null,
+        summary: String(ask[1] || '').trim().slice(0, 200) || text.slice(0, 200),
+        question: text, kikiReply: reply, context,
+        status: 'open', createdAt: FieldValue.serverTimestamp(),
+      });
+    }
 
     // 응답을 보낸 뒤 오래된 대화를 요약 메모로 접는다(사용자 대기시간에 영향 없음)
     after(() => foldOldMessagesIntoMemory(client, model, convId).catch((e) => console.error('[plaza npc] memory', e)));

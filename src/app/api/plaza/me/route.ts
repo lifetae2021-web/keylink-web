@@ -22,9 +22,11 @@ export async function GET(req: Request) {
     if (!data.key) { try { await snap.ref.set({ key: plazaKey(decoded.uid) }, { merge: true }); } catch {} }
     // 내부 필드는 빼고 광장 표시용만 돌려준다
     const { nickLower, uid, key, createdAt, updatedAt, nickChangedAt, ...profile } = data as Record<string, any>;
-    // 닉네임 변경 잠금(24시간) 해제 시각 — 예전 프로필(변경 기록 없음)은 잠금 없음
+    // 닉네임 변경 잠금(24시간) 해제 시각 — 예전 프로필(변경 기록 없음)과 관리자는 잠금 없음
     const changedMs: number | null = nickChangedAt?.toMillis?.() ?? null;
-    const nickLockedUntil = changedMs ? changedMs + 24 * 60 * 60 * 1000 : null;
+    const role = (await adminDb.doc(`users/${decoded.uid}`).get()).data()?.role;
+    const isStaff = role === 'admin' || role === 'super_admin';
+    const nickLockedUntil = changedMs && !isStaff ? changedMs + 24 * 60 * 60 * 1000 : null;
     return NextResponse.json({ profile: { ...profile, nickLockedUntil } });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'error';
