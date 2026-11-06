@@ -1373,7 +1373,7 @@ const card=document.getElementById('card'); let reqTarget=null;
 function openCard(profile){ document.exitPointerLock?.(); reqTarget=profile; document.getElementById('cardName').textContent=profile.nick;
   const meta=document.getElementById('cardMeta');
   const reqBtn=document.getElementById('cardReq');
-  if(profile.npc){ meta.innerHTML=(themeId==='xmas'?'겨울 마을 소원 트리 옆에 사는 키키예요.':'분수대 광장에 사는 키키예요.')+'<br>광장 구경, 소개팅 이야기, 대화 연습까지<br>편하게 말 걸어 보세요.'; reqBtn.textContent='키키와 대화하기'; reqBtn.hidden=false; }
+  if(profile.npc){ meta.innerHTML=(themeId==='xmas'?'크리스마스 키링 월드 소원 트리 옆에 사는 키키예요.':'분수대 광장에 사는 키키예요.')+'<br>광장 구경, 소개팅 이야기, 대화 연습까지<br>편하게 말 걸어 보세요.'; reqBtn.textContent='키키와 대화하기'; reqBtn.hidden=false; }
   else if(profile.admin){ meta.innerHTML='<span class="npc-tag" style="background:#1f1b4d;color:#ffd65a">키링 월드 개발자</span><br>궁금한 점이나 불편한 점이 있으면 편하게 말 걸어 주세요.'; reqBtn.textContent='개발자에게 1:1 문의'; reqBtn.hidden=false; }
   else { meta.textContent=(profile.gender?profile.gender+' · ':'')+'지금 광장에 접속 중'; reqBtn.textContent='1:1 대화 신청'; reqBtn.hidden=false; }
   document.getElementById('cardSafety').hidden=!!profile.npc;

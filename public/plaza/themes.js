@@ -4,7 +4,7 @@
 export const THEMES = {
   // map: 지도 전체를 바꾸는 테마(없으면 기본 village.glb) · file: 지도 위에 덧씌우는 장식 · night: 늘 저녁~밤 · wishPlace: 소원을 거는 곳 이름
   default: { label: '기본', desc: '사계절 하늘섬 광장', map: null, file: null, wishPlace: '분수대' },
-  xmas: { label: '크리스마스', desc: '설산 속 키링 겨울 마을 · 소원 트리 · 얼음 호수 · 마켓 거리', map: '/plaza/themes/xmas_map.glb', file: null, snow: true, night: true, wishPlace: '소원 트리' },
+  xmas: { label: '크리스마스', desc: '눈 내리는 크리스마스 키링 월드 · 소원 트리 · 얼음 호수 · 마켓 거리', map: '/plaza/themes/xmas_map.glb', file: null, snow: true, night: true, wishPlace: '소원 트리' },
 };
 export const DEFAULT_THEME = 'default';
 export const sanitizeTheme = (t) => (Object.prototype.hasOwnProperty.call(THEMES, t) ? t : DEFAULT_THEME);

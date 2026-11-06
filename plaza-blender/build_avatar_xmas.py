@@ -24,9 +24,10 @@ def build_chibi_xmas(P, arm, coll, prefix='chibi'):
     sx, sy, sz = P['head_scale']; r = P['head_r']; hc = P['head_c']
     # 산타 모자: 흰 털 테두리(머리 위쪽 둘레) + 뒤로 꺾인 빨간 원뿔 + 끝의 흰 방울
     lat = math.radians(24); zb = hc + r * sz * math.sin(lat); rb = r * math.cos(lat)
-    rim = bm_torus(1.0, 0.075, seg=36, rseg=8); bmesh.ops.scale(rim, vec=(rb * sx * 1.07, rb * sy * 1.07, 1.0), verts=rim.verts)
+    # 머리카락(머리 중심에서 약 0.41m)보다 확실히 바깥에 두어 겹쳐 지글거리지 않게
+    rim = bm_torus(1.0, 0.085, seg=36, rseg=8); bmesh.ops.scale(rim, vec=(rb * sx * 1.16, rb * sy * 1.16, 1.0), verts=rim.verts)
     bmesh.ops.translate(rim, vec=(0, 0, zb), verts=rim.verts)
-    cone = bm_cyl(rb * 1.02, 0.02, 0.62, seg=28)
+    cone = bm_cyl(rb * 1.13, 0.02, 0.62, seg=28)
     bmesh.ops.scale(cone, vec=(sx, sy, 1), verts=cone.verts)
     # 위로 갈수록 뒤(+Y)로 휘게
     for v in cone.verts:
@@ -68,13 +69,14 @@ def build_block_xmas(coll, arm):
     X, Y, z0, z1 = HEAD['hx'], HEAD['hy'], HEAD['z0'], HEAD['z1']; cz = (z0 + z1) / 2; made = []
     def mk(name, B, m, typ): made.append(part(B, 'block_ACC_' + name, coll, arm, m, 'acc', typ, keys=False).name)
     # 산타 모자: 흰 띠 + 위로 갈수록 작아지며 뒤로 넘어가는 빨간 상자 + 흰 방울
+    # 머리카락 상자(가로 ±0.37, 깊이 ±0.35, 정수리 z1+0.05~0.11)보다 크게 덮어야 머리카락이 모자를 뚫고 나오거나 겹쳐서 지글거리지 않는다
     R_ = Boxes(); W_ = Boxes()
-    W_.add('head', -X - 0.05, -Y - 0.05, z1 - 0.12, X + 0.05, Y + 0.05, z1 + 0.02)
-    R_.add('head', -X + 0.02, -Y + 0.02, z1 + 0.02, X - 0.02, Y - 0.02, z1 + 0.16)
-    R_.add('head', -0.2, -0.16, z1 + 0.16, 0.2, Y - 0.02, z1 + 0.28)
-    R_.add('head', -0.12, -0.02, z1 + 0.28, 0.12, Y + 0.06, z1 + 0.36)
-    R_.add('head', -0.07, Y - 0.02, z1 + 0.16, 0.07, Y + 0.14, z1 + 0.3)
-    W_.add('head', -0.075, Y + 0.08, z1 + 0.04, 0.075, Y + 0.23, z1 + 0.19)
+    W_.add('head', -0.41, -0.39, z1 - 0.08, 0.41, 0.39, z1 + 0.06)            # 흰 털 띠(머리카락보다 바깥)
+    R_.add('head', -0.38, -0.36, z1 + 0.06, 0.38, 0.36, z1 + 0.17)            # 정수리를 덮는 빨간 몸통
+    R_.add('head', -0.27, -0.2, z1 + 0.17, 0.27, 0.36, z1 + 0.29)
+    R_.add('head', -0.16, -0.04, z1 + 0.29, 0.16, 0.42, z1 + 0.37)
+    R_.add('head', -0.08, 0.36, z1 + 0.15, 0.08, 0.5, z1 + 0.31)             # 뒤로 꺾여 내려오는 끝
+    W_.add('head', -0.085, 0.44, z1 + 0.06, 0.085, 0.6, z1 + 0.22)           # 끝의 흰 방울
     mk('santa', R_, XM['red'], 'santa'); mk('santa_trim', W_, XM['white'], 'santa')
     # 루돌프 뿔: 머리 위 양옆 갈래 + 얼굴 가운데 빨간 코
     A = Boxes(); t = 0.035
