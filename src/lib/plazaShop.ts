@@ -97,7 +97,8 @@ export async function makeWish(uid: string, raw: unknown, ornRaw?: unknown) {
 export function guestKeyOf(dev: unknown): string | null {
   const d = String(dev ?? '');
   if (!/^[A-Za-z0-9-]{8,64}$/.test(d)) return null;
-  return crypto.createHash('sha256').update('kl-guest:' + d).digest('hex').slice(0, 16);
+  // 워커는 기기 번호를 앞 16자리만 쓴다(room.js clean(dev, 16)) — 같은 값으로 맞춰야 산 꾸미기가 확인된다
+  return crypto.createHash('sha256').update('kl-guest:' + d.slice(0, 16)).digest('hex').slice(0, 16);
 }
 const guestRef = (gk: string) => adminDb.doc(`plazaGuestWallets/${gk}`);
 

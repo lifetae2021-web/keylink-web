@@ -155,8 +155,17 @@ export class PlazaRoom {
       // 관리자: 로그인 토큰으로 검증된 uid가 PLAZA_ADMIN_UIDS(wrangler.toml)에 있을 때만. 운영자 사칭 닉네임은 일반 이용자에게 허용 안 함
       a.admin = !!a.uid && String(this.env.PLAZA_ADMIN_UIDS || '').split(',').map((x) => x.trim()).includes(a.uid);
       if (!a.admin && isReservedNick(a.nick)) a.nick = '손님';
-      // 잠금 꾸미기(열쇠 보상·상점)와 반려동물은 실제로 가진 회원만 — 웹 서버에 물어 확인(화면 조작 방지)
-      if (a.look.acc.some(isLockedAcc) || a.look.pet) {
+      // 같은 회원 계정이 이 방에 이미 있으면 먼저 들어온 창을 끊는다(나 자신과 1:1 대화하게 되는 중복 로그인 방지)
+      if (a.uid) {
+        for (const p of this.state.getWebSockets()) {
+          if (p === ws) continue;
+          const pa = this.attach(p);
+          if (pa && pa.uid === a.uid) { this.send(p, { t: 'dup' }); try { p.close(4004, 'dup'); } catch (e) {} }
+        }
+      }
+      // 잠금 꾸미기(열쇠 보상·상점)와 반려동물은 실제로 가진 사람만, 회원 인증 배지(재직·사진)는 회원만 — 웹 서버에 물어 확인(화면 조작 방지)
+      a.badges = null;
+      if (a.uid || a.look.acc.some(isLockedAcc) || a.look.pet) {
         let owned = { unlocks: [], pet: null };
         if (a.uid || a.dev) {   // 비회원은 기기 번호로 키링 월드 전용 지갑에서 산 꾸미기를 확인
           try {
@@ -166,6 +175,7 @@ export class PlazaRoom {
           } catch (e) {}
         }
         a.look.acc = a.look.acc.filter((x) => !isLockedAcc(x) || (owned.unlocks || []).includes(x));
+        a.badges = owned.badges || null;
         if (a.look.pet && !(owned.pet && owned.pet.id === a.look.pet.id)) delete a.look.pet;
         else if (a.look.pet) a.look.pet.name = owned.pet.name;
       }
@@ -188,10 +198,10 @@ export class PlazaRoom {
       for (const p of this.state.getWebSockets()) {
         if (p === ws) continue;
         const pa = this.attach(p);
-        if (pa && pa.nick) peers.push({ id: pa.id, nick: pa.nick, look: pa.look, state: pa.st, key: pa.key || null, gkey: pa.gkey || null, admin: !!pa.admin });
+        if (pa && pa.nick) peers.push({ id: pa.id, nick: pa.nick, look: pa.look, state: pa.st, key: pa.key || null, gkey: pa.gkey || null, admin: !!pa.admin, badges: pa.badges || null });
       }
       this.send(ws, { t: 'welcome', id: a.id, room: a.room, nick: a.nick, admin: !!a.admin, peers });
-      this.broadcast(ws, { t: 'join', id: a.id, nick: a.nick, look: a.look, state: a.st, key: a.key || null, gkey: a.gkey || null, admin: !!a.admin });
+      this.broadcast(ws, { t: 'join', id: a.id, nick: a.nick, look: a.look, state: a.st, key: a.key || null, gkey: a.gkey || null, admin: !!a.admin, badges: a.badges || null });
     } else if (m.t === 'pos') {
       a.st = { x: +m.x || 0, z: +m.z || 0, y: Math.max(-1, Math.min(12, +m.y || 0)), ry: +m.ry || 0, p: m.p === 'sit' ? 'sit' : '' }; // p: 앉아 있음(새로 들어온 사람도 앉은 모습으로 보이게 저장)
       this.save(ws, a);

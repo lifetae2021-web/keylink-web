@@ -15,10 +15,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ unlocks, pet: null });
   }
   if (!uid || typeof uid !== 'string') return NextResponse.json({ error: 'uid_required' }, { status: 400 });
-  const [k, p] = await Promise.all([adminDb.doc(`plazaKeys/${uid}`).get(), adminDb.doc(`plazaPets/${uid}`).get()]);
+  const [k, p, u] = await Promise.all([adminDb.doc(`plazaKeys/${uid}`).get(), adminDb.doc(`plazaPets/${uid}`).get(), adminDb.doc(`users/${uid}`).get()]);
   const unlocks: string[] = k.data()?.unlocks || [];
   const pd = p.data();
   const id = pd?.active as string | undefined;
   const pet = id && pd?.adopted?.[id] && currentAff(pd?.aff?.[id], pd?.affAt?.[id]) >= AFF.follow ? { id, name: String(pd.adopted[id]) } : null;
-  return NextResponse.json({ unlocks, pet });
+  // 인증 배지(공개되는 건 참/거짓뿐): 재직 = 증명 서류 제출 + 관리자 직업승인, 사진 = 사진 등록 + 회원 승인
+  const ud = u.data() || {};
+  const badges = { job: !!(ud.employmentProof || ud.verificationUrl) && ud.isJobReviewed === true, photo: Array.isArray(ud.photos) && ud.photos.length > 0 && ud.status === 'verified' };
+  return NextResponse.json({ unlocks, pet, badges });
 }
