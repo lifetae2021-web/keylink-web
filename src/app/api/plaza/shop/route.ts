@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { adminAuth } from '@/lib/firebaseAdmin';
-import { shopState, buyItem, feedCat, makeWish, ShopError } from '@/lib/plazaShop';
+import { shopState, buyItem, feedCat, makeWish, ShopError, guestKeyOf, guestState, guestBuy, guestFeed, guestWish } from '@/lib/plazaShop';
 
 // 키링 월드 상점 — GET 내 포인트·보유 꾸미기 / POST { action: 'buy'|'feed'|'wish', item?, text? }
+// 회원은 로그인 토큰, 비회원은 x-plaza-dev(기기 번호) 헤더로 키링 월드 전용 지갑을 쓴다.
 async function uidOf(req: Request) {
   const h = req.headers.get('Authorization');
   if (!h?.startsWith('Bearer ')) return null;
@@ -15,18 +16,25 @@ const MSG: Record<string, string> = {
 
 export async function GET(req: Request) {
   const uid = await uidOf(req);
-  if (!uid) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  return NextResponse.json(await shopState(uid));
+  if (uid) return NextResponse.json(await shopState(uid));
+  const gk = guestKeyOf(req.headers.get('x-plaza-dev'));
+  if (!gk) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  return NextResponse.json(await guestState(gk));
 }
 
 export async function POST(req: Request) {
   const uid = await uidOf(req);
-  if (!uid) return NextResponse.json({ error: 'Unauthorized', message: MSG.not_member }, { status: 401 });
+  const gk = uid ? null : guestKeyOf(req.headers.get('x-plaza-dev'));
+  if (!uid && !gk) return NextResponse.json({ error: 'Unauthorized', message: MSG.not_member }, { status: 401 });
   const body = await req.json().catch(() => ({}));
   try {
-    const out = body.action === 'buy' ? await buyItem(uid, String(body.item || ''))
-      : body.action === 'feed' ? await feedCat(uid, body.animal ? String(body.animal) : undefined)
-      : body.action === 'wish' ? await makeWish(uid, body.text, body.orn)
+    const out = gk ? (body.action === 'buy' ? await guestBuy(gk, String(body.item || ''))
+        : body.action === 'feed' ? await guestFeed(gk, body.animal ? String(body.animal) : undefined)
+        : body.action === 'wish' ? await guestWish(gk, body.nick, body.text, body.orn)
+        : null)
+      : body.action === 'buy' ? await buyItem(uid!, String(body.item || ''))
+      : body.action === 'feed' ? await feedCat(uid!, body.animal ? String(body.animal) : undefined)
+      : body.action === 'wish' ? await makeWish(uid!, body.text, body.orn)
       : null;
     if (!out) return NextResponse.json({ error: 'bad_action' }, { status: 400 });
     return NextResponse.json({ ok: true, ...out });

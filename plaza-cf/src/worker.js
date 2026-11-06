@@ -3,7 +3,7 @@
 // - 방(room) 하나 = PlazaRoom DO 하나.
 //   · 광장(plaza)은 모두가 모이는 하나의 허브 방(정원 PLAZA_CAP).
 //   · 지역(?region=busan 등, 추후 택시로 이동)은 사람이 많아지면 busan-01, busan-02… 로 자동 분할.
-// - /admin/* 은 Next 서버(관리자 페이지)만 부를 수 있다: 헤더 x-plaza-secret = PLAZA_ADMIN_SECRET
+// - /admin/* 은 Next 서버(관리자 페이지)만 부를 수 있다: 헤더 x-plaza-secret = PLAZA_ADMIN_SECRET (또는 로컬 개발 서버 키 PLAZA_LOCAL_SECRET)
 //   (로컬: plaza-cf/.dev.vars, 운영: npx wrangler secret put PLAZA_ADMIN_SECRET)
 // 로컬 실행:  cd plaza-cf && npx wrangler dev      (ws://127.0.0.1:8787/ws)
 // 배포:       npx wrangler deploy
@@ -26,7 +26,9 @@ function registry(env) {
 }
 
 async function handleAdmin(request, env, url) {
-  if (!env.PLAZA_ADMIN_SECRET || request.headers.get('x-plaza-secret') !== env.PLAZA_ADMIN_SECRET) {
+  // PLAZA_LOCAL_SECRET: 로컬 개발 서버(Next)의 키도 받아 준다 — 로컬과 운영이 같은 월드를 쓰기로 해서(2026-11-07). 지우면 원래대로
+  const sent = request.headers.get('x-plaza-secret');
+  if (!sent || ![env.PLAZA_ADMIN_SECRET, env.PLAZA_LOCAL_SECRET].filter(Boolean).includes(sent)) {
     return new Response('forbidden', { status: 403 });
   }
   const body = await request.text();

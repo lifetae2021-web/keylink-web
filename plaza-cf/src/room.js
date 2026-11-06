@@ -158,10 +158,10 @@ export class PlazaRoom {
       // 잠금 꾸미기(열쇠 보상·상점)와 반려동물은 실제로 가진 회원만 — 웹 서버에 물어 확인(화면 조작 방지)
       if (a.look.acc.some(isLockedAcc) || a.look.pet) {
         let owned = { unlocks: [], pet: null };
-        if (a.uid) {
+        if (a.uid || a.dev) {   // 비회원은 기기 번호로 키링 월드 전용 지갑에서 산 꾸미기를 확인
           try {
             const site = this.env.PLAZA_SITE_URL || 'https://www.keylink.kr';
-            const r = await fetch(site + '/api/plaza/internal/owned', { method: 'POST', headers: { 'content-type': 'application/json', 'x-plaza-secret': this.env.PLAZA_ADMIN_SECRET || '' }, body: JSON.stringify({ uid: a.uid }) });
+            const r = await fetch(site + '/api/plaza/internal/owned', { method: 'POST', headers: { 'content-type': 'application/json', 'x-plaza-secret': this.env.PLAZA_ADMIN_SECRET || '' }, body: JSON.stringify(a.uid ? { uid: a.uid } : { dev: a.dev }) });
             if (r.ok) owned = await r.json();
           } catch (e) {}
         }
