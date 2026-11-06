@@ -6,6 +6,9 @@ export const PETS = [
   { id: 'somsatang', name: '솜사탕', kind: 'dog' }, { id: 'goldy', name: '골디', kind: 'dog' },
 ];
 export const PET_IDS = PETS.map((p) => p.id);
+// 크리스마스 테마의 펭귄·순록: 밥만 줄 수 있다(호감·반려동물 없음). 이름 → 밥주기용 id
+export const FEED_ONLY = { 펭이: 'w_pengi', 펭순: 'w_pengsun', 펭돌: 'w_pengdol', 루돌프: 'w_rudolph', 방울: 'w_bangul' };
+export const FEED_ONLY_IDS = Object.values(FEED_ONLY);
 export const AFF = { follow: 30, hold: 60, adopt: 100, max: 100 };
 export const AFF_PET = 3;            // 쓰다듬기 1번
 export const PET_DAILY = 10;         // 동물마다 하루 쓰다듬기 인정 횟수

@@ -271,7 +271,8 @@
     <div class="menu-tabs" role="tablist"><button type="button" data-tab="info" aria-selected="true">내 정보</button><button type="button" data-tab="chats" aria-selected="false">대화</button><button type="button" data-tab="friends" aria-selected="false">친구</button><button type="button" data-tab="blocks" aria-selected="false">차단</button></div>
     <div class="menu-pane" data-pane="info">
       <div class="menu-stat"><span>내 포인트</span><b id="menuPoints">-</b></div>
-      <div class="menu-note" id="menuPointNote">고양이 밥주기·소원·꾸미기에 쓸 수 있어요. 소개팅 선발과는 무관해요.</div>
+      <div class="menu-note" id="menuStay" hidden></div>
+      <div class="menu-note" id="menuPointNote">동물 밥주기·소원·꾸미기에 쓸 수 있어요. 소개팅 선발과는 무관해요.</div>
       <div class="menu-row"><a class="menu-link" href="/"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/></svg>키링크 홈</a><a class="menu-link" href="/mypage">마이페이지</a></div>
       <div class="menu-bgm"><div class="mb-top"><b>배경음악</b><button type="button" id="bgmToggle" aria-pressed="true">켜짐</button></div><input type="range" id="bgmVol" min="0" max="100" value="40" aria-label="배경음악 볼륨"><div class="mb-now" id="bgmNow">재생할 곡이 없어요</div></div>
       <div class="menu-help"><b>조작법</b><p id="hudHelp">WASD·조이스틱 이동 · 마우스로 시야 · 스페이스 점프 · 사람 클릭</p></div>
@@ -396,8 +397,8 @@ import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { nickProblem, isReservedNick } from '/plaza/badwords.js';
 import { LOOK, HATS, LOCKED_ACC, SHOP_ACC, SEASON_ACC, isLockedAcc, GENDER_OPTIONS, sanitizeLook, defaultLook, fitToGender, fitFaceToStyle } from '/plaza/look.js';
-import { CAT_FOOD_PRICE, WISH_PRICE, WISH_MAX, FOUNTAIN } from '/plaza/shop.js';
-import { PETS, AFF, PET_NAME_MAX, AFF_DECAY_PER_DAY, petKindLabel } from '/plaza/pets.js';
+import { CAT_FOOD_PRICE, WISH_PRICE, WISH_MAX, FOUNTAIN, ENTRY_BONUS, STAY_POINTS, STAY_TICK_MS, STAY_IDLE_MS } from '/plaza/shop.js';
+import { PETS, AFF, PET_NAME_MAX, AFF_DECAY_PER_DAY, petKindLabel, FEED_ONLY } from '/plaza/pets.js';
 import { createAvatar } from '/plaza/avatar.js';
 import { THEMES, sanitizeTheme } from '/plaza/themes.js';
 const NICK_MSG={ jamo:'자음·모음만으로는 닉네임을 만들 수 없어요', bad:'사용할 수 없는 단어가 들어간 닉네임이에요', reserved:'운영자로 오해할 수 있는 닉네임은 쓸 수 없어요' };
@@ -865,7 +866,7 @@ let crYaw=0; { let dragX=null; canvas.addEventListener('pointerdown',(e)=>{ if(m
 let mode='creating';
 document.getElementById('enterBtn').onclick=async()=>{ if(!consent){ consentBox.hidden=false; return; } { const np=nickProblem(opts.nick); if(np){ crTab='profile'; renderCreator(); toast(NICK_MSG[np]); nickInput.focus(); return; } } if(isReservedNick(opts.nick) && opts.nick!==profileNick){ crTab='profile'; renderCreator(); toast(NICK_MSG.reserved); nickInput.focus(); return; } if(!opts.region){ crTab='profile'; renderCreator(); toast('지역을 선택해 주세요'); return; } if(!/^(19|20)\d\d$/.test(opts.age)){ crTab='profile'; renderCreator(); toast('출생연도를 네 자리로 입력해 주세요'); return; } if(!opts.nick){ opts.nick=NICKS[Math.floor(Math.random()*NICKS.length)]; nickInput.value=opts.nick; buildHero(opts); }
   if(member && fbUser && profileNick && opts.nick!==profileNick){ if(!(await saveNickChange())) return; }
-  try{ localStorage.setItem('kl_char',JSON.stringify(opts)); }catch(e){} document.getElementById('entry').remove(); startBgm(); camera.clearViewOffset(); resize(); if(heroNick) heroNick.visible=true; document.getElementById('hud').hidden=false; document.getElementById('hudNick').textContent=opts.nick+' 님'; mode='playing'; applyActivePet(); connect(); setTimeout(loadAnchoredModels,800); };
+  try{ localStorage.setItem('kl_char',JSON.stringify(opts)); }catch(e){} document.getElementById('entry').remove(); startBgm(); camera.clearViewOffset(); resize(); if(heroNick) heroNick.visible=true; document.getElementById('hud').hidden=false; document.getElementById('hudNick').textContent=opts.nick+' 님'; mode='playing'; applyActivePet(); connect(); setTimeout(loadAnchoredModels,800); startReward(); };
 renderAll(); buildHero(opts);
 
 // ── 광장 동물: 강아지·고양이·비둘기 (분위기용, 누르면 반응) ──
@@ -1037,6 +1038,7 @@ function spawnWinterAnimals(){ if(winterSpawned) return; winterSpawned=true;
   add(makeWinterAnimal('rabbit','눈송이'),-11,9); add(makeWinterAnimal('rabbit','찹쌀'),9,11);
   add(makeWinterAnimal('reindeer','루돌프'),15,1.2); add(makeWinterAnimal('reindeer','방울'),22,-1.2);
   add(makeWinterAnimal('fox','설이'),-16,-10);
+  for(const g of animals){ const fid=FEED_ONLY[g.userData.profile?.nick]; if(fid && (g.userData.kind==='penguin'||g.userData.kind==='reindeer')) g.userData.feedId=fid; }   // 펭귄·순록: 밥만 줄 수 있음
   // 흰 부엉이: 가로등 위·트리 울타리 랜턴 위에 앉아 있다(움직이지 않음)
   for(const [x,y,z] of [[7.5,3.72,7.5],[4.2,1.16,0]]){ const o=makeWinterAnimal('owl','흰 부엉이'); o.position.set(x,y,z); o.rotation.y=Math.atan2(-x,-z)+Math.PI; scene.add(o); animals.push(o); } }
 
@@ -1179,14 +1181,14 @@ function buyAcc(v){ if(!member){ toast('포인트는 회원만 쓸 수 있어요
   askConfirm(LABEL.acc[v]+' 사기', SHOP_ACC[v].toLocaleString()+'P를 써서 '+LABEL.acc[v]+'을(를) 살까요?'+(shopPoints!=null?' (내 포인트 '+shopPoints.toLocaleString()+'P)':'')+' 한 번 사면 계속 쓸 수 있어요. '+POINT_NOTE+'.',
     async()=>{ const j=await shopPost({ action:'buy', item:v }); if(!j) return; L().acc=[...L().acc.filter(a=>!(HATS.includes(v)&&HATS.includes(a))), v]; changed(); renderCreator(); toast(LABEL.acc[v]+'을(를) 샀어요!'); }); }
 const feedBtn=document.getElementById('feedBtn'), wishBtn=document.getElementById('wishBtn'), wishBox=document.getElementById('wishBox'), wishText=document.getElementById('wishText');
-function nearCat(pos,max=3.2){ let best=null, bd=max; for(const g of animals){ if(!g.userData.aid || g.userData.held) continue; const d=Math.hypot(g.position.x-pos.x,g.position.z-pos.z); if(d<bd){ bd=d; best=g; } } return best; }
+function nearCat(pos,max=3.2){ let best=null, bd=max; for(const g of animals){ if(!(g.userData.aid||g.userData.feedId) || g.userData.held) continue; const d=Math.hypot(g.position.x-pos.x,g.position.z-pos.z); if(d<bd){ bd=d; best=g; } } return best; }
 function nearCatAny(pos){ return nearCat(pos,60); }
 // 밥그릇 + 가까운 고양이가 와서 먹고 하트 (누가 줬든 모두의 화면에서)
 function feedEffect(who, aid){ const p=who.getWorldPosition(new THREE.Vector3()), dir=new THREE.Vector3(Math.sin(who.rotation.y),0,Math.cos(who.rotation.y));
   const bowl=new THREE.Group(); bowl.add(new THREE.Mesh(new THREE.CylinderGeometry(0.22,0.16,0.12,16), new THREE.MeshStandardMaterial({ color:'#ff8fb1' })));
   const food=new THREE.Mesh(new THREE.CylinderGeometry(0.19,0.19,0.05,16), new THREE.MeshStandardMaterial({ color:'#c98a4b' })); food.position.y=0.06; bowl.add(food);
   bowl.position.copy(p).addScaledVector(dir,0.9); bowl.position.y=0.06; scene.add(bowl);
-  const cat=(aid&&animalById(aid))||nearCatAny(bowl.position); if(cat && !cat.userData.held && !cat.userData.leash){ const u=cat.userData; cat.position.set(bowl.position.x+0.55,0,bowl.position.z); cat.rotation.y=-Math.PI/2; u.target=null; u.rest=7; u.hop=0.01;
+  const cat=(aid&&animalById(aid))||nearCatAny(bowl.position); if(cat && !cat.userData.held && !cat.userData.leash){ const u=cat.userData; cat.position.set(bowl.position.x+(u.kind==='reindeer'?1.0:0.55),0,bowl.position.z); cat.rotation.y=-Math.PI/2; u.target=null; u.rest=7; u.hop=0.01;
     for(let i=0;i<4;i++) setTimeout(()=>{ const h=new THREE.Sprite(new THREE.SpriteMaterial({ map:heartTexture(), transparent:true, depthWrite:false })); h.scale.setScalar(0.3); h.position.set((Math.random()-0.5)*0.4,0.8,0); cat.add(h);
       const t0=performance.now(); (function up(){ const k=(performance.now()-t0)/1400; if(k>=1){ cat.remove(h); h.material.dispose(); return; } h.position.y=0.8+k*0.8; h.material.opacity=1-k; requestAnimationFrame(up); })(); }, i*350); }
   setTimeout(()=>{ scene.remove(bowl); },7000); }
@@ -1216,7 +1218,7 @@ wishBox.addEventListener('submit',(e)=>{ e.preventDefault(); const t=wishText.va
   askConfirm(tree?'소원 트리에 소원 걸기':wishPlace()+'에 소원 던지기', tree ? WISH_PRICE+'P로 소원을 걸까요? 고른 장식에 담겨 트리에 걸리고, 키링 월드의 모두가 볼 수 있어요. '+POINT_NOTE+'.' : WISH_PRICE+'P로 소원을 던질까요? '+wishPlace()+' 위에 잠시 떠올라 광장의 모두가 볼 수 있어요. '+POINT_NOTE+'.', async()=>{ myWishText=t; const j=await shopPost({ action:'wish', text:t, orn:wishOrn }); if(!j){ myWishText=null; return; } wishText.value=''; wishBox.hidden=true; wishEffect(hero, opts.nick||'나', t); setTimeout(()=>{ myWishText=null; },6000); }); });
 // ── 동물 호감: 쓰다듬기·밥주기로 쌓고, 30 따라오기 · 60 안기 · 100 이름 짓고 반려동물로 ──
 let myPets={ aff:{}, adopted:{}, active:null, petLeft:{} }, petCardG=null;
-const animalById=(id)=>animals.find(a=>a.userData.aid===id);
+const animalById=(id)=>animals.find(a=>a.userData.aid===id||a.userData.feedId===id);
 async function loadPets(){ if(!fbUser) return; try{ const r=await authFetch('/api/plaza/pets'); if(r.ok){ myPets=await r.json(); applyActivePet(); } }catch(e){} }
 async function petPost(body){ if(!member||!fbUser){ toast('회원이 되면 호감을 쌓을 수 있어요'); return null; }
   try{ const r=await authFetch('/api/plaza/pets',{ method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify(body) }); const j=await r.json().catch(()=>({}));
@@ -1260,9 +1262,9 @@ async function petIt(){ const g=petCardG; if(!g) return; const u=g.userData; ani
   const now=myPets.aff[u.aid]||0; for(const [lv,txt] of [[AFF.follow,'이제 따라오게 할 수 있어요'],[AFF.hold,'이제 안을 수 있어요'],[AFF.adopt,'호감이 가득! 이름을 지어 데려갈 수 있어요']]) if(before<lv && now>=lv) toast(txt);
   if(myPets.adopted[u.aid] && before<AFF.follow && now>=AFF.follow){ toast('기분이 풀렸어요! 다시 따라와요'); applyActivePet(); }
   renderPetCard(); }
-function feedAnimal(g){ if(!member){ toast('포인트는 회원만 쓸 수 있어요'); return; }
-  askConfirm('밥주기', CAT_FOOD_PRICE+'P로 '+(myPets.adopted[g.userData.aid]||g.userData.profile.nick)+'에게 밥을 줄까요? 호감이 20 올라요.'+(shopPoints!=null?' (내 포인트 '+shopPoints.toLocaleString()+'P)':'')+' '+POINT_NOTE+'.',
-    async()=>{ const j=await shopPost({ action:'feed', animal:g.userData.aid }); if(!j) return; feedEffect(hero, g.userData.aid); showSay(hero,'밥을 줬어요'); await loadPets(); if(!document.getElementById('petCard').hidden) renderPetCard(); }); }
+function feedAnimal(g){ if(!member){ toast('포인트는 회원만 쓸 수 있어요'); return; } const u=g.userData, id=u.aid||u.feedId;
+  askConfirm('밥주기', CAT_FOOD_PRICE+'P로 '+(myPets.adopted[u.aid]||u.profile.nick)+'에게 밥을 줄까요?'+(u.aid?' 호감이 20 올라요.':'')+(shopPoints!=null?' (내 포인트 '+shopPoints.toLocaleString()+'P)':'')+' '+POINT_NOTE+'.',
+    async()=>{ const j=await shopPost({ action:'feed', animal:id }); if(!j) return; feedEffect(hero, id); showSay(hero,'밥을 줬어요'); if(!u.aid) return; await loadPets(); if(!document.getElementById('petCard').hidden) renderPetCard(); }); }
 async function setActive(id){ const j=await petPost({ action:'active', id }); if(!j) return; applyActivePet(); renderPetCard(); }
 document.getElementById('petClose').onclick=()=>{ document.getElementById('petCard').hidden=true; };
 document.getElementById('petCard').addEventListener('pointerdown',(e)=>{ if(e.target.id==='petCard') e.target.hidden=true; });
@@ -1567,7 +1569,7 @@ function setMenuTab(t){ menuTab=t; for(const b of document.querySelectorAll('.me
   for(const p of document.querySelectorAll('.menu-pane')) p.hidden=p.dataset.pane!==t; renderMenu(); }
 async function renderMenu(){
   if(menuTab==='info'){ const pt=document.getElementById('menuPoints');
-    if(!fbUser||!member){ pt.textContent='회원 전용'; return; }
+    renderStay(); if(!fbUser||!member){ pt.textContent='회원 전용'; return; }
     pt.textContent=shopPoints!=null?shopPoints.toLocaleString()+'P':'…';
     try{ const j=await (await authFetch('/api/plaza/shop')).json(); shopPoints=j.points??shopPoints; keyUnlocks=j.owned||keyUnlocks; pt.textContent=(shopPoints??0).toLocaleString()+'P'; }catch(e){} }
   else if(menuTab==='chats'){ const el=document.getElementById('menuChats');
@@ -1614,6 +1616,18 @@ document.getElementById('chatReport').onclick=()=>openReport(currentChat);
 document.getElementById('chatBlock').onclick=()=>blockPerson(currentChat);
 // ── 손님 → 회원 전환 게이트 (실제 키링크 로그인 연동) ──
 let member=false, fbUser=null, myUid=null;
+// ── 키링 월드 포인트 적립(회원): 24시간 안 첫 입장 보너스 + 머문 시간 1시간마다(서버 /api/plaza/reward가 판단) ──
+let rewardStarted=false, rewardSt=null, lastInputAt=Date.now();
+for(const ev of ['keydown','pointerdown','touchstart','wheel']) addEventListener(ev,()=>{ lastInputAt=Date.now(); },{ passive:true });
+addEventListener('mousemove',()=>{ lastInputAt=Date.now(); },{ passive:true });
+async function rewardPost(action){ try{ const r=await authFetch('/api/plaza/reward',{ method:'POST', headers:{ 'content-type':'application/json' }, body:JSON.stringify({ action }) }); const j=await r.json().catch(()=>({})); if(!r.ok||!j.ok) return null; rewardSt=j; shopPoints=j.points; return j; }catch(e){ return null; } }
+async function startReward(){ if(rewardStarted || !member || !fbUser || mode!=='playing') return; rewardStarted=true;
+  const j=await rewardPost('enter'); if(j && j.bonus) toast('키링 월드 첫 입장 보너스 +'+j.bonus.toLocaleString()+'P');
+  setInterval(async()=>{ if(document.hidden || Date.now()-lastInputAt>STAY_IDLE_MS) return;   // 자리 비움이면 보내지 않음 → 그 시간은 쌓이지 않는다
+    const t=await rewardPost('tick'); if(t && t.earned) toast('키링 월드에서 1시간! +'+t.earned+'P'); if(!menuBox.hidden) renderStay(); }, STAY_TICK_MS); }
+function renderStay(){ const el=document.getElementById('menuStay'); if(!member||!fbUser){ el.hidden=false; el.textContent='회원은 하루 첫 입장 '+ENTRY_BONUS+'P, 머문 시간 1시간마다 '+STAY_POINTS+'P를 받아요'; return; }
+  const s=rewardSt; if(!s){ el.hidden=true; return; } el.hidden=false;
+  el.textContent=s.nextInMs==null?'오늘 머문 시간 보상을 모두 받았어요':'1시간마다 '+STAY_POINTS+'P · 다음 적립까지 약 '+Math.max(1,Math.ceil(s.nextInMs/60000))+'분 · 오늘 '+s.stayLeft+'번 남음'; }
 const joinBox=document.getElementById('join'); let pendingAfterJoin=null;
 const PLAZA_PATH='/plaza/index.html'; // 로그인 후 복귀 주소 (정적 파일 직접 경로 — 404 방지)
 function buildJoinBody(){ return { nick:opts.nick, gender:opts.gender, region:opts.region, birthYear:opts.age, job:opts.job, intro:opts.intro, look:sanitizeLook({ ...opts.look, gender:opts.gender }) }; }
@@ -1669,7 +1683,7 @@ onAuthStateChanged(fbAuth, async (u)=>{
     const token=await fbUser.getIdToken();
     const r=await fetch('/api/plaza/me',{ headers:{ Authorization:'Bearer '+token } });
     const j=await r.json().catch(()=>({}));
-    if(j && j.profile){ member=true; loadKeyUnlocks(); applyProfile(j.profile); try{ localStorage.removeItem('kl_plaza_pending'); }catch(e){} tryPendingAccept(); return; }
+    if(j && j.profile){ member=true; loadKeyUnlocks(); applyProfile(j.profile); startReward(); try{ localStorage.removeItem('kl_plaza_pending'); }catch(e){} tryPendingAccept(); return; }
     let pending=false; try{ pending=localStorage.getItem('kl_plaza_pending')==='1'; }catch(e){}
     if(pending) await submitJoin();
   }catch(e){}
@@ -1681,7 +1695,7 @@ async function submitJoin(){
     const token=await fbUser.getIdToken();
     const r=await fetch('/api/plaza/join',{ method:'POST', headers:{ 'Content-Type':'application/json', Authorization:'Bearer '+token }, body:JSON.stringify(buildJoinBody()) });
     const j=await r.json().catch(()=>({}));
-    if(r.ok && j.ok){ member=true; if(j.profile){ profileNick=j.profile.nick; nickLockedUntil=j.profile.nickLockedUntil||null; updateNickLock(); } try{ localStorage.removeItem('kl_plaza_pending'); }catch(e){} joinBox.hidden=true; toast('가입 완료! 환영해요'); tryPendingAccept(); const a=pendingAfterJoin; pendingAfterJoin=null; if(a) setTimeout(a,300); return true; }
+    if(r.ok && j.ok){ member=true; startReward(); if(j.profile){ profileNick=j.profile.nick; nickLockedUntil=j.profile.nickLockedUntil||null; updateNickLock(); } try{ localStorage.removeItem('kl_plaza_pending'); }catch(e){} joinBox.hidden=true; toast('가입 완료! 환영해요'); tryPendingAccept(); const a=pendingAfterJoin; pendingAfterJoin=null; if(a) setTimeout(a,300); return true; }
     if(r.status===429 && j.nick){ opts.nick=j.nick; nickInput.value=j.nick; profileNick=j.nick; nickLockedUntil=j.nickLockedUntil||null; return submitJoin(); }
     if(r.status===409){ promptNickFix(); return false; }
     if(j.error==='nick_bad'||j.error==='nick_jamo'||j.error==='nick_reserved'){ promptNickFix(NICK_MSG[j.error==='nick_bad'?'bad':j.error==='nick_reserved'?'reserved':'jamo']+'.'); return false; }

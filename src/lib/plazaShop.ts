@@ -4,10 +4,10 @@ import { plazaKey } from '@/lib/plazaKey';
 import { SHOP_ACC, SEASON_ACC, CAT_FOOD_PRICE, WISH_PRICE, WISH_MAX, WISH_ORNS } from '../../public/plaza/shop.js';
 import { getActiveTheme } from '@/lib/plazaTheme';
 import { hasBadWord } from '../../public/plaza/badwords.js';
-import { AFF_FEED, PET_IDS } from '../../public/plaza/pets.js';
+import { AFF_FEED, PET_IDS, FEED_ONLY_IDS } from '../../public/plaza/pets.js';
 import { feedAffInTx, petRef } from '@/lib/plazaPets';
 
-// 키링 월드 상점: 고양이 밥주기 · 분수대 소원 · 꾸미기 구매 (회원만, 키링크 포인트 차감)
+// 키링 월드 상점: 동물 밥주기 · 분수대 소원 · 꾸미기 구매 (회원만, 키링크 포인트 차감)
 // 차감이 끝난 뒤에만 실시간 서버(워커 /admin/announce)로 모두에게 알린다 → 화면 조작으로 공짜로 퍼뜨릴 수 없음
 const WORKER = process.env.PLAZA_WORKER_URL || 'https://keylink-plaza.keylink-plaza-cf.workers.dev';
 const FEED_COOLDOWN_MS = 10_000;
@@ -55,17 +55,18 @@ export async function buyItem(uid: string, item: string) {
 
 export async function feedCat(uid: string, animal?: string) {
   const me = await memberInfo(uid);
-  const aid = animal && PET_IDS.includes(animal) ? animal : null;
+  const aid = animal && PET_IDS.includes(animal) ? animal : null;   // 호감이 오르는 동물
+  const fid = !aid && animal && FEED_ONLY_IDS.includes(animal) ? animal : null;   // 밥만 주는 동물(펭귄·순록)
   await adminDb.runTransaction(async (tx) => {
     const ref = adminDb.doc(`plazaKeys/${uid}`);
     const snap = await tx.get(ref);
     const petSnap = aid ? await tx.get(petRef(uid)) : null;   // 읽기는 쓰기보다 먼저
     if (Date.now() - (snap.data()?.lastFeedAt || 0) < FEED_COOLDOWN_MS) throw new ShopError('cooldown');
-    await spendMemberPointsInTx(tx, uid, CAT_FOOD_PRICE, '키링 월드 고양이 밥주기', 'plaza_shop');
+    await spendMemberPointsInTx(tx, uid, CAT_FOOD_PRICE, '키링 월드 동물 밥주기', 'plaza_shop');
     tx.set(ref, { lastFeedAt: Date.now() }, { merge: true });
     if (aid) feedAffInTx(tx, uid, petSnap?.data(), aid, AFF_FEED);
   });
-  await announce({ t: 'feed', key: plazaKey(uid), nick: me.nick, aid });
+  await announce({ t: 'feed', key: plazaKey(uid), nick: me.nick, aid: aid || fid });
   return shopState(uid);
 }
 
