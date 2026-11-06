@@ -12,11 +12,16 @@ export function loadAvatarAssets(style = 'chibi') {
 }
 
 // ── 얼굴 그리기: 머리 UV는 경위도(정면 = 가운데). 경도 lon°, 위도 lat° → 캔버스 좌표 ──
+// 블록 머리는 앞면이 얼굴 그림의 ±30°(작은 칸)만 써서 눈이 몇 픽셀로 뭉개지고 양쪽 크기가 달라 보였다 →
+// 블록은 그림을 FACE_ZOOM배 크게 그리고, 머리 UV도 같은 배율로 넓혀(mount) 같은 자리에 선명하게 입힌다.
+const FACE_ZOOM = { block: 3 };
 export function drawFace(cv, look) {
-  const W = cv.width, H = cv.height, g = cv.getContext('2d'), k = W / 1024;
-  const P = (lon, lat) => [W * (0.5 + lon / 360), H * (0.5 - lat / 180)];
+  const S = FACE_ZOOM[look.style] || 1;
+  const W = cv.width, H = cv.height, g = cv.getContext('2d'), k = W / 1024 * S;
+  const P = (lon, lat) => [W * (0.5 + lon * S / 360), H * (0.5 - lat * S / 180)];
   g.fillStyle = look.colors.skin; g.fillRect(0, 0, W, H);
-  const es = 1 + 0.28 * look.eyeSize, gap = 17 + 4 * look.eyeGap, ey = -6 + 5 * look.eyeY;
+  // 블록 머리는 앞머리가 이마를 덮어서 눈·눈썹·입을 조금 아래로(얼굴 가운데에 오게)
+  const es = 1 + 0.28 * look.eyeSize, gap = 17 + 4 * look.eyeGap, ey = -6 + 5 * look.eyeY + (look.style === 'block' ? -4 : 0);
   const ink = '#2b2020', brow = new THREE.Color(look.colors.hair).multiplyScalar(0.7).getStyle();
   // 볼터치
   if (look.blush > 0) {
@@ -85,7 +90,9 @@ export function createAvatar(rawLook, { faceSize = 512 } = {}) {
       if (want && o.material && o.material.userData.tint) o.material.color.set(L.colors[u.kl_part === 'hair' ? 'hair' : u.kl_part]);
     }
     for (const m of skinMats) m.color.set(L.colors.skin);
-    const mv = { build_slim: Math.max(0, -L.build), build_broad: Math.max(0, L.build), female: L.female, face_long: L.long, face_vline: L.vline, cheek_full: L.cheek };
+    // 블록 머리는 네모가 기본 — 갸름한 턱·볼살을 쓰면 앞면이 사다리꼴로 찌그러져 얼굴 그림(눈·볼터치)까지 눌린다 → 블록은 적용 안 함
+    const sq = L.style === 'block';
+    const mv = { build_slim: Math.max(0, -L.build), build_broad: Math.max(0, L.build), female: L.female, face_long: L.long, face_vline: sq ? 0 : L.vline, cheek_full: sq ? 0 : L.cheek };
     for (const o of morphMeshes) for (const [k, i] of Object.entries(o.morphTargetDictionary)) if (k in mv) o.morphTargetInfluences[i] = mv[k];
     model.scale.setScalar(1 + 0.07 * L.height);
   };
@@ -133,7 +140,15 @@ export function createAvatar(rawLook, { faceSize = 512 } = {}) {
         o.castShadow = true; o.frustumCulled = false;   // 뼈로 움직여서 화면 밖 판정이 틀릴 수 있음
         const n = o.material && o.material.name || '';
         if (/^TINT_|^MAT_av_skin/.test(n)) { o.material = o.material.clone(); o.material.userData.tint = /^TINT_/.test(n); if (/^MAT_av_skin/.test(n)) skinMats.push(o.material); }
-        if (/^MAT_av_face/.test(n)) { o.material = o.material.clone(); o.material.map = faceTex; o.material.color.set('#ffffff'); o.material.needsUpdate = true; }
+        if (/^MAT_av_face/.test(n)) {
+          o.material = o.material.clone(); o.material.map = faceTex; o.material.color.set('#ffffff'); o.material.needsUpdate = true;
+          // 얼굴 UV를 FACE_ZOOM배로 넓힌다(복제본끼리 같은 geometry를 같이 쓰므로 파일당 한 번만)
+          const z = FACE_ZOOM[style], uv = o.geometry.attributes.uv;
+          if (z && uv && o.geometry.userData.faceZoom !== z) {
+            for (let i = 0; i < uv.count; i++) uv.setXY(i, 0.5 + (uv.getX(i) - 0.5) * z, 0.5 + (uv.getY(i) - 0.5) * z);
+            uv.needsUpdate = true; o.geometry.userData.faceZoom = z;
+          }
+        }
         if (o.morphTargetDictionary) morphMeshes.push(o);
       }
     });

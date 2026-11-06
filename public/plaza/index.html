@@ -219,6 +219,7 @@
   .menu-stat span { font-size:.85rem; color:#67768b; } .menu-stat b { font-size:1.35rem; }
   .menu-note { font-size:.78rem; color:#8a98ab; line-height:1.55; word-break:keep-all; }
   .menu-row { display:flex; gap:8px; flex-wrap:wrap; }
+  .menu-top { margin-top:12px; flex:0 0 auto; }   /* 홈·마이페이지: 어느 탭에서든 보이게 탭 위에 */
   .menu-link { display:inline-flex; align-items:center; gap:5px; padding:8px 12px; border-radius:10px; background:#f1f4f9; color:#33415a; text-decoration:none; font-size:.85rem; white-space:nowrap; }
   .menu-link svg { width:15px; height:15px; fill:none; stroke:currentColor; stroke-width:2; }
   .menu-bgm { padding:12px 14px; border:1px solid #e8ecf3; border-radius:12px; display:flex; flex-direction:column; gap:8px; font-size:.85rem; }
@@ -273,9 +274,9 @@
   <button type="button" id="menuBtn" aria-label="내 메뉴" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h16"/></svg><i id="menuDot" hidden></i></button>
   <div id="menu" hidden><div class="menu-box">
     <div class="menu-head"><div><div class="menu-sub">키링 월드</div><h1 id="hudNick">키링 월드</h1></div><button type="button" id="menuClose" class="card-x" aria-label="닫기">✕</button></div>
+    <div class="menu-row menu-top"><a class="menu-link" href="/"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/></svg>키링크 홈</a><a class="menu-link" href="/mypage">마이페이지</a></div>
     <div class="menu-tabs" role="tablist"><button type="button" data-tab="info" aria-selected="true">내 정보</button><button type="button" data-tab="chats" aria-selected="false">대화</button><button type="button" data-tab="friends" aria-selected="false">친구</button><button type="button" data-tab="blocks" aria-selected="false">차단</button></div>
     <div class="menu-pane" data-pane="info">
-      <div class="menu-row"><a class="menu-link" href="/"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/></svg>키링크 홈</a><a class="menu-link" href="/mypage">마이페이지</a></div>
       <div class="menu-stat"><span>내 포인트</span><b id="menuPoints">-</b></div>
       <div class="menu-note" id="menuStay" hidden></div>
       <div class="menu-note" id="menuPointNote">동물 밥주기·소원·꾸미기에 쓸 수 있어요. 소개팅 선발과는 무관해요.</div>
@@ -434,6 +435,11 @@ let skyMat=null;
     fragmentShader:'uniform vec3 top; uniform vec3 mid; uniform vec3 low; varying vec3 vP; void main(){ float h=vP.y; vec3 c = h>0.0 ? mix(mid, top, pow(clamp(h,0.0,1.0),0.6)) : mix(mid, low, clamp(-h*3.0,0.0,1.0)); gl_FragColor=vec4(c,1.0); }' }));
   sky.renderOrder=-1; scene.add(sky); }
 const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 400); let camYaw=0, camPitch=0.5, camDist=15; const camMinPitch=0.14, camMaxPitch=1.25;
+// 카메라 거리: 휴대폰은 화면이 좁아 기본을 멀리(광장이 한눈에), 마지막으로 맞춘 거리는 이 기기에 기억
+const CAM_MIN=7, CAM_MAX=28;
+if(matchMedia('(pointer:coarse)').matches){ camDist=27; camPitch=0.7; }
+try{ const d=+localStorage.getItem('kl_cam_dist'); if(d>=CAM_MIN && d<=CAM_MAX) camDist=d; }catch(e){}
+function setCamDist(d){ camDist=Math.min(CAM_MAX,Math.max(CAM_MIN,d)); try{ localStorage.setItem('kl_cam_dist',camDist.toFixed(1)); }catch(e){} }
 function camOff(){ const cp=Math.cos(camPitch); return new THREE.Vector3(Math.sin(camYaw)*camDist*cp, Math.sin(camPitch)*camDist, Math.cos(camYaw)*camDist*cp); }
 // 따뜻한 오후 빛 + 부드러운 그림자(해 하나만 그림자를 만든다. 휴대폰은 그림자 해상도를 낮춰 가볍게)
 // 환경광(IBL): 위는 하늘색, 아래는 잔디색으로 사방에서 오는 은은한 바깥 빛 — 실사 나무·재질이 입체적으로 보인다
@@ -485,6 +491,26 @@ const DAY_KEYS=[
 ];
 const cloudMats=[], glowMats=new Map(), themeGlowMats=new Set(), themeExtras=[];
 // 가로등·조명 재질: 밤이 되면 스스로 빛나게(재질은 복제해서 다른 물체에 번지지 않게)
+// ── 반짝이는 전구: 합쳐진 전구 모델에서 전구 하나하나를 찾아(가까운 꼭짓점끼리 묶기) 각자 다른 박자로 깜빡이게 한다 ──
+// 진짜 조명을 늘리지 않고 재질의 빛(emissive)만 셰이더에서 바꿔서 휴대폰도 가볍다. depth: 깜빡임 세기, speed: 빠르기
+const twinkleTime={ value:0 };
+function twinkle(o, depth=0.8, speed=3, gap=0.15){
+  const g=o.geometry, pos=g.attributes.position; if(!pos || g.attributes.aPhase) return;
+  const sc=o.getWorldScale(new THREE.Vector3()).x||1, r=gap/sc, cell=new Map(), ph=new Float32Array(pos.count), v=new THREE.Vector3();
+  const keyOf=(x,y,z)=>x+','+y+','+z;
+  for(let i=0;i<pos.count;i++){ v.fromBufferAttribute(pos,i); const cx=Math.round(v.x/r), cy=Math.round(v.y/r), cz=Math.round(v.z/r); let hit=null;
+    for(let dx=-1;dx<=1&&!hit;dx++) for(let dy=-1;dy<=1&&!hit;dy++) for(let dz=-1;dz<=1&&!hit;dz++){ const list=cell.get(keyOf(cx+dx,cy+dy,cz+dz)); if(list) for(const c of list){ if(c.p.distanceToSquared(v)<r*r){ hit=c; break; } } }
+    if(!hit){ hit={ p:v.clone(), phase:Math.random()*Math.PI*2 }; const k=keyOf(cx,cy,cz); (cell.get(k)||cell.set(k,[]).get(k)).push(hit); }
+    ph[i]=hit.phase; }
+  g.setAttribute('aPhase', new THREE.BufferAttribute(ph,1));
+  for(const m of (Array.isArray(o.material)?o.material:[o.material])){
+    m.onBeforeCompile=(sh)=>{ sh.uniforms.uTwTime=twinkleTime;
+      sh.vertexShader='attribute float aPhase;\nvarying float vTwPhase;\n'+sh.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\n  vTwPhase=aPhase;');
+      sh.fragmentShader='uniform float uTwTime;\nvarying float vTwPhase;\n'+sh.fragmentShader.replace('#include <emissivemap_fragment>',
+        '#include <emissivemap_fragment>\n  float twS='+speed.toFixed(2)+'*(0.6+0.8*fract(vTwPhase*0.731));\n  float tw=0.5+0.5*sin(uTwTime*twS+vTwPhase);\n  totalEmissiveRadiance*='+(1-depth).toFixed(2)+'+'+(depth*1.25).toFixed(2)+'*tw*tw*tw;');
+    };
+    m.customProgramCacheKey=()=>'tw'+depth+'_'+speed; m.needsUpdate=true; }
+}
 function nightGlow(o, tag){
   const ms=Array.isArray(o.material) ? o.material : [o.material];
   o.material=Array.isArray(o.material) ? ms.map(m=>m.clone()) : ms[0].clone();
@@ -755,6 +781,9 @@ function ingestWorld(v, tag){
       if(/^SKY_clouds/.test(n)) o.material=new THREE.MeshLambertMaterial({ color:0xffffff, emissive:0xffffff, emissiveIntensity:0.55 });   // 구름은 아래 잔디색이 비치지 않게 늘 하얗게
       if(/^SKY_clouds/.test(n)) cloudMats.push(o.material);
       if(/(_light|_glow|_bulb)(_\d+)?$/.test(n) || /(_light|_glow|_bulb)$/.test(o.parent?.name||'')) nightGlow(o, tag);
+      // 크리스마스 트리 전구·마켓 전구 줄은 반짝반짝, 트리 장식 구슬은 은은하게
+      if(/^XMAS_(wishtree_lights|b_[a-z]+_lights)/.test(n)) twinkle(o, 0.85, 3.2);
+      else if(/^XMAS_wishtree_orn_/.test(n)) twinkle(o, 0.35, 1.4, 0.5);   // 구슬은 지름이 최대 0.44m라 묶는 거리를 넓게
       if((n.includes('cottage')&&n.includes('_body'))||n.includes('fountain_basin')||(n.includes('tree_')&&n.includes('trunk'))){
         const bb=new THREE.Box3().setFromObject(o), c=bb.getCenter(new THREE.Vector3()), sz=bb.getSize(new THREE.Vector3());
         obstacles.push({ x:c.x, z:c.z, r:Math.max(sz.x,sz.z)/2 + 0.45, tag });
@@ -848,7 +877,7 @@ function renderCreator(){
   document.querySelectorAll('.cr-pane').forEach(p=>p.hidden=p.dataset.pane!==crTab);
   renderPills('opt-region','region',CHOICES.region);
   const f=pane('face'); f.innerHTML=''; f.append(row('피부색',swatches('skin',PAL.skin)), row('눈 모양',typePills('eye')), row('눈동자 색',swatches('eyeColor',PAL.eyeColor),'반짝·나른한·날렵한 눈에서 보여요'),
-    row('눈썹',typePills('brow')), row('입',typePills('mouth')), ...['eyeSize','eyeGap','eyeY','vline','cheek','long','blush'].map(slider));
+    row('눈썹',typePills('brow')), row('입',typePills('mouth')), ...['eyeSize','eyeGap','eyeY',...(L().style==='block'?[]:['vline','cheek']),'long','blush'].map(slider));   // 블록은 네모 머리라 갸름한 턱·볼살 없음
   const h=pane('hair'); h.innerHTML=''; h.append(row('머리 모양',typePills('hair'), L().acc.some(a=>HATS.includes(a))&&['spiky','bun'].includes(L().hair)?'모자를 쓰면 모자에 맞는 머리로 바뀌어요':''), row('머리 색',swatches('hair',PAL.hair)));
   const o=pane('outfit'); o.innerHTML=''; const dress=L().top==='dress';
   o.append(row('상의',typePills('top')), row('상의 색',swatches('top',PAL.cloth)), row('하의',typePills('bottom',{ disabled:()=>dress }), dress?'원피스를 입으면 하의는 안 보여요':''),
@@ -1332,7 +1361,7 @@ const PLAZA_WS = 'wss://keylink-plaza.keylink-plaza-cf.workers.dev'; // Cloudfla
 const IS_LOCALHOST = location.hostname==='localhost'||location.hostname==='127.0.0.1';
 const _wsParam = new URLSearchParams(location.search).get('ws');
 const _wsBase = _wsParam==='local' ? 'ws://127.0.0.1:8787' : (_wsParam && _wsParam!=='prod' ? _wsParam : PLAZA_WS);
-if(IS_LOCALHOST) addEventListener('DOMContentLoaded',()=>{ const b=document.createElement('div'); b.className='srv-badge'; b.textContent=_wsBase===PLAZA_WS?'운영 서버 연결 중':'로컬 서버 연결 중'; document.body.appendChild(b); });
+if(IS_LOCALHOST && _wsBase!==PLAZA_WS) addEventListener('DOMContentLoaded',()=>{ const b=document.createElement('div'); b.className='srv-badge'; b.textContent='로컬 서버 연결 중'; document.body.appendChild(b); });   // 운영 서버일 땐 표시하지 않음(사용자 요청)
 const _wsRoom = new URLSearchParams(location.search).get('room');
 let DEV_ID=''; try{ DEV_ID=localStorage.getItem('kl_dev')||''; if(!DEV_ID){ DEV_ID=(crypto.randomUUID?crypto.randomUUID():Math.random().toString(36).slice(2)+Date.now().toString(36)); localStorage.setItem('kl_dev',DEV_ID); } }catch(e){}
 const _wsQuery = new URLSearchParams(); if(_wsRoom) _wsQuery.set('room',_wsRoom); if(DEV_ID) _wsQuery.set('dev',DEV_ID);
@@ -1783,7 +1812,12 @@ addEventListener('mousemove',(e)=>{ if(!locked) return; const s=0.0022; camYaw-=
 addEventListener('pointermove',(e)=>{ if(e.pointerId!==dragId) return; const dx=e.clientX-dragX, dy=e.clientY-dragY; if(!dragged && Math.hypot(dx,dy)>6) dragged=true; if(dragged){ camYaw-=dx*0.005; camPitch=Math.min(camMaxPitch,Math.max(camMinPitch,camPitch-dy*0.005)); dragX=e.clientX; dragY=e.clientY; } });
 addEventListener('pointerup',(e)=>{ if(e.pointerId!==dragId) return; const wasDrag=dragged; dragId=null;
   if(!wasDrag && mode==='playing' && !modalOpen()){ pickProfile(raycastFromNDC((e.clientX/innerWidth)*2-1, -(e.clientY/innerHeight)*2+1)); } });
-canvasEl.addEventListener('wheel',(e)=>{ camDist=Math.min(24,Math.max(7,camDist+Math.sign(e.deltaY)*1.3)); },{passive:true});
+canvasEl.addEventListener('wheel',(e)=>{ setCamDist(camDist+Math.sign(e.deltaY)*1.3); },{passive:true});
+// 휴대폰: 두 손가락으로 벌리면 가까이, 오므리면 멀리(그동안은 화면 돌리기·사람 탭을 멈춘다)
+let pinchD=0; const touchGap=(t)=>Math.hypot(t[0].clientX-t[1].clientX, t[0].clientY-t[1].clientY);
+canvasEl.addEventListener('touchstart',(e)=>{ if(e.touches.length===2){ pinchD=touchGap(e.touches); dragId=null; } },{passive:true});
+canvasEl.addEventListener('touchmove',(e)=>{ if(e.touches.length!==2 || !pinchD) return; const d=touchGap(e.touches); if(d>0){ setCamDist(camDist*pinchD/d); pinchD=d; } },{passive:true});
+canvasEl.addEventListener('touchend',(e)=>{ if(e.touches.length<2) pinchD=0; },{passive:true});
 
 // ── 키링 월드 입장 동의 (버전이 바뀌면 다시 받는다 — 예: 1:1 성사 후 프로필 사진 공개 기능 추가 시) ──
 // .3: '프로필 공개'를 개인정보 수집·이용 안내에 포함(별도 체크 없음) / 11-05.1: 키키 대화·소원·활동 기록과 방침 전문 링크 추가
@@ -1855,6 +1889,7 @@ function tick(){
   animTaxi(clock.elapsedTime);
   { const now=performance.now(); for(const par of [hero, ...[...peers.values()].map(p=>p.root)]){ const sp=par.userData.say; if(sp && now>sp.userData.until){ par.remove(sp); sp.material.map.dispose(); sp.material.dispose(); par.userData.say=null; } } }
   for(const o of spinners) o.rotation.y+=dt*o.userData.kl_spin;
+  twinkleTime.value=clock.elapsedTime;
   updateWishNotes();
   for(const b of bobbers) b.o.position.y=b.y+Math.sin(clock.elapsedTime*b.w+b.p)*b.a;
   // 키키(AI): 둥실둥실 + 가까이 오면 쳐다보기
