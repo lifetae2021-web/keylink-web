@@ -7,8 +7,7 @@ export const ENTRY_BONUS = 500;                     // 24시간 안의 첫 입�
 export const ENTRY_BONUS_GAP_MS = 24 * 60 * 60 * 1000;
 export const STAY_POINTS = 50;                      // 머문 시간 1시간마다
 export const STAY_UNIT_MS = 60 * 60 * 1000;
-export const STAY_TICK_MS = 5 * 60 * 1000;          // 화면이 5분마다 '아직 있어요'를 보낸다
-export const STAY_IDLE_MS = 10 * 60 * 1000;         // 10분 넘게 아무 조작이 없으면(자리 비움) 시간이 쌓이지 않는다
+export const STAY_TICK_MS = 5 * 60 * 1000;          // 화면이 5분마다 '아직 있어요'를 보낸다(자리 비움·다른 탭이어도 창이 열려 있으면 쌓임)
 export const STAY_DAILY_MAX = 8;                    // 하루(한국 날짜) 최대 8번 = 400P
 export const WISH_PRICE = 100;       // 분수대에 소원 던지기
 export const WISH_MAX = 40;          // 소원 글자 수

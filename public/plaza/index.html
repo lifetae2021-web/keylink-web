@@ -397,7 +397,7 @@ import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { nickProblem, isReservedNick } from '/plaza/badwords.js';
 import { LOOK, HATS, LOCKED_ACC, SHOP_ACC, SEASON_ACC, isLockedAcc, GENDER_OPTIONS, sanitizeLook, defaultLook, fitToGender, fitFaceToStyle } from '/plaza/look.js';
-import { CAT_FOOD_PRICE, WISH_PRICE, WISH_MAX, FOUNTAIN, ENTRY_BONUS, STAY_POINTS, STAY_TICK_MS, STAY_IDLE_MS } from '/plaza/shop.js';
+import { CAT_FOOD_PRICE, WISH_PRICE, WISH_MAX, FOUNTAIN, ENTRY_BONUS, STAY_POINTS, STAY_TICK_MS } from '/plaza/shop.js';
 import { PETS, AFF, PET_NAME_MAX, AFF_DECAY_PER_DAY, petKindLabel, FEED_ONLY } from '/plaza/pets.js';
 import { createAvatar } from '/plaza/avatar.js';
 import { THEMES, sanitizeTheme } from '/plaza/themes.js';
@@ -1617,14 +1617,11 @@ document.getElementById('chatBlock').onclick=()=>blockPerson(currentChat);
 // ── 손님 → 회원 전환 게이트 (실제 키링크 로그인 연동) ──
 let member=false, fbUser=null, myUid=null;
 // ── 키링 월드 포인트 적립(회원): 24시간 안 첫 입장 보너스 + 머문 시간 1시간마다(서버 /api/plaza/reward가 판단) ──
-let rewardStarted=false, rewardSt=null, lastInputAt=Date.now();
-for(const ev of ['keydown','pointerdown','touchstart','wheel']) addEventListener(ev,()=>{ lastInputAt=Date.now(); },{ passive:true });
-addEventListener('mousemove',()=>{ lastInputAt=Date.now(); },{ passive:true });
+let rewardStarted=false, rewardSt=null;
 async function rewardPost(action){ try{ const r=await authFetch('/api/plaza/reward',{ method:'POST', headers:{ 'content-type':'application/json' }, body:JSON.stringify({ action }) }); const j=await r.json().catch(()=>({})); if(!r.ok||!j.ok) return null; rewardSt=j; shopPoints=j.points; return j; }catch(e){ return null; } }
 async function startReward(){ if(rewardStarted || !member || !fbUser || mode!=='playing') return; rewardStarted=true;
   const j=await rewardPost('enter'); if(j && j.bonus) toast('키링 월드 첫 입장 보너스 +'+j.bonus.toLocaleString()+'P');
-  setInterval(async()=>{ if(document.hidden || Date.now()-lastInputAt>STAY_IDLE_MS) return;   // 자리 비움이면 보내지 않음 → 그 시간은 쌓이지 않는다
-    const t=await rewardPost('tick'); if(t && t.earned) toast('키링 월드에서 1시간! +'+t.earned+'P'); if(!menuBox.hidden) renderStay(); }, STAY_TICK_MS); }
+  setInterval(async()=>{ const t=await rewardPost('tick'); if(t && t.earned) toast('키링 월드에서 1시간! +'+t.earned+'P'); if(!menuBox.hidden) renderStay(); }, STAY_TICK_MS); }
 function renderStay(){ const el=document.getElementById('menuStay'); if(!member||!fbUser){ el.hidden=false; el.textContent='회원은 하루 첫 입장 '+ENTRY_BONUS+'P, 머문 시간 1시간마다 '+STAY_POINTS+'P를 받아요'; return; }
   const s=rewardSt; if(!s){ el.hidden=true; return; } el.hidden=false;
   el.textContent=s.nextInMs==null?'오늘 머문 시간 보상을 모두 받았어요':'1시간마다 '+STAY_POINTS+'P · 다음 적립까지 약 '+Math.max(1,Math.ceil(s.nextInMs/60000))+'분 · 오늘 '+s.stayLeft+'번 남음'; }

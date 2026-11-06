@@ -7,7 +7,7 @@ import { ENTRY_BONUS, ENTRY_BONUS_GAP_MS, STAY_POINTS, STAY_UNIT_MS, STAY_TICK_M
 // - 머문 시간 STAY_UNIT_MS마다 STAY_POINTS (하루 STAY_DAILY_MAX번까지)
 // 머문 시간은 화면이 STAY_TICK_MS마다 보내는 신호 사이 간격으로만 센다. 신호가 끊기면(창 닫음·자리 비움) 그 사이는 0.
 // 상태는 plazaKeys/{uid}: entryBonusAt · stayMs · stayLastAt · stayDay · stayDayCount
-const TICK_GRACE_MS = STAY_TICK_MS + 2 * 60 * 1000;
+const TICK_GRACE_MS = STAY_TICK_MS + 5 * 60 * 1000;   // 백그라운드 탭은 타이머가 늦게 돌 수 있어 여유를 둔다
 
 export class RewardError extends Error { constructor(public code: string) { super(code); } }
 
