@@ -14,7 +14,7 @@ const COPY = {
     tags: ['전국 누구나', '1:1 대화', '로그인 없이 구경'], bg: 'linear-gradient(135deg, #bfe3ff 0%, #eaf7ff 55%, #ffe6ee 100%)',
   },
   xmas: {
-    img: '/plaza/preview_xmas.jpg', alt: '크리스마스 키링 월드 — 소원 트리 앞에 모인 산타 모자 캐릭터들',
+    img: '/plaza/preview_xmas.jpg?v=2', alt: '크리스마스 키링 월드 — 소원 트리 앞에 모인 산타 모자 캐릭터들',
     badge: '크리스마스 키링 월드 오픈', title: <>눈 내리는 <span style={{ color: '#FF6F61' }}>키링 월드</span></>,
     desc: '올 크리스마스, 혼자 보내지 마세요. 산타 모자로 꾸민 내 캐릭터로 눈 덮인 키링 월드를 걷고, 소원 트리에 소원을 걸고, 마음에 드는 사람과 1:1 대화를 나눠 보세요. 숨은 선물 상자를 다 찾으면 포인트도 받아요.',
     tags: ['전국 누구나', '1:1 대화', '선물 찾기'], bg: 'linear-gradient(135deg, #d9d4ff 0%, #eef0ff 55%, #ffe3ec 100%)',
