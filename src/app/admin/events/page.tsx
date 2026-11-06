@@ -27,6 +27,7 @@ import {
   Phone,
   UserCheck,
   MessageSquare,
+  FileText,
   AlertCircle,
   CheckCircle2,
   Trophy,
@@ -229,6 +230,7 @@ export default function EventsPage() {
   const [smsTargets, setSmsTargets] = useState<{ phone: string; name: string; gender: string; slotNumber?: number; userId: string; appId?: string }[]>([]);
   const [smsDefaultMsg, setSmsDefaultMsg] = useState('');
   const [smsRecipientLabel, setSmsRecipientLabel] = useState('');
+  const [smsKind, setSmsKind] = useState<'second' | 'proof'>('second'); // 재직증명 요청 문자는 2차안내 발송 기록(secondSmsSentAt)을 남기지 않는다
 
   // 중복만남 확인 관련 상태
   const [overlapModalOpen, setOverlapModalOpen] = useState(false);
@@ -845,7 +847,7 @@ export default function EventsPage() {
     
     // v9.1.7: 문자가 성공적으로 발송되었을 때 applications 컬렉션의 secondSmsSentAt 필드 업데이트
     const sentAt = new Date();
-    const sentAppIds = targetsToSend.filter((t: { appId?: string }) => t.appId).map((t: { appId?: string }) => t.appId!);
+    const sentAppIds = smsKind === 'second' ? targetsToSend.filter((t: { appId?: string }) => t.appId).map((t: { appId?: string }) => t.appId!) : [];
     try {
       const { doc, updateDoc, serverTimestamp } = await import('firebase/firestore');
       await Promise.all(
@@ -909,6 +911,7 @@ export default function EventsPage() {
     })));
 
     setSmsSingleTarget(null);
+    setSmsKind('second');
     setSmsRecipientLabel(`총 ${targetParticipants.length}명`);
 
     // 단체 발송 시에는 기본 템플릿의 형식을 그대로 유지하여 서버에서 치환되도록 함
@@ -946,6 +949,32 @@ ${chatLink}`;
     }
 
     setSmsDefaultMsg(defaultMsg);
+    setSmsModalOpen(true);
+  };
+
+  // 참가 명단 중 재직증명을 안 낸 사람에게 한 번에 요청 문자
+  const handleProofSMSClick = () => {
+    const targets = participants
+      .filter(app => {
+        const user = userMap[app.userId] || {};
+        return !(app.id?.startsWith('dummy') || app.userId?.startsWith('user_m_') || app.userId?.startsWith('user_f_') || user.isDummy === true || app.isDarkTemplar) && !hasJobProof(app);
+      })
+      .sort((a, b) => a.gender !== b.gender ? (a.gender === 'male' ? -1 : 1) : (a.slotNumber ?? 999) - (b.slotNumber ?? 999));
+    if (targets.length === 0) { toast.success('모든 참가자가 재직증명을 제출했어요.'); return; }
+    setSmsTargets(targets.map(app => ({ phone: app.phone, name: app.name || '참가자', gender: app.gender, slotNumber: app.slotNumber, userId: app.userId, appId: app.id })));
+    setSmsSingleTarget(null);
+    setSmsKind('proof');
+    setSmsRecipientLabel(`재직증명 미제출 ${targets.length}명`);
+    const fDate = active?.eventDate ? format(toJsDate(active.eventDate), "MM/dd(E)", { locale: ko }) : '';
+    setSmsDefaultMsg(`안녕하세요😊 키링크입니다 :)
+{이름}님, ${fDate ? fDate + ' ' : ''}소개팅 참가 전 재직 증명 서류 등록을 부탁드려요.
+
+재직증명서·사원증·명함·급여명세서 중 하나를 올려 주시면 돼요.
+(회사명이 보이면 되고, 개인정보는 가려도 괜찮아요)
+
+👉 등록하기: https://keylink.kr/mypage?proof=1
+
+모든 참가자분들의 신뢰를 위한 절차예요. 감사합니다🙏`);
     setSmsModalOpen(true);
   };
 
@@ -1067,6 +1096,14 @@ ${chatLink}`;
   };
 
   const isDummyApp = (app: any) => (app.userId?.startsWith("user_m_") || app.userId?.startsWith("user_f_") || app.id?.startsWith("dummy_"));
+  // 재직증명 제출 여부 — 마이페이지 D-day 안내와 같은 기준(회원 문서의 서류 또는 신청서 첨부)
+  const hasJobProof = (app: any) => {
+    const u = userMap[app.userId] || {};
+    return !!(u.employmentProof || u.verificationUrl || app.employmentProof);
+  };
+  const ProofBadge = ({ app }: { app: any }) => (isDummyApp(app) || app.isDarkTemplar) ? null : hasJobProof(app)
+    ? <span className="text-emerald-600 bg-emerald-50 border border-emerald-100 rounded px-1.5 py-0.5 text-[0.65rem] font-black whitespace-nowrap">재직증명 ✓</span>
+    : <span className="text-rose-600 bg-rose-50 border border-rose-100 rounded px-1.5 py-0.5 text-[0.65rem] font-black whitespace-nowrap">재직증명 미제출</span>;
 
   // v9.1.6: 2차 안내문자 발송 여부 렌더링 헬퍼
   const renderSmsButton = (app: any, isDesktop = false) => {
@@ -3111,6 +3148,12 @@ ${chatLink}
                                 </span>
                               </div>
                             </div>
+                            <div className="flex items-center gap-2 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-100">
+                              <span className="text-[0.7rem] font-bold text-emerald-700">재직증명</span>
+                              <span className="text-xs font-black text-emerald-700 bg-white/50 px-1.5 py-0.5 rounded">
+                                {realParticipants.filter(a => !a.isDarkTemplar && hasJobProof(a)).length}/{realParticipants.filter(a => !a.isDarkTemplar).length}
+                              </span>
+                            </div>
                             <div className="flex items-center gap-2">
                               <button
                                 onClick={handleBulk2ndSMSClick}
@@ -3118,6 +3161,15 @@ ${chatLink}
                               >
                                 <MessageSquare size={12} />
                                 2차안내 단체문자
+                              </button>
+
+                              <button
+                                onClick={handleProofSMSClick}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 text-rose-600 border border-rose-100 rounded-lg hover:bg-rose-500 hover:text-white transition-all text-[0.7rem] font-bold shadow-sm"
+                                title="참가 명단 중 재직증명을 안 낸 사람에게 한 번에 요청 문자"
+                              >
+                                <FileText size={12} />
+                                재직증명 미제출 문자 ({realParticipants.filter(a => !a.isDarkTemplar && !hasJobProof(a)).length})
                               </button>
                               
                               <button
@@ -3470,6 +3522,7 @@ ${chatLink}
                                                 {!isDummyApp(app) && (
                                                   <PhoneActionBadge phone={app.phone} />
                                                 )}
+                                                <ProofBadge app={app} />
                                                 {app.gender === 'female' && app.femaleOption === 'group' && (
                                                   <>
                                                     {!isDummyApp(app) && <span className="text-slate-300">·</span>}
@@ -3601,6 +3654,7 @@ ${chatLink}
                                                       <span className="text-pink-500 font-bold">{app.groupPartnerName ? `동반할인 (${app.groupPartnerName} ${app.groupPartnerBirthYear}년생)` : '동반할인'}</span>
                                                     </>
                                                   )}
+                                                  <ProofBadge app={app} />
                                                 </>
                                               )}
                                               {!app.isDarkTemplar && (

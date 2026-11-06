@@ -230,6 +230,12 @@ function MyPageContent() {
 
           setVerificationPreview(initialForm.employmentProof || '');
 
+          // 재직증명 요청 문자 링크(?proof=1)로 들어오면 수정 창을 열고 업로드 영역으로 바로 이동
+          if (new URLSearchParams(window.location.search).get('proof') === '1') {
+            setScrollToProof(true); setIsEditing(true);
+            window.history.replaceState(null, '', window.location.pathname);
+          }
+
           const savedPhotos = d.photos || d.profilePhotos || [];
           const legacyFace = d.facePhotos || [];
           const legacyBody = d.bodyPhotos || [];
