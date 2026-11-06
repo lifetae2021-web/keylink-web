@@ -1,7 +1,7 @@
 import { adminDb } from '@/lib/firebaseAdmin';
 import { spendMemberPointsInTx } from '@/lib/points';
 import { plazaKey } from '@/lib/plazaKey';
-import { SHOP_ACC, SEASON_ACC, CAT_FOOD_PRICE, WISH_PRICE, WISH_MAX } from '../../public/plaza/shop.js';
+import { SHOP_ACC, SEASON_ACC, CAT_FOOD_PRICE, WISH_PRICE, WISH_MAX, WISH_ORNS } from '../../public/plaza/shop.js';
 import { getActiveTheme } from '@/lib/plazaTheme';
 import { hasBadWord } from '../../public/plaza/badwords.js';
 import { AFF_FEED, PET_IDS } from '../../public/plaza/pets.js';
@@ -69,15 +69,19 @@ export async function feedCat(uid: string, animal?: string) {
   return shopState(uid);
 }
 
-export async function makeWish(uid: string, raw: unknown) {
+export async function makeWish(uid: string, raw: unknown, ornRaw?: unknown) {
   const text = String(raw ?? '').replace(/[\u0000-\u001f\u007f]/g, '').replace(/\s+/g, ' ').trim().slice(0, WISH_MAX);
   if (!text) throw new ShopError('empty');
   if (hasBadWord(text)) throw new ShopError('bad_word');
   const me = await memberInfo(uid);
+  // 크리스마스 테마에서는 고른 장식에 담겨 소원 트리에 계속 걸린다(그 밖의 테마는 분수대 위에 잠깐 떠오름)
+  const theme = await getActiveTheme();
+  const orn = theme === 'xmas' ? (WISH_ORNS.includes(String(ornRaw)) ? String(ornRaw) : 'star') : null;
+  const ref = adminDb.collection('plazaWishes').doc();
   await adminDb.runTransaction(async (tx) => {
-    await spendMemberPointsInTx(tx, uid, WISH_PRICE, '키링 월드 분수대 소원', 'plaza_shop');
-    tx.set(adminDb.collection('plazaWishes').doc(), { uid, nick: me.nick, text, createdAt: new Date() });   // 신고·관리용 기록
+    await spendMemberPointsInTx(tx, uid, WISH_PRICE, theme === 'xmas' ? '키링 월드 소원 트리' : '키링 월드 분수대 소원', 'plaza_shop');
+    tx.set(ref, { uid, nick: me.nick, text, theme, ...(orn ? { orn } : {}), createdAt: new Date() });   // 트리 장식 표시·신고·관리용 기록
   });
-  await announce({ t: 'wish', key: plazaKey(uid), nick: me.nick, text });
+  await announce({ t: 'wish', key: plazaKey(uid), nick: me.nick, text, id: ref.id, orn, theme });
   return shopState(uid);
 }

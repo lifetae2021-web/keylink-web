@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { adminDb, adminAuth } from '@/lib/firebaseAdmin';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
-import { getThemeSetting, clearThemeCache } from '@/lib/plazaTheme';
+import { getThemeSetting, clearThemeCache, THEME_DOC } from '@/lib/plazaTheme';
 import { THEMES, sanitizeTheme } from '../../../../../../public/plaza/themes.js';
 
 // 관리자: 키링 월드 테마 보기·바꾸기. 바꾸면 접속 중인 모든 방에 알려 새로고침 없이 바뀐다.
@@ -39,7 +39,7 @@ export async function POST(req: Request) {
     if (typeof b.until === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(b.until)) {
       until = Timestamp.fromMillis(new Date(b.until + 'T23:59:59+09:00').getTime());
     }
-    await adminDb.doc('plazaConfig/theme').set({ theme, until, updatedBy: gate.uid, updatedAt: FieldValue.serverTimestamp() });
+    await adminDb.doc(THEME_DOC).set({ theme, until, updatedBy: gate.uid, updatedAt: FieldValue.serverTimestamp() });
     clearThemeCache();
     // 접속 중인 사람들 화면도 바로 바꾸기
     const secret = process.env.PLAZA_ADMIN_SECRET;

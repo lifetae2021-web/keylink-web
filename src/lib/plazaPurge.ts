@@ -2,7 +2,7 @@ import { adminDb } from '@/lib/firebaseAdmin';
 import { Timestamp, type Query } from 'firebase-admin/firestore';
 
 // 키링 월드 개인정보 파기 — 개인정보처리방침 '보유 및 이용기간'과 숫자를 맞춘다(바꾸면 방침도 같이 고칠 것)
-// - 탈퇴 즉시 파기: 프로필, 반려동물·호감도, 황금 열쇠·꾸미기, 차단 목록, 입장 동의 기록
+// - 탈퇴 즉시 파기: 프로필, 반려동물·호감도, 황금 열쇠·꾸미기, 차단·친구 목록, 입장 동의 기록
 // - 탈퇴 후 1년 보관: 1:1 대화, 키키 대화(요약 메모·운영진 전달 질문 포함), 분수대 소원 → purgeAt 표시 후 매일 정리
 // - 비회원 키키 대화·운영진 전달 질문·입장 동의: 마지막 이용 후 1년
 // - 처리 완료한 신고: 처리 후 1년
@@ -34,6 +34,7 @@ export async function purgePlazaOnWithdraw(uid: string) {
     adminDb.doc(`plazaPets/${uid}`).delete(),
     adminDb.doc(`plazaKeys/${uid}`).delete(),
     adminDb.doc(`plazaBlocks/${uid}`).delete(),
+    adminDb.doc(`plazaFriends/${uid}`).delete(),
     adminDb.doc(`plazaConsents/u:${uid}`).delete(),
   ]);
   const chats = await setPurgeAt(adminDb.collection('plazaChats').where('participants', 'array-contains', uid), purgeAt);

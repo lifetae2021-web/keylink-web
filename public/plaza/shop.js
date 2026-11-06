@@ -5,3 +5,5 @@ export const CAT_FOOD_PRICE = 100;   // 광장 고양이 밥주기
 export const WISH_PRICE = 100;       // 분수대에 소원 던지기
 export const WISH_MAX = 40;          // 소원 글자 수
 export const FOUNTAIN = { x: 0, z: 0, r: 5.5 };   // 분수대 중심(웹 좌표)과 소원 빌 수 있는 거리
+// 크리스마스 테마: 소원을 담아 트리에 거는 장식 모양
+export const WISH_ORNS = ['star', 'heart', 'bell', 'ball', 'snow'];

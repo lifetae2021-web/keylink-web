@@ -2,9 +2,11 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { auth } from '@/lib/firebase';
-import { Loader2, Palette, Check, ExternalLink } from 'lucide-react';
+import { Loader2, Palette, Check, ExternalLink, EyeOff, RotateCcw } from 'lucide-react';
 
 interface ThemeInfo { id: string; label: string; desc: string }
+interface Wish { id: string; nick: string; text: string; theme: string; orn: string | null; hidden: boolean; createdAt: number | null }
+const ORN_LABEL: Record<string, string> = { star: '별', heart: '하트', bell: '종', ball: '구슬', snow: '눈송이' };
 
 const ymd = (ms: number | null) => {
   if (!ms) return '';
@@ -20,6 +22,7 @@ export default function PlazaThemePage() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
+  const [wishes, setWishes] = useState<Wish[]>([]);
 
   const authed = async (url: string, init: RequestInit = {}) => {
     const t = await auth.currentUser?.getIdToken();
@@ -33,6 +36,8 @@ export default function PlazaThemePage() {
       const j = await r.json();
       if (!r.ok) throw new Error(j.error || '불러오기 실패');
       setThemes(j.themes || []); setCurrent({ theme: j.theme, until: j.until }); setPick(j.theme); setUntil(ymd(j.until));
+      const w = await (await authed('/api/admin/plaza/wishes')).json().catch(() => ({}));
+      setWishes(w.wishes || []);
     } catch (e: unknown) { setErr(e instanceof Error ? e.message : '오류'); }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -49,6 +54,12 @@ export default function PlazaThemePage() {
     } catch (e: unknown) { setErr(e instanceof Error ? e.message : '오류'); }
     finally { setBusy(false); }
   };
+
+  const hideWish = async (w: Wish) => {
+    await authed('/api/admin/plaza/wishes?id=' + encodeURIComponent(w.id) + (w.hidden ? '&restore=1' : ''), { method: 'DELETE' });
+    setWishes((ws) => ws.map((x) => (x.id === w.id ? { ...x, hidden: !w.hidden } : x)));
+  };
+  const treeWishes = wishes.filter((w) => w.theme === 'xmas');
 
   const expired = current?.until && Date.now() > current.until;
   const nowLabel = current ? (expired ? '기본' : themes.find((t) => t.id === current.theme)?.label || current.theme) : '';
@@ -106,6 +117,30 @@ export default function PlazaThemePage() {
           </div>
         </>
       )}
+
+      <div style={{ marginTop: 34 }}>
+        <h2 style={{ fontSize: 17, fontWeight: 800, margin: 0 }}>트리에 걸린 소원 <span style={{ fontSize: 13, color: '#8a98ab', fontWeight: 500 }}>{treeWishes.filter((w) => !w.hidden).length}개</span></h2>
+        <div style={{ fontSize: 13, color: '#67768b', marginTop: 6, lineHeight: 1.7, wordBreak: 'keep-all' }}>
+          크리스마스 테마에서 회원이 포인트로 건 소원이에요. 모두에게 보이니 부적절한 소원은 내려 주세요(바로 트리에서 떼어져요).
+        </div>
+        <div style={{ marginTop: 12, border: '1px solid #e8ecf3', borderRadius: 14, background: '#fff', overflow: 'hidden' }}>
+          {treeWishes.length === 0 ? (
+            <div style={{ padding: 20, color: '#9fb0c5', textAlign: 'center' }}>아직 걸린 소원이 없어요.</div>
+          ) : treeWishes.map((w) => (
+            <div key={w.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', borderBottom: '1px solid #f0f3f8', opacity: w.hidden ? 0.5 : 1 }}>
+              <span style={{ fontSize: 12, color: '#3b6fd8', background: '#eef4ff', borderRadius: 6, padding: '2px 7px', whiteSpace: 'nowrap', flexShrink: 0 }}>{ORN_LABEL[w.orn || 'star'] || '장식'}</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 14, wordBreak: 'break-word', textDecoration: w.hidden ? 'line-through' : 'none' }}>{w.text}</div>
+                <div style={{ fontSize: 12, color: '#8a98ab', marginTop: 2 }}>{w.nick} · {w.createdAt ? new Date(w.createdAt).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}</div>
+              </div>
+              <button onClick={() => hideWish(w)}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 11px', borderRadius: 9, border: '1px solid #e2e6ee', background: '#fff', color: w.hidden ? '#33415a' : '#c0392b', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                {w.hidden ? <><RotateCcw size={14} /> 되돌리기</> : <><EyeOff size={14} /> 내리기</>}
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

@@ -46,6 +46,10 @@ const TABS: { key: Status; label: string }[] = [
 ];
 
 const hasProof = (u: any) => !!(u.employmentProof || u.verificationUrl);
+// 비회원(빠른 신청)도 승인대기에 넣는 경우: 상태가 명시적으로 '대기'이거나 직업 검토가 남은 때만
+// (상태 값이 아예 없는 예전 비회원 기록까지 쓸어 담지 않도록 '명시적'으로만 본다)
+const guestNeedsReview = (u: any, jobReviewed: (u: any) => unknown = (x) => x.isJobReviewed) =>
+  u.isRegistered === false && !(u.mergedTo && u.mergedTo !== u.id) && u.status !== 'rejected' && (u.status === 'pending' || jobReviewed(u) === false);
 
 // 재직 인증 서류 첨부 뱃지: 미승인(검토 필요)은 강조, 승인 완료는 흐리게
 const ProofBadge = ({ user, onOpen }: { user: any; onOpen: () => void }) => {
@@ -635,13 +639,13 @@ export default function UsersPage() {
     const isRegular = (u: any) => !isDummy(u) && !isGuest(u) && !isMerged(u);
     return {
       all: users.filter(u => !isDummy(u) && !isMerged(u)).length,
-      pending: users.filter(u => isRegular(u) && u.status !== 'rejected' && ((u.status || 'pending') === 'pending' || u.isJobReviewed === false)).length,
+      pending: users.filter(u => (isRegular(u) && u.status !== 'rejected' && ((u.status || 'pending') === 'pending' || u.isJobReviewed === false)) || guestNeedsReview(u)).length,
       verified: users.filter(u => isRegular(u) && (u.status || 'pending') === 'verified' && u.isJobReviewed !== false).length,
       rejected: users.filter(u => isRegular(u) && u.status === 'rejected').length,
       dummy: users.filter(u => isDummy(u)).length,
       guest: users.filter(u => isGuest(u)).length,
       waitpool: users.filter(u => isRegular(u) && Array.isArray(u.cancelledSessionHistory) && u.cancelledSessionHistory.length > 0).length,
-      pendingProof: users.filter(u => isRegular(u) && u.status !== 'rejected' && ((u.status || 'pending') === 'pending' || u.isJobReviewed === false) && hasProof(u)).length,
+      pendingProof: users.filter(u => ((isRegular(u) && u.status !== 'rejected' && ((u.status || 'pending') === 'pending' || u.isJobReviewed === false)) || guestNeedsReview(u)) && hasProof(u)).length,
     };
   }, [users]);
 
@@ -657,7 +661,7 @@ export default function UsersPage() {
       if (filter === 'guest') return isGuest(u);
       if (filter === 'waitpool') return isRegular(u) && Array.isArray(u.cancelledSessionHistory) && u.cancelledSessionHistory.length > 0;
       if (filter === 'all') return !isDummy(u);
-      if (filter === 'pending') return isRegular(u) && u.status !== 'rejected' && ((u.status || 'pending') === 'pending' || listJobReviewed(u) === false) && (!proofOnly || hasProof(u));
+      if (filter === 'pending') return ((isRegular(u) && u.status !== 'rejected' && ((u.status || 'pending') === 'pending' || listJobReviewed(u) === false)) || guestNeedsReview(u, listJobReviewed)) && (!proofOnly || hasProof(u));
       if (filter === 'verified') return isRegular(u) && (u.status || 'pending') === 'verified' && listJobReviewed(u) !== false;
       return isRegular(u) && (u.status || 'pending') === filter;
     });
@@ -698,7 +702,7 @@ export default function UsersPage() {
       } else if (filter === 'all') {
         matchFilter = !isDummy(u);
       } else if (filter === 'pending') {
-        matchFilter = isRegular(u) && u.status !== 'rejected' && ((u.status || 'pending') === 'pending' || listJobReviewed(u) === false) && (!proofOnly || hasProof(u));
+        matchFilter = ((isRegular(u) && u.status !== 'rejected' && ((u.status || 'pending') === 'pending' || listJobReviewed(u) === false)) || guestNeedsReview(u, listJobReviewed)) && (!proofOnly || hasProof(u));
       } else if (filter === 'verified') {
         matchFilter = isRegular(u) && (u.status || 'pending') === 'verified' && listJobReviewed(u) !== false;
       } else {

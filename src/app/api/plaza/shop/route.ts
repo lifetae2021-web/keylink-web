@@ -26,7 +26,7 @@ export async function POST(req: Request) {
   try {
     const out = body.action === 'buy' ? await buyItem(uid, String(body.item || ''))
       : body.action === 'feed' ? await feedCat(uid, body.animal ? String(body.animal) : undefined)
-      : body.action === 'wish' ? await makeWish(uid, body.text)
+      : body.action === 'wish' ? await makeWish(uid, body.text, body.orn)
       : null;
     if (!out) return NextResponse.json({ error: 'bad_action' }, { status: 400 });
     return NextResponse.json({ ok: true, ...out });

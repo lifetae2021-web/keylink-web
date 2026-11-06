@@ -62,3 +62,4 @@ scratch/
 
 # Higgsfield 원본 생성 모델(용량 큼, 웹에는 village.glb로 들어감)
 plaza-blender/gen/*.glb
+plaza-blender/gen/*.mp3

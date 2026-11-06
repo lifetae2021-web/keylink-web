@@ -9,7 +9,7 @@
 //   tid  : 신고·차단 대상 ID = 'k:'+key(회원) 또는 'g:'+gkey(손님)
 import { nickProblem, hasBadWord, isReservedNick } from '../../public/plaza/badwords.js';
 import { sanitizeLook, isLockedAcc } from '../../public/plaza/look.js';
-import { KEY_SPOTS } from '../../public/plaza/keys.js';
+import { findSpot, setOfSpot } from '../../public/plaza/keys.js';
 import { shortHash } from './hash.js';
 import { verifyFirebaseIdToken } from './firebaseToken.js';
 
@@ -87,9 +87,11 @@ export class PlazaRoom {
       const b = await request.json().catch(() => ({}));
       const m = b.msg || {};
       if (m.t === 'feed') this.broadcast(null, { t: 'feed', key: String(m.key || ''), nick: String(m.nick || '').slice(0, 12), aid: m.aid ? String(m.aid).slice(0, 16) : null });
-      else if (m.t === 'wish') this.broadcast(null, { t: 'wish', key: String(m.key || ''), nick: String(m.nick || '').slice(0, 12), text: String(m.text || '').slice(0, 40) });
+      else if (m.t === 'wish') this.broadcast(null, { t: 'wish', key: String(m.key || ''), nick: String(m.nick || '').slice(0, 12), text: String(m.text || '').slice(0, 40), id: m.id ? String(m.id).slice(0, 40) : null, orn: m.orn ? String(m.orn).slice(0, 10) : null, theme: m.theme ? String(m.theme).slice(0, 16) : null });
       // 관리자가 테마를 바꿈 → 각자 새 테마를 다시 불러온다
       else if (m.t === 'theme') this.broadcast(null, { t: 'theme' });
+      // 관리자가 트리에 걸린 소원을 내림 → 모두의 화면에서 그 장식을 뗀다
+      else if (m.t === 'wishhide') this.broadcast(null, { t: 'wishhide', id: String(m.id || '').slice(0, 40) });
       return Response.json({ ok: true });
     }
     if (url.pathname === '/kick') {
@@ -198,15 +200,16 @@ export class PlazaRoom {
       // 이모트(인사·춤·하트): 정해진 것만 방 전체에
       if (a.nick && ['wave', 'dance', 'heart'].includes(m.e)) this.broadcast(ws, { t: 'emote', id: a.id, e: m.e });
     } else if (m.t === 'key') {
-      // 황금 열쇠: 회원만 서버에 기록(보상용). 마지막으로 받은 내 위치가 열쇠 자리 가까이일 때만 인정
+      // 황금 열쇠(크리스마스 테마는 선물 상자): 회원만 서버에 기록(보상용). 마지막으로 받은 내 위치가 그 자리 가까이일 때만 인정
       if (!a.uid) return;
-      const k = KEY_SPOTS.find((s) => s.id === m.id);
+      const k = findSpot(m.id);
       if (!k || !a.st) return;
       if (Math.hypot((a.st.x || 0) - k.x, (a.st.z || 0) - k.z) > 2.2 || Math.abs((a.st.y || 0) - k.y) > 1.8) return;
       const day = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' });
       try {
-        const r = await (await this.reg('/key', { day, uid: a.uid, id: k.id })).json();
-        this.send(ws, { t: 'keyok', id: k.id, n: r.n || 0, total: KEY_SPOTS.length });
+        const set = setOfSpot(k.id);
+        const r = await (await this.reg('/key', { day, uid: a.uid, id: k.id, ids: set.map((s) => s.id) })).json();
+        this.send(ws, { t: 'keyok', id: k.id, n: r.n || 0, total: set.length });
       } catch (e) {}
     } else if (m.t === 'say') {
       // 머리 위 말풍선(광장 공개): 40자, 제어문자 제거, 비속어는 보내지 않고 본인에게만 알림

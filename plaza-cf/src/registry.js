@@ -198,7 +198,10 @@ export class PlazaRegistry {
       const b = await request.json();
       this.sql().exec('INSERT OR IGNORE INTO keyclaims(day, uid, kid, at) VALUES (?, ?, ?, ?)', String(b.day), String(b.uid), String(b.id), now);
       this.cleanupOld(now);
-      return Response.json({ n: this.rows('SELECT COUNT(*) AS n FROM keyclaims WHERE day = ? AND uid = ?', String(b.day), String(b.uid))[0].n });
+      // ids가 오면 그 묶음(테마별 열쇠/선물)만 센다
+      const got = this.rows('SELECT kid FROM keyclaims WHERE day = ? AND uid = ?', String(b.day), String(b.uid)).map((r) => r.kid);
+      const ids = Array.isArray(b.ids) ? b.ids.map(String) : null;
+      return Response.json({ n: ids ? got.filter((k) => ids.includes(k)).length : got.length });
     }
     // 관리자: 접속 기록 지우기(운영 점검용 테스트 접속 정리) — 번호(id)로만
     if (url.pathname === '/admin/visits/delete') {

@@ -1,10 +1,11 @@
 import { adminDb } from '@/lib/firebaseAdmin';
 import { earnMemberPointsInTx, seoulToday } from '@/lib/points';
-import { KEY_TOTAL } from '../../public/plaza/keys.js';
+import { spotsFor } from '../../public/plaza/keys.js';
+import { getActiveTheme } from '@/lib/plazaTheme';
 import { LOCKED_ACC } from '../../public/plaza/look.js';
 
-// 키링 월드 황금 열쇠 보상 (회원만)
-// - 하루에 열쇠 8개를 모두 모으면 100P(하루 한 번)
+// 키링 월드 황금 열쇠 보상 (회원만) — 크리스마스 테마에서는 같은 규칙으로 선물 상자(keys.js GIFT_SPOTS)
+// - 하루에 그 테마의 찾을 거리(열쇠 8개·선물 8개)를 모두 모으면 100P(하루 한 번)
 // - 7일 연속으로 모두 모을 때마다 오프라인 소개팅 3,000원 할인 쿠폰(유효 30일)
 // - 모은 날 누적 3일: 황금 키링, 10일: 왕관 (look.js LOCKED_ACC)
 // 포인트·쿠폰은 키링 월드 안에서 쓰는 혜택이고, 소개팅 선발과는 무관하다(화면에도 안내).
@@ -22,8 +23,8 @@ export async function readKeyState(uid: string): Promise<KeyState> {
   return { lastDay: d.lastDay || null, streak: d.streak || 0, totalDays: d.totalDays || 0, unlocks: d.unlocks || [], coupons: d.coupons || 0 };
 }
 
-/** 실시간 서버가 위치를 확인하고 기록한 오늘의 열쇠 개수 */
-export async function countTodayKeys(uid: string, day: string): Promise<number> {
+/** 실시간 서버가 위치를 확인하고 기록한 오늘의 열쇠(선물) 개수 — ids를 주면 그 묶음만 센다 */
+export async function countTodayKeys(uid: string, day: string, ids?: string[]): Promise<number> {
   const secret = process.env.PLAZA_ADMIN_SECRET;
   if (!secret) throw new Error('PLAZA_ADMIN_SECRET 미설정');
   const r = await fetch(WORKER + '/admin/keys', {
@@ -31,7 +32,9 @@ export async function countTodayKeys(uid: string, day: string): Promise<number> 
     body: JSON.stringify({ uid, day }), cache: 'no-store',
   });
   if (!r.ok) throw new Error('worker_' + r.status);
-  return (await r.json()).n || 0;
+  const j = await r.json();
+  if (ids && Array.isArray(j.ids)) return (j.ids as string[]).filter((k) => ids.includes(k)).length;
+  return j.n || 0;
 }
 
 function prevDay(day: string) {
@@ -42,7 +45,11 @@ function prevDay(day: string) {
 /** 오늘 다 모았으면 보상(하루 한 번). 이미 받았으면 그대로 상태만 돌려준다 */
 export async function claimKeyReward(uid: string) {
   const day = seoulToday();
-  const n = await countTodayKeys(uid, day);
+  const theme = await getActiveTheme();
+  const set = spotsFor(theme) as { id: string }[];
+  const KEY_TOTAL = set.length;
+  const label = theme === 'xmas' ? `선물 상자 ${KEY_TOTAL}개 찾기` : `황금 열쇠 ${KEY_TOTAL}개 모으기`;
+  const n = await countTodayKeys(uid, day, set.map((s) => s.id));
   if (n < KEY_TOTAL) return { ok: false as const, reason: 'not_all', n, total: KEY_TOTAL, state: await readKeyState(uid) };
   return adminDb.runTransaction(async (tx) => {
     const ref = adminDb.doc(`plazaKeys/${uid}`);
@@ -59,7 +66,7 @@ export async function claimKeyReward(uid: string) {
     const newUnlocks: string[] = [];
     for (const [acc, need] of Object.entries(LOCKED_ACC)) if (totalDays >= need && !unlocks.includes(acc)) { unlocks.push(acc); newUnlocks.push(acc); }
     const coupon = streak % KEY_STREAK_FOR_COUPON === 0;
-    earnMemberPointsInTx(tx, uid, KEY_DAILY_POINTS, 'plaza_keys', '키링 월드 황금 열쇠 8개 모으기');
+    earnMemberPointsInTx(tx, uid, KEY_DAILY_POINTS, 'plaza_keys', `키링 월드 ${label}`);
     if (coupon) {
       const expireAt = new Date(Date.now() + COUPON_VALID_DAYS * 86400000);
       tx.set(adminDb.collection(`users/${uid}/coupons`).doc(), {
