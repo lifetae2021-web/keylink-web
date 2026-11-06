@@ -161,6 +161,17 @@
   #reportDetail { width:100%; box-sizing:border-box; font-family:inherit; font-size:.95rem; padding:10px 12px; border:1px solid var(--card-border); border-radius:12px; background:rgba(255,255,255,.7); color:var(--ink); resize:none; }
   .confirm-btns { display:flex; gap:10px; margin-top:16px; } .confirm-btns .btn { flex:1; }
   .msg.typing { opacity:.6; font-style:italic; }
+  .photo-bar { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:8px; padding:9px 14px; border-bottom:1px solid var(--card-border); background:rgba(109,94,252,.07); font-size:.85rem; color:var(--pill-ink); word-break:keep-all; text-align:center; }
+  .photo-bar button { border:none; background:var(--accent); color:#fff; font-family:inherit; font-size:.82rem; padding:6px 12px; border-radius:999px; cursor:pointer; white-space:nowrap; }
+  .photo-bar button.sub { background:var(--pill); color:var(--pill-ink); }
+  #photoView { position:fixed; inset:0; z-index:31; display:grid; place-items:center; background:rgba(20,26,40,.72); padding:max(16px,env(safe-area-inset-top,0px)) 16px max(16px,env(safe-area-inset-bottom,0px)); }
+  .pv-box { display:flex; flex-direction:column; align-items:center; gap:12px; width:min(380px,100%); }
+  .pv-frame { position:relative; width:100%; border-radius:18px; overflow:hidden; background:#222; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
+  .pv-frame img { display:block; width:100%; max-height:62vh; object-fit:contain; pointer-events:none; }
+  .pv-mark { position:absolute; inset:0; display:flex; flex-wrap:wrap; align-content:space-around; justify-content:space-around; gap:28px; padding:14px; pointer-events:none; overflow:hidden;
+    color:rgba(255,255,255,.28); font-size:.8rem; font-weight:700; text-shadow:0 1px 2px rgba(0,0,0,.35); transform:rotate(-18deg) scale(1.3); }
+  .pv-note { margin:0; color:#e8ecf4; font-size:.82rem; word-break:keep-all; text-align:center; }
+  .pv-box .btn { min-width:140px; }
   .msg-cta { align-self:flex-start; margin-top:-2px; display:inline-block; text-decoration:none; background:var(--accent); color:#fff; font-size:.9rem; padding:9px 16px; border-radius:999px; box-shadow:0 4px 12px rgba(109,94,252,.3); word-break:keep-all; }
   .msg.them, .msg.me { white-space:pre-wrap; word-break:keep-all; overflow-wrap:anywhere; }
   .msg.sys { align-self:center; max-width:90%; background:transparent; color:#8a98ab; font-size:.82rem; text-align:center; padding:4px 8px; word-break:keep-all; white-space:pre-line; line-height:1.55; }
@@ -362,9 +373,15 @@
   <div class="confirm-btns"><button type="button" class="btn ghost" id="confirmNo">취소</button><button type="button" class="btn go" id="confirmYes">확인</button></div>
 </div></div>
 <div id="chat" hidden><div class="chat-box">
-  <div class="chat-head"><span id="chatName"></span><span class="chat-tools"><button type="button" id="chatReport" class="tool">신고</button><button type="button" id="chatBlock" class="tool">차단</button><button id="chatClose" aria-label="닫기">✕</button></span></div>
+  <div class="chat-head"><span id="chatName"></span><span class="chat-tools"><button type="button" id="chatPhoto" class="tool" hidden>사진 교환</button><button type="button" id="chatReport" class="tool">신고</button><button type="button" id="chatBlock" class="tool">차단</button><button id="chatClose" aria-label="닫기">✕</button></span></div>
+  <div class="photo-bar" id="photoBar" hidden></div>
   <div class="chat-msgs" id="chatMsgs"></div>
   <form class="chat-input" id="chatForm"><input id="chatText" placeholder="메시지 입력" autocomplete="off" maxlength="200"><button type="submit">전송</button></form>
+</div></div>
+<div id="photoView" hidden><div class="pv-box">
+  <div class="pv-frame"><img id="pvImg" alt="상대의 대표 사진" draggable="false"><div class="pv-mark" id="pvMark" aria-hidden="true"></div></div>
+  <p class="pv-note">캡처·저장·다른 곳에 올리는 것은 금지돼요</p>
+  <button type="button" class="btn go" id="pvClose">닫기</button>
 </div></div>
 <div id="verBadge" hidden></div>
 <div id="loading">키링 월드에 들어가는 중…</div>
@@ -378,7 +395,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { nickProblem, isReservedNick } from '/plaza/badwords.js';
-import { LOOK, HATS, LOCKED_ACC, SHOP_ACC, SEASON_ACC, isLockedAcc, GENDER_OPTIONS, sanitizeLook, defaultLook, fitToGender } from '/plaza/look.js';
+import { LOOK, HATS, LOCKED_ACC, SHOP_ACC, SEASON_ACC, isLockedAcc, GENDER_OPTIONS, sanitizeLook, defaultLook, fitToGender, fitFaceToStyle } from '/plaza/look.js';
 import { CAT_FOOD_PRICE, WISH_PRICE, WISH_MAX, FOUNTAIN } from '/plaza/shop.js';
 import { PETS, AFF, PET_NAME_MAX, AFF_DECAY_PER_DAY, petKindLabel } from '/plaza/pets.js';
 import { createAvatar } from '/plaza/avatar.js';
@@ -821,7 +838,7 @@ function renderCreator(){
   const seg=document.getElementById('crGender'); seg.innerHTML='';
   for(const [label,val] of CHOICES.gender){ const b=document.createElement('button'); b.type='button'; b.textContent=label; b.setAttribute('aria-pressed',String(opts.gender===val)); b.onclick=()=>setGender(val); seg.appendChild(b); }
   const sseg=document.getElementById('crStyle'); sseg.innerHTML='';
-  for(const [label,val] of [['블록','block'],['귀여운','chibi']]){ const b=document.createElement('button'); b.type='button'; b.textContent=label; b.setAttribute('aria-pressed',String(L().style===val)); b.onclick=()=>{ L().style=val; changed(); renderCreator(); }; sseg.appendChild(b); }
+  for(const [label,val] of [['블록','block'],['귀여운','chibi']]){ const b=document.createElement('button'); b.type='button'; b.textContent=label; b.setAttribute('aria-pressed',String(L().style===val)); b.onclick=()=>{ L().style=val; fitFaceToStyle(L()); changed(); renderCreator(); }; sseg.appendChild(b); }
   document.querySelectorAll('.cr-pane').forEach(p=>p.hidden=p.dataset.pane!==crTab);
   renderPills('opt-region','region',CHOICES.region);
   const f=pane('face'); f.innerHTML=''; f.append(row('피부색',swatches('skin',PAL.skin)), row('눈 모양',typePills('eye')), row('눈동자 색',swatches('eyeColor',PAL.eyeColor),'반짝·나른한·날렵한 눈에서 보여요'),
@@ -1355,13 +1372,14 @@ function connect(){
     else if(m.t==='wishhide'){ removeTreeWish(m.id); }
     else if(m.t==='wish'){ if(m.theme==='xmas' && m.id && themeId==='xmas') addTreeWish({ id:m.id, nick:m.nick, text:m.text, orn:m.orn }); if(myWishText && m.text===myWishText){ myWishText=null; } else { const pr=[...peers.values()].find(x=>x.key&&x.key===m.key); wishEffect(pr?pr.group:null, m.nick, m.text); } }
     else if(m.t==='leave'){ hiddenPeers.delete(m.id); const pr=peers.get(m.id); if(pr){ scene.remove(pr.group); peers.delete(m.id); updateCount(); } if(currentChat && currentChat.id===m.id){ addMsg('sys', (currentChat.nick||'상대')+'님이 대화방을 나가셨습니다.'); } }
-    else if(((m.key && blocked.has(m.key)) || blockedIds.has(m.from)) && (m.t==='req'||m.t==='accept'||m.t==='acceptwait'||m.t==='chat'||m.t==='chatbye')){ return; } // 차단한 사람
+    else if(((m.key && blocked.has(m.key)) || blockedIds.has(m.from)) && (m.t==='req'||m.t==='accept'||m.t==='acceptwait'||m.t==='chat'||m.t==='chatbye'||m.t==='photo')){ return; } // 차단한 사람
     else if(m.t==='req'){ showReq(m.from, m.nick, m.uid, m.key); }
     else if(m.t==='acceptwait'){ waitingAccept={ nick:m.nick, at:Date.now() }; showNotice('수락 완료 · 가입 대기', m.nick, '님이 대화 신청을 수락했어요.<br>비회원이라 가입을 마치면<br>바로 대화가 열려요.'); }
     else if(m.t==='accept'){ const waited=waitingAccept && Date.now()-waitingAccept.at<PENDING_ACCEPT_TTL; waitingAccept=null;
       if(waited){ showNotice('가입 완료', m.nick, '님이 가입을 마쳤어요.<br>지금 바로 대화할 수 있어요.'); } else toast(`${m.nick}님과 매칭!`);
       openChat({ id:m.from, nick:m.nick, uid:m.uid, key:m.key, bot:false }); }
     else if(m.t==='chat'){ onChatMsg(m.from, m.nick, m.text, m.uid); }
+    else if(m.t==='photo'){ onPhotoEv(m); }
     else if(m.t==='chatbye'){ if(currentChat && currentChat.id===m.from){ addMsg('sys', (currentChat.nick||'상대')+'님이 대화방을 나가셨습니다.'); currentChat.left=true; } }
   };
 }
@@ -1410,7 +1428,7 @@ const chat=document.getElementById('chat'), chatMsgs=document.getElementById('ch
 let currentChat=null;
 async function openChat(p){ document.exitPointerLock?.(); currentChat=p; setNpcLeft(null);
   // 메뉴에서 연 대화인데 상대가 지금 접속해 있지 않으면 기록만 볼 수 있다
-  const offline=!p.npc && !p.id; chatText.disabled=offline; chatText.placeholder=offline?'상대가 접속하면 다시 대화할 수 있어요':'메시지 입력'; document.getElementById('chatReport').hidden=document.getElementById('chatBlock').hidden=!!p.npc; document.getElementById('chatName').textContent=p.nick; chatMsgs.innerHTML=''; chat.hidden=false; setTimeout(()=>chatText.focus(),60);
+  const offline=!p.npc && !p.id; chatText.disabled=offline; chatText.placeholder=offline?'상대가 접속하면 다시 대화할 수 있어요':'메시지 입력'; document.getElementById('chatReport').hidden=document.getElementById('chatBlock').hidden=!!p.npc; document.getElementById('chatName').textContent=p.nick; chatMsgs.innerHTML=''; chat.hidden=false; resetPhoto(p); setTimeout(()=>chatText.focus(),60);
   let loaded=false;
   if(p.npc){ loaded=await loadNpcHistory(); }
   else if(p.uid && fbUser){ loaded=await loadChatHistory(p.uid); }
@@ -1421,11 +1439,11 @@ async function openChat(p){ document.exitPointerLock?.(); currentChat=p; setNpcL
 let npcNewsShown=false;
 async function checkNpcNews(){ if(npcNewsShown) return; try{ const r=fbUser ? await authFetch('/api/plaza/npc?peek=1') : await fetch('/api/plaza/npc?peek=1&dev='+encodeURIComponent(DEV_ID)); const j=await r.json().catch(()=>({})); if(j.news){ npcNewsShown=true; toast('키키가 운영진 답을 받아 왔어요'); } }catch(e){} }
 async function loadNpcHistory(){ try{ const r=fbUser ? await authFetch('/api/plaza/npc') : await fetch('/api/plaza/npc?dev='+encodeURIComponent(DEV_ID)); const j=await r.json().catch(()=>({})); setNpcLeft(j.remaining, j.limit); const msgs=j.messages||[]; if(!msgs.length) return false; for(const m of msgs) addMsg(m.mine?'me':'them', m.text, m.cta); return true; }catch(e){ return false; } }
-async function loadChatHistory(uid){ try{ const t=await fbUser.getIdToken(); const r=await fetch('/api/plaza/chat/history?with='+encodeURIComponent(uid),{ headers:{ Authorization:'Bearer '+t } }); const j=await r.json().catch(()=>({})); const msgs=j.messages||[]; if(!msgs.length) return false; for(const m of msgs) addMsg(m.mine?'me':'them', m.text, m.cta); return true; }catch(e){ return false; } }
+async function loadChatHistory(uid){ try{ const t=await fbUser.getIdToken(); const r=await fetch('/api/plaza/chat/history?with='+encodeURIComponent(uid),{ headers:{ Authorization:'Bearer '+t } }); const j=await r.json().catch(()=>({})); const msgs=j.messages||[]; if(!msgs.length) return false; for(const m of msgs){ if(m.sys) addMsg('sys', photoSysText(m.ev,m.byMe)||m.text); else addMsg(m.mine?'me':'them', m.text, m.cta); } return true; }catch(e){ return false; } }
 function addMsg(who,text,cta){ const d=document.createElement('div'); d.className='msg '+who; d.textContent=text; chatMsgs.appendChild(d);
   if(cta==='apply'){ const a=document.createElement('a'); a.className='msg-cta'; a.href='/#apply'; a.target='_blank'; a.rel='noopener'; a.textContent='신청하러 가기 →'; chatMsgs.appendChild(a); } // 키키(AI) 답 아래 신청 버튼(새 탭: 광장은 그대로)
   chatMsgs.scrollTop=chatMsgs.scrollHeight; }
-document.getElementById('chatClose').onclick=()=>{ if(currentChat && !currentChat.npc && ws && ws.readyState===1){ try{ ws.send(JSON.stringify({ t:'chatbye', to:currentChat.id })); }catch(e){} } chat.hidden=true; currentChat=null; };
+document.getElementById('chatClose').onclick=()=>{ resetPhoto(null); if(currentChat && !currentChat.npc && ws && ws.readyState===1){ try{ ws.send(JSON.stringify({ t:'chatbye', to:currentChat.id })); }catch(e){} } chat.hidden=true; currentChat=null; };
 async function persistChat(toUid,toNick,text){ if(!toUid||!fbUser) return; try{ const t=await fbUser.getIdToken(); const r=await fetch('/api/plaza/chat/send',{ method:'POST', headers:{ 'Content-Type':'application/json', Authorization:'Bearer '+t }, body:JSON.stringify({ toUid, toNick, myNick:opts.nick, text }) }); if(!r.ok){ const j=await r.json().catch(()=>({})); toast('대화 저장 실패: '+(j.error||r.status)); } }catch(e){ toast('대화 저장 실패: 네트워크'); } }
 document.getElementById('chatForm').addEventListener('submit',(e)=>{ e.preventDefault(); const t=chatText.value.trim(); if(!t||!currentChat) return; addMsg('me',t); chatText.value='';
   if(currentChat.npc){ sendToNpc(t); }
@@ -1450,6 +1468,45 @@ function onChatMsg(from,nick,text,uid){
   if(currentChat && currentChat.id===from){ currentChat.left=false; addMsg('them',text); return; }
   toast(nick+'님이 메시지를 보냈어요'); // 강제로 열지 않음. 상대를 눌러 1:1을 다시 열면 기록이 보임
 }
+// ── 사진 교환: 서로 수락하면 대표 사진 한 장씩(서버 /api/plaza/chat/photo가 상태·이미지를 관리) ──
+const photoBtn=document.getElementById('chatPhoto'), photoBar=document.getElementById('photoBar'), photoView=document.getElementById('photoView'), pvImg=document.getElementById('pvImg');
+let photoSt=null, photoAsking=false;
+const PHOTO_ERR={ no_my_photo:'내 대표 사진이 있어야 교환할 수 있어요', no_their_photo:'상대가 등록한 사진이 없어요', blocked:'차단한 사이에서는 교환할 수 없어요', no_chat:'대화를 먼저 나눠 주세요', already:'이미 요청했어요', bad_state:'상태가 바뀌었어요. 다시 확인해 주세요' };
+function photoSysText(ev,byMe){ return ({ ask:byMe?'사진 교환을 요청했어요':'상대가 사진 교환을 요청했어요', done:'사진 교환 완료\n서로의 대표 사진 한 장을 볼 수 있어요',
+  decline:byMe?'사진 교환 요청을 거절했어요':'상대가 사진 교환을 거절했어요', cancel:byMe?'사진 교환 요청을 취소했어요':'상대가 사진 교환 요청을 취소했어요',
+  hide:byMe?'사진 공개를 해제했어요':'상대가 사진 공개를 해제했어요' })[ev]||''; }
+function resetPhoto(p){ photoSt=null; photoAsking=false; photoBar.hidden=true; photoBtn.hidden=!(p && !p.npc && p.uid && fbUser); if(!photoBtn.hidden) refreshPhoto(); }
+async function refreshPhoto(){ const c=currentChat; if(!c||!c.uid||!fbUser) return;
+  try{ const r=await authFetch('/api/plaza/chat/photo?with='+encodeURIComponent(c.uid)); const j=await r.json().catch(()=>({})); if(!r.ok||currentChat!==c) return; photoSt=j; renderPhotoBar(); }catch(e){} }
+function renderPhotoBar(){ const s=photoSt; photoBar.innerHTML=''; if(!s){ photoBar.hidden=true; return; }
+  const txt=(t)=>{ const sp=document.createElement('span'); sp.textContent=t; photoBar.appendChild(sp); };
+  const btn=(t,fn,sub)=>{ const b=document.createElement('button'); b.type='button'; b.textContent=t; if(sub) b.className='sub'; b.onclick=fn; photoBar.appendChild(b); };
+  photoBtn.textContent=s.state==='done'?'사진 보기':'사진 교환';
+  if(s.state==='done'){ txt('사진 교환 완료'); btn('사진 보기',openPhotoView); btn('사진 내리기',()=>photoAct('hide'),true); }
+  else if(s.state==='asked' && s.byMe){ txt('상대의 수락을 기다리는 중'); btn('요청 취소',()=>photoAct('decline'),true); }
+  else if(s.state==='asked'){ txt('상대가 사진 교환을 요청했어요'); btn('수락',()=>photoAct('accept')); btn('거절',()=>photoAct('decline'),true); }
+  else if(photoAsking){ txt('대표 사진 한 장씩 서로 보여 줘요. 요청할까요?'); btn('요청',()=>photoAct('ask')); btn('취소',()=>{ photoAsking=false; renderPhotoBar(); },true); }
+  photoBar.hidden=!photoBar.childElementCount; }
+photoBtn.onclick=()=>{ const s=photoSt; if(!s) return;
+  if(s.state==='done'){ openPhotoView(); return; }
+  if(s.state==='none'){ if(!s.meHas){ addMsg('sys',PHOTO_ERR.no_my_photo+'\n키링크 회원 정보에서 사진을 등록할 수 있어요'); return; } if(!s.themHas){ addMsg('sys',PHOTO_ERR.no_their_photo); return; } photoAsking=true; }
+  renderPhotoBar(); };
+async function photoAct(action){ const c=currentChat; if(!c||!c.uid) return; photoAsking=false;
+  try{ const r=await authFetch('/api/plaza/chat/photo',{ method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ with:c.uid, action }) }); const j=await r.json().catch(()=>({}));
+    if(!r.ok){ toast(PHOTO_ERR[j.error]||'잠시 후 다시 시도해 주세요'); refreshPhoto(); return; }
+    addMsg('sys',photoSysText(j.ev,true)); if(j.ev==='hide' && !photoView.hidden) closePhotoView();
+    if(c.id && ws && ws.readyState===1){ try{ ws.send(JSON.stringify({ t:'photo', to:c.id, ev:j.ev })); }catch(e){} }
+    refreshPhoto(); }catch(e){ toast('네트워크 오류예요'); } }
+function onPhotoEv(m){ if(currentChat && currentChat.id===m.from){ const t=photoSysText(m.ev,false); if(t) addMsg('sys',t); if(m.ev==='hide' && !photoView.hidden) closePhotoView(); refreshPhoto(); return; }
+  if(m.ev==='ask') toast(m.nick+'님이 사진 교환을 요청했어요'); else if(m.ev==='done') toast(m.nick+'님과 사진 교환이 완료됐어요'); }
+async function openPhotoView(){ const c=currentChat; if(!c||!c.uid) return;
+  try{ const r=await authFetch('/api/plaza/chat/photo?img=1&with='+encodeURIComponent(c.uid)); if(!r.ok){ toast('사진을 볼 수 없어요'); refreshPhoto(); return; }
+    if(pvImg.src) URL.revokeObjectURL(pvImg.src); pvImg.src=URL.createObjectURL(await r.blob());
+    const mk=document.getElementById('pvMark'); mk.innerHTML=''; for(let i=0;i<24;i++){ const sp=document.createElement('span'); sp.textContent=opts.nick||'키링 월드'; mk.appendChild(sp); }
+    photoView.hidden=false; }catch(e){ toast('네트워크 오류예요'); } }
+function closePhotoView(){ photoView.hidden=true; if(pvImg.src){ URL.revokeObjectURL(pvImg.src); pvImg.removeAttribute('src'); } }
+document.getElementById('pvClose').onclick=closePhotoView;
+photoView.addEventListener('contextmenu',(e)=>e.preventDefault());
 // ── 신고 · 차단 ──
 const REPORT_REASONS=['욕설·비하','음란·성희롱','스팸·광고','사기·금전요구','기타'];
 const reportBox=document.getElementById('report'), confirmBox=document.getElementById('confirmBox');

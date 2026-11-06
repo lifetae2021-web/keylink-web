@@ -329,7 +329,7 @@ def bench(i, x, y, face):
     for k, off in enumerate((-0.45, 0.45)):
         dx, dy = math.cos(face - math.pi / 2) * off, math.sin(face - math.pi / 2) * off
         e = empty(f'SEAT_xmas_bench_{i}_{k + 1}', PROPS, (x + dx, y + dy, 0), kl_role='seat', kl_h=0.5)
-        e.rotation_euler = (0, 0, face + math.pi / 2)
+        e.rotation_euler = (0, 0, face - math.pi / 2)   # 등받이(face 방향) 반대쪽을 보게 — 로컬 -Y = face + π
     col(f'COL_bench_{i}', x, y, 0.75)
 
 

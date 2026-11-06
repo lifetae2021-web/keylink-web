@@ -20,6 +20,16 @@ export const LOOK = {
   sliders: { height: [-1, 1, 0], build: [-1, 1, 0], female: [0, 1, 0], long: [0, 1, 0], vline: [0, 1, 0.3], cheek: [0, 1, 0.2],
              eyeSize: [-1, 1, 0], eyeGap: [-1, 1, 0], eyeY: [-1, 1, 0], blush: [0, 1, 0.6] },
 };
+// 귀여운(chibi) 그림체의 기본 얼굴형 — 동글동글(사용자 요청). 블록은 위 슬라이더 기본값 그대로
+export const CHIBI_FACE = { vline: 0, cheek: 0.8 };
+const BLOCK_FACE = { vline: LOOK.sliders.vline[2], cheek: LOOK.sliders.cheek[2] };
+const isFace = (l, f) => l.vline === f.vline && l.cheek === f.cheek;
+// 그림체를 바꿀 때 얼굴형을 손대지 않았으면(기본값이면) 그 그림체의 기본 얼굴형으로 맞춘다
+export function fitFaceToStyle(l) {
+  if (l.style === 'chibi' && isFace(l, BLOCK_FACE)) Object.assign(l, CHIBI_FACE);
+  else if (l.style === 'block' && isFace(l, CHIBI_FACE)) Object.assign(l, BLOCK_FACE);
+  return l;
+}
 export const HATS = ['cap', 'beanie', 'crown', 'santa'];
 // 황금 열쇠를 모은 날(누적)로 여는 꾸미기 — 잠금 해제 여부는 서버(plazaKeys/{uid}.unlocks)가 판단
 export const LOCKED_ACC = { goldkeyring: 3, crown: 10 };
@@ -90,6 +100,8 @@ export function sanitizeLook(raw) {
   out.acc = acc.filter((a, i) => !HATS.includes(a) || acc.findIndex((b) => HATS.includes(b)) === i).slice(0, 4);   // 모자는 하나만
   out.colors = {}; for (const k of LOOK.colors) out.colors[k] = color(c[k], d.colors[k]);
   for (const [k, s] of Object.entries(LOOK.sliders)) out[k] = num(raw[k], s);
+  // 예전에 만든 귀여운 캐릭터도 얼굴형을 손대지 않았으면 둥근 얼굴로
+  if (out.style === 'chibi' && isFace(out, BLOCK_FACE)) Object.assign(out, CHIBI_FACE);
   // 데리고 다니는 반려동물(이름표용). 소유 여부는 가입 API가 plazaPets로 확인
   if (raw.pet && typeof raw.pet === 'object' && PET_IDS.includes(raw.pet.id)) {
     const name = String(raw.pet.name ?? '').replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, PET_NAME_MAX);

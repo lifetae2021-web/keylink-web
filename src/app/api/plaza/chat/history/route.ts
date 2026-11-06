@@ -22,8 +22,8 @@ export async function GET(req: Request) {
       .collection('messages').orderBy('createdAt', 'asc').limitToLast(limit).get();
 
     const messages = snap.docs.map((d) => {
-      const x = d.data() as { from?: string; text?: string; cta?: string; createdAt?: { toMillis?: () => number } };
-      return { id: d.id, from: x.from, text: x.text, at: x.createdAt?.toMillis?.() || null, mine: x.from === me, cta: x.cta || null }; // cta: 키키(AI) 답의 '신청하러 가기' 버튼
+      const x = d.data() as { from?: string; by?: string; ev?: string; text?: string; cta?: string; createdAt?: { toMillis?: () => number } };
+      return { id: d.id, from: x.from, text: x.text, at: x.createdAt?.toMillis?.() || null, mine: x.from === me, cta: x.cta || null, sys: x.from === 'sys', ev: x.ev || null, byMe: x.by === me }; // sys: 사진 교환 같은 안내 // cta: 키키(AI) 답의 '신청하러 가기' 버튼
     });
     return NextResponse.json({ messages });
   } catch (e: unknown) {
