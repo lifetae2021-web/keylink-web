@@ -284,12 +284,9 @@
   .menu-empty button { margin-top:10px; border:none; background:#6c5ce7; color:#fff; font-family:inherit; padding:8px 14px; border-radius:10px; cursor:pointer; }
   #dday { position:absolute; top:env(safe-area-inset-top,0px); left:50%; transform:translateX(-50%); margin-top:12px; background:var(--glass); border:1px solid rgba(255,214,150,.55); color:#fff;
     border-radius:16px; padding:7px 14px; font-size:.86rem; font-weight:700; letter-spacing:.01em; backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); white-space:nowrap; pointer-events:none; text-shadow:0 1px 6px rgba(255,190,110,.6); }
-  #ornPick { display:flex; flex-wrap:wrap; gap:6px; width:100%; justify-content:center; }
-  #ornPrev { width:100%; display:flex; align-items:center; justify-content:center; gap:10px; }
-  #ornPrev canvas { width:80px; height:80px; border-radius:16px; background:radial-gradient(circle at 50% 40%, #3a2f63, #1c1633); }
-  #ornPrev b { font-size:.95rem; color:var(--ink); }   /* 장식 9종이 화면 밖으로 잘리지 않게 여러 줄로 */
-  #ornPick button { font-family:inherit; font-size:.8rem; padding:6px 10px; border-radius:10px; border:1px solid var(--card-border); background:#fff; cursor:pointer; white-space:nowrap; }
-  #ornPick button[aria-pressed="true"] { background:#3b6fd8; color:#fff; border-color:#3b6fd8; }
+  #ornPick { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:6px; width:100%; max-width:330px; margin:0 auto; }   /* 장식 9종을 그림으로(5칸씩 두 줄) */
+  #ornPick button { aspect-ratio:1; padding:0; border-radius:14px; border:2px solid transparent; background:#e6e6e6 center/cover no-repeat; cursor:pointer; box-shadow:0 1px 3px rgba(40,70,120,.15); transition:transform .12s, border-color .12s; -webkit-tap-highlight-color:transparent; }
+  #ornPick button[aria-pressed="true"] { border-color:#6b4fd8; box-shadow:0 0 0 3px rgba(107,79,216,.3); transform:scale(1.06); }
   #keyCount.done { border-color:rgba(255,214,90,.7); }
   #verBadge { position:fixed; right:max(16px,env(safe-area-inset-right,0px)); bottom:calc(6px + env(safe-area-inset-bottom,0px)); z-index:9999; pointer-events:none;
     background:#0F172A; color:#fff; font-size:.7rem; font-weight:800; padding:4px 11px; border-radius:100px; box-shadow:0 4px 12px rgba(0,0,0,.15); font-family:system-ui,-apple-system,sans-serif; }
@@ -671,7 +668,7 @@ const treeR=(y)=>{ for(let i=1;i<TREE_PROFILE.length;i++){ const [y0,r0]=TREE_PR
 // 소원 id → 0~1(마지막 글자만 달라도 고르게 퍼지도록 섞기 단계를 거친다)
 const hashId=(s)=>{ let h=2166136261; for(const c of String(s)) h=Math.imul(h^c.charCodeAt(0),16777619); h^=h>>>16; h=Math.imul(h,0x85ebca6b); h^=h>>>13; h=Math.imul(h,0xc2b2ae35); h^=h>>>16; return (h>>>0)/4294967296; };
 const ORN_COLOR={ star:'#ffd65a', heart:'#ff7aa2', bell:'#ffb347', ball:'#8fb8ff', snow:'#e8f4ff', gift:'#e8453c', light:'#ffe27a', sock:'#d6303f', candy:'#ff4d5e' };
-function ornShape(kind){ const c=ORN_COLOR[kind]||'#ffd65a', m=new THREE.MeshStandardMaterial({ color:c, emissive:c, emissiveIntensity:1.4, roughness:0.35, metalness:0.2 });
+function ornShapeBasic(kind){ const c=ORN_COLOR[kind]||'#ffd65a', m=new THREE.MeshStandardMaterial({ color:c, emissive:c, emissiveIntensity:1.4, roughness:0.35, metalness:0.2 });
   if(kind==='star'||kind==='heart'){ const sh=new THREE.Shape();
     if(kind==='star'){ for(let i=0;i<10;i++){ const a=Math.PI/2+i*Math.PI/5, r=i%2?0.11:0.25; i?sh.lineTo(Math.cos(a)*r,Math.sin(a)*r):sh.moveTo(Math.cos(a)*r,Math.sin(a)*r); } }
     else { sh.moveTo(0,-0.2); sh.bezierCurveTo(-0.32,0.02,-0.16,0.26,0,0.12); sh.bezierCurveTo(0.16,0.26,0.32,0.02,0,-0.2); }
@@ -691,6 +688,18 @@ function ornShape(kind){ const c=ORN_COLOR[kind]||'#ffd65a', m=new THREE.MeshSta
     for(let i=0;i<3;i++){ const r=new THREE.Mesh(new THREE.CylinderGeometry(0.037,0.037,0.035,10),m); r.position.y=-0.18+i*0.1; g.add(r); }
     const hook=new THREE.Mesh(new THREE.TorusGeometry(0.08,0.035,8,14,Math.PI),m); hook.position.set(0.08,0.11,0); g.add(hook); return g; }
   return new THREE.Mesh(new THREE.SphereGeometry(0.17,16,12),m); }
+// 소원 장식 3D 모델(Higgsfield로 그린 그림을 3D로 바꾼 GLB). 다 불러오기 전에는 위의 도형으로 보이다가 바꿔 끼운다
+const ORN_MODEL={}, ORN_WAIT={};
+function loadOrn(kind){ if(kind in ORN_MODEL || ORN_WAIT[kind]) return; ORN_WAIT[kind]=[];
+  new GLTFLoader().load('/plaza/assets/orn_'+kind+'.glb',(gltf)=>{ const m=gltf.scene, bb=new THREE.Box3().setFromObject(m), sz=bb.getSize(new THREE.Vector3()), c=bb.getCenter(new THREE.Vector3()), k=0.46/Math.max(sz.x,sz.y,sz.z);
+    m.scale.setScalar(k); m.position.set(-c.x*k,-c.y*k,-c.z*k);
+    m.traverse(o=>{ if(o.isMesh && o.material){ const mt=o.material; if(mt.map){ mt.emissive=new THREE.Color(kind==='light'?'#ffc94a':'#ffffff'); mt.emissiveMap=mt.map; mt.emissiveIntensity=kind==='light'?1.1:0.35; } } });   // 밤에도 색이 보이게 은은하게 빛난다
+    const w=new THREE.Group(); w.add(m); ORN_MODEL[kind]=w;
+    for(const { h, fb } of ORN_WAIT[kind]){ h.remove(fb); h.add(w.clone()); } ORN_WAIT[kind]=null; },
+  undefined, ()=>{ ORN_WAIT[kind]=null; ORN_MODEL[kind]=false; }); }
+function ornShape(kind){ const h=new THREE.Group();
+  if(ORN_MODEL[kind]){ h.add(ORN_MODEL[kind].clone()); return h; }
+  const fb=ornShapeBasic(kind); h.add(fb); loadOrn(kind); if(ORN_WAIT[kind]) ORN_WAIT[kind].push({ h, fb }); return h; }
 function addTreeWish(w){ if(!w||!w.id||treeWishIds.has(w.id)) return; treeWishIds.add(w.id);
   const h=hashId(w.id), y=1.7+hashId(w.id+'y')*8.6, a=h*Math.PI*2, r=treeR(y)+0.12;
   // 트리 기본 장식보다 크고 밝게(소원 장식이 눈에 띄게)
@@ -703,23 +712,12 @@ function removeTreeWish(id){ const o=treeWishGroup.children.find(c=>c.userData.w
 async function loadTreeWishes(){ try{ const j=await (await fetch('/api/plaza/wishes?theme=xmas')).json(); for(const w of (j.wishes||[])) addTreeWish(w); }catch(e){} }
 // 소원 장식 고르기(크리스마스 테마일 때 소원 입력창 위에)
 let wishOrn='star';
-// 장식 미리보기(작은 3D 창 하나를 재사용) — 소원 창이 열려 있는 동안만 돌린다
-let ornPv=null;
-function ornPreview(kind,label){ const host=document.getElementById('ornPrev'); if(!host) return; host.querySelector('b').textContent=label||'';
-  const cv=host.querySelector('canvas');
-  if(!ornPv || ornPv.cv!==cv){ if(ornPv) ornPv.r.dispose(); const r=new THREE.WebGLRenderer({ canvas:cv, alpha:true, antialias:true }); r.setPixelRatio(Math.min(2,devicePixelRatio)); r.setSize(80,80,false); r.outputColorSpace=THREE.SRGBColorSpace;
-    const sc=new THREE.Scene(); sc.add(new THREE.HemisphereLight(0xffffff,0x445566,1.6)); const dl=new THREE.DirectionalLight(0xffffff,1.6); dl.position.set(1,2,2); sc.add(dl);
-    const cam=new THREE.PerspectiveCamera(35,1,0.1,20); cam.position.set(0,0.05,1.5); cam.lookAt(0,0,0); ornPv={ cv, r, sc, cam, obj:null }; }
-  if(ornPv.obj) ornPv.sc.remove(ornPv.obj); ornPv.obj=ornShape(kind); ornPv.obj.scale.setScalar(1.5); ornPv.sc.add(ornPv.obj); }
-function ornPreviewTick(dt){ if(!ornPv || !ornPv.obj || wishBox.hidden) return; ornPv.obj.rotation.y+=dt*1.2; ornPv.r.render(ornPv.sc,ornPv.cam); }
 function setupOrnPick(on){ const box=document.getElementById('wishBox'); if(!box) return; let pick=document.getElementById('ornPick');
   { const wt=document.getElementById('wishText'); if(wt) wt.placeholder=on ? '소원 글귀 (선택 · 100P)' : '분수대에 던질 소원 (100P)'; const sb=document.querySelector('#wishBox button[type=submit]'); if(sb) sb.textContent=on?'걸기':'던지기'; }   // wishText 변수는 아래에서 선언돼 여기선 직접 찾는다
   if(!on){ pick?.remove(); box.style.flexWrap=''; return; }
   if(pick) return; pick=document.createElement('div'); pick.id='ornPick'; box.style.flexWrap='wrap';
-  const prev=document.createElement('div'); prev.id='ornPrev'; prev.innerHTML='<canvas width="160" height="160"></canvas><b></b>'; pick.appendChild(prev);
-  for(const [k,label] of [['star','별'],['heart','하트'],['bell','종'],['ball','구슬'],['snow','눈송이'],['gift','선물상자'],['light','조명'],['sock','양말'],['candy','지팡이사탕']]){ const b=document.createElement('button'); b.type='button'; b.textContent=label; b.setAttribute('aria-pressed',String(k===wishOrn));
-    b.onclick=()=>{ wishOrn=k; for(const x of pick.querySelectorAll('button')) x.setAttribute('aria-pressed',String(x===b)); ornPreview(k,label); }; pick.appendChild(b); }
-  const cur=[...pick.querySelectorAll('button')].find(x=>x.getAttribute('aria-pressed')==='true'); if(cur) setTimeout(()=>ornPreview(wishOrn,cur.textContent),0);
+  for(const [k,label] of [['star','별'],['heart','하트'],['bell','종'],['ball','구슬'],['snow','눈송이'],['gift','선물상자'],['light','조명'],['sock','양말'],['candy','지팡이사탕']]){ const b=document.createElement('button'); b.type='button'; b.style.backgroundImage='url(/plaza/assets/orn/'+k+'.webp)'; b.title=label; b.setAttribute('aria-label',label); b.setAttribute('aria-pressed',String(k===wishOrn));
+    b.onclick=()=>{ wishOrn=k; for(const x of pick.querySelectorAll('button')) x.setAttribute('aria-pressed',String(x===b)); }; pick.appendChild(b); }
   box.prepend(pick); }
 // ── 배경음악(관리자 화면 > 키링 월드 > 배경음악): 지금 테마에서 켜진 곡을 차례로 돌려 튼다. 1곡이면 그 곡만 반복 ──
 // 브라우저는 사용자가 한 번 누르기 전엔 소리를 못 내므로 입장 버튼을 누를 때 시작한다. 켜기/끄기·볼륨은 이 기기에 기억
@@ -2352,7 +2350,6 @@ function tick(){
   { const now=performance.now(); for(const par of [hero, ...[...peers.values()].map(p=>p.root)]){ const sp=par.userData.say; if(sp && now>sp.userData.until){ par.remove(sp); sp.material.map.dispose(); sp.material.dispose(); par.userData.say=null; } } }
   for(const o of spinners) o.rotation.y+=dt*o.userData.kl_spin;
   twinkleTime.value=clock.elapsedTime;
-  ornPreviewTick(dt);
   updateSanta(dt, clock.elapsedTime);
   updateWishNotes();
   for(const b of bobbers) b.o.position.y=b.y+Math.sin(clock.elapsedTime*b.w+b.p)*b.a;

@@ -15,16 +15,45 @@ export function loadAvatarAssets(style = 'chibi') {
 // 블록 머리는 앞면이 얼굴 그림의 ±30°(작은 칸)만 써서 눈이 몇 픽셀로 뭉개지고 양쪽 크기가 달라 보였다 →
 // 블록은 그림을 FACE_ZOOM배 크게 그리고, 머리 UV도 같은 배율로 넓혀(mount) 같은 자리에 선명하게 입힌다.
 const FACE_ZOOM = { block: 3 };
+// 눈 크기(배율)·좌우 간격(경도°)·높이(위도°) — 얼굴 그림과 안경 맞추기가 같이 쓴다
+function eyeLayout(look) {
+  const chibi = look.style === 'chibi';
+  return { es: (1 + 0.28 * look.eyeSize) * (chibi ? 1.4 : 1), gap: (chibi ? 19 : 17) + 4 * look.eyeGap, ey: (chibi ? -10 : -6) + 5 * look.eyeY + (look.style === 'block' ? -4 : 0) };
+}
+// 안경 부품이 처음 맞춰진 눈(위도 -6°, 간격 17°, 배율 1)과 머리 모양. 눈이 바뀐 만큼 안경을 옮기고 키운다
+// chibi: 구(중심 높이 cy·반지름 r) / block: 앞면이 얼굴 그림 ±span°에 대응하는 상자(중심 cy·반높이 hh)
+// inner·fade: 이 x보다 안쪽(알·코받침)은 다 맞추고, 바깥(귀에 걸리는 다리)은 fade 폭에 걸쳐 원래대로
+const GLASS_REF = { chibi: { cy: 1.40, r: 0.3626, lat0: -6, lon0: 17, inner: 0.16, fade: 0.12 },
+  block: { box: true, cy: 1.54, hh: 0.32, span: 30, lat0: -6, lon0: 17, inner: 0.27, fade: 0.06 } };
+function fitGlasses(o, look, style) {
+  const ref = GLASS_REF[style], base = o.userData.basePos; if (!ref || !base) return;
+  const D = Math.PI / 180, e = eyeLayout(look);
+  const cy0 = ref.box ? ref.cy + ref.hh * ref.lat0 / ref.span : ref.cy + ref.r * Math.sin(ref.lat0 * D);
+  const dy = ref.box ? ref.hh * (e.ey - ref.lat0) / ref.span : ref.r * (Math.sin(e.ey * D) - Math.sin(ref.lat0 * D));
+  const fx = (ref.box ? e.gap / ref.lon0 : Math.sin(e.gap * D) / Math.sin(ref.lon0 * D)) * (1 + (e.es - 1) * 0.35), fy = 1 + (e.es - 1) * 0.6;
+  const p = o.geometry.attributes.position;
+  for (let i = 0; i < p.count; i++) {
+    const x = base[i * 3], y = base[i * 3 + 1], z = base[i * 3 + 2];
+    const w = Math.max(0, Math.min(1, 1 - (Math.abs(x) - ref.inner) / ref.fade));
+    p.setXYZ(i, x * (1 + (fx - 1) * w), cy0 + (y - cy0) * (1 + (fy - 1) * w) + dy, z);
+  }
+  p.needsUpdate = true; o.geometry.computeBoundingSphere();
+}
 export function drawFace(cv, look) {
   const S = FACE_ZOOM[look.style] || 1;
   const W = cv.width, H = cv.height, g = cv.getContext('2d'), k = W / 1024 * S;
   const P = (lon, lat) => [W * (0.5 + lon * S / 360), H * (0.5 - lat * S / 180)];
   g.fillStyle = look.colors.skin; g.fillRect(0, 0, W, H);
   // 블록 머리는 앞머리가 이마를 덮어서 눈·눈썹·입을 조금 아래로(얼굴 가운데에 오게)
-  const es = 1 + 0.28 * look.eyeSize, gap = 17 + 4 * look.eyeGap, ey = -6 + 5 * look.eyeY + (look.style === 'block' ? -4 : 0);
+  // 귀여운(chibi)은 눈을 크게, 얼굴 아래쪽에 두고 반짝임·속눈썹을 더한다(아기 얼굴 비율)
+  const chibi = look.style === 'chibi';
+  const { es, gap, ey } = eyeLayout(look);
   const ink = '#2b2020', brow = new THREE.Color(look.colors.hair).multiplyScalar(0.7).getStyle();
   // 볼터치
-  if (look.blush > 0) {
+  if (look.blush > 0 && chibi) {
+    for (const s of [-1, 1]) { const [x, y] = P(s * (gap + 9), ey - 19); const gr = g.createRadialGradient(x, y, 0, x, y, 26 * k);
+      gr.addColorStop(0, `rgba(255,120,140,${0.6 * look.blush})`); gr.addColorStop(1, 'rgba(255,120,140,0)'); g.fillStyle = gr; g.beginPath(); g.ellipse(x, y, 26 * k, 15 * k, 0, 0, Math.PI * 2); g.fill(); }
+  } else if (look.blush > 0) {
     g.fillStyle = `rgba(255,140,150,${0.55 * look.blush})`;
     for (const s of [-1, 1]) { const [x, y] = P(s * (gap + 10), ey - 11); g.beginPath(); g.ellipse(x, y, 20 * k, 9 * k, 0, 0, Math.PI * 2); g.fill(); }
   }
@@ -36,18 +65,26 @@ export function drawFace(cv, look) {
     if (look.eye === 'sharp') { g.translate(x, y); g.rotate(-s * 0.18); g.ellipse(0, 0, rx * 1.15, ry * 0.72, 0, 0, Math.PI * 2); g.translate(-x, -y); }
     else g.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
     g.clip();
-    g.fillStyle = look.eye === 'round' ? ink : look.colors.eyeColor; g.fillRect(x - rx * 1.6, y - ry * 1.6, rx * 3.2, ry * 3.2);
+    if (chibi && look.eye !== 'round') { const ec = new THREE.Color(look.colors.eyeColor), gr = g.createLinearGradient(0, y - ry, 0, y + ry);
+      gr.addColorStop(0, ec.clone().multiplyScalar(0.45).getStyle()); gr.addColorStop(0.55, ec.getStyle()); gr.addColorStop(1, ec.clone().lerp(new THREE.Color('#ffffff'), 0.35).getStyle()); g.fillStyle = gr; }   // 위는 진하고 아래로 갈수록 밝은 눈동자
+    else g.fillStyle = look.eye === 'round' ? ink : look.colors.eyeColor;
+    g.fillRect(x - rx * 1.6, y - ry * 1.6, rx * 3.2, ry * 3.2);
     if (look.eye !== 'round') { g.fillStyle = ink; g.beginPath(); g.ellipse(x, y + 2 * k, rx * 0.55, ry * 0.6, 0, 0, Math.PI * 2); g.fill(); }
     if (look.eye === 'sleepy') { g.fillStyle = look.colors.skin; g.fillRect(x - rx * 2, y - ry * 2, rx * 4, ry * 1.55); }
     g.fillStyle = '#fff'; g.beginPath(); g.arc(x + 4 * k * es, y - (look.eye === 'sleepy' ? -4 : 8) * k * es, 4.5 * k * es, 0, Math.PI * 2); g.fill();
-    if (look.eye === 'sparkle') { g.beginPath(); g.arc(x - 4 * k * es, y + 7 * k * es, 2.5 * k * es, 0, Math.PI * 2); g.fill(); }
+    if (look.eye === 'sparkle' || chibi) { g.beginPath(); g.arc(x - 4 * k * es, y + 7 * k * es, (look.eye === 'sparkle' ? 2.5 : 2) * k * es, 0, Math.PI * 2); g.fill(); }
     g.restore();
+    // 귀여운: 위 속눈썹 선(눈매가 또렷하게)
+    if (chibi && look.eye !== 'sleepy') { g.strokeStyle = ink; g.lineWidth = 4.5 * k; g.beginPath();
+      if (look.eye === 'sharp') { g.save(); g.translate(x, y); g.rotate(-s * 0.18); g.ellipse(0, 0, rx * 1.18, ry * 0.76, 0, Math.PI * 1.08, Math.PI * 1.92); g.restore(); }
+      else g.ellipse(x, y, rx * 1.04, ry * 1.03, 0, Math.PI * 1.1, Math.PI * 1.9);
+      g.stroke(); }
     if (look.eye === 'sleepy') { g.strokeStyle = ink; g.lineWidth = 4 * k; g.beginPath(); g.moveTo(x - rx, y - ry * 0.45); g.lineTo(x + rx, y - ry * 0.45); g.stroke(); }
   }
   // 눈썹
   g.strokeStyle = brow; g.lineCap = 'round';
   for (const s of [-1, 1]) {
-    const [x, y] = P(s * (gap + 1), ey + 15 + 2 * look.eyeSize), w = 17 * k;
+    const [x, y] = P(s * (gap + 1), ey + (chibi ? 21 : 15) + 2 * look.eyeSize), w = (chibi ? 14 : 17) * k;
     g.lineWidth = (look.brow === 'thick' ? 8 : 4.5) * k; g.beginPath();
     if (look.brow === 'straight') { g.moveTo(x - w, y); g.lineTo(x + w, y); }
     else if (look.brow === 'arched') { g.moveTo(x - w, y + 3 * k); g.quadraticCurveTo(x + s * 2 * k, y - 9 * k, x + w, y + 3 * k); }
@@ -55,7 +92,7 @@ export function drawFace(cv, look) {
     g.stroke();
   }
   // 입
-  const [mx, my] = P(0, ey - 15); g.strokeStyle = '#9a4a4a'; g.lineWidth = 4 * k; g.beginPath();
+  const [mx, my] = P(0, ey - (chibi ? 20 : 15)); g.strokeStyle = '#9a4a4a'; g.lineWidth = 4 * k; g.beginPath();
   if (look.mouth === 'grin') { g.fillStyle = '#b2484f'; g.moveTo(mx - 12 * k, my - 3 * k); g.quadraticCurveTo(mx, my + 16 * k, mx + 12 * k, my - 3 * k); g.closePath(); g.fill(); }
   else if (look.mouth === 'small') { g.arc(mx, my, 4 * k, 0, Math.PI * 2); g.stroke(); }
   else if (look.mouth === 'cat') { g.moveTo(mx - 11 * k, my - 2 * k); g.quadraticCurveTo(mx - 5.5 * k, my + 6 * k, mx, my - 1 * k); g.quadraticCurveTo(mx + 5.5 * k, my + 6 * k, mx + 11 * k, my - 2 * k); g.stroke(); }
@@ -63,6 +100,9 @@ export function drawFace(cv, look) {
   else { g.arc(mx, my - 6 * k, 10 * k, Math.PI * 0.2, Math.PI * 0.8); g.stroke(); }
 }
 
+// 귀여운 그림체: 머리 크기 배율, 피부가 밤 조명에 칙칙해지지 않게 스스로 살짝 빛나는 정도
+const STYLE_HEAD = { chibi: 1.16 };
+const SKIN_GLOW = 0.22;
 const ACT = { idle: 'idle', walk: 'walk', wave: 'wave', sit: 'sit', dance: 'dance', run: 'run' };
 let _heart = null;   // 하트 이모트 그림(한 번만 그려서 같이 씀)
 function heartTex() {
@@ -78,7 +118,7 @@ export function createAvatar(rawLook, { faceSize = 512 } = {}) {
   const group = new THREE.Group(), self = { group, ready: false, look: sanitizeLook(rawLook), mixer: null, actions: {}, cur: null };
   const cv = document.createElement('canvas'); cv.width = faceSize; cv.height = faceSize / 2;
   const faceTex = new THREE.CanvasTexture(cv); faceTex.colorSpace = THREE.SRGBColorSpace; faceTex.flipY = false; faceTex.wrapS = THREE.RepeatWrapping;
-  let model = null, parts = [], morphMeshes = [], skinMats = [], busy = null, hearts = [];
+  let model = null, parts = [], morphMeshes = [], skinMats = [], busy = null, hearts = [], headBone = null, headScale = 1;
   self.setLook = (raw) => {
     self.look = sanitizeLook(raw); const L = self.look;
     if (mounted && L.style !== mounted) { mount(L.style); }
@@ -88,8 +128,9 @@ export function createAvatar(rawLook, { faceSize = 512 } = {}) {
     for (const o of parts) {
       const u = o.userData, want = u.kl_part === 'acc' ? vis.acc.includes(u.kl_type) : vis[u.kl_part] === u.kl_type; o.visible = want;
       if (want && o.material && o.material.userData.tint) o.material.color.set(L.colors[u.kl_part === 'hair' ? 'hair' : u.kl_part]);
+      if (want && u.kl_type === 'glasses') fitGlasses(o, L, mounted);
     }
-    for (const m of skinMats) m.color.set(L.colors.skin);
+    for (const m of skinMats) { m.color.set(L.colors.skin); if (mounted === 'chibi') m.emissive.set(L.colors.skin); }
     // 블록 머리는 네모가 기본 — 갸름한 턱·볼살을 쓰면 앞면이 사다리꼴로 찌그러져 얼굴 그림(눈·볼터치)까지 눌린다 → 블록은 적용 안 함
     const sq = L.style === 'block';
     const mv = { build_slim: Math.max(0, -L.build), build_broad: Math.max(0, L.build), female: L.female, face_long: L.long, face_vline: sq ? 0 : L.vline, cheek_full: sq ? 0 : L.cheek };
@@ -122,6 +163,7 @@ export function createAvatar(rawLook, { faceSize = 512 } = {}) {
     if (moving) { busy = null; self.play(running && self.actions.run ? 'run' : 'walk', 0.18); }
     else if (!busy) self.play('idle');
     self.mixer.update(dt);
+    if (headBone && headScale !== 1) headBone.scale.setScalar(headScale);   // 동작 파일에 크기 키가 있어 매 프레임 덮어쓴다
   };
   self.dispose = () => { faceTex.dispose(); group.traverse((o) => { if (o.isMesh) { o.material?.dispose?.(); } }); };
   drawFace(cv, self.look);
@@ -134,14 +176,21 @@ export function createAvatar(rawLook, { faceSize = 512 } = {}) {
     if (model) { group.remove(model); model.traverse((o) => { if (o.isMesh && o.material && o.material !== gltf) o.material.dispose?.(); }); }
     parts = []; morphMeshes = []; skinMats = []; self.actions = {}; self.cur = null; busy = null;
     model = SkeletonUtils.clone(gltf.scene); group.add(model);
+    // 귀여운: 머리를 키워 2등신에 가깝게(모자·머리카락도 머리 뼈를 따라 같이 커진다)
+    headBone = model.getObjectByName('head'); headScale = STYLE_HEAD[style] || 1;
     model.traverse((o) => {
       if (o.userData && o.userData.kl_part) parts.push(o);
+      // 안경은 캐릭터마다 눈 위치가 달라 모양을 따로 가진다(복제본끼리 같은 geometry를 같이 쓰므로 복사)
+      if (o.isMesh && o.userData && o.userData.kl_type === 'glasses' && GLASS_REF[style]) { o.geometry = o.geometry.clone(); o.userData.basePos = o.geometry.attributes.position.array.slice(); }
       if (o.isMesh) {
         o.castShadow = true; o.frustumCulled = false;   // 뼈로 움직여서 화면 밖 판정이 틀릴 수 있음
         const n = o.material && o.material.name || '';
         if (/^TINT_|^MAT_av_skin/.test(n)) { o.material = o.material.clone(); o.material.userData.tint = /^TINT_/.test(n); if (/^MAT_av_skin/.test(n)) skinMats.push(o.material); }
+        if (style === 'chibi' && /^MAT_av_skin/.test(n)) o.material.emissiveIntensity = SKIN_GLOW;
         if (/^MAT_av_face/.test(n)) {
-          o.material = o.material.clone(); o.material.map = faceTex; o.material.color.set('#ffffff'); o.material.needsUpdate = true;
+          o.material = o.material.clone(); o.material.map = faceTex; o.material.color.set('#ffffff');
+          if (style === 'chibi') { o.material.emissive = new THREE.Color('#ffffff'); o.material.emissiveMap = faceTex; o.material.emissiveIntensity = SKIN_GLOW; }
+          o.material.needsUpdate = true;
           // 얼굴 UV를 FACE_ZOOM배로 넓힌다(복제본끼리 같은 geometry를 같이 쓰므로 파일당 한 번만)
           const z = FACE_ZOOM[style], uv = o.geometry.attributes.uv;
           if (z && uv && o.geometry.userData.faceZoom !== z) {
