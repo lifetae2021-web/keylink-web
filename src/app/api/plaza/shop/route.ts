@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { adminAuth } from '@/lib/firebaseAdmin';
-import { shopState, buyItem, feedCat, makeWish, ShopError, guestKeyOf, guestState, guestBuy, guestFeed, guestWish } from '@/lib/plazaShop';
+import { shopState, buyItem, feedCat, makeWish, ShopError, guestKeyOf, guestState, guestBuy, guestFeed, guestWish, playClaw, guestPlayClaw } from '@/lib/plazaShop';
 
-// 키링 월드 상점 — GET 내 포인트·보유 꾸미기 / POST { action: 'buy'|'feed'|'wish', item?, text? }
+// 키링 월드 상점 — GET 내 포인트·보유 꾸미기·인형함 / POST { action: 'buy'|'feed'|'wish'|'claw', item?, text? }
 // 회원은 로그인 토큰, 비회원은 x-plaza-dev(기기 번호) 헤더로 키링 월드 전용 지갑을 쓴다.
 async function uidOf(req: Request) {
   const h = req.headers.get('Authorization');
@@ -31,10 +31,12 @@ export async function POST(req: Request) {
     const out = gk ? (body.action === 'buy' ? await guestBuy(gk, String(body.item || ''))
         : body.action === 'feed' ? await guestFeed(gk, body.animal ? String(body.animal) : undefined)
         : body.action === 'wish' ? await guestWish(gk, body.nick, body.text, body.orn)
+        : body.action === 'claw' ? await guestPlayClaw(gk)
         : null)
       : body.action === 'buy' ? await buyItem(uid!, String(body.item || ''))
       : body.action === 'feed' ? await feedCat(uid!, body.animal ? String(body.animal) : undefined)
       : body.action === 'wish' ? await makeWish(uid!, body.text, body.orn)
+      : body.action === 'claw' ? await playClaw(uid!)
       : null;
     if (!out) return NextResponse.json({ error: 'bad_action' }, { status: 400 });
     return NextResponse.json({ ok: true, ...out });

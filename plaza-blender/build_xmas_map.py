@@ -200,6 +200,8 @@ def free_spot(x, y):
     if -31 < x < -10 and -12 < y < 10: return False              # 통나무집 마을
     if abs(x) < 3.5 and y < -9: return False                      # 남쪽 길
     if abs(y) < 3.0 and abs(x) > 9: return False                  # 동서 길
+    # 마을 밖에 따로 선 통나무집 5·6번 자리(집과 소나무가 겹쳐 2026-11-07 지움 — 다시 만들 때도 비워 둔다)
+    if math.hypot(x + 13.0, y - 10.5) < 5.0 or math.hypot(x - 13.5, y - 13.5) < 5.0: return False
     return True
 
 

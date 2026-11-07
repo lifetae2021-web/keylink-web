@@ -1,7 +1,8 @@
 import { adminDb } from '@/lib/firebaseAdmin';
 import { spendMemberPointsInTx } from '@/lib/points';
 import { plazaKey } from '@/lib/plazaKey';
-import { SHOP_ACC, SEASON_ACC, CAT_FOOD_PRICE, WISH_PRICE, WISH_MAX, WISH_ORNS, ENTRY_BONUS, ENTRY_BONUS_GAP_MS } from '../../public/plaza/shop.js';
+import { SHOP_ACC, SEASON_ACC, CAT_FOOD_PRICE, WISH_PRICE, WISH_MAX, WISH_ORNS, ENTRY_BONUS, ENTRY_BONUS_GAP_MS, CLAW_PRICE, CLAW_WIN, DOLL_IDS } from '../../public/plaza/shop.js';
+import { seoulToday } from '@/lib/points';
 import crypto from 'crypto';
 import { getActiveTheme } from '@/lib/plazaTheme';
 import { hasBadWord, isReservedNick } from '../../public/plaza/badwords.js';
@@ -31,9 +32,30 @@ async function memberInfo(uid: string) {
   return { nick: String(p.data()?.nick || '회원'), points: Number(d?.points || 0) };
 }
 
+// 인형뽑기 상태(오늘 무료 남았는지·내 인형함) — 회원은 plazaKeys/{uid}, 비회원은 plazaGuestWallets/{guestKey}의 clawDay·dolls
+function clawView(d: FirebaseFirestore.DocumentData | undefined) {
+  return { clawFree: d?.clawDay !== seoulToday(), dolls: (d?.dolls || {}) as Record<string, number> };
+}
+
 export async function shopState(uid: string) {
   const [u, k] = await Promise.all([adminDb.doc(`users/${uid}`).get(), adminDb.doc(`plazaKeys/${uid}`).get()]);
-  return { points: Number(u.data()?.points || 0), owned: (k.data()?.unlocks || []) as string[] };
+  return { points: Number(u.data()?.points || 0), owned: (k.data()?.unlocks || []) as string[], ...clawView(k.data()) };
+}
+
+/** 인형뽑기 한 판: 오늘 첫 판은 무료, 그다음은 CLAW_PRICE. 당첨 여부와 인형은 서버가 정한다(화면은 결과대로 연출만) */
+function clawRoll() { return Math.random() < CLAW_WIN ? DOLL_IDS[Math.floor(Math.random() * DOLL_IDS.length)] : null; }
+export async function playClaw(uid: string) {
+  await memberInfo(uid);
+  const ref = adminDb.doc(`plazaKeys/${uid}`), today = seoulToday();
+  const out = await adminDb.runTransaction(async (tx) => {
+    const d = (await tx.get(ref)).data() || {};
+    const free = d.clawDay !== today;
+    if (!free) await spendMemberPointsInTx(tx, uid, CLAW_PRICE, '키링 월드 인형뽑기', 'plaza_shop');
+    const doll = clawRoll();
+    tx.set(ref, { clawDay: today, ...(doll ? { dolls: { ...(d.dolls || {}), [doll]: Number(d.dolls?.[doll] || 0) + 1 } } : {}) }, { merge: true });
+    return { doll, free };
+  });
+  return { ...out, ...(await shopState(uid)) };
 }
 
 export async function buyItem(uid: string, item: string) {
@@ -104,7 +126,21 @@ const guestRef = (gk: string) => adminDb.doc(`plazaGuestWallets/${gk}`);
 
 export async function guestState(gk: string) {
   const d = (await guestRef(gk).get()).data() || {};
-  return { points: Number(d.points || 0), owned: (d.unlocks || []) as string[], guest: true };
+  return { points: Number(d.points || 0), owned: (d.unlocks || []) as string[], guest: true, ...clawView(d) };
+}
+
+export async function guestPlayClaw(gk: string) {
+  const ref = guestRef(gk), today = seoulToday();
+  const out = await adminDb.runTransaction(async (tx) => {
+    const d = (await tx.get(ref)).data() || {};
+    const free = d.clawDay !== today;
+    if (!free && Number(d.points || 0) < CLAW_PRICE) throw new ShopError('poor');
+    const doll = clawRoll();
+    tx.set(ref, { clawDay: today, lastSeenAt: Date.now(), ...(free ? {} : { points: Number(d.points || 0) - CLAW_PRICE }),
+      ...(doll ? { dolls: { ...(d.dolls || {}), [doll]: Number(d.dolls?.[doll] || 0) + 1 } } : {}) }, { merge: true });
+    return { doll, free };
+  });
+  return { ...out, ...(await guestState(gk)) };
 }
 
 /** 24시간 안의 첫 입장 보너스(비회원) */

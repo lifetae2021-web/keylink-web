@@ -188,6 +188,15 @@
   @media (prefers-reduced-motion: reduce) { * { transition:none !important; } }
   #petCard { position:fixed; inset:0; z-index:24; display:grid; place-items:center; background:rgba(40,60,90,.28); padding:16px; }
   #petCard .card-box { max-width:340px; }
+  #claw { position:fixed; inset:0; z-index:24; display:grid; place-items:center; background:rgba(40,60,90,.32); padding:16px; }
+  #claw .card-box { max-width:340px; width:100%; }
+  #clawCv { display:block; width:100%; max-width:300px; aspect-ratio:1; margin:10px auto 8px; border-radius:16px; background:#2a1f3d; }
+  .claw-msg { text-align:center; font-size:.9rem; color:#5b6f8c; min-height:1.4em; word-break:keep-all; margin-bottom:10px; }
+  #clawGo { width:100%; }
+  .claw-box { margin-top:12px; font-size:.85rem; color:#4a5a73; text-align:left; }
+  .claw-dolls { display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+  .claw-dolls span { background:var(--pill); border-radius:999px; padding:4px 10px; font-size:.8rem; word-break:keep-all; }
+  .claw-dolls .none { background:none; color:#8a98ab; padding:0; }
   .aff-bar { height:12px; border-radius:999px; background:rgba(120,160,210,.18); overflow:hidden; margin:10px 0 4px; }
   .aff-bar i { display:block; height:100%; background:linear-gradient(90deg,#ff9ab8,#ff5c8a); border-radius:999px; transition:width .3s; }
   .aff-txt { font-size:.8rem; color:#8a98ab; word-break:keep-all; }
@@ -297,6 +306,7 @@
     <div style="position:relative"><button class="act-btn" id="emoteBtn" aria-expanded="false"><svg class="hico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5a4.5 4.5 0 0 0 7 0"/><path d="M9 9.5h.01"/><path d="M15 9.5h.01"/></svg><span>표현</span></button>
       <div id="emoteMenu" hidden><button data-e="wave">인사</button><button data-e="dance">춤</button><button data-e="heart">하트</button></div></div>
     <button class="act-btn" id="feedBtn" hidden><svg class="hico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13h16a8 8 0 0 1-16 0z"/><path d="M9 9c0-2 1-3 3-4"/><path d="M14 9c0-1.5.8-2.5 2-3"/></svg><span>밥주기</span></button>
+    <button class="act-btn" id="clawBtn" hidden><svg class="hico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v6"/><path d="M8 13l4-4 4 4"/><path d="M8 13l-1 3"/><path d="M16 13l1 3"/><circle cx="12" cy="19" r="2.5"/></svg><span>인형뽑기</span></button>
     <button class="act-btn" id="wishBtn" hidden><svg class="hico" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.6 5.6 6 .7-4.5 4.1 1.2 6-5.3-3-5.3 3 1.2-6L3.4 9.3l6-.7z"/></svg><span>소원</span></button>
     <button class="act-btn" id="sayBtn"><svg class="hico" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 0 1-11.6 7.1L4 20l1-4.1A8 8 0 1 1 20 12z"/></svg><span>말하기</span></button></div>
   <form id="wishBox" hidden style="position:absolute;left:50%;transform:translateX(-50%);bottom:calc(26px + env(safe-area-inset-bottom,0px));width:min(92vw,420px);display:flex;gap:8px;pointer-events:auto;background:rgba(255,255,255,.95);border:1px solid var(--card-border);border-radius:16px;padding:8px;box-shadow:0 10px 26px rgba(80,120,170,.25);z-index:22"><input id="wishText" maxlength="40" placeholder="분수대에 던질 소원 (100P)" autocomplete="off" style="flex:1;min-width:0;font-family:inherit;font-size:1rem;padding:10px 12px;border:1px solid var(--card-border);border-radius:11px"><button type="submit" style="border:none;background:var(--accent);color:#fff;font-family:inherit;font-size:.95rem;padding:0 16px;border-radius:11px;cursor:pointer">던지기</button></form>
@@ -330,6 +340,14 @@
   <div class="card-name" id="cardName"></div><div class="card-meta" id="cardMeta"></div>
   <button id="cardReq" class="btn go">1:1 대화 신청</button>
   <div class="safety-row" id="cardSafety"><button type="button" id="cardFriend" hidden>친구 추가</button><button type="button" id="cardReport">신고</button><button type="button" id="cardBlock">차단</button></div>
+</div></div>
+<div id="claw" hidden><div class="card-box">
+  <button id="clawClose" class="card-x" aria-label="닫기">✕</button>
+  <div class="card-name">인형뽑기</div><div class="card-meta" id="clawMeta"></div>
+  <canvas id="clawCv" width="300" height="300" aria-label="인형뽑기 기계 안"></canvas>
+  <div class="claw-msg" id="clawMsg">집게를 원하는 곳에 멈추고 잡아 보세요</div>
+  <button type="button" class="btn go" id="clawGo">시작</button>
+  <div class="claw-box"><b>내 인형함</b><div id="clawDolls" class="claw-dolls"></div></div>
 </div></div>
 <div id="petCard" hidden><div class="card-box">
   <button id="petClose" class="card-x" aria-label="닫기">✕</button>
@@ -403,7 +421,7 @@ import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { nickProblem, isReservedNick } from '/plaza/badwords.js';
 import { LOOK, HATS, LOCKED_ACC, SHOP_ACC, SEASON_ACC, isLockedAcc, GENDER_OPTIONS, sanitizeLook, defaultLook, fitToGender, fitFaceToStyle } from '/plaza/look.js';
-import { CAT_FOOD_PRICE, WISH_PRICE, WISH_MAX, FOUNTAIN, ENTRY_BONUS, STAY_POINTS, STAY_TICK_MS } from '/plaza/shop.js';
+import { CAT_FOOD_PRICE, WISH_PRICE, WISH_MAX, FOUNTAIN, ENTRY_BONUS, STAY_POINTS, STAY_TICK_MS, CLAW_PRICE, DOLLS } from '/plaza/shop.js';
 import { PETS, AFF, PET_NAME_MAX, AFF_DECAY_PER_DAY, petKindLabel, FEED_ONLY } from '/plaza/pets.js';
 import { createAvatar } from '/plaza/avatar.js';
 import { THEMES, sanitizeTheme } from '/plaza/themes.js';
@@ -736,7 +754,7 @@ function buildHero(o){ o.look=sanitizeLook({ ...o.look, gender:o.gender });
   // 산타 모자·뿔처럼 높은 꾸미기를 쓰면 이름표를 그만큼 올린다(이름표가 모자를 가리지 않게)
   if(heroNick) heroNick.position.y=(myAdmin?2.25:2.15)+nickLift(o.look); }
 
-let shuttlePos=null; const spinners=[], seats=[], platforms=[], keySpots=[], bobbers=[];   // bobbers: 둥둥 떠 있는 작은 섬(kl_bob)
+let shuttlePos=null; const clawSpots=[], spinners=[], seats=[], platforms=[], keySpots=[], bobbers=[];   // bobbers: 둥둥 떠 있는 작은 섬(kl_bob)
 let keyUnlocks=[], shopPoints=null;   // 잠금 해제된 꾸미기(서버 plazaKeys/{uid}.unlocks) — 편집 화면이 처음 그려질 때도 쓰므로 위쪽에 선언 // seats: Blender SEAT_* 표시점(앉는 면 높이·바라보는 방향)
 const BOUNDARY=32; // 광장 확장(20→32) — 지형·건물·구역 배치는 Blender(plaza-blender) → village.glb가 원본
 // 택시(지역 이동): 아직 준비 중 — 누르면 안내 카드. 택시 몸체·정류장 표지판을 누를 수 있게 한다
@@ -768,6 +786,7 @@ function ingestWorld(v, tag){
     // 점프 코스 발판(재질이 2개면 Group(메시 2개)으로 들어오므로 isMesh를 따지지 않는다)
     if(role==='platform'){ const bb=new THREE.Box3().setFromObject(o); platforms.push({ x0:bb.min.x, x1:bb.max.x, z0:bb.min.z, z1:bb.max.z, top:bb.max.y }); }
     if(role==='key'){ keySpots.push({ id:o.userData.kl_id, pos:o.getWorldPosition(new THREE.Vector3()) }); return; }
+    if(role==='claw'){ const p=o.getWorldPosition(new THREE.Vector3()); clawSpots.push({ x:p.x, z:p.z }); return; }   // 인형뽑기 기계 앞(Blender ANC_claw)
     if(role==='seat'){ const p=o.getWorldPosition(new THREE.Vector3()), d=new THREE.Vector3(0,0,1).applyQuaternion(o.getWorldQuaternion(new THREE.Quaternion())); seats.push({ x:p.x, z:p.z, top:+o.userData.kl_h||0.5, yaw:Math.atan2(d.x,d.z) }); return; }
     if(o.userData&&o.userData.kl_block){ const p=o.getWorldPosition(new THREE.Vector3()); obstacles.push({ x:p.x, z:p.z, r:+o.userData.kl_block, tag }); if(role==='collider_circle') return; }
     if(role==='collider'||role==='trigger'){ if(role==='trigger'){ shuttlePos=new THREE.Vector3(); o.getWorldPosition(shuttlePos); } o.visible=false; return; }
@@ -970,10 +989,16 @@ function pickSideTarget(g,minD=2.5,maxD=7){ const r=camRightVec(); r.y=0; r.norm
   return null; }
 const sideways=(dir)=>Math.abs(dir.dot(camRightVec().setY(0).normalize()))>0.5;   // 화면에서 옆으로 가는 중인가
 // 실사: AI로 만든 고화질 3D 모델(GLB). 네 발 동물은 자동 뼈대가 어색해서 한자리에서 자는 연출 + 숨쉬기
-function makeModelAnimal(kind,url,size,name,says){
+// opts.bright: 밤에 어둡게 보이는 실사 텍스처를 밝게 · opts.nose: [앞쪽 x 비율, 높이 비율] 자리에 빛나는 빨간 코(루돌프)
+function makeModelAnimal(kind,url,size,name,says,opts={}){
   const g=new THREE.Group(), root=new THREE.Group(); g.add(root);
   new GLTFLoader().load(url,(gltf)=>{ const m=gltf.scene; const bb=new THREE.Box3().setFromObject(m), sz=bb.getSize(new THREE.Vector3()), c=bb.getCenter(new THREE.Vector3());
-    const k=size/Math.max(sz.x,sz.z); m.scale.setScalar(k); m.position.set(-c.x*k,-bb.min.y*k,-c.z*k); root.add(m); g.userData.bubbleY=sz.y*k+0.5; });
+    const k=size/Math.max(sz.x,sz.z); m.scale.setScalar(k); m.position.set(-c.x*k,-bb.min.y*k,-c.z*k); root.add(m); g.userData.bubbleY=sz.y*k+0.5;
+    if(opts.bright) m.traverse(o=>{ if(o.isMesh && o.material){ o.material.color?.multiplyScalar(opts.bright); o.castShadow=true; } });
+    if(opts.nose){   // 머리 높이 구간(opts.nose = [아래, 위] 높이 비율)에서 가장 앞(+X)에 있는 꼭짓점 = 코끝
+      root.updateMatrixWorld(true); const v=new THREE.Vector3(), inv=new THREE.Matrix4().copy(root.matrixWorld).invert(); let tip=null; const H=sz.y*k;
+      m.traverse(o=>{ if(!o.isMesh) return; const pa=o.geometry.attributes.position; for(let i=0;i<pa.count;i++){ v.fromBufferAttribute(pa,i).applyMatrix4(o.matrixWorld).applyMatrix4(inv); if(v.y>H*opts.nose[0] && v.y<H*opts.nose[1] && (!tip || v.x>tip.x)) tip=v.clone(); } });
+      if(tip){ const n=new THREE.Mesh(new THREE.SphereGeometry(0.05,14,10), new THREE.MeshStandardMaterial({ color:0xff2a3a, emissive:0xff2233, emissiveIntensity:1.6, roughness:0.35 })); n.position.copy(tip); n.position.x-=0.02; root.add(n); } } });
   g.userData={ root, kind, style:'model', says, phase:Math.random()*10, bubbleY:0.9, profile:{ animal:true, kind, nick:name } };
   return g; }
 function makeQuad(kind,color,accent,name){
@@ -1070,7 +1095,9 @@ function spawnWinterAnimals(){ if(winterSpawned) return; winterSpawned=true;
   const add=(g,x,z)=>addAnimal(g,new THREE.Vector3(x,0,z));
   add(makeWinterAnimal('penguin','펭이'),-3,-16); add(makeWinterAnimal('penguin','펭순'),-1.5,-17); add(makeWinterAnimal('penguin','펭돌'),2,-15.5);
   add(makeWinterAnimal('rabbit','눈송이'),-11,9); add(makeWinterAnimal('rabbit','찹쌀'),9,11);
-  add(makeWinterAnimal('reindeer','루돌프'),15,1.2); add(makeWinterAnimal('reindeer','방울'),22,-1.2);
+  add(makeWinterAnimal('reindeer','방울'),15,1.2);
+  // 실사 루돌프(Higgsfield 사진→3D): 뼈대가 없어 걷지 않고 제자리에서 숨 쉬듯 움직이다, 말을 걸면 이쪽을 본다. 걸어 다니는 투박한 순록은 '방울'
+  { const r=makeModelAnimal('reindeer','/plaza/assets/reindeer_real.glb',2.0,'루돌프',WINTER_SAYS.reindeer,{ bright:1.45, nose:[0.45,0.75] }); r.userData.turnTo=true; r.userData.yawOff=-Math.PI/2; r.userData.roam={ x:22, z:-1.2, rx:5, rz:1.4 }; add(r,22,-1.2); }   // 모델 머리가 +X쪽이라 바라볼 때 -90°
   add(makeWinterAnimal('fox','설이'),-16,-10);
   for(const g of animals){ const fid=FEED_ONLY[g.userData.profile?.nick]; if(fid && (g.userData.kind==='penguin'||g.userData.kind==='reindeer')) g.userData.feedId=fid; }   // 펭귄·순록: 밥만 줄 수 있음
   // 흰 부엉이: 가로등 위·트리 울타리 랜턴 위에 앉아 있다(움직이지 않음)
@@ -1094,16 +1121,24 @@ for(let i=0;i<2;i++){ const a=Math.random()*Math.PI*2, r=4.5+Math.random()*3; ad
 // 누르면 말풍선 + 반응(강아지는 잠깐 따라옴, 고양이는 쳐다봄, 비둘기는 날아감)
 const ANIMAL_SAYS={ dog:['멍멍!','왈왈!','헥헥'], cat:['야옹~','냐아','골골골…'], pigeon:['구구구','푸드덕!'] };
 function animalBubble(g,text){ const u=g.userData; if(u.bubble){ u.root.remove(u.bubble); u.bubble.material.map.dispose(); }
-  const cv=document.createElement('canvas'); cv.width=300; cv.height=110; const c=cv.getContext('2d');
-  c.fillStyle='#ffffff'; roundRect(c,14,10,272,74,37); c.fill(); c.beginPath(); c.moveTo(136,82); c.lineTo(150,104); c.lineTo(164,82); c.fill();
-  c.fillStyle='#4a3a2a'; c.font='bold 40px Jua, sans-serif'; c.textAlign='center'; c.textBaseline='middle'; c.fillText(text,150,48);
+  // 글자 길이에 맞춰 말풍선을 넓히고(최대 440px), 그래도 길면 글자를 줄이거나 두 줄로 나눈다 — 글자가 말풍선 밖으로 나가지 않게
+  const cv=document.createElement('canvas'), c=cv.getContext('2d'), MAXW=380; let fs=40, lines=[text];
+  const fit=()=>{ c.font='bold '+fs+'px Jua, sans-serif'; return Math.max(...lines.map(l=>c.measureText(l).width)); };
+  while(fit()>MAXW && fs>30) fs-=2;
+  if(fit()>MAXW){ const mid=text.length/2; let cut=-1; for(let i=0;i<text.length;i++) if(text[i]===' ' && (cut<0 || Math.abs(i-mid)<Math.abs(cut-mid))) cut=i;
+    if(cut<0) cut=Math.ceil(mid); lines=[text.slice(0,cut).trim(), text.slice(cut).trim()]; fs=40; while(fit()>MAXW && fs>24) fs-=2; }
+  const tw=fit(), W=Math.max(300, Math.ceil(tw)+70), lh=fs*1.18, bh=Math.max(74, lines.length*lh+30), H=Math.ceil(bh+36);
+  cv.width=W; cv.height=H; c.fillStyle='#ffffff'; roundRect(c,14,10,W-28,bh,Math.min(37,bh/2)); c.fill();
+  c.beginPath(); c.moveTo(W/2-14,bh+8); c.lineTo(W/2,bh+30); c.lineTo(W/2+14,bh+8); c.fill();
+  c.fillStyle='#4a3a2a'; c.font='bold '+fs+'px Jua, sans-serif'; c.textAlign='center'; c.textBaseline='middle';
+  lines.forEach((l,i)=>c.fillText(l, W/2, 10+bh/2+(i-(lines.length-1)/2)*lh));
   const tex=new THREE.CanvasTexture(cv); tex.colorSpace=THREE.SRGBColorSpace;
-  const sp=new THREE.Sprite(new THREE.SpriteMaterial({ map:tex, transparent:true, depthTest:false })); sp.scale.set(1.1,0.4,1); sp.position.y=u.bubbleY||(u.kind==='pigeon'?0.8:1.35); u.root.add(sp); u.bubble=sp; u.bubbleT=1.8; }
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({ map:tex, transparent:true, depthTest:false })); sp.scale.set(1.1*W/300,0.4*H/110,1); sp.position.y=u.bubbleY||(u.kind==='pigeon'?0.8:1.35); u.root.add(sp); u.bubble=sp; u.bubbleT=1.8; }
 function pigeonFly(g){ const u=g.userData; u.state='fly'; u.from=g.position.clone(); u.to=pickWanderTarget(4,20); u.t=0; u.dur=1.6+Math.random()*0.6; g.rotation.y=Math.atan2(u.to.x-u.from.x,u.to.z-u.from.z); }
 function reactAnimal(prof){ const g=animals.find(a=>a.userData.profile===prof); if(!g) return; const u=g.userData;
   if(u.aid && mode==='playing'){ if(!u.held && !u.leash) animalBubble(g,pickA(ANIMAL_SAYS[u.kind])); openPetCard(g); return; }
   if(u.kind==='pigeon'){ animalBubble(g,'푸드덕!'); for(const p of animals) if(p.userData.kind==='pigeon' && p.userData.state==='ground' && p.position.distanceTo(g.position)<3) pigeonFly(p); return; }
-  if(u.style==='model'){ animalBubble(g,pickA(u.says)); return; } // 자는 고양이는 깨지 않는다
+  if(u.style==='model'){ animalBubble(g,pickA(u.says)); if(u.turnTo) u.face=Math.atan2(hero.position.x-g.position.x, hero.position.z-g.position.z)+(u.yawOff||0); return; } // 자는 고양이는 깨지 않는다 · 실사 루돌프는 고개(몸)를 돌린다
   if(u.style==='perch'){ animalBubble(g,pickA(WINTER_SAYS.owl)); u.head.rotation.y=Math.atan2(hero.position.x-g.position.x, hero.position.z-g.position.z)-g.rotation.y; return; }
   animalBubble(g,pickA(ANIMAL_SAYS[u.kind]||WINTER_SAYS[u.kind]||['…'])); u.rest=0; u.target=null; if(u.style==='sprite'){ u.rest=2.5; u.hop=0.0001; return; } g.rotation.y=Math.atan2(hero.position.x-g.position.x, hero.position.z-g.position.z);
   if(u.kind==='dog'){ u.follow=6; u.hop=0.0001; } else { u.rest=2.5; } }
@@ -1129,6 +1164,44 @@ const NPC_PROFILE={ nick:'키키', id:'npc', npc:true };
 function nickLift(look){ const a=look?.acc||[]; return a.includes('santa')?0.42:a.includes('antlers')?0.3:a.includes('halo')||a.includes('crown')?0.12:0; }
 const KIKI_LOOK={ v:2, style:'block', gender:'female', hair:'bun', top:'hoodie', bottom:'pants', shoes:'sneakers', acc:[], eye:'sparkle', brow:'soft', mouth:'smile', blush:0.8,
   colors:{ skin:'#ffe8d6', hair:'#f6a6c1', eyeColor:'#8a5bd1', top:'#f2b84b', bottom:'#ffffff', shoes:'#ff8f6b', acc:'#222222' } };
+// ── 하늘을 나는 산타 썰매(크리스마스 테마): 가끔(1분 반~3분마다) 루돌프 두 마리가 썰매를 끌고 하늘을 가로지른다 ──
+const SANTA_LOOK={ v:2, style:'block', gender:'male', hair:'short', top:'hoodie', bottom:'pants', shoes:'boots', acc:['santa'], eye:'smile', brow:'thick', mouth:'grin', blush:0.9,
+  colors:{ skin:'#ffdcc4', hair:'#f4f4f4', eyeColor:'#2b2020', top:'#c8102e', bottom:'#c8102e', shoes:'#2b2020', acc:'#222222' } };
+let santa=null;
+function buildSanta(){
+  const g=new THREE.Group(), red=new THREE.MeshStandardMaterial({ color:0xb3121f, roughness:0.5 }), gold=new THREE.MeshStandardMaterial({ color:0xe8b33a, metalness:0.6, roughness:0.35, emissive:0x5a3a00, emissiveIntensity:0.4 });
+  const sleigh=new THREE.Group(); g.add(sleigh);
+  const body=new THREE.Mesh(new THREE.BoxGeometry(1.1,0.6,1.8), red); body.position.y=0.55; sleigh.add(body);
+  const back=new THREE.Mesh(new THREE.BoxGeometry(1.1,0.7,0.25), red); back.position.set(0,1.0,-0.8); sleigh.add(back);
+  for(const sx of [-0.5,0.5]){ const run=new THREE.Mesh(new THREE.BoxGeometry(0.08,0.08,2.3), gold); run.position.set(sx,0.08,0.15); sleigh.add(run);
+    const tip=new THREE.Mesh(new THREE.TorusGeometry(0.22,0.04,6,12,Math.PI), gold); tip.rotation.y=Math.PI/2; tip.position.set(sx,0.3,1.3); sleigh.add(tip); }
+  const sack=new THREE.Mesh(new THREE.SphereGeometry(0.42,12,10), new THREE.MeshStandardMaterial({ color:0x7a4a2a, roughness:0.9 })); sack.scale.set(1,1.1,0.9); sack.position.set(0.15,1.05,-0.45); sleigh.add(sack);
+  const av=createAvatar(SANTA_LOOK); av.group.position.set(-0.1,0.25,0.15); av.group.scale.setScalar(0.62); sleigh.add(av.group); setTimeout(()=>av.setSit&&av.setSit(true),1500);
+  const deer=[]; for(let i=0;i<2;i++){ const d=makeWinterAnimal('reindeer', i===0?'루돌프':'방울'); d.scale.setScalar(0.85); d.position.set(0, 0.1, 3.2+i*2.2); g.add(d); deer.push(d); }
+  // 반짝이 꼬리
+  const N=60, pos=new Float32Array(N*3), trail=new THREE.Points(new THREE.BufferGeometry(), new THREE.PointsMaterial({ color:0xfff2b0, size:0.55, transparent:true, opacity:0.85, depthWrite:false, fog:true }));
+  trail.geometry.setAttribute('position', new THREE.BufferAttribute(pos,3)); trail.frustumCulled=false;
+  g.scale.setScalar(2.2); g.visible=false; scene.add(g); scene.add(trail); trail.visible=false;
+  return { g, av, deer, trail, pos, N, head:0, t:0, dur:26, next:20+Math.random()*30, from:new THREE.Vector3(), to:new THREE.Vector3(), flying:false };
+}
+function updateSanta(dt, time){
+  if(themeId!=='xmas'){ if(santa){ santa.g.visible=false; santa.trail.visible=false; santa.flying=false; } return; }
+  if(!santa) santa=buildSanta(); const s=santa;
+  s.av.update && s.av.update(dt,false);
+  if(!s.flying){ s.next-=dt; if(s.next>0) return;
+    // 기본 카메라는 위에서 내려다봐서 높이 날면 화면 밖 — 지붕 바로 위(5.5~7m)로, 소원 트리는 피해서(가운데에서 14~40m 떨어진 줄) 가로지른다
+    const side=Math.random()<0.5?-1:1, zc=(Math.random()<0.5?-1:1)*(14+Math.random()*26), y=5.5+Math.random()*1.5;
+    s.from.set(-110*side, y, zc+(Math.random()-0.5)*10); s.to.set(110*side, y+1.5, zc+(Math.random()-0.5)*10); s.t=0; s.flying=true; s.g.visible=true; s.trail.visible=true; s.pos.fill(0); s.head=0;
+    for(let i=0;i<s.N;i++){ s.pos[i*3]=s.from.x; s.pos[i*3+1]=s.from.y; s.pos[i*3+2]=s.from.z; } }
+  s.t+=dt/s.dur; const k=Math.min(1,s.t);
+  s.g.position.lerpVectors(s.from,s.to,k); s.g.position.y+=Math.sin(time*1.6)*0.8;
+  const dir=s.to.clone().sub(s.from); s.g.rotation.y=Math.atan2(dir.x,dir.z); s.g.rotation.z=Math.sin(time*1.1)*0.05;
+  for(const d of s.deer){ const u=d.userData; if(!u.legs) continue; u.legs.forEach((l,i)=>{ l.rotation.x=Math.sin(time*9+(i%2?0:Math.PI))*0.6; }); }
+  // 꼬리: 썰매 뒤 자리를 차례로 기록
+  const tail=s.g.localToWorld(new THREE.Vector3(0,0.4,-1.2)); s.head=(s.head+1)%s.N; s.pos.set([tail.x+(Math.random()-0.5)*0.8, tail.y+(Math.random()-0.5)*0.8, tail.z+(Math.random()-0.5)*0.8], s.head*3);
+  s.trail.geometry.attributes.position.needsUpdate=true; s.trail.material.opacity=0.6+0.3*Math.sin(time*7);
+  if(k>=1){ s.flying=false; s.g.visible=false; s.trail.visible=false; s.next=90+Math.random()*90; }
+}
 const npcGroup=(()=>{ const g=new THREE.Group(); const root=new THREE.Group(); g.add(root);
   // 키키도 블록 캐릭터(분홍 똥머리·노란 후드). 이름표는 보라색(npc)
   const av=createAvatar(KIKI_LOOK,{ faceSize:1024 });
@@ -1161,10 +1234,16 @@ const typingInField=(el)=>{ el=el||document.activeElement; return !!el && (el.ta
 addEventListener('keydown',(e)=>{ if(typingInField(e.target)) return; keys[e.code]=true;
   if(mode==='playing' && !modalOpen()){ if(e.code==='Digit1') doEmote('wave'); else if(e.code==='Digit2') doEmote('dance'); else if(e.code==='Digit3') doEmote('heart'); else if(e.code==='KeyF') toggleSit(); else if(e.code==='Enter'){ e.preventDefault(); document.getElementById('sayBtn').click(); } } if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)) e.preventDefault(); });
 addEventListener('keyup',(e)=>{ keys[e.code]=false; });
-let mobileJump=false, vy=0, grounded=true, walkPhase=0;
+let mobileJump=false, vy=0, grounded=true, walkPhase=0; const heroVel={ x:0, z:0 };   // heroVel: 얼음 위에서 미끄러지는 속도
 // ── 놀거리: 앉기 · 표현(이모트) · 머리 위 말풍선 ──
 // 발 밑 높이: 땅(0) 또는 발밑에 있는 발판 윗면(낮은 발판 0.55m까지는 걸어서 올라섬)
-function groundAt(x,z,y){ let g=0; for(const p of platforms){ if(x>p.x0-0.18&&x<p.x1+0.18&&z>p.z0-0.18&&z<p.z1+0.18&&p.top<=y+0.55&&p.top>g) g=p.top; } return g; }
+// 크리스마스 얼음 호수(Blender build_xmas_map.py: 중심 (0, 22)·반지름 12×7.5, 얼음 윗면 0.06m, 둘레 눈 둑) — 웹 좌표는 z = -Blender y
+const ICE={ x:0, z:-22, rx:12, rz:7.5, top:0.065 };
+const iceR=(x,z)=>Math.hypot((x-ICE.x)/ICE.rx,(z-ICE.z)/ICE.rz);
+function onIce(x,z){ return themeId==='xmas' && iceR(x,z)<0.985; }
+function terrainAt(x,z){ if(themeId!=='xmas') return 0; const r=iceR(x,z); if(r<0.985) return ICE.top;
+  const band=Math.abs(r-1.04)*12; return band<1 ? 0.28*Math.cos(band*Math.PI/2) : 0; }   // 눈 둑은 살짝 넘어가는 언덕으로
+function groundAt(x,z,y){ let g=terrainAt(x,z); for(const p of platforms){ if(x>p.x0-0.18&&x<p.x1+0.18&&z>p.z0-0.18&&z<p.z1+0.18&&p.top<=y+0.55&&p.top>g) g=p.top; } return g; }
 // ── 황금 열쇠 모으기(하루 단위, 이 기기에 저장) ──
 const keyMeshes=[]; let keyGot=new Set(), keyDay='';
 const kstDay=()=>new Date().toLocaleDateString('sv-SE',{ timeZone:'Asia/Seoul' });
@@ -1555,6 +1634,55 @@ async function openPhotoView(){ const c=currentChat; if(!c||!c.uid) return;
 function closePhotoView(){ photoView.hidden=true; if(pvImg.src){ URL.revokeObjectURL(pvImg.src); pvImg.removeAttribute('src'); } }
 document.getElementById('pvClose').onclick=closePhotoView;
 photoView.addEventListener('contextmenu',(e)=>e.preventDefault());
+// ── 인형뽑기: 하루 1번 무료, 그다음은 한 판 CLAW_PRICE. 결과(당첨·인형)는 서버가 정하고 화면은 그대로 연출한다 ──
+const clawBox=document.getElementById('claw'), clawBtn=document.getElementById('clawBtn'), clawCv=document.getElementById('clawCv'), clawGo=document.getElementById('clawGo'), clawMsg=document.getElementById('clawMsg');
+let clawSt={ clawFree:true, dolls:{} }, clawGame=null;
+const dollOf=(id)=>DOLLS.find(d=>d.id===id)||DOLLS[0];
+const clawPile=(()=>{ const r=[]; let seed=3; const rnd=()=>{ seed=(seed*9301+49297)%233280; return seed/233280; }; for(let i=0;i<22;i++) r.push({ x:92+rnd()*185, y:228+rnd()*44-(i>11?16:0), r:15+rnd()*5, d:DOLLS[i%DOLLS.length] }); return r; })();
+function drawDoll(g,x,y,r,d){ g.fillStyle=d.color; for(const ex of [-0.62,0.62]){ g.beginPath(); g.arc(x+ex*r,y-r*0.78,r*0.36,0,Math.PI*2); g.fill(); }
+  g.beginPath(); g.arc(x,y,r,0,Math.PI*2); g.fill(); g.strokeStyle='rgba(0,0,0,.15)'; g.lineWidth=1; g.stroke();
+  const dark=d.id==='penguin'; g.fillStyle=dark?'#fff':'#2b2020'; for(const ex of [-0.33,0.33]){ g.beginPath(); g.arc(x+ex*r,y-r*0.1,r*0.11,0,Math.PI*2); g.fill(); }
+  g.fillStyle='rgba(255,130,150,.55)'; for(const ex of [-0.55,0.55]){ g.beginPath(); g.ellipse(x+ex*r,y+r*0.22,r*0.16,r*0.1,0,0,Math.PI*2); g.fill(); }
+  if(d.id==='rudolph'){ g.fillStyle='#ff2a3a'; g.beginPath(); g.arc(x,y+r*0.15,r*0.15,0,Math.PI*2); g.fill(); } }
+function drawClaw(){ const g=clawCv.getContext('2d'), W=clawCv.width, H=clawCv.height, c=clawGame||{ x:150, y:40, open:1 };
+  g.clearRect(0,0,W,H); const bg=g.createLinearGradient(0,0,0,H); bg.addColorStop(0,'#3b2a55'); bg.addColorStop(1,'#1f1630'); g.fillStyle=bg; g.fillRect(0,0,W,H);
+  g.fillStyle='#120c1c'; g.fillRect(14,H-70,58,58); g.fillStyle='#ffd65a'; g.font='bold 11px sans-serif'; g.textAlign='center'; g.fillText('출구',43,H-76);   // 인형 나오는 구멍
+  for(const p of clawPile) if(!(c.grab && c.grab.p===p)) drawDoll(g,p.x,p.y,p.r,p.d);
+  g.strokeStyle='#c9cfd8'; g.lineWidth=2; g.beginPath(); g.moveTo(c.x,0); g.lineTo(c.x,c.y); g.stroke();   // 줄
+  g.fillStyle='#d9dee6'; g.fillRect(c.x-10,c.y,20,8); g.lineWidth=3; g.strokeStyle='#d9dee6';
+  for(const s of [-1,1]){ g.beginPath(); g.moveTo(c.x+s*8,c.y+8); g.lineTo(c.x+s*(10+10*c.open),c.y+24); g.lineTo(c.x+s*(4+6*c.open),c.y+34); g.stroke(); }
+  if(c.grab) drawDoll(g,c.x,c.y+44,c.grab.p.r,c.grab.d);
+  g.fillStyle='rgba(255,255,255,.08)'; g.fillRect(0,0,W,22); }
+function renderClaw(){ const s=clawSt; document.getElementById('clawMeta').textContent=s.clawFree?'오늘 무료 1번 남았어요':'한 판 '+CLAW_PRICE+'P'+(shopPoints!=null?' · 내 포인트 '+shopPoints.toLocaleString()+'P':'');
+  clawGo.textContent=(clawGame && clawGame.phase!=='done') ? '잡기!' : s.clawFree ? '무료로 시작' : (clawGame ? '한 판 더 ('+CLAW_PRICE+'P)' : CLAW_PRICE+'P로 시작');
+  const box=document.getElementById('clawDolls'); box.innerHTML=''; const ent=Object.entries(s.dolls||{}).filter(([,n])=>n>0);
+  if(!ent.length){ const e=document.createElement('span'); e.className='none'; e.textContent='아직 뽑은 인형이 없어요'; box.appendChild(e); }
+  for(const [id,n] of ent){ const e=document.createElement('span'); e.textContent=dollOf(id).name+' ×'+n; box.appendChild(e); }
+  drawClaw(); }
+async function openClaw(){ document.exitPointerLock?.(); clawGame=null; clawMsg.textContent='집게를 원하는 곳에 멈추고 잡아 보세요'; clawBox.hidden=false; renderClaw();
+  try{ const j=await (await plazaFetch('/api/plaza/shop')).json(); if(j && 'clawFree' in j && !clawGame){ clawSt=j; shopPoints=j.points??shopPoints; renderClaw(); } }catch(e){} }   // 이미 한 판 시작했으면 늦게 온 정보로 덮어쓰지 않음
+clawBtn.onclick=openClaw;
+document.getElementById('clawClose').onclick=()=>{ if(clawGame && clawGame.phase!=='done') return; clawBox.hidden=true; clawGame=null; };
+clawGo.onclick=async()=>{
+  if(clawGame && clawGame.phase==='aim'){ clawGame.phase='drop'; clawGo.disabled=true; return; }
+  if(clawGame && clawGame.phase!=='done') return;
+  clawGo.disabled=true;
+  const j=await shopPost({ action:'claw' }); clawGo.disabled=false; if(!j){ renderClaw(); return; }
+  // 인형함은 연출이 끝난 뒤에 갱신(pending)
+  clawSt={ ...j, dolls:clawSt.dolls }; clawGame={ phase:'aim', x:150, y:40, open:1, dir:1, t:0, res:j.doll||null, grab:null, pending:j }; clawGo.textContent='잡기!'; clawMsg.textContent=j.free?'오늘의 무료 한 판!':'집게가 움직여요. 원하는 곳에서 잡기!'; renderClaw();
+  let last=performance.now();
+  (function loop(now){ const c=clawGame; if(!c || clawBox.hidden) return; const dt=Math.min(0.05,(now-last)/1000); last=now; c.t+=dt;
+    if(c.phase==='aim'){ c.x+=c.dir*150*dt; if(c.x>270){ c.x=270; c.dir=-1; } if(c.x<30){ c.x=30; c.dir=1; } if(c.t>7){ c.phase='drop'; clawGo.disabled=true; } }
+    else if(c.phase==='drop'){ c.open=Math.min(1.4,c.open+dt*2); c.y+=170*dt; const tgt=clawPile.reduce((b,p)=>Math.abs(p.x-c.x)<Math.abs(b.x-c.x)?p:b, clawPile[0]); if(c.y>=tgt.y-52){ c.phase='close'; c.tgt=tgt; c.t=0; } }
+    else if(c.phase==='close'){ c.open=Math.max(0.2,c.open-dt*2.5); if(c.open<=0.2){ c.phase='lift'; if(c.res){ c.grab={ p:c.tgt, d:dollOf(c.res) }; } else c.grab={ p:c.tgt, d:c.tgt.d, slip:true }; } }
+    else if(c.phase==='lift'){ c.y-=120*dt; if(c.grab && c.grab.slip && c.y<c.tgt.y-110){ c.grab=null; clawMsg.textContent='아깝다! 인형이 미끄러졌어요'; }
+      if(c.y<=40){ c.y=40; c.phase='carry'; } }
+    else if(c.phase==='carry'){ c.x+=(43-c.x)*Math.min(1,dt*3); if(Math.abs(c.x-43)<2){ c.phase='release'; c.t=0; } }
+    else if(c.phase==='release'){ c.open=Math.min(1,c.open+dt*2); if(c.t>0.6){ c.phase='done'; finishClaw(c); } }
+    drawClaw(); if(c.phase!=='done') requestAnimationFrame(loop); })(last);
+};
+function finishClaw(c){ clawGo.disabled=false; if(c.pending) clawSt=c.pending; if(c.res){ clawMsg.textContent=dollOf(c.res).name+'을(를) 뽑았어요! 내 인형함에 넣었어요'; toast(dollOf(c.res).name+' 획득!'); } else if(!/아깝다/.test(clawMsg.textContent)) clawMsg.textContent='아깝다! 다시 도전해 보세요';
+  clawGame={ phase:'done', x:43, y:40, open:1 }; renderClaw(); }
 // ── 신고 · 차단 ──
 const REPORT_REASONS=['욕설·비하','음란·성희롱','스팸·광고','사기·금전요구','기타'];
 const reportBox=document.getElementById('report'), confirmBox=document.getElementById('confirmBox');
@@ -1786,7 +1914,7 @@ const raycaster=new THREE.Raycaster(); const ndc=new THREE.Vector2();
 let dragId=null, dragX=0, dragY=0, dragged=false;
 const canvasEl=renderer.domElement, reticle=document.getElementById('reticle');
 let locked=false, aimTarget=null;
-const modalOpen=()=> !consentBox.hidden || !noticeBox.hidden || !card.hidden || !chat.hidden || !joinBox.hidden || !reportBox.hidden || !confirmBox.hidden || !blockListBox.hidden;
+const modalOpen=()=> !document.getElementById('claw').hidden || !consentBox.hidden || !noticeBox.hidden || !card.hidden || !chat.hidden || !joinBox.hidden || !reportBox.hidden || !confirmBox.hidden || !blockListBox.hidden;
 function pickProfile(prof){ if(!prof) return; if(prof.animal){ reactAnimal(prof); return; }
   if(prof.wish){ showNotice('소원 트리', prof.nick+'님의 소원', escHtml(prof.text)); return; }
   if(prof.taxi){ const hp=heldPet(); showNotice('택시', '서비스 준비 중이에요', '곧 택시를 타고 부산·서울 등<br>다른 지역 키링 월드로 이동할 수 있어요.'+(hp?'<br>택시가 열리면 안고 있는 <b>'+(myPets.adopted[hp.userData.aid]||hp.userData.profile.nick)+'</b>도 같이 타요.':'')); return; } if(member || prof.npc) openCard(prof); else openJoin(()=>openCard(prof)); }
@@ -1848,19 +1976,25 @@ function tick(){
     const running=len>0.08 && (keys['ShiftLeft']||keys['ShiftRight']||Math.hypot(move.x,move.y)>0.88);   // 달리기: 조이스틱 끝까지 또는 Shift
     if(heroSeat && (len>0.08 || keys['Space'] || mobileJump)){ standUp(); mobileJump=false; }
     if(heroSeat){ /* 앉아 있는 동안은 제자리 */ }
-    else if(len>0.08){ ix/=Math.max(len,1); iy/=Math.max(len,1);
-      const fwdX=-Math.sin(camYaw), fwdZ=-Math.cos(camYaw), rgtX=Math.cos(camYaw), rgtZ=-Math.sin(camYaw);
-      let vx=ix*rgtX+(-iy)*fwdX, vz=ix*rgtZ+(-iy)*fwdZ; const vl=Math.hypot(vx,vz)||1; vx/=vl; vz/=vl;
-      hero.position.x+=vx*(running?8:4.5)*dt; hero.position.z+=vz*(running?8:4.5)*dt;
-      const r=Math.hypot(hero.position.x,hero.position.z); if(r>BOUNDARY){ hero.position.x*=BOUNDARY/r; hero.position.z*=BOUNDARY/r; }
-      pushOut(hero);
-      hero.rotation.y=Math.atan2(vx,vz); }
-    if(heroAv){ if(heroAv.actions.walk) heroAv.actions.walk.timeScale=1.0; heroAv.update(dt, len>0.08&&grounded, running); }
+    else { let tvx=0, tvz=0;
+      if(len>0.08){ ix/=Math.max(len,1); iy/=Math.max(len,1);
+        const fwdX=-Math.sin(camYaw), fwdZ=-Math.cos(camYaw), rgtX=Math.cos(camYaw), rgtZ=-Math.sin(camYaw);
+        let vx=ix*rgtX+(-iy)*fwdX, vz=ix*rgtZ+(-iy)*fwdZ; const vl=Math.hypot(vx,vz)||1; vx/=vl; vz/=vl;
+        const sp=running?8:4.5; tvx=vx*sp; tvz=vz*sp; hero.rotation.y=Math.atan2(vx,vz); }
+      // 얼음 위: 방향을 바꿔도 천천히 꺾이고, 손을 떼도 한동안 미끄러진다(땅에서는 바로 멈춤)
+      const ice=onIce(hero.position.x,hero.position.z), k=ice ? 1-Math.exp(-dt*(len>0.08?1.4:0.7)) : 1;
+      heroVel.x+=(tvx-heroVel.x)*k; heroVel.z+=(tvz-heroVel.z)*k;
+      if(Math.hypot(heroVel.x,heroVel.z)>0.03){ hero.position.x+=heroVel.x*dt; hero.position.z+=heroVel.z*dt;
+        const r=Math.hypot(hero.position.x,hero.position.z); if(r>BOUNDARY){ hero.position.x*=BOUNDARY/r; hero.position.z*=BOUNDARY/r; heroVel.x*=0.3; heroVel.z*=0.3; }
+        pushOut(hero); } else { heroVel.x=0; heroVel.z=0; } }
+    { const glide=Math.hypot(heroVel.x,heroVel.z), ice=onIce(hero.position.x,hero.position.z);
+      if(heroAv){ if(heroAv.actions.walk) heroAv.actions.walk.timeScale=ice?0.55:1.0; heroAv.update(dt, (len>0.08 || (ice && glide>1.2))&&grounded, running && !ice); } }   // 얼음 위에선 천천히 미끄러지듯 걷는 모습
     if(!heroSeat){ const gy=groundAt(hero.position.x,hero.position.z,hero.position.y);
       if((keys['Space']||mobileJump)&&grounded){ vy=8; grounded=false; } mobileJump=false;
       if(!grounded || hero.position.y>gy+0.01){ grounded=false; vy-=22*dt; hero.position.y+=vy*dt; if(hero.position.y<=gy && vy<=0){ hero.position.y=gy; vy=0; grounded=true; } }
       else hero.position.y=gy; }
     checkKeys(dt);
+    clawBtn.hidden=!(!heroSeat && clawSpots.some(c=>Math.hypot(c.x-hero.position.x,c.z-hero.position.z)<2.2));
     feedBtn.hidden=!(!heroSeat && nearCat(hero.position)); wishBtn.hidden=!(Math.hypot(hero.position.x-FOUNTAIN.x,hero.position.z-FOUNTAIN.z)<FOUNTAIN.r);
     { const can=!heroSeat && nearSeat(); sitBtn.hidden=!(heroSeat||can); sitBtn.querySelector('span').textContent=heroSeat?'일어나기':'앉기'; sitBtn.classList.toggle('on',!!heroSeat); }
     const target=hero.position.clone().add(camOff()); camera.position.lerp(target,1-Math.pow(0.0008,dt)); camera.lookAt(hero.position.x,hero.position.y+1.4,hero.position.z);
@@ -1890,6 +2024,7 @@ function tick(){
   { const now=performance.now(); for(const par of [hero, ...[...peers.values()].map(p=>p.root)]){ const sp=par.userData.say; if(sp && now>sp.userData.until){ par.remove(sp); sp.material.map.dispose(); sp.material.dispose(); par.userData.say=null; } } }
   for(const o of spinners) o.rotation.y+=dt*o.userData.kl_spin;
   twinkleTime.value=clock.elapsedTime;
+  updateSanta(dt, clock.elapsedTime);
   updateWishNotes();
   for(const b of bobbers) b.o.position.y=b.y+Math.sin(clock.elapsedTime*b.w+b.p)*b.a;
   // 키키(AI): 둥실둥실 + 가까이 오면 쳐다보기
@@ -1913,7 +2048,16 @@ function tick(){
       if(u.style==='sprite'){ playAnim(u,'walk',dt,dir.dot(camRightVec())<0); continue; }
       g.rotation.y=Math.atan2(dir.x,dir.z); u.head.rotation.x=0; u.root.position.y=Math.abs(Math.sin(u.phase*14))*0.03; continue; }
     if(u.style==='perch'){ u.head.rotation.y=Math.sin(u.phase*0.45)*1.1+(Math.sin(u.phase*0.13)>0.8?Math.PI*0.5:0); continue; }
-    if(u.style==='model'){ u.root.scale.y=1+Math.sin(u.phase*1.7)*0.025; u.root.scale.x=u.root.scale.z=1-Math.sin(u.phase*1.7)*0.01; continue; }
+    if(u.style==='model' && u.roam && u.face==null){   // 실사 루돌프: 마켓 거리 안에서 천천히 거닐다 쉰다(뼈대가 없어 다리 대신 몸을 살짝 흔든다)
+      if(u.rest>0){ u.rest-=dt; u.root.position.y=0; u.root.rotation.x=0; }
+      else { if(!u.target) u.target=new THREE.Vector3(u.roam.x+(Math.random()*2-1)*u.roam.rx, 0, u.roam.z+(Math.random()*2-1)*u.roam.rz);
+        const dx=u.target.x-g.position.x, dz=u.target.z-g.position.z, d=Math.hypot(dx,dz);
+        if(d<0.15){ u.target=null; u.rest=3+Math.random()*6; }
+        else { const want=Math.atan2(dx,dz)+(u.yawOff||0); let dr=want-g.rotation.y; dr=Math.atan2(Math.sin(dr),Math.cos(dr)); g.rotation.y+=dr*Math.min(1,dt*3);
+          if(Math.abs(dr)<0.4){ const st=Math.min(d,0.6*dt); g.position.x+=dx/d*st; g.position.z+=dz/d*st; }
+          u.root.position.y=Math.abs(Math.sin(u.phase*5.5))*0.035; u.root.rotation.x=Math.sin(u.phase*5.5)*0.025; } } }
+    if(u.style==='model'){ u.root.scale.y=1+Math.sin(u.phase*1.7)*0.025; u.root.scale.x=u.root.scale.z=1-Math.sin(u.phase*1.7)*0.01;
+      if(u.face!=null){ let d=u.face-g.rotation.y; d=Math.atan2(Math.sin(d),Math.cos(d)); g.rotation.y+=d*Math.min(1,dt*2.5); if(Math.abs(d)<0.01) u.face=null; } continue; }
     if(u.style==='sprite'){
       if(u.hop){ u.hop+=dt; u.root.position.y=Math.max(0,Math.sin(u.hop*Math.PI/0.35)*0.3); if(u.hop>0.35){ u.hop=0; u.root.position.y=0; } }
       if(u.rest>0){ u.rest-=dt; if(u.mode!=='idle') showIdle(u); continue; }

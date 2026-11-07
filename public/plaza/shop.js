@@ -11,6 +11,16 @@ export const STAY_TICK_MS = 5 * 60 * 1000;          // 화면이 5분마다 '아
 export const STAY_DAILY_MAX = 8;                    // 하루(한국 날짜) 최대 8번 = 400P
 export const WISH_PRICE = 100;       // 분수대에 소원 던지기
 export const WISH_MAX = 40;          // 소원 글자 수
+// 인형뽑기(크리스마스 마켓 거리): 하루(한국 날짜) 1번 무료, 그다음은 한 판 CLAW_PRICE. 뽑힐 확률 CLAW_WIN, 인형은 '내 인형함'에 모인다
+export const CLAW_PRICE = 100;
+export const CLAW_WIN = 0.3;
+export const DOLLS = [
+  { id: 'puppy', name: '강아지 인형', color: '#d9a066' }, { id: 'kitty', name: '고양이 인형', color: '#f0a35a' },
+  { id: 'penguin', name: '펭귄 인형', color: '#2b2f3a' }, { id: 'rudolph', name: '루돌프 인형', color: '#8a5a36' },
+  { id: 'bunny', name: '토끼 인형', color: '#f6f2ef' }, { id: 'fox', name: '여우 인형', color: '#f3f1ec' },
+  { id: 'bear', name: '곰 인형', color: '#a0703f' }, { id: 'snowman', name: '눈사람 인형', color: '#ffffff' },
+];
+export const DOLL_IDS = DOLLS.map((d) => d.id);
 export const FOUNTAIN = { x: 0, z: 0, r: 5.5 };   // 분수대 중심(웹 좌표)과 소원 빌 수 있는 거리
 // 크리스마스 테마: 소원을 담아 트리에 거는 장식 모양
 export const WISH_ORNS = ['star', 'heart', 'bell', 'ball', 'snow'];

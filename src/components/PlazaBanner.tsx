@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { ArrowRight } from 'lucide-react';
 
 // 홈 → 온라인 소개팅(3D 광장 /plaza) 진입 배너. 접속자 수는 광장 실시간 서버(Cloudflare)에서 가져온다.
@@ -23,8 +23,12 @@ const COPY = {
 
 export function PlazaBanner() {
   const [online, setOnline] = useState(0);
-  const [theme, setTheme] = useState<keyof typeof COPY>('default');
-  const c = COPY[theme];
+  // 테마를 알기 전(null)엔 빈 틀만 보여 준다 — 하늘섬이 잠깐 보였다가 크리스마스로 바뀌던 깜빡임 방지.
+  // 마지막으로 본 테마를 기억해 두었다가 다음 방문엔 서버 응답을 기다리지 않고 바로 맞춘다.
+  const cached = useSyncExternalStore(() => () => {}, () => { try { return localStorage.getItem('kl_plaza_theme'); } catch { return null; } }, () => null);
+  const [fetched, setTheme] = useState<keyof typeof COPY | null>(null);
+  const theme = fetched || (cached && cached in COPY ? cached as keyof typeof COPY : null);
+  const c = COPY[theme || 'default'];
 
   useEffect(() => {
     let alive = true;
@@ -33,14 +37,18 @@ export function PlazaBanner() {
       .then((j: { rooms?: { count: number }[] }) => { if (alive) setOnline((j.rooms || []).reduce((s, r) => s + (r.count || 0), 0)); })
       .catch(() => { /* 접속자 수는 부가 정보 — 실패해도 배너는 그대로 */ });
     load();
-    fetch('/api/plaza/theme').then((r) => r.json()).then((j: { theme?: string }) => { if (alive && j.theme && j.theme in COPY) setTheme(j.theme as keyof typeof COPY); }).catch(() => {});
+    fetch('/api/plaza/theme').then((r) => r.json()).then((j: { theme?: string }) => {
+      const t = (j.theme && j.theme in COPY ? j.theme : 'default') as keyof typeof COPY;
+      if (alive) setTheme(t);
+      try { localStorage.setItem('kl_plaza_theme', t); } catch { /* 무시 */ }
+    }).catch(() => { if (alive) setTheme((v) => v || 'default'); });
     const t = setInterval(load, 30000);
     return () => { alive = false; clearInterval(t); };
   }, []);
 
   return (
     <section style={{ padding: '0 max(16px, env(safe-area-inset-left, 0px)) 24px' }}>
-      <a href="/plaza" className="kl-plaza-banner" style={{ background: c.bg }}>
+      <a href="/plaza" className="kl-plaza-banner" style={{ background: c.bg, opacity: theme ? 1 : 0, transition: 'opacity .35s ease, transform .2s ease, box-shadow .2s ease' }} aria-busy={!theme}>
         {/* 실제 키링 월드 3D 화면(테마별 public/plaza/preview_*.jpg) */}
         <div className="kl-plaza-art">
           <img src={c.img} alt={c.alt} loading="lazy" width={1000} height={560} />
