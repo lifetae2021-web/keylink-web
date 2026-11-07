@@ -192,6 +192,13 @@ def add_pine(x, y, s, inner=False):
     if inner: col(f'COL_pine_{len(trunks)}', x, y, 0.55 * s + 0.2)
 
 
+# 가로등 자리(호수 둑·벤치와 겹치지 않게 2026-11-07 옮김: 호수 쪽은 둑 바깥, 광장 남쪽 둘은 벤치에서 떨어지게)
+lamp_spots = [(2.6, -15), (-2.6, -19.5), (2.6, -25), (8.5, 3.0), (11.5, -3.0), (28.5, 2.5), (-9.5, -3.0), (-21.5, 1.5),
+              (9.9, 14.9), (-10.5, 15.25), (14.45, 24.3), (-14.2, 24.8), (0, 31.5), (8.2, -8.2), (-8.2, -8.2)]
+# 소나무가 가로등·벤치·눈사람을 덮지 않게 비워 둘 자리(2026-11-07 겹친 소나무 3그루를 지운 자리 포함)
+KEEP_CLEAR = [(x, y, 1.9) for x, y in lamp_spots] + [(-6.5, 12.6, 2.6), (6.5, 12.6, 2.6), (10.0, -11.5, 2.4), (-3.9, -19.5, 1.2)]
+
+
 def free_spot(x, y):
     r = math.hypot(x, y)
     if r < 12.5: return False                                   # 광장
@@ -202,6 +209,7 @@ def free_spot(x, y):
     if abs(y) < 3.0 and abs(x) > 9: return False                  # 동서 길
     # 마을 밖에 따로 선 통나무집 5·6번 자리(집과 소나무가 겹쳐 2026-11-07 지움 — 다시 만들 때도 비워 둔다)
     if math.hypot(x + 13.0, y - 10.5) < 5.0 or math.hypot(x - 13.5, y - 13.5) < 5.0: return False
+    if any(math.hypot(x - kx, y - ky) < kr for kx, ky, kr in KEEP_CLEAR): return False
     return True
 
 
@@ -306,8 +314,6 @@ put('XMAS_arch_lights_glow', bm_merge(*ab), M['b_gold'], smooth=True)
 col('COL_arch_l', -2.4, -29, 0.35); col('COL_arch_r', 2.4, -29, 0.35)
 
 # ── 가로등(이름에 lamp + _light → 밤에 켜지고 바닥에 불빛) ──
-lamp_spots = [(2.6, -15), (-2.6, -19.5), (2.6, -25), (8.5, 3.0), (11.5, -3.0), (28.5, 2.5), (-9.5, -3.0), (-21.5, 1.5),
-              (7.0, 17.0), (-7.0, 17.5), (12.5, 24.0), (-12.5, 24.5), (0, 30.5), (7.5, -7.5), (-7.5, -7.5)]
 posts = []
 for i, (x, y) in enumerate(lamp_spots):
     posts.append(at(bm_cyl(0.09, 0.07, 2.9, 8), x, y))
@@ -336,7 +342,7 @@ def bench(i, x, y, face):
 
 
 benches = [(6.8, -6.8, math.radians(135)), (-6.8, -6.8, math.radians(45)), (8.2, 5.0, math.radians(210)), (-8.2, 5.0, math.radians(-30)),
-           (-6.0, 15.0, math.radians(-60)), (6.0, 15.0, math.radians(240))]
+           (-6.5, 12.6, math.radians(-60)), (6.5, 12.6, math.radians(240))]   # 호수 쪽 두 개는 얼음 둑에 걸려 2026-11-07 둑 밖으로
 for i, (x, y, f) in enumerate(benches): bench(i + 1, x, y, f)
 
 
