@@ -7,7 +7,7 @@
 <style>
   :root { --sky-top:#bfe3ff; --sky-bottom:#eaf7ff; --ink:#3a4a63; --card:rgba(255,255,255,.9); --card-border:rgba(140,170,210,.45);
     --accent:#6d5efc; --accent-ink:#3b2f99; --stick:rgba(16,20,32,.28); --stick-knob:#ffffff; --glass:rgba(16,20,32,.46); --glass-line:rgba(255,255,255,.22); --pill:rgba(120,160,210,.14); --pill-ink:#4a5a73; }
-  html, body { height:100%; margin:0; }
+  html, body { height:100%; margin:0; overflow:hidden; overscroll-behavior:none; }
   body { background:linear-gradient(var(--sky-top),var(--sky-bottom)); color:var(--ink); overflow:hidden;
     font-family:"Jua",system-ui,-apple-system,sans-serif; -webkit-user-select:none; user-select:none; -webkit-tap-highlight-color:transparent; touch-action:none; }
   #c { position:fixed; inset:0; width:100%; height:100%; display:block; }
@@ -22,7 +22,7 @@
   .dot { display:inline-block; width:8px; height:8px; border-radius:50%; background:#bbb; margin-right:6px; vertical-align:middle; }
   .dot.on { background:#4ec36b; } .dot.off { background:#e06b5b; }
   #loading { position:fixed; inset:0; display:grid; place-items:center; z-index:30; background:linear-gradient(var(--sky-top),var(--sky-bottom)); font-size:1.05rem; text-align:center; }
-  #entry { position:fixed; inset:0; z-index:20; pointer-events:none; }
+  #entry { position:fixed; inset:0; z-index:20; pointer-events:none; overflow:hidden; }
   #sheet { pointer-events:auto; position:absolute; top:0; right:0; bottom:0; width:min(400px,100%); box-sizing:border-box; display:flex; flex-direction:column;
     background:var(--card); border-left:1px solid var(--card-border); box-shadow:-10px 0 30px rgba(80,120,170,.18); backdrop-filter:blur(8px);
     padding:calc(12px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) calc(12px + env(safe-area-inset-bottom,0px)) 16px; }
@@ -995,6 +995,20 @@ function makeModelAnimal(kind,url,size,name,says,opts={}){
   new GLTFLoader().load(url,(gltf)=>{ const m=gltf.scene; const bb=new THREE.Box3().setFromObject(m), sz=bb.getSize(new THREE.Vector3()), c=bb.getCenter(new THREE.Vector3());
     const k=size/Math.max(sz.x,sz.z); m.scale.setScalar(k); m.position.set(-c.x*k,-bb.min.y*k,-c.z*k); root.add(m); g.userData.bubbleY=sz.y*k+0.5;
     if(opts.bright) m.traverse(o=>{ if(o.isMesh && o.material){ o.material.color?.multiplyScalar(opts.bright); o.castShadow=true; } });
+    // opts.legs: 뼈대 없는 모델의 다리를 셰이더로 흔든다 — 골반 높이(hip) 아래 꼭짓점을 앞/뒤(split)·좌/우(z)로 나눠 대각선 다리끼리 같이 앞뒤로
+    if(opts.legs){ const L=opts.legs, f=(v)=>v.toFixed(3); g.userData.legU={ uLegPhase:{ value:0 }, uLegAmp:{ value:0 } };
+      m.traverse(o=>{ if(!o.isMesh || !o.material) return; o.material.onBeforeCompile=(sh)=>{ Object.assign(sh.uniforms, g.userData.legU);
+        sh.vertexShader='uniform float uLegPhase;\nuniform float uLegAmp;\n'+sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
+  if(transformed.y < ${f(L.hip)}){
+    float lt = clamp((${f(L.hip)} - transformed.y) / ${f(L.hip-L.foot)}, 0.0, 1.0);
+    bool lfront = transformed.x > ${f(L.split)};
+    float lpx = lfront ? ${f(L.front)} : ${f(L.back)};
+    float ldiag = (lfront == (transformed.z > 0.0)) ? 0.0 : 3.14159;
+    float la = sin(uLegPhase + ldiag) * 0.42 * uLegAmp * smoothstep(0.0, 0.3, lt);
+    float ldx = transformed.x - lpx, ldy = transformed.y - ${f(L.hip)};
+    transformed.x = lpx + ldx * cos(la) - ldy * sin(la);
+    transformed.y = ${f(L.hip)} + ldx * sin(la) + ldy * cos(la);
+  }`); }; o.material.customProgramCacheKey=()=>'legs'+L.hip; o.material.needsUpdate=true; }); }
     if(opts.nose){   // 머리 높이 구간(opts.nose = [아래, 위] 높이 비율)에서 가장 앞(+X)에 있는 꼭짓점 = 코끝
       root.updateMatrixWorld(true); const v=new THREE.Vector3(), inv=new THREE.Matrix4().copy(root.matrixWorld).invert(); let tip=null; const H=sz.y*k;
       m.traverse(o=>{ if(!o.isMesh) return; const pa=o.geometry.attributes.position; for(let i=0;i<pa.count;i++){ v.fromBufferAttribute(pa,i).applyMatrix4(o.matrixWorld).applyMatrix4(inv); if(v.y>H*opts.nose[0] && v.y<H*opts.nose[1] && (!tip || v.x>tip.x)) tip=v.clone(); } });
@@ -1097,7 +1111,7 @@ function spawnWinterAnimals(){ if(winterSpawned) return; winterSpawned=true;
   add(makeWinterAnimal('rabbit','눈송이'),-11,9); add(makeWinterAnimal('rabbit','찹쌀'),9,11);
   add(makeWinterAnimal('reindeer','방울'),15,1.2);
   // 실사 루돌프(Higgsfield 사진→3D): 뼈대가 없어 걷지 않고 제자리에서 숨 쉬듯 움직이다, 말을 걸면 이쪽을 본다. 걸어 다니는 투박한 순록은 '방울'
-  { const r=makeModelAnimal('reindeer','/plaza/assets/reindeer_real.glb',2.0,'루돌프',WINTER_SAYS.reindeer,{ bright:1.45, nose:[0.45,0.75] }); r.userData.turnTo=true; r.userData.yawOff=-Math.PI/2; r.userData.roam={ x:22, z:-1.2, rx:5, rz:1.4 }; add(r,22,-1.2); }   // 모델 머리가 +X쪽이라 바라볼 때 -90°
+  { const r=makeModelAnimal('reindeer','/plaza/assets/reindeer_real.glb',2.0,'루돌프',WINTER_SAYS.reindeer,{ bright:1.45, nose:[0.45,0.75], legs:{ hip:-0.13, foot:-0.5, split:-0.12, front:0.13, back:-0.39 } }); r.userData.turnTo=true; r.userData.yawOff=-Math.PI/2; r.userData.roam={ x:22, z:-1.2, rx:5, rz:1.4 }; add(r,22,-1.2); }   // 모델 머리가 +X쪽이라 바라볼 때 -90°
   add(makeWinterAnimal('fox','설이'),-16,-10);
   for(const g of animals){ const fid=FEED_ONLY[g.userData.profile?.nick]; if(fid && (g.userData.kind==='penguin'||g.userData.kind==='reindeer')) g.userData.feedId=fid; }   // 펭귄·순록: 밥만 줄 수 있음
   // 흰 부엉이: 가로등 위·트리 울타리 랜턴 위에 앉아 있다(움직이지 않음)
@@ -1442,6 +1456,9 @@ const _wsParam = new URLSearchParams(location.search).get('ws');
 const _wsBase = _wsParam==='local' ? 'ws://127.0.0.1:8787' : (_wsParam && _wsParam!=='prod' ? _wsParam : PLAZA_WS);
 if(IS_LOCALHOST && _wsBase!==PLAZA_WS) addEventListener('DOMContentLoaded',()=>{ const b=document.createElement('div'); b.className='srv-badge'; b.textContent='로컬 서버 연결 중'; document.body.appendChild(b); });   // 운영 서버일 땐 표시하지 않음(사용자 요청)
 const _wsRoom = new URLSearchParams(location.search).get('room');
+// 입력칸에 커서가 가거나 끌기를 할 때 브라우저가 페이지·만들기 창을 옆으로 밀어(캐릭터 만들기가 왼쪽으로 잘려 보임) — 옆으로 밀리면 바로 되돌린다
+document.addEventListener('scroll',(e)=>{ const t=e.target===document ? document.scrollingElement : e.target;
+  if(t && t.scrollLeft && (t===document.scrollingElement || t===document.body || t.id==='entry' || t.id==='sheet' || t.id==='hud')) t.scrollLeft=0; },{ capture:true, passive:true });
 let DEV_ID=''; try{ DEV_ID=localStorage.getItem('kl_dev')||''; if(!DEV_ID){ DEV_ID=(crypto.randomUUID?crypto.randomUUID():Math.random().toString(36).slice(2)+Date.now().toString(36)); localStorage.setItem('kl_dev',DEV_ID); } }catch(e){}
 const _wsQuery = new URLSearchParams(); if(_wsRoom) _wsQuery.set('room',_wsRoom); if(DEV_ID) _wsQuery.set('dev',DEV_ID);
 { let tk=''; try{ tk=localStorage.getItem('kl_test')||''; }catch(e){} if(tk) _wsQuery.set('kltest',tk); }   // 운영 점검용(서버 비밀 키와 같을 때만 기록 제외)
@@ -2049,13 +2066,14 @@ function tick(){
       g.rotation.y=Math.atan2(dir.x,dir.z); u.head.rotation.x=0; u.root.position.y=Math.abs(Math.sin(u.phase*14))*0.03; continue; }
     if(u.style==='perch'){ u.head.rotation.y=Math.sin(u.phase*0.45)*1.1+(Math.sin(u.phase*0.13)>0.8?Math.PI*0.5:0); continue; }
     if(u.style==='model' && u.roam && u.face==null){   // 실사 루돌프: 마켓 거리 안에서 천천히 거닐다 쉰다(뼈대가 없어 다리 대신 몸을 살짝 흔든다)
-      if(u.rest>0){ u.rest-=dt; u.root.position.y=0; u.root.rotation.x=0; }
+      if(u.rest>0){ u.rest-=dt; u.root.position.y=0; u.root.rotation.x=0; u.walking=false; }
       else { if(!u.target) u.target=new THREE.Vector3(u.roam.x+(Math.random()*2-1)*u.roam.rx, 0, u.roam.z+(Math.random()*2-1)*u.roam.rz);
         const dx=u.target.x-g.position.x, dz=u.target.z-g.position.z, d=Math.hypot(dx,dz);
         if(d<0.15){ u.target=null; u.rest=3+Math.random()*6; }
         else { const want=Math.atan2(dx,dz)+(u.yawOff||0); let dr=want-g.rotation.y; dr=Math.atan2(Math.sin(dr),Math.cos(dr)); g.rotation.y+=dr*Math.min(1,dt*3);
-          if(Math.abs(dr)<0.4){ const st=Math.min(d,0.6*dt); g.position.x+=dx/d*st; g.position.z+=dz/d*st; }
+          if(Math.abs(dr)<0.4){ const st=Math.min(d,0.6*dt); g.position.x+=dx/d*st; g.position.z+=dz/d*st; u.walking=true; } else u.walking=false;
           u.root.position.y=Math.abs(Math.sin(u.phase*5.5))*0.035; u.root.rotation.x=Math.sin(u.phase*5.5)*0.025; } } }
+    if(u.legU){ const lu=u.legU; lu.uLegAmp.value+=((u.walking?1:0)-lu.uLegAmp.value)*Math.min(1,dt*4); lu.uLegPhase.value+=dt*5.5; }   // 걸을 때만 다리를 흔든다
     if(u.style==='model'){ u.root.scale.y=1+Math.sin(u.phase*1.7)*0.025; u.root.scale.x=u.root.scale.z=1-Math.sin(u.phase*1.7)*0.01;
       if(u.face!=null){ let d=u.face-g.rotation.y; d=Math.atan2(Math.sin(d),Math.cos(d)); g.rotation.y+=d*Math.min(1,dt*2.5); if(Math.abs(d)<0.01) u.face=null; } continue; }
     if(u.style==='sprite'){
