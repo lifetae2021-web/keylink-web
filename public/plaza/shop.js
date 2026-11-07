@@ -23,4 +23,4 @@ export const DOLLS = [
 export const DOLL_IDS = DOLLS.map((d) => d.id);
 export const FOUNTAIN = { x: 0, z: 0, r: 5.5 };   // 분수대 중심(웹 좌표)과 소원 빌 수 있는 거리
 // 크리스마스 테마: 소원을 담아 트리에 거는 장식 모양
-export const WISH_ORNS = ['star', 'heart', 'bell', 'ball', 'snow'];
+export const WISH_ORNS = ['star', 'heart', 'bell', 'ball', 'snow', 'gift', 'light', 'sock', 'candy'];

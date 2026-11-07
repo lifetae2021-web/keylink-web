@@ -188,6 +188,19 @@
   @media (prefers-reduced-motion: reduce) { * { transition:none !important; } }
   #petCard { position:fixed; inset:0; z-index:24; display:grid; place-items:center; background:rgba(40,60,90,.28); padding:16px; }
   #petCard .card-box { max-width:340px; }
+  #shot { position:fixed; inset:0; z-index:26; display:grid; place-items:center; background:rgba(20,26,40,.55); padding:16px; }
+  #shot .card-box { max-width:420px; width:100%; }
+  #shotImg { display:block; width:100%; max-height:62vh; object-fit:contain; margin:10px 0; }
+  .shot-pick { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px; }
+  .shot-pick button { border:1px solid var(--card-border); background:var(--pill); border-radius:16px; padding:16px 10px; cursor:pointer; font-family:inherit; color:var(--ink); display:flex; flex-direction:column; gap:4px; align-items:center; }
+  .shot-pick b { font-size:1.05rem; } .shot-pick span { font-size:.75rem; color:#8a98ab; word-break:keep-all; text-align:center; }
+  #shotCount { position:fixed; inset:0; z-index:24; display:grid; place-items:center; align-content:center; gap:6px; pointer-events:none; }
+  #shotCount b { font-size:min(28vw,180px); color:#fff; text-shadow:0 6px 30px rgba(0,0,0,.45); line-height:1; }
+  #shotCount span { font-size:1.1rem; color:#fff; background:rgba(20,16,40,.5); padding:6px 16px; border-radius:999px; word-break:keep-all; }
+  .shot-btns { display:flex; gap:8px; } .shot-btns .btn { flex:1; text-align:center; text-decoration:none; }
+  .shot-note { font-size:.78rem; color:#8a98ab; text-align:center; margin-top:8px; word-break:keep-all; }
+  .shot-flash { position:fixed; inset:0; z-index:25; background:#fff; pointer-events:none; animation:shotflash .45s ease-out forwards; }
+  @keyframes shotflash { from { opacity:.85; } to { opacity:0; } }
   #claw { position:fixed; inset:0; z-index:24; display:grid; place-items:center; background:rgba(40,60,90,.32); padding:16px; }
   #claw .card-box { max-width:340px; width:100%; }
   #clawCv { display:block; width:100%; max-width:300px; aspect-ratio:1; margin:10px auto 8px; border-radius:16px; background:#2a1f3d; }
@@ -308,6 +321,7 @@
     <button class="act-btn" id="feedBtn" hidden><svg class="hico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13h16a8 8 0 0 1-16 0z"/><path d="M9 9c0-2 1-3 3-4"/><path d="M14 9c0-1.5.8-2.5 2-3"/></svg><span>밥주기</span></button>
     <button class="act-btn" id="clawBtn" hidden><svg class="hico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v6"/><path d="M8 13l4-4 4 4"/><path d="M8 13l-1 3"/><path d="M16 13l1 3"/><circle cx="12" cy="19" r="2.5"/></svg><span>인형뽑기</span></button>
     <button class="act-btn" id="wishBtn" hidden><svg class="hico" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.6 5.6 6 .7-4.5 4.1 1.2 6-5.3-3-5.3 3 1.2-6L3.4 9.3l6-.7z"/></svg><span>소원</span></button>
+    <button class="act-btn" id="shotBtn" aria-label="사진 찍기"><svg class="hico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg><span>사진</span></button>
     <button class="act-btn" id="sayBtn"><svg class="hico" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 0 1-11.6 7.1L4 20l1-4.1A8 8 0 1 1 20 12z"/></svg><span>말하기</span></button></div>
   <form id="wishBox" hidden style="position:absolute;left:50%;transform:translateX(-50%);bottom:calc(26px + env(safe-area-inset-bottom,0px));width:min(92vw,420px);display:flex;gap:8px;pointer-events:auto;background:rgba(255,255,255,.95);border:1px solid var(--card-border);border-radius:16px;padding:8px;box-shadow:0 10px 26px rgba(80,120,170,.25);z-index:22"><input id="wishText" maxlength="40" placeholder="분수대에 던질 소원 (100P)" autocomplete="off" style="flex:1;min-width:0;font-family:inherit;font-size:1rem;padding:10px 12px;border:1px solid var(--card-border);border-radius:11px"><button type="submit" style="border:none;background:var(--accent);color:#fff;font-family:inherit;font-size:.95rem;padding:0 16px;border-radius:11px;cursor:pointer">던지기</button></form>
   <form id="sayBox" hidden><input id="sayText" maxlength="40" placeholder="광장에 한마디 (40자)" autocomplete="off"><button type="submit">보내기</button></form>
@@ -341,6 +355,18 @@
   <button id="cardReq" class="btn go">1:1 대화 신청</button>
   <div class="safety-row" id="cardSafety"><button type="button" id="cardFriend" hidden>친구 추가</button><button type="button" id="cardReport">신고</button><button type="button" id="cardBlock">차단</button></div>
 </div></div>
+<div id="shot" hidden><div class="card-box">
+  <button id="shotClose" class="card-x" aria-label="닫기">✕</button>
+  <div class="card-name" id="shotTitle">사진 찍기</div>
+  <div class="shot-pick" id="shotPick">
+    <button type="button" data-k="polaroid"><b>폴라로이드</b><span>3초 뒤 한 장</span></button>
+    <button type="button" data-k="four"><b>인생네컷</b><span>4초마다 4장 · 포즈를 바꿔 보세요</span></button>
+  </div>
+  <img id="shotImg" alt="키링 월드에서 찍은 사진" hidden>
+  <div class="shot-btns" id="shotBtns" hidden><a class="btn go" id="shotSave" download>저장하기</a><button type="button" class="btn ghost" id="shotShare" hidden>공유하기</button><button type="button" class="btn ghost" id="shotAgain">다시 찍기</button></div>
+  <div class="shot-note" id="shotNote" hidden>휴대폰에서 저장이 안 되면 사진을 길게 눌러 저장해 주세요</div>
+</div></div>
+<div id="shotCount" hidden><b id="shotNum">3</b><span id="shotHint">포즈!</span></div>
 <div id="claw" hidden><div class="card-box">
   <button id="clawClose" class="card-x" aria-label="닫기">✕</button>
   <div class="card-name">인형뽑기</div><div class="card-meta" id="clawMeta"></div>
@@ -618,7 +644,7 @@ const TREE_PROFILE=[[1,3.82],[3,3.38],[6,2.55],[9,1.69],[11,0.83],[12.3,0.15]];
 const treeR=(y)=>{ for(let i=1;i<TREE_PROFILE.length;i++){ const [y0,r0]=TREE_PROFILE[i-1],[y1,r1]=TREE_PROFILE[i]; if(y<=y1) return r0+(r1-r0)*Math.max(0,(y-y0)/(y1-y0)); } return 0.15; };
 // 소원 id → 0~1(마지막 글자만 달라도 고르게 퍼지도록 섞기 단계를 거친다)
 const hashId=(s)=>{ let h=2166136261; for(const c of String(s)) h=Math.imul(h^c.charCodeAt(0),16777619); h^=h>>>16; h=Math.imul(h,0x85ebca6b); h^=h>>>13; h=Math.imul(h,0xc2b2ae35); h^=h>>>16; return (h>>>0)/4294967296; };
-const ORN_COLOR={ star:'#ffd65a', heart:'#ff7aa2', bell:'#ffb347', ball:'#8fb8ff', snow:'#e8f4ff' };
+const ORN_COLOR={ star:'#ffd65a', heart:'#ff7aa2', bell:'#ffb347', ball:'#8fb8ff', snow:'#e8f4ff', gift:'#e8453c', light:'#ffe27a', sock:'#d6303f', candy:'#ff4d5e' };
 function ornShape(kind){ const c=ORN_COLOR[kind]||'#ffd65a', m=new THREE.MeshStandardMaterial({ color:c, emissive:c, emissiveIntensity:1.4, roughness:0.35, metalness:0.2 });
   if(kind==='star'||kind==='heart'){ const sh=new THREE.Shape();
     if(kind==='star'){ for(let i=0;i<10;i++){ const a=Math.PI/2+i*Math.PI/5, r=i%2?0.11:0.25; i?sh.lineTo(Math.cos(a)*r,Math.sin(a)*r):sh.moveTo(Math.cos(a)*r,Math.sin(a)*r); } }
@@ -626,6 +652,18 @@ function ornShape(kind){ const c=ORN_COLOR[kind]||'#ffd65a', m=new THREE.MeshSta
     const g=new THREE.ExtrudeGeometry(sh,{ depth:0.07, bevelEnabled:false }); g.translate(0,0,-0.035); return new THREE.Mesh(g,m); }
   if(kind==='bell'){ const g=new THREE.Group(); const b=new THREE.Mesh(new THREE.ConeGeometry(0.18,0.3,14,1,true),m); b.position.y=-0.03; g.add(b); const t=new THREE.Mesh(new THREE.SphereGeometry(0.1,12,10),m); t.position.y=0.1; g.add(t); return g; }
   if(kind==='snow') return new THREE.Mesh(new THREE.OctahedronGeometry(0.2,0),m);
+  const gold=new THREE.MeshStandardMaterial({ color:'#ffd65a', emissive:'#ffb800', emissiveIntensity:0.9, roughness:0.35, metalness:0.4 }), white=new THREE.MeshStandardMaterial({ color:'#ffffff', emissive:'#ffffff', emissiveIntensity:0.7, roughness:0.6 });
+  if(kind==='gift'){ const g=new THREE.Group(); g.add(new THREE.Mesh(new THREE.BoxGeometry(0.3,0.26,0.3),m));
+    g.add(new THREE.Mesh(new THREE.BoxGeometry(0.32,0.27,0.06),gold)); g.add(new THREE.Mesh(new THREE.BoxGeometry(0.06,0.27,0.32),gold));
+    for(const s of [-1,1]){ const bow=new THREE.Mesh(new THREE.TorusGeometry(0.06,0.02,6,12),gold); bow.position.set(s*0.05,0.17,0); bow.rotation.y=Math.PI/2; g.add(bow); } return g; }
+  if(kind==='light'){ const g=new THREE.Group(); const b=new THREE.Mesh(new THREE.SphereGeometry(0.13,14,12),m); b.scale.set(1,1.35,1); b.position.y=-0.04; g.add(b);
+    const cap=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.07,0.09,10), new THREE.MeshStandardMaterial({ color:'#6b7a8f', metalness:0.7, roughness:0.4 })); cap.position.y=0.15; g.add(cap); return g; }
+  if(kind==='sock'){ const g=new THREE.Group(); const leg=new THREE.Mesh(new THREE.BoxGeometry(0.17,0.3,0.09),m); leg.position.y=0.02; g.add(leg);
+    const foot=new THREE.Mesh(new THREE.BoxGeometry(0.27,0.13,0.09),m); foot.position.set(0.05,-0.16,0); g.add(foot);
+    const cuff=new THREE.Mesh(new THREE.BoxGeometry(0.21,0.08,0.11),white); cuff.position.y=0.19; g.add(cuff); return g; }
+  if(kind==='candy'){ const g=new THREE.Group(); const stem=new THREE.Mesh(new THREE.CylinderGeometry(0.035,0.035,0.34,10),white); stem.position.y=-0.06; g.add(stem);
+    for(let i=0;i<3;i++){ const r=new THREE.Mesh(new THREE.CylinderGeometry(0.037,0.037,0.035,10),m); r.position.y=-0.18+i*0.1; g.add(r); }
+    const hook=new THREE.Mesh(new THREE.TorusGeometry(0.08,0.035,8,14,Math.PI),m); hook.position.set(0.08,0.11,0); g.add(hook); return g; }
   return new THREE.Mesh(new THREE.SphereGeometry(0.17,16,12),m); }
 function addTreeWish(w){ if(!w||!w.id||treeWishIds.has(w.id)) return; treeWishIds.add(w.id);
   const h=hashId(w.id), y=1.7+hashId(w.id+'y')*8.6, a=h*Math.PI*2, r=treeR(y)+0.12;
@@ -640,9 +678,10 @@ async function loadTreeWishes(){ try{ const j=await (await fetch('/api/plaza/wis
 // 소원 장식 고르기(크리스마스 테마일 때 소원 입력창 위에)
 let wishOrn='star';
 function setupOrnPick(on){ const box=document.getElementById('wishBox'); if(!box) return; let pick=document.getElementById('ornPick');
+  { const wt=document.getElementById('wishText'); if(wt) wt.placeholder=on ? '소원 글귀 (안 적고 장식만 걸어도 돼요 · 100P)' : '분수대에 던질 소원 (100P)'; }   // wishText 변수는 아래에서 선언돼 여기선 직접 찾는다
   if(!on){ pick?.remove(); box.style.flexWrap=''; return; }
   if(pick) return; pick=document.createElement('div'); pick.id='ornPick'; box.style.flexWrap='wrap';
-  for(const [k,label] of [['star','별'],['heart','하트'],['bell','종'],['ball','구슬'],['snow','눈송이']]){ const b=document.createElement('button'); b.type='button'; b.textContent=label; b.setAttribute('aria-pressed',String(k===wishOrn));
+  for(const [k,label] of [['star','별'],['heart','하트'],['bell','종'],['ball','구슬'],['snow','눈송이'],['gift','선물상자'],['light','조명'],['sock','양말'],['candy','지팡이사탕']]){ const b=document.createElement('button'); b.type='button'; b.textContent=label; b.setAttribute('aria-pressed',String(k===wishOrn));
     b.onclick=()=>{ wishOrn=k; for(const x of pick.children) x.setAttribute('aria-pressed',String(x===b)); }; pick.appendChild(b); }
   box.prepend(pick); }
 // ── 배경음악(관리자 화면 > 키링 월드 > 배경음악): 지금 테마에서 켜진 곡을 차례로 돌려 튼다. 1곡이면 그 곡만 반복 ──
@@ -662,6 +701,7 @@ bgm.el.addEventListener('error',()=>{ if(bgm.list.length>1){ bgm.i=(bgm.i+1)%bgm
 async function loadBgm(theme){ try{ const j=await (await fetch('/api/plaza/bgm?theme='+encodeURIComponent(theme||'default'))).json(); const list=j.tracks||[], key=list.map(t=>t.id).join(',');
     if(key===bgm.key) return; bgm.key=key; const cur=bgm.list[bgm.i]?.id; bgm.list=list; const k=list.findIndex(t=>t.id===cur); bgm.i=k>=0?k:0; bgmPlay(); }catch(e){} }
 function startBgm(){ bgm.started=true; bgmPlay(); }
+for(const ev of ['pointerdown','keydown']) addEventListener(ev,()=>{ if(!bgm.started) startBgm(); },{ once:true, passive:true });   // 캐릭터 만들기 화면에서도 첫 동작에 바로 재생
 document.addEventListener('visibilitychange',()=>{ if(document.hidden) bgm.el.pause(); else if(bgm.started && bgm.on && bgm.list.length) bgm.el.play().catch(()=>{}); });
 document.getElementById('bgmToggle').onclick=()=>{ bgm.on=!bgm.on; try{ localStorage.setItem('kl_bgm_on',bgm.on?'1':'0'); }catch(e){} if(bgm.on){ bgm.started=true; bgmPlay(); } else { bgm.el.pause(); bgmUi(); } };
 document.getElementById('bgmVol').oninput=(e)=>{ bgm.vol=e.target.value/100; bgm.el.volume=bgm.vol; try{ localStorage.setItem('kl_bgm_vol',String(bgm.vol)); }catch(e2){} };
@@ -1109,7 +1149,9 @@ function spawnWinterAnimals(){ if(winterSpawned) return; winterSpawned=true;
   const add=(g,x,z)=>addAnimal(g,new THREE.Vector3(x,0,z));
   add(makeWinterAnimal('penguin','펭이'),-3,-16); add(makeWinterAnimal('penguin','펭순'),-1.5,-17); add(makeWinterAnimal('penguin','펭돌'),2,-15.5);
   add(makeWinterAnimal('rabbit','눈송이'),-11,9); add(makeWinterAnimal('rabbit','찹쌀'),9,11);
-  add(makeWinterAnimal('reindeer','방울'),15,1.2);
+  // 방울: 썸네일 그림(Higgsfield)의 블록 루돌프를 3D로(Tripo) — 광장과 마켓 거리 사이 길에서 거닌다. 다리는 셰이더로 흔든다
+  { const b=makeModelAnimal('reindeer','/plaza/assets/reindeer_vox.glb',1.05,'방울',WINTER_SAYS.reindeer,{ bright:1.15, nose:[0.48,0.72], legs:{ hip:-0.28, foot:-0.5, split:0.0, front:0.128, back:-0.132 } });
+    b.userData.turnTo=true; b.userData.yawOff=-Math.PI/2; b.userData.roam={ x:14, z:1.2, rx:3, rz:1.1 }; add(b,15,1.2); }
   // 실사 루돌프(Higgsfield 사진→3D): 뼈대가 없어 걷지 않고 제자리에서 숨 쉬듯 움직이다, 말을 걸면 이쪽을 본다. 걸어 다니는 투박한 순록은 '방울'
   { const r=makeModelAnimal('reindeer','/plaza/assets/reindeer_real.glb',2.0,'루돌프',WINTER_SAYS.reindeer,{ bright:1.45, nose:[0.45,0.75], legs:{ hip:-0.13, foot:-0.5, split:-0.12, front:0.13, back:-0.39 } }); r.userData.turnTo=true; r.userData.yawOff=-Math.PI/2; r.userData.roam={ x:22, z:-1.2, rx:5, rz:1.4 }; add(r,22,-1.2); }   // 모델 머리가 +X쪽이라 바라볼 때 -90°
   add(makeWinterAnimal('fox','설이'),-16,-10);
@@ -1341,9 +1383,8 @@ let myWishText=null;
 feedBtn.addEventListener('click',()=>{
   const g=nearCat(hero.position); if(g) feedAnimal(g); });
 wishBtn.addEventListener('click',()=>{ wishBox.hidden=!wishBox.hidden; if(!wishBox.hidden){ document.exitPointerLock?.(); setTimeout(()=>wishText.focus(),30); } });
-wishBox.addEventListener('submit',(e)=>{ e.preventDefault(); const t=wishText.value.replace(/\s+/g,' ').trim().slice(0,WISH_MAX); if(!t) return;
-  if(nickProblem(t)==='bad'){ toast('그 말은 소원으로 보낼 수 없어요'); return; }
-  const tree=themeId==='xmas';
+wishBox.addEventListener('submit',(e)=>{ e.preventDefault(); const t=wishText.value.replace(/\s+/g,' ').trim().slice(0,WISH_MAX); const tree=themeId==='xmas'; if(!t && !tree) return;   // 트리에는 글귀 없이 장식만 걸어도 된다
+  if(t && nickProblem(t)==='bad'){ toast('그 말은 소원으로 보낼 수 없어요'); return; }
   askConfirm(tree?'소원 트리에 소원 걸기':wishPlace()+'에 소원 던지기', tree ? WISH_PRICE+'P로 소원을 걸까요? 고른 장식에 담겨 트리에 걸리고, 키링 월드의 모두가 볼 수 있어요. '+POINT_NOTE+'.' : WISH_PRICE+'P로 소원을 던질까요? '+wishPlace()+' 위에 잠시 떠올라 광장의 모두가 볼 수 있어요. '+POINT_NOTE+'.', async()=>{ myWishText=t; const j=await shopPost({ action:'wish', text:t, orn:wishOrn }); if(!j){ myWishText=null; return; } wishText.value=''; wishBox.hidden=true; wishEffect(hero, opts.nick||'나', t); setTimeout(()=>{ myWishText=null; },6000); }); });
 // ── 동물 호감: 쓰다듬기·밥주기로 쌓고, 30 따라오기 · 60 안기 · 100 이름 짓고 반려동물로 ──
 let myPets={ aff:{}, adopted:{}, active:null, petLeft:{} }, petCardG=null;
@@ -1700,6 +1741,53 @@ clawGo.onclick=async()=>{
 };
 function finishClaw(c){ clawGo.disabled=false; if(c.pending) clawSt=c.pending; if(c.res){ clawMsg.textContent=dollOf(c.res).name+'을(를) 뽑았어요! 내 인형함에 넣었어요'; toast(dollOf(c.res).name+' 획득!'); } else if(!/아깝다/.test(clawMsg.textContent)) clawMsg.textContent='아깝다! 다시 도전해 보세요';
   clawGame={ phase:'done', x:43, y:40, open:1 }; renderClaw(); }
+// ── 키링 월드 캡처: 폴라로이드(한 장) · 인생네컷(3초마다 4장) — 간직하고 싶게 꾸민 사진으로 저장·공유 ──
+const shotQ=[]; let shotUrl=null, shotBusy=false;
+const grabFrame=()=>new Promise(r=>shotQ.push(r));   // 다음 프레임을 그린 직후의 화면
+function grabCanvas(){ const s=renderer.domElement, c=document.createElement('canvas'); c.width=s.width; c.height=s.height; c.getContext('2d').drawImage(s,0,0); return c; }
+function cropDraw(g, src, x, y, w, h){ const a=w/h, sa=src.width/src.height; let sw=src.width, sh=src.height, sx=0, sy=0;
+  if(sa>a){ sw=sh*a; sx=(src.width-sw)/2; } else { sh=sw/a; sy=(src.height-sh)*0.42; } g.drawImage(src,sx,sy,sw,sh,x,y,w,h); }
+const loadImg=(u)=>new Promise(r=>{ const i=new Image(); i.onload=()=>r(i); i.onerror=()=>r(null); i.src=u; });
+const shotDate=()=>new Date().toLocaleDateString('ko-KR',{ timeZone:'Asia/Seoul', year:'numeric', month:'2-digit', day:'2-digit' }).replace(/\s/g,'').replace(/\.$/,'');
+const shotTitle=()=> (opts.nick||'나')+(themeId==='xmas'?'의 크리스마스':'의 키링 월드');
+async function makePolaroid(src){ const W=1000, H=1230, c=document.createElement('canvas'); c.width=W; c.height=H; const g=c.getContext('2d');
+  g.fillStyle='#fbf8f1'; g.fillRect(0,0,W,H); cropDraw(g,src,56,56,888,888);
+  g.strokeStyle='rgba(0,0,0,.06)'; g.lineWidth=2; g.strokeRect(56,56,888,888);
+  g.fillStyle='#3a3350'; g.textAlign='left'; g.textBaseline='alphabetic'; g.font='52px Jua, sans-serif'; g.fillText(shotTitle(),70,1052);
+  g.fillStyle='#9a94a8'; g.font='34px Jua, sans-serif'; g.fillText(shotDate()+' · 키링 월드',70,1110);
+  const lg=await loadImg('/plaza/assets/logo_navy.png'); if(lg){ const lw=230, lh=lg.height*lw/lg.width; g.globalAlpha=0.9; g.drawImage(lg,W-70-lw,1150-lh,lw,lh); g.globalAlpha=1; }
+  return c; }
+async function makeFourCut(srcs){ const xmas=themeId==='xmas', W=640, cw=560, ch=420, top=50, gap=18, foot=190, H=top+4*ch+3*gap+foot, c=document.createElement('canvas'); c.width=W; c.height=H; const g=c.getContext('2d');
+  g.fillStyle=xmas?'#8e1626':'#ffffff'; g.fillRect(0,0,W,H);
+  if(xmas){ g.fillStyle='rgba(255,255,255,.55)'; let seed=7; const rnd=()=>{ seed=(seed*9301+49297)%233280; return seed/233280; }; for(let i=0;i<90;i++){ g.beginPath(); g.arc(rnd()*W,rnd()*H,1+rnd()*2.5,0,Math.PI*2); g.fill(); } }
+  srcs.forEach((s,i)=>{ const y=top+i*(ch+gap); cropDraw(g,s,40,y,cw,ch); });
+  g.textAlign='center'; g.fillStyle=xmas?'#ffffff':'#3a3350'; g.font='34px Jua, sans-serif'; g.fillText(shotTitle(),W/2,H-foot+62);
+  g.fillStyle=xmas?'rgba(255,255,255,.75)':'#9a94a8'; g.font='24px Jua, sans-serif'; g.fillText(shotDate()+' · 키링 월드',W/2,H-foot+100);
+  const lg=await loadImg(xmas?'/plaza/assets/logo_white.png':'/plaza/assets/logo_navy.png'); if(lg){ const lw=170, lh=lg.height*lw/lg.width; g.drawImage(lg,(W-lw)/2,H-foot+118,lw,lh); }
+  return c; }
+function flash(){ const fl=document.createElement('div'); fl.className='shot-flash'; document.body.appendChild(fl); setTimeout(()=>fl.remove(),500); }
+function shotView(step){ const pick=step==='pick'; document.getElementById('shotPick').hidden=!pick; for(const id of ['shotImg','shotBtns','shotNote']) document.getElementById(id).hidden=pick;
+  document.getElementById('shotTitle').textContent=pick?'사진 찍기':'사진 완성!'; }
+function showShot(c){ c.toBlob((b)=>{ if(!b){ toast('사진을 만들지 못했어요'); return; } if(shotUrl) URL.revokeObjectURL(shotUrl); shotUrl=URL.createObjectURL(b);
+  const name='keylink-world-'+new Date().toISOString().slice(0,19).replace(/[-:T]/g,'')+'.jpg';
+  document.getElementById('shotImg').src=shotUrl; const a=document.getElementById('shotSave'); a.href=shotUrl; a.download=name;
+  const file=new File([b],name,{ type:'image/jpeg' }), sh=document.getElementById('shotShare');
+  sh.hidden=!(navigator.canShare && navigator.canShare({ files:[file] })); sh.onclick=()=>navigator.share({ files:[file], title:'키링 월드' }).catch(()=>{});
+  shotView('done'); document.getElementById('shot').hidden=false; },'image/jpeg',0.93); }
+async function countdown(n, hint){ const box=document.getElementById('shotCount'), num=document.getElementById('shotNum'); document.getElementById('shotHint').textContent=hint; box.hidden=false;
+  for(let i=n;i>0;i--){ num.textContent=String(i); await new Promise(r=>setTimeout(r,1000)); } box.hidden=true; }
+// 찍는 동안만 카메라를 캐릭터 앞으로 가까이(셀카 구도) — 끝나면 원래 시야로
+function selfieCam(on){ if(on){ shotCam={ yaw:camYaw, dist:camDist, pitch:camPitch }; camYaw=hero.rotation.y; camDist=4.6; camPitch=0.24; } else if(shotCam){ camYaw=shotCam.yaw; camDist=shotCam.dist; camPitch=shotCam.pitch; shotCam=null; } }
+let shotCam=null;
+async function shoot(kind){ if(shotBusy) return; shotBusy=true; document.getElementById('shot').hidden=true; document.exitPointerLock?.(); selfieCam(true);
+  try{ if(kind==='polaroid'){ await countdown(3,'포즈를 취해 보세요!'); const f=await grabFrame(); flash(); showShot(await makePolaroid(f)); }
+    else { const shots=[]; for(let i=0;i<4;i++){ await countdown(i===0?5:4,(i+1)+' / 4 · '+(i===0?'포즈를 취해 보세요!':'표현 버튼으로 포즈를 바꿔요')); shots.push(await grabFrame()); flash(); await new Promise(r=>setTimeout(r,1000)); }   // 첫 장 5초, 그다음 4초씩 + 찍고 1초 쉼
+      showShot(await makeFourCut(shots)); } }
+  finally{ shotBusy=false; selfieCam(false); } }
+document.getElementById('shotBtn').onclick=()=>{ if(shotBusy) return; document.exitPointerLock?.(); shotView('pick'); document.getElementById('shot').hidden=false; };
+document.querySelectorAll('#shotPick button').forEach(b=>b.onclick=()=>shoot(b.dataset.k));
+document.getElementById('shotAgain').onclick=()=>shotView('pick');
+document.getElementById('shotClose').onclick=()=>{ document.getElementById('shot').hidden=true; };
 // ── 신고 · 차단 ──
 const REPORT_REASONS=['욕설·비하','음란·성희롱','스팸·광고','사기·금전요구','기타'];
 const reportBox=document.getElementById('report'), confirmBox=document.getElementById('confirmBox');
@@ -1931,9 +2019,9 @@ const raycaster=new THREE.Raycaster(); const ndc=new THREE.Vector2();
 let dragId=null, dragX=0, dragY=0, dragged=false;
 const canvasEl=renderer.domElement, reticle=document.getElementById('reticle');
 let locked=false, aimTarget=null;
-const modalOpen=()=> !document.getElementById('claw').hidden || !consentBox.hidden || !noticeBox.hidden || !card.hidden || !chat.hidden || !joinBox.hidden || !reportBox.hidden || !confirmBox.hidden || !blockListBox.hidden;
+const modalOpen=()=> !document.getElementById('shot').hidden || !document.getElementById('claw').hidden || !consentBox.hidden || !noticeBox.hidden || !card.hidden || !chat.hidden || !joinBox.hidden || !reportBox.hidden || !confirmBox.hidden || !blockListBox.hidden;
 function pickProfile(prof){ if(!prof) return; if(prof.animal){ reactAnimal(prof); return; }
-  if(prof.wish){ showNotice('소원 트리', prof.nick+'님의 소원', escHtml(prof.text)); return; }
+  if(prof.wish){ showNotice('소원 트리', prof.nick+'님의 '+(prof.text?'소원':'장식'), prof.text?escHtml(prof.text):'트리에 장식을 걸었어요'); return; }
   if(prof.taxi){ const hp=heldPet(); showNotice('택시', '서비스 준비 중이에요', '곧 택시를 타고 부산·서울 등<br>다른 지역 키링 월드로 이동할 수 있어요.'+(hp?'<br>택시가 열리면 안고 있는 <b>'+(myPets.adopted[hp.userData.aid]||hp.userData.profile.nick)+'</b>도 같이 타요.':'')); return; } if(member || prof.npc) openCard(prof); else openJoin(()=>openCard(prof)); }
 function raycastFromNDC(x,y){ ndc.set(x,y); raycaster.setFromCamera(ndc,camera); const groups=[...[...peers.values()].map(p=>p.group), ...animals, ...taxiParts, npcGroup, treeWishGroup]; const hits=raycaster.intersectObjects(groups,true); if(!hits.length) return null; let g=hits[0].object; while(g&&!g.userData.profile) g=g.parent; return g?g.userData.profile:null; }
 
@@ -2105,7 +2193,7 @@ function tick(){
   { const want=bgm.vol*(chat.hidden?1:0.35); if(Math.abs(bgm.el.volume-want)>0.005) bgm.el.volume+=Math.sign(want-bgm.el.volume)*Math.min(Math.abs(want-bgm.el.volume),dt*0.6); }
   updateSnow(dt);
   followSun(hero.position);
-  renderer.render(scene,camera); requestAnimationFrame(tick);
+  renderer.render(scene,camera); if(shotQ.length){ const c=grabCanvas(); shotQ.splice(0).forEach(f=>f(c)); } requestAnimationFrame(tick);   // 캡처는 그린 직후 같은 프레임에서(그림이 지워지기 전)
 }
 tick();
 </script>

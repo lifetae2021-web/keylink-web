@@ -95,11 +95,11 @@ export async function feedCat(uid: string, animal?: string) {
 
 export async function makeWish(uid: string, raw: unknown, ornRaw?: unknown) {
   const text = String(raw ?? '').replace(/[\u0000-\u001f\u007f]/g, '').replace(/\s+/g, ' ').trim().slice(0, WISH_MAX);
-  if (!text) throw new ShopError('empty');
-  if (hasBadWord(text)) throw new ShopError('bad_word');
-  const me = await memberInfo(uid);
-  // 크리스마스 테마에서는 고른 장식에 담겨 소원 트리에 계속 걸린다(그 밖의 테마는 분수대 위에 잠깐 떠오름)
+  // 크리스마스 테마에서는 고른 장식에 담겨 소원 트리에 계속 걸린다(그 밖의 테마는 분수대 위에 잠깐 떠오름). 트리에는 글귀 없이 장식만 걸어도 된다
   const theme = await getActiveTheme();
+  if (!text && theme !== 'xmas') throw new ShopError('empty');
+  if (text && hasBadWord(text)) throw new ShopError('bad_word');
+  const me = await memberInfo(uid);
   const orn = theme === 'xmas' ? (WISH_ORNS.includes(String(ornRaw)) ? String(ornRaw) : 'star') : null;
   const ref = adminDb.collection('plazaWishes').doc();
   await adminDb.runTransaction(async (tx) => {
@@ -186,8 +186,9 @@ export async function guestFeed(gk: string, animal?: string) {
 
 export async function guestWish(gk: string, nickRaw: unknown, raw: unknown, ornRaw?: unknown) {
   const text = String(raw ?? '').replace(/[\u0000-\u001f\u007f]/g, '').replace(/\s+/g, ' ').trim().slice(0, WISH_MAX);
-  if (!text) throw new ShopError('empty');
-  if (hasBadWord(text)) throw new ShopError('bad_word');
+  const theme0 = await getActiveTheme();
+  if (!text && theme0 !== 'xmas') throw new ShopError('empty');
+  if (text && hasBadWord(text)) throw new ShopError('bad_word');
   let nick = String(nickRaw ?? '').replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 12);
   if (!nick || hasBadWord(nick) || isReservedNick(nick)) nick = '손님';
   const theme = await getActiveTheme();
