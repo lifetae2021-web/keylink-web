@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>키링 월드 · 키링크 신개념 온라인 소개팅</title>
 <style>
   :root { --sky-top:#bfe3ff; --sky-bottom:#eaf7ff; --ink:#3a4a63; --card:rgba(255,255,255,.9); --card-border:rgba(140,170,210,.45);
@@ -262,7 +262,10 @@
   .menu-empty button { margin-top:10px; border:none; background:#6c5ce7; color:#fff; font-family:inherit; padding:8px 14px; border-radius:10px; cursor:pointer; }
   #dday { position:absolute; top:env(safe-area-inset-top,0px); left:50%; transform:translateX(-50%); margin-top:12px; background:var(--glass); border:1px solid rgba(255,214,150,.55); color:#fff;
     border-radius:16px; padding:7px 14px; font-size:.86rem; font-weight:700; letter-spacing:.01em; backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); white-space:nowrap; pointer-events:none; text-shadow:0 1px 6px rgba(255,190,110,.6); }
-  #ornPick { display:flex; gap:6px; width:100%; justify-content:center; }
+  #ornPick { display:flex; flex-wrap:wrap; gap:6px; width:100%; justify-content:center; }
+  #ornPrev { width:100%; display:flex; align-items:center; justify-content:center; gap:10px; }
+  #ornPrev canvas { width:80px; height:80px; border-radius:16px; background:radial-gradient(circle at 50% 40%, #3a2f63, #1c1633); }
+  #ornPrev b { font-size:.95rem; color:var(--ink); }   /* 장식 9종이 화면 밖으로 잘리지 않게 여러 줄로 */
   #ornPick button { font-family:inherit; font-size:.8rem; padding:6px 10px; border-radius:10px; border:1px solid var(--card-border); background:#fff; cursor:pointer; white-space:nowrap; }
   #ornPick button[aria-pressed="true"] { background:#3b6fd8; color:#fff; border-color:#3b6fd8; }
   #keyCount.done { border-color:rgba(255,214,90,.7); }
@@ -323,7 +326,7 @@
     <button class="act-btn" id="wishBtn" hidden><svg class="hico" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.6 5.6 6 .7-4.5 4.1 1.2 6-5.3-3-5.3 3 1.2-6L3.4 9.3l6-.7z"/></svg><span>소원</span></button>
     <button class="act-btn" id="shotBtn" aria-label="사진 찍기"><svg class="hico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg><span>사진</span></button>
     <button class="act-btn" id="sayBtn"><svg class="hico" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 0 1-11.6 7.1L4 20l1-4.1A8 8 0 1 1 20 12z"/></svg><span>말하기</span></button></div>
-  <form id="wishBox" hidden style="position:absolute;left:50%;transform:translateX(-50%);bottom:calc(26px + env(safe-area-inset-bottom,0px));width:min(92vw,420px);display:flex;gap:8px;pointer-events:auto;background:rgba(255,255,255,.95);border:1px solid var(--card-border);border-radius:16px;padding:8px;box-shadow:0 10px 26px rgba(80,120,170,.25);z-index:22"><input id="wishText" maxlength="40" placeholder="분수대에 던질 소원 (100P)" autocomplete="off" style="flex:1;min-width:0;font-family:inherit;font-size:1rem;padding:10px 12px;border:1px solid var(--card-border);border-radius:11px"><button type="submit" style="border:none;background:var(--accent);color:#fff;font-family:inherit;font-size:.95rem;padding:0 16px;border-radius:11px;cursor:pointer">던지기</button></form>
+  <form id="wishBox" hidden style="position:absolute;left:50%;transform:translateX(-50%);bottom:calc(26px + env(safe-area-inset-bottom,0px));width:min(92vw,420px);display:flex;gap:8px;pointer-events:auto;background:rgba(255,255,255,.95);border:1px solid var(--card-border);border-radius:16px;padding:8px;box-shadow:0 10px 26px rgba(80,120,170,.25);z-index:22"><input id="wishText" maxlength="40" placeholder="분수대에 던질 소원 (100P)" autocomplete="off" style="flex:1;min-width:0;font-family:inherit;font-size:1rem;padding:10px 12px;border:1px solid var(--card-border);border-radius:11px"><button type="submit" style="border:none;background:var(--accent);color:#fff;font-family:inherit;font-size:.95rem;padding:0 16px;border-radius:11px;cursor:pointer;white-space:nowrap;flex:0 0 auto">던지기</button></form>
   <form id="sayBox" hidden><input id="sayText" maxlength="40" placeholder="광장에 한마디 (40자)" autocomplete="off"><button type="submit">보내기</button></form>
   <div id="reticle" hidden></div>
 </div>
@@ -677,12 +680,23 @@ function removeTreeWish(id){ const o=treeWishGroup.children.find(c=>c.userData.w
 async function loadTreeWishes(){ try{ const j=await (await fetch('/api/plaza/wishes?theme=xmas')).json(); for(const w of (j.wishes||[])) addTreeWish(w); }catch(e){} }
 // 소원 장식 고르기(크리스마스 테마일 때 소원 입력창 위에)
 let wishOrn='star';
+// 장식 미리보기(작은 3D 창 하나를 재사용) — 소원 창이 열려 있는 동안만 돌린다
+let ornPv=null;
+function ornPreview(kind,label){ const host=document.getElementById('ornPrev'); if(!host) return; host.querySelector('b').textContent=label||'';
+  const cv=host.querySelector('canvas');
+  if(!ornPv || ornPv.cv!==cv){ if(ornPv) ornPv.r.dispose(); const r=new THREE.WebGLRenderer({ canvas:cv, alpha:true, antialias:true }); r.setPixelRatio(Math.min(2,devicePixelRatio)); r.setSize(80,80,false); r.outputColorSpace=THREE.SRGBColorSpace;
+    const sc=new THREE.Scene(); sc.add(new THREE.HemisphereLight(0xffffff,0x445566,1.6)); const dl=new THREE.DirectionalLight(0xffffff,1.6); dl.position.set(1,2,2); sc.add(dl);
+    const cam=new THREE.PerspectiveCamera(35,1,0.1,20); cam.position.set(0,0.05,1.5); cam.lookAt(0,0,0); ornPv={ cv, r, sc, cam, obj:null }; }
+  if(ornPv.obj) ornPv.sc.remove(ornPv.obj); ornPv.obj=ornShape(kind); ornPv.obj.scale.setScalar(1.5); ornPv.sc.add(ornPv.obj); }
+function ornPreviewTick(dt){ if(!ornPv || !ornPv.obj || wishBox.hidden) return; ornPv.obj.rotation.y+=dt*1.2; ornPv.r.render(ornPv.sc,ornPv.cam); }
 function setupOrnPick(on){ const box=document.getElementById('wishBox'); if(!box) return; let pick=document.getElementById('ornPick');
-  { const wt=document.getElementById('wishText'); if(wt) wt.placeholder=on ? '소원 글귀 (안 적고 장식만 걸어도 돼요 · 100P)' : '분수대에 던질 소원 (100P)'; }   // wishText 변수는 아래에서 선언돼 여기선 직접 찾는다
+  { const wt=document.getElementById('wishText'); if(wt) wt.placeholder=on ? '소원 글귀 (선택 · 100P)' : '분수대에 던질 소원 (100P)'; const sb=document.querySelector('#wishBox button[type=submit]'); if(sb) sb.textContent=on?'걸기':'던지기'; }   // wishText 변수는 아래에서 선언돼 여기선 직접 찾는다
   if(!on){ pick?.remove(); box.style.flexWrap=''; return; }
   if(pick) return; pick=document.createElement('div'); pick.id='ornPick'; box.style.flexWrap='wrap';
+  const prev=document.createElement('div'); prev.id='ornPrev'; prev.innerHTML='<canvas width="160" height="160"></canvas><b></b>'; pick.appendChild(prev);
   for(const [k,label] of [['star','별'],['heart','하트'],['bell','종'],['ball','구슬'],['snow','눈송이'],['gift','선물상자'],['light','조명'],['sock','양말'],['candy','지팡이사탕']]){ const b=document.createElement('button'); b.type='button'; b.textContent=label; b.setAttribute('aria-pressed',String(k===wishOrn));
-    b.onclick=()=>{ wishOrn=k; for(const x of pick.children) x.setAttribute('aria-pressed',String(x===b)); }; pick.appendChild(b); }
+    b.onclick=()=>{ wishOrn=k; for(const x of pick.querySelectorAll('button')) x.setAttribute('aria-pressed',String(x===b)); ornPreview(k,label); }; pick.appendChild(b); }
+  const cur=[...pick.querySelectorAll('button')].find(x=>x.getAttribute('aria-pressed')==='true'); if(cur) setTimeout(()=>ornPreview(wishOrn,cur.textContent),0);
   box.prepend(pick); }
 // ── 배경음악(관리자 화면 > 키링 월드 > 배경음악): 지금 테마에서 켜진 곡을 차례로 돌려 튼다. 1곡이면 그 곡만 반복 ──
 // 브라우저는 사용자가 한 번 누르기 전엔 소리를 못 내므로 입장 버튼을 누를 때 시작한다. 켜기/끄기·볼륨은 이 기기에 기억
@@ -1344,12 +1358,11 @@ async function claimKeyReward(){ if(!fbUser) return; try{ const r=await authFetc
 function plazaFetch(url,init={}){ return (member&&fbUser) ? authFetch(url,init) : fetch(url,{ ...init, headers:{ ...(init.headers||{}), 'x-plaza-dev':DEV_ID } }); }
 async function loadKeyUnlocks(){ if(member&&fbUser) loadPets(); try{ const r=await plazaFetch('/api/plaza/shop'); const j=await r.json(); keyUnlocks=j.owned||[]; shopPoints=j.points??null; if(mode==='creating') renderCreator(); }catch(e){} }
 // ── 포인트 쓰는 곳(회원만, 서버가 차감): 꾸미기 구매 · 고양이 밥주기 · 분수대 소원 ──
-const POINT_NOTE='포인트는 키링 월드 혜택이며 소개팅 선발과는 무관해요';
 async function shopPost(body){
   try{ const r=await plazaFetch('/api/plaza/shop',{ method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify(member?body:{ ...body, nick:opts.nick }) }); const j=await r.json().catch(()=>({}));
     if(!r.ok||!j.ok){ toast(j.message||'잠시 후 다시 시도해 주세요'); return null; } shopPoints=j.points; keyUnlocks=j.owned||keyUnlocks; return j; }catch(e){ toast('잠시 후 다시 시도해 주세요'); return null; } }
 function buyAcc(v){
-  askConfirm(LABEL.acc[v]+' 사기', SHOP_ACC[v].toLocaleString()+'P를 써서 '+LABEL.acc[v]+'을(를) 살까요?'+(shopPoints!=null?' (내 포인트 '+shopPoints.toLocaleString()+'P)':'')+' 한 번 사면 계속 쓸 수 있어요. '+POINT_NOTE+'.',
+  askConfirm(LABEL.acc[v]+' 사기', SHOP_ACC[v].toLocaleString()+'P를 써서 '+LABEL.acc[v]+'을(를) 살까요?'+(shopPoints!=null?' (내 포인트 '+shopPoints.toLocaleString()+'P)':'')+' 한 번 사면 계속 쓸 수 있어요.',
     async()=>{ const j=await shopPost({ action:'buy', item:v }); if(!j) return; L().acc=[...L().acc.filter(a=>!(HATS.includes(v)&&HATS.includes(a))), v]; changed(); renderCreator(); toast(LABEL.acc[v]+'을(를) 샀어요!'); }); }
 const feedBtn=document.getElementById('feedBtn'), wishBtn=document.getElementById('wishBtn'), wishBox=document.getElementById('wishBox'), wishText=document.getElementById('wishText');
 function nearCat(pos,max=3.2){ let best=null, bd=max; for(const g of animals){ if(!(g.userData.aid||g.userData.feedId) || g.userData.held) continue; const d=Math.hypot(g.position.x-pos.x,g.position.z-pos.z); if(d<bd){ bd=d; best=g; } } return best; }
@@ -1385,7 +1398,7 @@ feedBtn.addEventListener('click',()=>{
 wishBtn.addEventListener('click',()=>{ wishBox.hidden=!wishBox.hidden; if(!wishBox.hidden){ document.exitPointerLock?.(); setTimeout(()=>wishText.focus(),30); } });
 wishBox.addEventListener('submit',(e)=>{ e.preventDefault(); const t=wishText.value.replace(/\s+/g,' ').trim().slice(0,WISH_MAX); const tree=themeId==='xmas'; if(!t && !tree) return;   // 트리에는 글귀 없이 장식만 걸어도 된다
   if(t && nickProblem(t)==='bad'){ toast('그 말은 소원으로 보낼 수 없어요'); return; }
-  askConfirm(tree?'소원 트리에 소원 걸기':wishPlace()+'에 소원 던지기', tree ? WISH_PRICE+'P로 소원을 걸까요? 고른 장식에 담겨 트리에 걸리고, 키링 월드의 모두가 볼 수 있어요. '+POINT_NOTE+'.' : WISH_PRICE+'P로 소원을 던질까요? '+wishPlace()+' 위에 잠시 떠올라 광장의 모두가 볼 수 있어요. '+POINT_NOTE+'.', async()=>{ myWishText=t; const j=await shopPost({ action:'wish', text:t, orn:wishOrn }); if(!j){ myWishText=null; return; } wishText.value=''; wishBox.hidden=true; wishEffect(hero, opts.nick||'나', t); setTimeout(()=>{ myWishText=null; },6000); }); });
+  askConfirm(tree?'소원 트리에 소원 걸기':wishPlace()+'에 소원 던지기', tree ? WISH_PRICE+'P로 소원을 걸까요? 고른 장식에 담겨 트리에 걸리고, 키링 월드의 모두가 볼 수 있어요.' : WISH_PRICE+'P로 소원을 던질까요? '+wishPlace()+' 위에 잠시 떠올라 광장의 모두가 볼 수 있어요.', async()=>{ myWishText=t; const j=await shopPost({ action:'wish', text:t, orn:wishOrn }); if(!j){ myWishText=null; return; } wishText.value=''; wishBox.hidden=true; wishEffect(hero, opts.nick||'나', t); setTimeout(()=>{ myWishText=null; },6000); }); });
 // ── 동물 호감: 쓰다듬기·밥주기로 쌓고, 30 따라오기 · 60 안기 · 100 이름 짓고 반려동물로 ──
 let myPets={ aff:{}, adopted:{}, active:null, petLeft:{} }, petCardG=null;
 const animalById=(id)=>animals.find(a=>a.userData.aid===id||a.userData.feedId===id);
@@ -1433,7 +1446,7 @@ async function petIt(){ const g=petCardG; if(!g) return; const u=g.userData; ani
   if(myPets.adopted[u.aid] && before<AFF.follow && now>=AFF.follow){ toast('기분이 풀렸어요! 다시 따라와요'); applyActivePet(); }
   renderPetCard(); }
 function feedAnimal(g){ const u=g.userData, id=u.aid||u.feedId;
-  askConfirm('밥주기', CAT_FOOD_PRICE+'P로 '+(myPets.adopted[u.aid]||u.profile.nick)+'에게 밥을 줄까요?'+(u.aid&&member?' 호감이 20 올라요.':'')+(shopPoints!=null?' (내 포인트 '+shopPoints.toLocaleString()+'P)':'')+' '+POINT_NOTE+'.',
+  askConfirm('밥주기', CAT_FOOD_PRICE+'P로 '+(myPets.adopted[u.aid]||u.profile.nick)+'에게 밥을 줄까요?'+(u.aid&&member?' 호감이 20 올라요.':'')+(shopPoints!=null?' (내 포인트 '+shopPoints.toLocaleString()+'P)':''),
     async()=>{ const j=await shopPost({ action:'feed', animal:id }); if(!j) return; feedEffect(hero, id); showSay(hero,'밥을 줬어요'); if(!u.aid||!member) return; await loadPets(); if(!document.getElementById('petCard').hidden) renderPetCard(); }); }
 async function setActive(id){ const j=await petPost({ action:'active', id }); if(!j) return; applyActivePet(); renderPetCard(); }
 document.getElementById('petClose').onclick=()=>{ document.getElementById('petCard').hidden=true; };
@@ -2045,10 +2058,13 @@ addEventListener('mousemove',(e)=>{ if(!locked) return; const s=0.0022; camYaw-=
 addEventListener('pointermove',(e)=>{ if(e.pointerId!==dragId) return; const dx=e.clientX-dragX, dy=e.clientY-dragY; if(!dragged && Math.hypot(dx,dy)>6) dragged=true; if(dragged){ camYaw-=dx*0.005; camPitch=Math.min(camMaxPitch,Math.max(camMinPitch,camPitch-dy*0.005)); dragX=e.clientX; dragY=e.clientY; } });
 addEventListener('pointerup',(e)=>{ if(e.pointerId!==dragId) return; const wasDrag=dragged; dragId=null;
   if(!wasDrag && mode==='playing' && !modalOpen()){ pickProfile(raycastFromNDC((e.clientX/innerWidth)*2-1, -(e.clientY/innerHeight)*2+1)); } });
-canvasEl.addEventListener('wheel',(e)=>{ setCamDist(camDist+Math.sign(e.deltaY)*1.3); },{passive:true});
+canvasEl.addEventListener('wheel',(e)=>{ if(mode!=='playing' || e.ctrlKey) return; setCamDist(camDist+Math.sign(e.deltaY)*1.3); },{passive:true});
+// 브라우저 자체 확대(트랙패드 벌리기 = ctrl+휠, 사파리 제스처)는 막는다 — 캐릭터 만들기 화면이 통째로 커져 잘리던 문제. 입장 후엔 카메라 거리로 바꿔 준다
+addEventListener('wheel',(e)=>{ if(!e.ctrlKey) return; e.preventDefault(); if(mode==='playing') setCamDist(camDist+e.deltaY*0.05); },{ passive:false });
+for(const ev of ['gesturestart','gesturechange','gestureend']) addEventListener(ev,(e)=>e.preventDefault(),{ passive:false });
 // 휴대폰: 두 손가락으로 벌리면 가까이, 오므리면 멀리(그동안은 화면 돌리기·사람 탭을 멈춘다)
 let pinchD=0; const touchGap=(t)=>Math.hypot(t[0].clientX-t[1].clientX, t[0].clientY-t[1].clientY);
-canvasEl.addEventListener('touchstart',(e)=>{ if(e.touches.length===2){ pinchD=touchGap(e.touches); dragId=null; } },{passive:true});
+canvasEl.addEventListener('touchstart',(e)=>{ if(e.touches.length===2 && mode==='playing'){ pinchD=touchGap(e.touches); dragId=null; } },{passive:true});   // 캐릭터 만들기 화면에서는 확대 없음
 canvasEl.addEventListener('touchmove',(e)=>{ if(e.touches.length!==2 || !pinchD) return; const d=touchGap(e.touches); if(d>0){ setCamDist(camDist*pinchD/d); pinchD=d; } },{passive:true});
 canvasEl.addEventListener('touchend',(e)=>{ if(e.touches.length<2) pinchD=0; },{passive:true});
 
@@ -2129,6 +2145,7 @@ function tick(){
   { const now=performance.now(); for(const par of [hero, ...[...peers.values()].map(p=>p.root)]){ const sp=par.userData.say; if(sp && now>sp.userData.until){ par.remove(sp); sp.material.map.dispose(); sp.material.dispose(); par.userData.say=null; } } }
   for(const o of spinners) o.rotation.y+=dt*o.userData.kl_spin;
   twinkleTime.value=clock.elapsedTime;
+  ornPreviewTick(dt);
   updateSanta(dt, clock.elapsedTime);
   updateWishNotes();
   for(const b of bobbers) b.o.position.y=b.y+Math.sin(clock.elapsedTime*b.w+b.p)*b.a;
