@@ -25,7 +25,10 @@ export const CHIBI_FACE = { vline: 0, cheek: 0.8 };
 const BLOCK_FACE = { vline: LOOK.sliders.vline[2], cheek: LOOK.sliders.cheek[2] };
 const isFace = (l, f) => l.vline === f.vline && l.cheek === f.cheek;
 // 그림체를 바꿀 때 얼굴형을 손대지 않았으면(기본값이면) 그 그림체의 기본 얼굴형으로 맞춘다
-export function fitFaceToStyle(l) {
+// force: 편집 화면에서 그림체 버튼을 눌렀을 때 — 귀여운은 늘 동그란 얼굴(갸름한 턱·긴 얼굴 없이)로 시작
+export function fitFaceToStyle(l, force = false) {
+  if (force && l.style === 'chibi') { Object.assign(l, CHIBI_FACE, { long: 0 }); return l; }
+  if (force && l.style === 'block') { Object.assign(l, BLOCK_FACE); return l; }
   if (l.style === 'chibi' && isFace(l, BLOCK_FACE)) Object.assign(l, CHIBI_FACE);
   else if (l.style === 'block' && isFace(l, CHIBI_FACE)) Object.assign(l, BLOCK_FACE);
   return l;

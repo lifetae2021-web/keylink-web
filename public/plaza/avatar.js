@@ -102,6 +102,8 @@ export function drawFace(cv, look) {
 
 // 귀여운 그림체: 머리 크기 배율, 피부가 밤 조명에 칙칙해지지 않게 스스로 살짝 빛나는 정도
 const STYLE_HEAD = { chibi: 1.16 };
+// 귀여운: 머리를 목 쪽으로 내려 어깨에 얹힌 느낌으로(반팔·셔츠처럼 목이 드러나는 옷에서 머리가 떠 보였다). 머리 뼈 위치(m)
+const STYLE_HEAD_DROP = { chibi: 0.045 };
 const SKIN_GLOW = 0.22;
 const ACT = { idle: 'idle', walk: 'walk', wave: 'wave', sit: 'sit', dance: 'dance', run: 'run' };
 let _heart = null;   // 하트 이모트 그림(한 번만 그려서 같이 씀)
@@ -118,7 +120,7 @@ export function createAvatar(rawLook, { faceSize = 512 } = {}) {
   const group = new THREE.Group(), self = { group, ready: false, look: sanitizeLook(rawLook), mixer: null, actions: {}, cur: null };
   const cv = document.createElement('canvas'); cv.width = faceSize; cv.height = faceSize / 2;
   const faceTex = new THREE.CanvasTexture(cv); faceTex.colorSpace = THREE.SRGBColorSpace; faceTex.flipY = false; faceTex.wrapS = THREE.RepeatWrapping;
-  let model = null, parts = [], morphMeshes = [], skinMats = [], busy = null, hearts = [], headBone = null, headScale = 1;
+  let model = null, parts = [], morphMeshes = [], skinMats = [], busy = null, hearts = [], headBone = null, headScale = 1, headDrop = 0, headBaseY = 0;
   self.setLook = (raw) => {
     self.look = sanitizeLook(raw); const L = self.look;
     if (mounted && L.style !== mounted) { mount(L.style); }
@@ -163,7 +165,8 @@ export function createAvatar(rawLook, { faceSize = 512 } = {}) {
     if (moving) { busy = null; self.play(running && self.actions.run ? 'run' : 'walk', 0.18); }
     else if (!busy) self.play('idle');
     self.mixer.update(dt);
-    if (headBone && headScale !== 1) headBone.scale.setScalar(headScale);   // 동작 파일에 크기 키가 있어 매 프레임 덮어쓴다
+    if (headBone && headScale !== 1) headBone.scale.setScalar(headScale);   // 동작 파일에 크기·위치 키가 있어 매 프레임 덮어쓴다
+    if (headBone && headDrop) headBone.position.y = headBaseY - headDrop;   // 기본 위치에서 뺀 값으로 고정(빼기를 쌓으면 머리가 계속 내려간다)
   };
   self.dispose = () => { faceTex.dispose(); group.traverse((o) => { if (o.isMesh) { o.material?.dispose?.(); } }); };
   drawFace(cv, self.look);
@@ -177,7 +180,7 @@ export function createAvatar(rawLook, { faceSize = 512 } = {}) {
     parts = []; morphMeshes = []; skinMats = []; self.actions = {}; self.cur = null; busy = null;
     model = SkeletonUtils.clone(gltf.scene); group.add(model);
     // 귀여운: 머리를 키워 2등신에 가깝게(모자·머리카락도 머리 뼈를 따라 같이 커진다)
-    headBone = model.getObjectByName('head'); headScale = STYLE_HEAD[style] || 1;
+    headBone = model.getObjectByName('head'); headScale = STYLE_HEAD[style] || 1; headDrop = STYLE_HEAD_DROP[style] || 0; headBaseY = headBone ? headBone.position.y : 0;
     model.traverse((o) => {
       if (o.userData && o.userData.kl_part) parts.push(o);
       // 안경은 캐릭터마다 눈 위치가 달라 모양을 따로 가진다(복제본끼리 같은 geometry를 같이 쓰므로 복사)

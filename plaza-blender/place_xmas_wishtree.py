@@ -7,6 +7,8 @@ import bpy, bmesh, math, random, os
 from mathutils import Vector, Matrix
 
 TREE_H = 12.4
+# 2026-11-08: 장면에서 트리·장식·전구·별을 원점 기준 1.3배(높이 16.1m)로 키우고, 울타리는 둘레만 1.3배·등불/선물은 자리만 바깥으로 옮겼다(COL_wishtree 5.59).
+# 다시 만들 때는 그 작업을 이 스크립트 뒤에 한 번 더 해야 웹(index.html TREE_K=1.3)과 맞는다.
 OUT = '/Users/lifetae2021/Desktop/keylink/plaza-blender/gen/'
 rng = random.Random(1224)
 sc = bpy.data.scenes['KL_Xmas']
