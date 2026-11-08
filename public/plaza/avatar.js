@@ -205,9 +205,9 @@ export function createAvatar(rawLook, { faceSize = 512 } = {}) {
         const n = o.material && o.material.name || '';
         if (/^TINT_|^MAT_av_skin/.test(n)) { o.material = o.material.clone(); o.material.userData.tint = /^TINT_/.test(n); if (/^MAT_av_skin/.test(n)) skinMats.push(o.material); }
         if (style === 'chibi' && /^MAT_av_skin/.test(n)) o.material.emissiveIntensity = SKIN_GLOW;
-        // 옷·머리카락은 피부보다 1~2cm 위에 겹쳐 있어, 멀리서 보면 화면이 어느 쪽을 앞에 그릴지 헷갈려 옷이 번쩍이며 사라졌다(z-fighting) →
-        // 옷·머리 재질은 깊이 계산에서 살짝 앞으로 당겨 늘 피부보다 앞에 그리게 한다
-        if (/^TINT_|^FIX_/.test(n)) { if (!o.material.userData.tint && !/^MAT_av_skin/.test(n)) o.material = o.material.clone(); o.material.polygonOffset = true; o.material.polygonOffsetFactor = -2; o.material.polygonOffsetUnits = -4; }
+        // 귀여운 옷(상의·하의·신발)은 피부를 1~2cm 부풀린 껍질이라, 멀리서 보면 피부가 옷을 뚫고 번쩍였다(z-fighting) →
+        // 그 재질만 깊이 계산에서 살짝 앞으로 당긴다. 블록은 옷이 상자라 당기면 뒷면·모서리가 비쳐 선이 생기고, 모자·머리끼리도 다퉈서 쓰지 않는다
+        if (style === 'chibi' && /^TINT_(top|bottom|shoes)/.test(n)) { o.material.polygonOffset = true; o.material.polygonOffsetFactor = -1; o.material.polygonOffsetUnits = -2; }
         if (/^MAT_av_face/.test(n)) {
           o.material = o.material.clone(); o.material.map = faceTex; o.material.color.set('#ffffff');
           if (style === 'chibi') { o.material.emissive = new THREE.Color('#ffffff'); o.material.emissiveMap = faceTex; o.material.emissiveIntensity = SKIN_GLOW; }

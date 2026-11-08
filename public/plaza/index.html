@@ -501,7 +501,8 @@ let skyMat=null;
     vertexShader:'varying vec3 vP; void main(){ vP=normalize(position); gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
     fragmentShader:'uniform vec3 top; uniform vec3 mid; uniform vec3 low; varying vec3 vP; void main(){ float h=vP.y; vec3 c = h>0.0 ? mix(mid, top, pow(clamp(h,0.0,1.0),0.6)) : mix(mid, low, clamp(-h*3.0,0.0,1.0)); gl_FragColor=vec4(c,1.0); }' }));
   sky.renderOrder=-1; scene.add(sky); }
-const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 400); let camYaw=0, camPitch=0.5, camDist=15; const camMinPitch=0.14, camMaxPitch=1.25;
+// 카메라 가까운 면 0.3m: 깊이 정밀도가 0.1일 때보다 3배 — 멀리 있는 캐릭터 옷·모자가 깜빡이던 것 줄임
+const camera = new THREE.PerspectiveCamera(55, 1, 0.3, 400); let camYaw=0, camPitch=0.5, camDist=15; const camMinPitch=0.14, camMaxPitch=1.25;
 // 카메라 거리: 휴대폰은 화면이 좁아 기본을 멀리(광장이 한눈에), 마지막으로 맞춘 거리는 이 기기에 기억
 const CAM_MIN=7, CAM_MAX=28;
 if(matchMedia('(pointer:coarse)').matches){ camDist=27; camPitch=0.7; }
@@ -2339,7 +2340,7 @@ canvasEl.addEventListener('pointerdown',(e)=>{
   dragId=e.pointerId; dragX=e.clientX; dragY=e.clientY; dragged=false;
 });
 
-addEventListener('pointermove',(e)=>{ if(e.pointerId!==dragId) return; const dx=e.clientX-dragX, dy=e.clientY-dragY; if(!dragged && Math.hypot(dx,dy)>6) dragged=true; if(dragged){ camYaw-=dx*0.005; camPitch=Math.min(camMaxPitch,Math.max(camMinPitch,camPitch-dy*0.005)); dragX=e.clientX; dragY=e.clientY; } });
+addEventListener('pointermove',(e)=>{ if(e.pointerId!==dragId) return; const dx=e.clientX-dragX, dy=e.clientY-dragY; if(!dragged && Math.hypot(dx,dy)>6) dragged=true; if(dragged){ camYaw-=dx*0.005; camPitch=Math.min(camMaxPitch,Math.max(camMinPitch,camPitch+dy*0.005)); dragX=e.clientX; dragY=e.clientY; } });   // 손가락(마우스)을 위로 끌면 위쪽(하늘)을 본다
 addEventListener('pointerup',(e)=>{ if(e.pointerId!==dragId) return; const wasDrag=dragged; dragId=null;
   if(!wasDrag && mode==='playing' && !modalOpen()){ const nx=(e.clientX/innerWidth)*2-1, ny=-(e.clientY/innerHeight)*2+1, prof=raycastFromNDC(nx,ny);
     if(prof) pickProfile(prof); else walkToScreen(nx,ny); } });
