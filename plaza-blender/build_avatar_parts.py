@@ -135,7 +135,7 @@ def bangs(P, lons, lat, size=0.11, k=1.07):
 
 def long_locks(P, K=1.07):
     """긴머리(매끈한 애니풍, 2026-11-08): 앞머리 껍질 + 옆(62°)→뒤→반대 옆(298°)을 한 장으로 감싸며 흘러내리는 두께 있는 뒷머리
-    (정수리 쪽은 껍질 속에서 시작해 껍질 끝선을 덮음, 목 아래 살짝 부풀고 끝은 안쪽으로 말림, 얕은 세로 결) + 얼굴 옆 앞으로 내려오는 옆머리 두 가닥."""
+    (정수리 쪽은 껍질 속에서 시작해 껍질 끝선을 덮음, 목 아래 살짝 부풀고 끝은 안쪽으로 말림, 얕은 세로 결) (뒷머리가 얼굴 옆 50°~310°까지 감쌈 — 앞으로 내려오던 옆머리 두 가닥은 더듬이처럼 보여 뺐다)."""
     sx, sy, sz = P['head_scale']; hr = P['head_r']; hc = P['head_c']; zc = P['chest']
     shell = hair_shell(P, K, lambda lon: fringe(lon, ramp(lon, 15, -22, 0, front_w=34), 3, 9, 32))
     def head_rad(a, z):
@@ -145,10 +145,10 @@ def long_locks(P, K=1.07):
         t = max(0, min(1, (x - e0) / (e1 - e0))); return t * t * (3 - 2 * t)
     NC, NR = 64, 24; z_top = hc + hr * K * sz * 0.55
     def zbot(lon):
-        back = max(0, min(1, 1 - abs(((lon - 180) + 180) % 360 - 180) / 118.0)); return (zc + 0.10) - 0.19 * back + 0.008 * math.sin(math.radians(lon) * 9)
+        back = max(0, min(1, 1 - abs(((lon - 180) + 180) % 360 - 180) / 130.0)); return (zc + 0.10) - 0.19 * back + 0.008 * math.sin(math.radians(lon) * 9)
     b = bmesh.new(); outer = []; inner = []
     for i in range(NC):
-        lon = 62 + (298 - 62) * i / (NC - 1); a = math.radians(lon); dx, dy = math.sin(a), -math.cos(a)
+        lon = 50 + (310 - 50) * i / (NC - 1); a = math.radians(lon); dx, dy = math.sin(a), -math.cos(a)
         hang = 0.23 + 0.07 * abs(math.sin(a)); zb = zbot(lon); groove = 0.005 * math.cos(math.radians(lon) * 22); co = []; ci = []
         for j in range(NR):
             t = j / (NR - 1); z = z_top + (zb - z_top) * t; q = (z - hc) / (hr * K * sz)
@@ -187,7 +187,7 @@ def long_locks(P, K=1.07):
         cc = sum((v.co for v in rows[0]), Vector()) / M; top = c.verts.new(tuple(cc))
         for i in range(M): c.faces.new((rows[0][(i + 1) % M], rows[0][i], top))
         bmesh.ops.recalc_face_normals(c, faces=c.faces); return c
-    return [shell, b, side_lock(48), side_lock(-48)]
+    return [shell, b]
 
 def build_hair(style_name, P, arm, coll, material, prefix):
     k = 1.07; parts = []

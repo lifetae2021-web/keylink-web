@@ -30,12 +30,12 @@ export async function POST(req: Request) {
   try {
     const out = gk ? (body.action === 'buy' ? await guestBuy(gk, String(body.item || ''))
         : body.action === 'feed' ? await guestFeed(gk, body.animal ? String(body.animal) : undefined)
-        : body.action === 'wish' ? await guestWish(gk, body.nick, body.text, body.orn)
+        : body.action === 'wish' ? await guestWish(gk, body.nick, body.text, body.orn, body.pa, body.py)
         : body.action === 'claw' ? await guestPlayClaw(gk)
         : null)
       : body.action === 'buy' ? await buyItem(uid!, String(body.item || ''))
       : body.action === 'feed' ? await feedCat(uid!, body.animal ? String(body.animal) : undefined)
-      : body.action === 'wish' ? await makeWish(uid!, body.text, body.orn)
+      : body.action === 'wish' ? await makeWish(uid!, body.text, body.orn, body.pa, body.py)
       : body.action === 'claw' ? await playClaw(uid!)
       : null;
     if (!out) return NextResponse.json({ error: 'bad_action' }, { status: 400 });

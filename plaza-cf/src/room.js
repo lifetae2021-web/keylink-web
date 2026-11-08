@@ -87,7 +87,8 @@ export class PlazaRoom {
       const b = await request.json().catch(() => ({}));
       const m = b.msg || {};
       if (m.t === 'feed') this.broadcast(null, { t: 'feed', key: String(m.key || ''), nick: String(m.nick || '').slice(0, 12), aid: m.aid ? String(m.aid).slice(0, 16) : null });
-      else if (m.t === 'wish') this.broadcast(null, { t: 'wish', key: String(m.key || ''), nick: String(m.nick || '').slice(0, 12), text: String(m.text || '').slice(0, 40), id: m.id ? String(m.id).slice(0, 40) : null, orn: m.orn ? String(m.orn).slice(0, 10) : null, theme: m.theme ? String(m.theme).slice(0, 16) : null });
+      else if (m.t === 'wish') this.broadcast(null, { t: 'wish', key: String(m.key || ''), nick: String(m.nick || '').slice(0, 12), text: String(m.text || '').slice(0, 40), id: m.id ? String(m.id).slice(0, 40) : null, orn: m.orn ? String(m.orn).slice(0, 10) : null, theme: m.theme ? String(m.theme).slice(0, 16) : null,
+        ...(Number.isFinite(+m.pa) && Number.isFinite(+m.py) ? { pa: +m.pa, py: +m.py } : {}) });   // 트리에서 고른 걸 자리
       // 관리자가 테마를 바꿈 → 각자 새 테마를 다시 불러온다
       else if (m.t === 'theme') this.broadcast(null, { t: 'theme' });
       // 관리자가 트리에 걸린 소원을 내림 → 모두의 화면에서 그 장식을 뗀다

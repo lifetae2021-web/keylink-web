@@ -284,6 +284,13 @@
   .menu-empty button { margin-top:10px; border:none; background:#6c5ce7; color:#fff; font-family:inherit; padding:8px 14px; border-radius:10px; cursor:pointer; }
   #dday { position:absolute; top:env(safe-area-inset-top,0px); left:50%; transform:translateX(-50%); margin-top:12px; background:var(--glass); border:1px solid rgba(255,214,150,.55); color:#fff;
     border-radius:16px; padding:7px 14px; font-size:.86rem; font-weight:700; letter-spacing:.01em; backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); white-space:nowrap; pointer-events:none; text-shadow:0 1px 6px rgba(255,190,110,.6); }
+  #hangBar { position:fixed; left:50%; transform:translateX(-50%); bottom:calc(26px + env(safe-area-inset-bottom,0px)); z-index:22; width:min(92vw,420px); box-sizing:border-box; padding:12px 14px; border-radius:18px; background:var(--card); border:1px solid var(--card-border); box-shadow:0 12px 30px rgba(40,70,120,.25); text-align:center; word-break:keep-all; }
+  #hangBar[hidden] { display:none; }
+  #hangMsg { display:block; font-size:.92rem; color:var(--ink); margin-bottom:10px; }
+  .hang-btns { display:flex; gap:8px; }
+  .hang-btns button { flex:1; font-family:inherit; font-size:.95rem; font-weight:700; padding:11px; border-radius:12px; border:none; cursor:pointer; background:var(--accent); color:#fff; white-space:nowrap; }
+  .hang-btns button.sub { flex:0 0 auto; padding:11px 16px; background:var(--pill); color:var(--pill-ink); }
+  .hang-btns button:disabled { opacity:.45; cursor:default; }
   #ornPick { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:6px; width:100%; max-width:330px; margin:0 auto; }   /* 장식 9종을 그림으로(5칸씩 두 줄) */
   #ornPick button { aspect-ratio:1; padding:0; border-radius:14px; border:2px solid transparent; background:#e6e6e6 center/cover no-repeat; cursor:pointer; box-shadow:0 1px 3px rgba(40,70,120,.15); transition:transform .12s, border-color .12s; -webkit-tap-highlight-color:transparent; }
   #ornPick button[aria-pressed="true"] { border-color:#6b4fd8; box-shadow:0 0 0 3px rgba(107,79,216,.3); transform:scale(1.06); }
@@ -706,7 +713,8 @@ function ornShape(kind){ const h=new THREE.Group();
   if(ORN_MODEL[kind]){ h.add(ORN_MODEL[kind].clone()); return h; }
   const fb=ornShapeBasic(kind); h.add(fb); loadOrn(kind); if(ORN_WAIT[kind]) ORN_WAIT[kind].push({ h, fb }); return h; }
 function addTreeWish(w){ if(!w||!w.id||treeWishIds.has(w.id)) return; treeWishIds.add(w.id);
-  const h=hashId(w.id), y=(1.7+hashId(w.id+'y')*8.6)*TREE_K, a=h*Math.PI*2, r=treeR(y)*1.01;
+  const fixed=Number.isFinite(w.pa) && Number.isFinite(w.py);   // 트리에서 직접 고른 자리(없으면 소원 id로 자동 배치)
+  const y=fixed ? w.py : (1.7+hashId(w.id+'y')*8.6)*TREE_K, a=fixed ? w.pa : hashId(w.id)*Math.PI*2, r=treeR(y)*1.01;
   // 가지 끝에 걸린 것처럼: 잎 표면에 살짝 파묻히게 두고, 장식 꼭대기 고리에서 짧은 줄로 매달아 흔들린다
   // outer(자리·바깥 보기) → pivot(고리 위치, 흔들림) → 장식(크기 S)
   const S=1.4, top=0.23*S, outer=new THREE.Group(), pivot=new THREE.Group(), o=ornShape(w.orn);
@@ -945,7 +953,7 @@ function ingestWorld(v, tag){
 let mapFile=null;
 (async()=>{ themeId=await fetchThemeId(); mapFile=THEMES[themeId].map||'/plaza/village.glb'; applyDayNight();
 new GLTFLoader().load(mapFile, (gltf)=>{
-  const v=gltf.scene; scene.add(v); v.updateMatrixWorld(true);
+  const v=gltf.scene; scene.add(v); v.updateMatrixWorld(true); mapRoot=v;
   const anchors=ingestWorld(v, null);
   for(const o of anchors){ const u=o.userData, p=o.getWorldPosition(new THREE.Vector3());
     if(u.kl_kind==='sprite') propSprite(A+u.kl_asset,+u.kl_h,p,!!u.kl_pixel,+u.kl_block||0);
@@ -1518,7 +1526,31 @@ feedBtn.addEventListener('click',()=>{
 wishBtn.addEventListener('click',()=>{ wishBox.hidden=!wishBox.hidden; if(!wishBox.hidden){ document.exitPointerLock?.(); setTimeout(()=>wishText.focus(),30); } });
 wishBox.addEventListener('submit',(e)=>{ e.preventDefault(); const t=wishText.value.replace(/\s+/g,' ').trim().slice(0,WISH_MAX); const tree=themeId==='xmas'; if(!t && !tree) return;   // 트리에는 글귀 없이 장식만 걸어도 된다
   if(t && nickProblem(t)==='bad'){ toast('그 말은 소원으로 보낼 수 없어요'); return; }
+  if(tree){ startHang(t); return; }   // 트리: 걸 자리를 먼저 고른다
   askConfirm(tree?'소원 트리에 소원 걸기':wishPlace()+'에 소원 던지기', tree ? WISH_PRICE+'P로 소원을 걸까요? 고른 장식에 담겨 트리에 걸리고, 키링 월드의 모두가 볼 수 있어요.' : WISH_PRICE+'P로 소원을 던질까요? '+wishPlace()+' 위에 잠시 떠올라 광장의 모두가 볼 수 있어요.', async()=>{ myWishText=t; const j=await shopPost({ action:'wish', text:t, orn:wishOrn }); if(!j){ myWishText=null; return; } wishText.value=''; wishBox.hidden=true; wishEffect(hero, opts.nick||'나', t); setTimeout(()=>{ myWishText=null; },6000); }); });
+// ── 소원 트리: 걸 자리 고르기 — 트리를 누르면 그 자리에 장식 미리보기, '여기에 걸기'로 결제하고 건다 ──
+let hang=null, treeMeshCache=null, mapRoot=null;
+const hangBar=document.createElement('div'); hangBar.id='hangBar'; hangBar.hidden=true;
+hangBar.innerHTML='<span id="hangMsg">트리에서 걸 자리를 눌러 주세요</span><div class="hang-btns"><button type="button" id="hangCancel" class="sub">취소</button><button type="button" id="hangOk" disabled>여기에 걸기</button></div>';
+document.body.appendChild(hangBar);
+function treeMesh(){ if(treeMeshCache && treeMeshCache.parent) return treeMeshCache; treeMeshCache=null; for(const root of [mapRoot, themeRoot]) root?.traverse(o=>{ if(!treeMeshCache && o.isMesh && /wishtree_real/.test(o.name)) treeMeshCache=o; }); return treeMeshCache; }   // 크리스마스는 트리가 지도 파일 안에 있다
+function startHang(text){ wishBox.hidden=true; hang={ text, pa:null, py:null, ghost:null }; hangBar.hidden=false;
+  document.getElementById('hangMsg').textContent='트리에서 걸 자리를 눌러 주세요'; document.getElementById('hangOk').disabled=true; }
+function endHang(reopen){ if(hang?.ghost) scene.remove(hang.ghost); hang=null; hangBar.hidden=true; if(reopen) wishBox.hidden=false; }
+// 화면 좌표(nx,ny)로 트리를 눌렀는지 — 맞으면 그 자리에 장식 미리보기
+function hangPick(nx,ny){ const tm=treeMesh(); if(!tm) return false; ndc.set(nx,ny); raycaster.setFromCamera(ndc,camera);
+  const hit=raycaster.intersectObject(tm,true)[0]; if(!hit) return false;
+  const y=Math.min(10.4*TREE_K, Math.max(1.7*TREE_K, hit.point.y)), a=Math.atan2(hit.point.z, hit.point.x);
+  if(hang.ghost) scene.remove(hang.ghost);
+  addTreeWish({ id:'__hang', orn:wishOrn, pa:a, py:y }); const g=treeWishGroup.children.find(c=>c.userData.wishId==='__hang');
+  treeWishGroup.remove(g); treeWishIds.delete('__hang'); g.userData.profile=null; scene.add(g); hang.ghost=g; hang.pa=a; hang.py=y;
+  if(g.userData.halo){ g.userData.halo.material.opacity=0.9; g.userData.halo.scale.setScalar(2.2); }   // 미리보기는 멀리서도 보이게 크게 빛나게
+  document.getElementById('hangMsg').textContent='이 자리에 걸까요? 다른 곳을 누르면 옮겨져요'; document.getElementById('hangOk').disabled=false; return true; }
+document.getElementById('hangCancel').onclick=()=>endHang(true);
+document.getElementById('hangOk').onclick=()=>{ if(!hang || hang.pa==null) return; const h=hang;
+  askConfirm('소원 트리에 소원 걸기', WISH_PRICE+'P로 고른 자리에 소원을 걸까요? 키링 월드의 모두가 볼 수 있어요.', async()=>{
+    myWishText=h.text; const j=await shopPost({ action:'wish', text:h.text, orn:wishOrn, pa:h.pa, py:h.py }); if(!j){ myWishText=null; return; }
+    wishText.value=''; endHang(false); wishEffect(hero, opts.nick||'나', h.text); setTimeout(()=>{ myWishText=null; },6000); }); };
 // ── 동물 호감: 쓰다듬기·밥주기로 쌓고, 30 따라오기 · 60 안기 · 100 이름 짓고 반려동물로 ──
 let myPets={ aff:{}, adopted:{}, active:null, petLeft:{} }, petCardG=null;
 const animalById=(id)=>animals.find(a=>a.userData.aid===id||a.userData.feedId===id);
@@ -1683,7 +1715,7 @@ function connect(){
     else if(m.t==='theme'){ loadTheme(); }
     else if(m.t==='feed'){ const pr=[...peers.values()].find(x=>x.key&&x.key===m.key); if(pr){ feedEffect(pr.group, m.aid); showSay(pr.root, '밥을 줬어요'); } }
     else if(m.t==='wishhide'){ removeTreeWish(m.id); }
-    else if(m.t==='wish'){ if(m.theme==='xmas' && m.id && themeId==='xmas') addTreeWish({ id:m.id, nick:m.nick, text:m.text, orn:m.orn }); if(myWishText && m.text===myWishText){ myWishText=null; } else { const pr=[...peers.values()].find(x=>x.key&&x.key===m.key); wishEffect(pr?pr.group:null, m.nick, m.text); } }
+    else if(m.t==='wish'){ if(m.theme==='xmas' && m.id && themeId==='xmas') addTreeWish({ id:m.id, nick:m.nick, text:m.text, orn:m.orn, pa:m.pa, py:m.py }); if(myWishText && m.text===myWishText){ myWishText=null; } else { const pr=[...peers.values()].find(x=>x.key&&x.key===m.key); wishEffect(pr?pr.group:null, m.nick, m.text); } }
     else if(m.t==='leave'){ hiddenPeers.delete(m.id); const pr=peers.get(m.id); if(pr){ scene.remove(pr.group); peers.delete(m.id); updateCount(); } if(currentChat && currentChat.id===m.id){ addMsg('sys', (currentChat.nick||'상대')+'님이 대화방을 나가셨습니다.'); } }
     else if(((m.key && blocked.has(m.key)) || blockedIds.has(m.from)) && (m.t==='req'||m.t==='accept'||m.t==='acceptwait'||m.t==='chat'||m.t==='chatbye'||m.t==='photo')){ return; } // 차단한 사람
     else if(m.t==='req'){ showReq(m.from, m.nick, m.uid, m.key); }
@@ -2343,6 +2375,7 @@ canvasEl.addEventListener('pointerdown',(e)=>{
 addEventListener('pointermove',(e)=>{ if(e.pointerId!==dragId) return; const dx=e.clientX-dragX, dy=e.clientY-dragY; if(!dragged && Math.hypot(dx,dy)>6) dragged=true; if(dragged){ camYaw-=dx*0.005; camPitch=Math.min(camMaxPitch,Math.max(camMinPitch,camPitch+dy*0.005)); dragX=e.clientX; dragY=e.clientY; } });   // 손가락(마우스)을 위로 끌면 위쪽(하늘)을 본다
 addEventListener('pointerup',(e)=>{ if(e.pointerId!==dragId) return; const wasDrag=dragged; dragId=null;
   if(!wasDrag && mode==='playing' && !modalOpen()){ const nx=(e.clientX/innerWidth)*2-1, ny=-(e.clientY/innerHeight)*2+1, prof=raycastFromNDC(nx,ny);
+    if(hang){ hangPick(nx,ny); return; }   // 소원 걸 자리 고르는 중: 트리만 누른다(빗나가면 무시)
     if(prof) pickProfile(prof); else walkToScreen(nx,ny); } });
 // 클릭한 바닥 지점: 내 발 높이의 평면과 만나는 곳(건물 벽을 눌러도 그 너머 바닥으로 — 막히면 저절로 멈춘다)
 // 표시 동그라미는 바닥에서 12cm 위(광장 돌바닥 두께보다 높게 — 낮으면 트리 주변 돌바닥에 묻혀 안 보였다)

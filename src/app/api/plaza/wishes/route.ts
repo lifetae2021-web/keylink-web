@@ -12,7 +12,7 @@ export async function GET(req: Request) {
     const wishes = snap.docs
       .filter((d) => d.get('theme') === theme && !d.get('hidden') && !d.get('purgeAt'))
       .slice(0, TREE_MAX)
-      .map((d) => ({ id: d.id, nick: String(d.get('nick') || ''), text: String(d.get('text') || ''), orn: String(d.get('orn') || 'star') }));
+      .map((d) => ({ id: d.id, nick: String(d.get('nick') || ''), text: String(d.get('text') || ''), orn: String(d.get('orn') || 'star'), ...(typeof d.get('pa') === 'number' && typeof d.get('py') === 'number' ? { pa: d.get('pa'), py: d.get('py') } : {}) }));
     return NextResponse.json({ wishes }, { headers: { 'Cache-Control': 'public, s-maxage=15, stale-while-revalidate=60' } });
   } catch {
     return NextResponse.json({ wishes: [] });

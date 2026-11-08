@@ -93,7 +93,15 @@ export async function feedCat(uid: string, animal?: string) {
   return shopState(uid);
 }
 
-export async function makeWish(uid: string, raw: unknown, ornRaw?: unknown) {
+// 트리에서 직접 고른 자리(각도 pa 라디안 0~2π, 높이 py m). 숫자가 아니거나 범위를 벗어나면 자리 없이(웹이 자동 배치)
+function wishPos(paRaw: unknown, pyRaw: unknown): { pa: number; py: number } | null {
+  const pa = Number(paRaw), py = Number(pyRaw);
+  if (!Number.isFinite(pa) || !Number.isFinite(py)) return null;
+  const TAU = Math.PI * 2;
+  return { pa: Math.round((((pa % TAU) + TAU) % TAU) * 1000) / 1000, py: Math.round(Math.min(14, Math.max(1.5, py)) * 100) / 100 };
+}
+
+export async function makeWish(uid: string, raw: unknown, ornRaw?: unknown, paRaw?: unknown, pyRaw?: unknown) {
   const text = String(raw ?? '').replace(/[\u0000-\u001f\u007f]/g, '').replace(/\s+/g, ' ').trim().slice(0, WISH_MAX);
   // 크리스마스 테마에서는 고른 장식에 담겨 소원 트리에 계속 걸린다(그 밖의 테마는 분수대 위에 잠깐 떠오름). 트리에는 글귀 없이 장식만 걸어도 된다
   const theme = await getActiveTheme();
@@ -101,12 +109,13 @@ export async function makeWish(uid: string, raw: unknown, ornRaw?: unknown) {
   if (text && hasBadWord(text)) throw new ShopError('bad_word');
   const me = await memberInfo(uid);
   const orn = theme === 'xmas' ? (WISH_ORNS.includes(String(ornRaw)) ? String(ornRaw) : 'star') : null;
+  const pos = orn ? wishPos(paRaw, pyRaw) : null;
   const ref = adminDb.collection('plazaWishes').doc();
   await adminDb.runTransaction(async (tx) => {
     await spendMemberPointsInTx(tx, uid, WISH_PRICE, theme === 'xmas' ? '키링 월드 소원 트리' : '키링 월드 분수대 소원', 'plaza_shop');
-    tx.set(ref, { uid, nick: me.nick, text, theme, ...(orn ? { orn } : {}), createdAt: new Date() });   // 트리 장식 표시·신고·관리용 기록
+    tx.set(ref, { uid, nick: me.nick, text, theme, ...(orn ? { orn } : {}), ...(pos || {}), createdAt: new Date() });   // 트리 장식 표시·신고·관리용 기록
   });
-  await announce({ t: 'wish', key: plazaKey(uid), nick: me.nick, text, id: ref.id, orn, theme });
+  await announce({ t: 'wish', key: plazaKey(uid), nick: me.nick, text, id: ref.id, orn, theme, ...(pos || {}) });
   return shopState(uid);
 }
 
@@ -184,7 +193,7 @@ export async function guestFeed(gk: string, animal?: string) {
   return guestState(gk);
 }
 
-export async function guestWish(gk: string, nickRaw: unknown, raw: unknown, ornRaw?: unknown) {
+export async function guestWish(gk: string, nickRaw: unknown, raw: unknown, ornRaw?: unknown, paRaw?: unknown, pyRaw?: unknown) {
   const text = String(raw ?? '').replace(/[\u0000-\u001f\u007f]/g, '').replace(/\s+/g, ' ').trim().slice(0, WISH_MAX);
   const theme0 = await getActiveTheme();
   if (!text && theme0 !== 'xmas') throw new ShopError('empty');
@@ -193,9 +202,10 @@ export async function guestWish(gk: string, nickRaw: unknown, raw: unknown, ornR
   if (!nick || hasBadWord(nick) || isReservedNick(nick)) nick = '손님';
   const theme = await getActiveTheme();
   const orn = theme === 'xmas' ? (WISH_ORNS.includes(String(ornRaw)) ? String(ornRaw) : 'star') : null;
+  const pos = orn ? wishPos(paRaw, pyRaw) : null;
   const ref = adminDb.collection('plazaWishes').doc();
   await guestSpend(gk, WISH_PRICE, () => ({}));
-  await ref.set({ uid: null, guest: gk, nick, text, theme, ...(orn ? { orn } : {}), createdAt: new Date() });   // 비회원 소원도 신고·관리 대상(guest 키로 추적)
-  await announce({ t: 'wish', key: gk, nick, text, id: ref.id, orn, theme });
+  await ref.set({ uid: null, guest: gk, nick, text, theme, ...(orn ? { orn } : {}), ...(pos || {}), createdAt: new Date() });   // 비회원 소원도 신고·관리 대상(guest 키로 추적)
+  await announce({ t: 'wish', key: gk, nick, text, id: ref.id, orn, theme, ...(pos || {}) });
   return guestState(gk);
 }
