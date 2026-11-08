@@ -2121,7 +2121,7 @@ document.getElementById('chatReport').onclick=()=>openReport(currentChat);
 document.getElementById('chatBlock').onclick=()=>blockPerson(currentChat);
 // ── 손님 → 회원 전환 게이트 (실제 키링크 로그인 연동) ──
 let member=false, fbUser=null, myUid=null;
-// ── 키링 월드 포인트 적립(회원): 24시간 안 첫 입장 보너스 + 머문 시간 1시간마다(서버 /api/plaza/reward가 판단) ──
+// ── 키링 월드 포인트 적립(회원): 처음 입장 보너스(한 번만) + 머문 시간 1시간마다(서버 /api/plaza/reward가 판단) ──
 let rewardStarted=false, rewardSt=null;
 async function rewardPost(action){ try{ const r=await authFetch('/api/plaza/reward',{ method:'POST', headers:{ 'content-type':'application/json' }, body:JSON.stringify({ action }) }); const j=await r.json().catch(()=>({})); if(!r.ok||!j.ok) return null; rewardSt=j; shopPoints=j.points; return j; }catch(e){ return null; } }
 let guestRewardTried=false;

@@ -3,8 +3,7 @@
 export { SHOP_ACC, SEASON_ACC } from './look.js';
 export const CAT_FOOD_PRICE = 50;    // 동물 밥주기(강아지·고양이·펭귄·순록)
 // 키링 월드에서 받는 포인트(웹사이트 방문 포인트와 별개, 회원만)
-export const ENTRY_BONUS = 500;                     // 24시간 안의 첫 입장
-export const ENTRY_BONUS_GAP_MS = 24 * 60 * 60 * 1000;
+export const ENTRY_BONUS = 500;                     // 처음 입장할 때 딱 한 번(2026-11-08부터, 그전엔 24시간마다)
 export const STAY_POINTS = 50;                      // 머문 시간 1시간마다
 export const STAY_UNIT_MS = 60 * 60 * 1000;
 export const STAY_TICK_MS = 5 * 60 * 1000;          // 화면이 5분마다 '아직 있어요'를 보낸다(자리 비움·다른 탭이어도 창이 열려 있으면 쌓임)

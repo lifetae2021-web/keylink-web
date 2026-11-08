@@ -1,9 +1,9 @@
 import { adminDb } from '@/lib/firebaseAdmin';
 import { earnMemberPointsInTx, seoulToday } from '@/lib/points';
-import { ENTRY_BONUS, ENTRY_BONUS_GAP_MS, STAY_POINTS, STAY_UNIT_MS, STAY_TICK_MS, STAY_DAILY_MAX } from '../../public/plaza/shop.js';
+import { ENTRY_BONUS, STAY_POINTS, STAY_UNIT_MS, STAY_TICK_MS, STAY_DAILY_MAX } from '../../public/plaza/shop.js';
 
 // 키링 월드 포인트 적립(웹사이트 방문 포인트와 별개, 회원만)
-// - 24시간 안의 첫 입장 ENTRY_BONUS
+// - 처음 입장할 때 한 번만 ENTRY_BONUS(이미 받은 기록 entryBonusAt이 있으면 다시 안 줌)
 // - 머문 시간 STAY_UNIT_MS마다 STAY_POINTS (하루 STAY_DAILY_MAX번까지)
 // 머문 시간은 화면이 STAY_TICK_MS마다 보내는 신호 사이 간격으로만 센다. 신호가 끊기면(창 닫음·자리 비움) 그 사이는 0.
 // 상태는 plazaKeys/{uid}: entryBonusAt · stayMs · stayLastAt · stayDay · stayDayCount
@@ -21,7 +21,7 @@ export async function plazaEnter(uid: string) {
   const ref = adminDb.doc(`plazaKeys/${uid}`), now = Date.now();
   const bonus = await adminDb.runTransaction(async (tx) => {
     const k = (await tx.get(ref)).data() || {};
-    const due = now - Number(k.entryBonusAt || 0) >= ENTRY_BONUS_GAP_MS;
+    const due = !k.entryBonusAt;
     if (due) earnMemberPointsInTx(tx, uid, ENTRY_BONUS, 'plaza_entry', '키링 월드 첫 입장 보너스');
     tx.set(ref, { ...(due ? { entryBonusAt: now } : {}), stayLastAt: now }, { merge: true });
     return due ? ENTRY_BONUS : 0;

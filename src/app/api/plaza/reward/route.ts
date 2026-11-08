@@ -3,7 +3,7 @@ import { adminAuth } from '@/lib/firebaseAdmin';
 import { plazaEnter, plazaTick, RewardError } from '@/lib/plazaReward';
 import { guestKeyOf, guestEnter } from '@/lib/plazaShop';
 
-// 키링 월드 포인트 적립: { action: 'enter' } 입장(24시간 첫 입장 보너스) · { action: 'tick' } 머문 시간 신호
+// 키링 월드 포인트 적립: { action: 'enter' } 입장(처음 한 번 입장 보너스) · { action: 'tick' } 머문 시간 신호
 // 비회원(x-plaza-dev 헤더)은 첫 입장 보너스만 — 키링 월드 전용 지갑(plazaGuestWallets)
 export async function POST(req: Request) {
   try {

@@ -1,7 +1,7 @@
 import { adminDb } from '@/lib/firebaseAdmin';
 import { spendMemberPointsInTx } from '@/lib/points';
 import { plazaKey } from '@/lib/plazaKey';
-import { SHOP_ACC, SEASON_ACC, CAT_FOOD_PRICE, WISH_PRICE, WISH_MAX, WISH_ORNS, ENTRY_BONUS, ENTRY_BONUS_GAP_MS, CLAW_PRICE, CLAW_WIN, DOLL_IDS } from '../../public/plaza/shop.js';
+import { SHOP_ACC, SEASON_ACC, CAT_FOOD_PRICE, WISH_PRICE, WISH_MAX, WISH_ORNS, ENTRY_BONUS, CLAW_PRICE, CLAW_WIN, DOLL_IDS } from '../../public/plaza/shop.js';
 import { seoulToday } from '@/lib/points';
 import crypto from 'crypto';
 import { getActiveTheme } from '@/lib/plazaTheme';
@@ -148,7 +148,7 @@ export async function guestEnter(gk: string) {
   const ref = guestRef(gk), now = Date.now();
   const bonus = await adminDb.runTransaction(async (tx) => {
     const d = (await tx.get(ref)).data() || {};
-    if (now - Number(d.entryBonusAt || 0) < ENTRY_BONUS_GAP_MS) return 0;
+    if (d.entryBonusAt) return 0;   // 첫 입장 보너스는 한 번만
     tx.set(ref, { points: Number(d.points || 0) + ENTRY_BONUS, entryBonusAt: now, lastSeenAt: now, ...(d.createdAt ? {} : { createdAt: now }) }, { merge: true });
     return ENTRY_BONUS;
   });
