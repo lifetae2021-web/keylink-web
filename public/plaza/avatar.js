@@ -105,7 +105,7 @@ const STYLE_HEAD = { chibi: 1.16 };
 // 귀여운: 머리를 목 쪽으로 내려 어깨에 얹힌 느낌으로(반팔·셔츠처럼 목이 드러나는 옷에서 머리가 떠 보였다). 머리 뼈 위치(m)
 const STYLE_HEAD_DROP = { chibi: 0.045 };
 // 귀여운: 팔을 몸 쪽으로 내린다(라디안). 원래 자세가 팔을 45도로 벌린 A자라 소매가 판자처럼 뻗고 몸통이 네모 자루처럼 보였다
-const STYLE_ARM_DOWN = { chibi: 0.5 };
+const STYLE_ARM_DOWN = { chibi: 0.42 };
 const _q = new THREE.Quaternion(), _qp = new THREE.Quaternion(), _qm = new THREE.Quaternion(), _fwd = new THREE.Vector3(0, 0, 1), _v = new THREE.Vector3();
 const SKIN_GLOW = 0.22;
 const ACT = { idle: 'idle', walk: 'walk', wave: 'wave', sit: 'sit', dance: 'dance', run: 'run' };
@@ -116,6 +116,24 @@ function heartTex() {
   g.fillStyle = '#ff6f91'; g.beginPath(); g.moveTo(32, 54); g.bezierCurveTo(4, 34, 8, 8, 32, 20); g.bezierCurveTo(56, 8, 60, 34, 32, 54); g.fill();
   g.fillStyle = 'rgba(255,255,255,.7)'; g.beginPath(); g.arc(22, 22, 5, 0, Math.PI * 2); g.fill();
   _heart = new THREE.CanvasTexture(c); _heart.colorSpace = THREE.SRGBColorSpace; return _heart;
+}
+
+// 옷 아래 피부 줄이기: 몸통(골반·허리·가슴) 1.2cm, 위팔 0.8cm를 법선 반대로(뼈대로 움직이기 전, 기본 자세 기준).
+// 정점마다 가장 크게 따르는 뼈로 정하고, 같은 모양(geometry)을 쓰는 복제본끼리는 한 번만 계산한다
+const SHRINK = { hips: 0.012, spine: 0.012, chest: 0.012, upper_armL: 0.008, upper_armR: 0.008, 'upper_arm.L': 0.008, 'upper_arm.R': 0.008 };
+function shrinkUnderClothes(mesh) {
+  const geo = mesh.geometry;
+  if (!geo.attributes.aShrink) {
+    const si = geo.attributes.skinIndex, sw = geo.attributes.skinWeight, bones = mesh.skeleton.bones, out = new Float32Array(si.count);
+    for (let i = 0; i < si.count; i++) {
+      let best = 0, bw = -1; for (let k = 0; k < 4; k++) { const w = sw.getComponent(i, k); if (w > bw) { bw = w; best = si.getComponent(i, k); } }
+      out[i] = SHRINK[bones[best]?.name] || 0;
+    }
+    geo.setAttribute('aShrink', new THREE.BufferAttribute(out, 1));
+  }
+  const m = mesh.material;
+  m.onBeforeCompile = (sh) => { sh.vertexShader = 'attribute float aShrink;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  transformed -= normalize(objectNormal) * aShrink;'); };
+  m.customProgramCacheKey = () => 'klshrink'; m.needsUpdate = true;
 }
 
 // 캐릭터 하나 만들기: 바로 빈 그룹을 돌려주고, 파일이 준비되면 채운다
@@ -172,13 +190,18 @@ export function createAvatar(rawLook, { faceSize = 512 } = {}) {
     if (headBone && headDrop) headBone.position.y = headBaseY - headDrop;   // 기본 위치에서 뺀 값으로 고정(빼기를 쌓으면 머리가 계속 내려간다)
     if (armDown && armBones.length) lowerArms();
   };
-  // 동작이 정한 팔 회전 위에, 캐릭터 기준 앞뒤 축으로 팔을 몸 쪽으로 더 돌린다(동작마다 매 프레임 새로 정해지므로 쌓이지 않음)
+  // 동작이 정한 팔 회전 위에, 캐릭터 기준 앞뒤 축으로 팔을 몸 쪽으로 더 돌린다.
+  // 애니메이션 엔진은 값이 이전 프레임과 같으면 뼈를 다시 쓰지 않는다 → 그대로 또 돌리면 팔이 두 번 꺾여 몸속으로 사라졌다.
+  // 그래서 엔진이 준 원래 회전(base)을 기억해 두고, 엔진이 안 건드린 프레임엔 그 base에서 다시 계산한다
   function lowerArms() {
     model.updateMatrixWorld(true); model.getWorldQuaternion(_qm).invert();
     for (const a of armBones) {
+      const q = a.bone.quaternion;
+      if (!a.last || !q.equals(a.last)) (a.base || (a.base = new THREE.Quaternion())).copy(q);   // 엔진이 새로 쓴 값 = 새 기준
       a.bone.parent.getWorldQuaternion(_qp).premultiply(_qm);
       _q.setFromAxisAngle(_fwd, a.sign * armDown);
-      a.bone.quaternion.premultiply(_qp.clone().invert().multiply(_q).multiply(_qp));
+      q.copy(a.base).premultiply(_qp.clone().invert().multiply(_q).multiply(_qp));
+      (a.last || (a.last = new THREE.Quaternion())).copy(q);
     }
   }
   self.dispose = () => { faceTex.dispose(); group.traverse((o) => { if (o.isMesh) { o.material?.dispose?.(); } }); };
@@ -205,9 +228,9 @@ export function createAvatar(rawLook, { faceSize = 512 } = {}) {
         const n = o.material && o.material.name || '';
         if (/^TINT_|^MAT_av_skin/.test(n)) { o.material = o.material.clone(); o.material.userData.tint = /^TINT_/.test(n); if (/^MAT_av_skin/.test(n)) skinMats.push(o.material); }
         if (style === 'chibi' && /^MAT_av_skin/.test(n)) o.material.emissiveIntensity = SKIN_GLOW;
-        // 귀여운 옷(상의·하의·신발)은 피부를 1~2cm 부풀린 껍질이라, 멀리서 보면 피부가 옷을 뚫고 번쩍였다(z-fighting) →
-        // 그 재질만 깊이 계산에서 살짝 앞으로 당긴다. 블록은 옷이 상자라 당기면 뒷면·모서리가 비쳐 선이 생기고, 모자·머리끼리도 다퉈서 쓰지 않는다
-        if (style === 'chibi' && /^TINT_(top|bottom|shoes)/.test(n)) { o.material.polygonOffset = true; o.material.polygonOffsetFactor = -1; o.material.polygonOffsetUnits = -2; }
+        // 귀여운 옷은 피부를 1~2cm 부풀린 껍질이라 멀리서 보면 피부가 옷을 뚫고 번쩍였다(z-fighting) →
+        // 옷 아래 몸통 피부를 안쪽으로 조금 줄여 틈을 넓힌다(깊이를 속이는 polygonOffset은 내린 팔을 옷 옆면이 덮어 팔이 깜빡여서 뺐다)
+        if (style === 'chibi' && /^MAT_av_skin/.test(n) && o.isSkinnedMesh) shrinkUnderClothes(o);
         if (/^MAT_av_face/.test(n)) {
           o.material = o.material.clone(); o.material.map = faceTex; o.material.color.set('#ffffff');
           if (style === 'chibi') { o.material.emissive = new THREE.Color('#ffffff'); o.material.emissiveMap = faceTex; o.material.emissiveIntensity = SKIN_GLOW; }

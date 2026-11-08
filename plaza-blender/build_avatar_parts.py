@@ -133,6 +133,43 @@ def bangs(P, lons, lat, size=0.11, k=1.07):
         p = head_point(P, lon, lat, k); out.append(bm_ellipsoid(size, (1.0, 0.55, 0.8), p))
     return out
 
+def long_locks(P, K=1.07):
+    """긴머리: 귀 아래까지 덮는 껍질 + 머리 곡면을 따라 내려와 등·어깨 뒤로 떨어지는 납작하고 끝이 가는 가닥들.
+    가닥 윗부분은 껍질 안쪽에 숨겨 이음새(챙처럼 튀어나온 선)가 안 보이게 한다."""
+    sx, sy, sz = P['head_scale']; hr = P['head_r']; hc = P['head_c']
+    cut = lambda lon: ramp(lon, 15, -32, -38, front_w=34)
+    shell = hair_shell(P, K, lambda lon: fringe(lon, cut(lon), 3, 9, 32), flare=lambda lon, lat: 1 + 0.04 * min(1, max(0, (-5 - lat) / 40)))
+    def head_rad(a, z):
+        req = hr * K * math.sqrt((sx * math.sin(a)) ** 2 + (sy * math.cos(a)) ** 2); q = (z - hc) / (hr * K * sz)
+        return req * math.sqrt(max(0.0, 1 - q * q)) if abs(q) < 1 else 0.0
+    def lock(lon, z_end, width, seed):
+        b = bmesh.new(); S, M = 16, 8; rows = []; a = math.radians(lon)
+        dx, dy = math.sin(a), -math.cos(a); tx, ty = math.cos(a), math.sin(a)
+        hang = 0.19 + 0.09 * abs(math.sin(a)); z0 = hc + hr * K * sz * 0.35
+        for j in range(S):
+            t = j / (S - 1); z = z0 + (z_end - z0) * t; q = (z - hc) / (hr * K * sz)
+            lat = math.degrees(math.asin(max(-1, min(1, q)))); hz = head_rad(a, z)
+            r = (hz - 0.02) if lat > cut(lon) + 4 else max(hz + 0.01, hang)
+            if q < -0.95: r = hang
+            r += 0.012 * t; w = width * (1 - 0.7 * t ** 1.5); th = 0.04 * (1 - 0.5 * t); wave = 0.01 * math.sin(t * math.pi * 2.2 + seed)
+            row = []
+            for i in range(M):
+                u = 2 * math.pi * i / M; ox = math.cos(u) * w + wave; oy = math.sin(u) * th
+                row.append(b.verts.new((dx * r + tx * ox + dx * oy, dy * r + ty * ox + dy * oy, z)))
+            rows.append(row)
+        for j in range(S - 1):
+            for i in range(M): b.faces.new((rows[j][i], rows[j][(i + 1) % M], rows[j + 1][(i + 1) % M], rows[j + 1][i]))
+        c = sum((v.co for v in rows[-1]), Vector()) / M; tip = b.verts.new((c.x, c.y, c.z - 0.025))
+        for i in range(M): b.faces.new((rows[-1][i], rows[-1][(i + 1) % M], tip))
+        c = sum((v.co for v in rows[0]), Vector()) / M; top = b.verts.new(tuple(c))
+        for i in range(M): b.faces.new((rows[0][(i + 1) % M], rows[0][i], top))
+        bmesh.ops.recalc_face_normals(b, faces=b.faces); return b
+    parts = [shell]; zc = P['chest']
+    for k, lon in enumerate([64, 80, 96, 112, 127, 142, 156, 170, -64, -80, -96, -112, -127, -142, -156, -170, 180]):
+        back = min(1, (abs(lon) - 64) / 110)
+        parts.append(lock(lon, (zc + 0.12) - 0.2 * back + 0.015 * math.sin(k * 1.9), 0.07 + 0.025 * back, k))
+    return parts
+
 def build_hair(style_name, P, arm, coll, material, prefix):
     k = 1.07; parts = []
     if style_name == 'short':
@@ -150,19 +187,7 @@ def build_hair(style_name, P, arm, coll, material, prefix):
     elif style_name == 'bob':
         parts = [hair_shell(P, k, lambda lon: fringe(lon, ramp(lon, 15, -58, -62, front_w=32), 3, 9, 32), flare=lambda lon, lat: 1 + 0.2 * min(1, max(0, (-5 - lat) / 50)))]
     elif style_name == 'long':
-        parts = [hair_shell(P, k, lambda lon: fringe(lon, ramp(lon, 15, -62, -62, front_w=32), 3, 9, 32), flare=lambda lon, lat: 1 + 0.16 * min(1, max(0, (-5 - lat) / 50)))]
-        # 등 뒤로 내려오는 긴 머리판(가슴 높이까지)
-        sx, sy, _ = P['head_scale']; r = P['head_r'] * 1.12; z0 = P['head_c'] - P['head_r'] * 0.2; z1 = P['chest'] - 0.02
-        g = bmesh.new(); rows = []
-        for j in range(7):
-            z = z0 + (z1 - z0) * j / 6; w = 1.0 - 0.08 * j / 6; row = []
-            for i in range(13):
-                a = math.radians(95 + 170 * i / 12)
-                row.append(g.verts.new((r * sx * w * math.sin(a), -r * sy * w * math.cos(a), z)))
-            rows.append(row)
-        for j in range(6):
-            for i in range(12): g.faces.new((rows[j][i], rows[j][i + 1], rows[j + 1][i + 1], rows[j + 1][i]))
-        parts.append(g)
+        parts = long_locks(P)   # 2026-11-08: 납작한 뒷판 → 머리를 감싸며 흘러내리는 가닥 17개
     elif style_name == 'ponytail':
         parts = [hair_shell(P, k, lambda lon: fringe(lon, ramp(lon, 19, -6, -22)))]
         for i, (lat, kk, s) in enumerate(((8, 1.12, 0.1), (-8, 1.22, 0.11), (-25, 1.26, 0.1), (-42, 1.24, 0.085))):

@@ -108,7 +108,7 @@ def add_block_body_keys(o, arm):
         if b == 'hips': c.x *= 1.08
         elif b == 'spine': c.x *= 0.88
         elif b == 'chest': c.x *= 0.92
-        elif b and b.startswith('upper_arm'): c.x -= 0.025 * (1 if c.x > 0 else -1)
+        elif b and b.startswith(('upper_arm', 'lower_arm', 'hand')): c.x -= 0.025 * (1 if c.x > 0 else -1)   # 팔 전체를 같이 당긴다(위팔만 당기면 손목·손이 튀어나와 두꺼워 보였다, 2026-11-08)
         return c
     key('female', fem)
 
