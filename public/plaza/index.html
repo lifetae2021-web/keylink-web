@@ -980,6 +980,7 @@ if(!opts) opts={ nick:'', gender:'male', region:'', age:'', intro:'', job:'' };
 opts.gender=opts.gender||'male'; opts.region=opts.region||''; opts.age=opts.age||''; opts.intro=opts.intro||''; opts.job=opts.job||'';
 opts.look=sanitizeLook(opts.look || { face:opts.face, hair:opts.hair, hairColor:opts.hairColor, eye:opts.eye, clothes:opts.clothes, gender:opts.gender });   // 예전 캐릭터는 v2로 옮김
 for(const k of ['face','hair','hairColor','eye','clothes']) delete opts[k];
+opts.look=fitToGender(opts.look,opts.gender);   // 성별에 없는 선택지(예: 여성 숏컷)는 그 성별 기본으로
 // 2026-11-08 귀여운 그림체 개편: 예전 귀여운 캐릭터는 갸름한 얼굴형 값이 남아 있어 한 번 동그란 얼굴로 맞춘다(그 뒤엔 슬라이더로 자유롭게)
 try{ if(opts.look.style==='chibi' && localStorage.getItem('kl_face_round')!=='1'){ fitFaceToStyle(opts.look,true); localStorage.setItem('kl_char',JSON.stringify(opts)); } localStorage.setItem('kl_face_round','1'); }catch(e){}
 if(matchMedia('(pointer:coarse)').matches){ const hh=document.getElementById('hudHelp'); if(hh) hh.textContent='바닥 탭·조이스틱 이동 · 화면 끌어 시야 · 사람 탭'; }
@@ -1057,6 +1058,7 @@ let crYaw=0; { let dragX=null; canvas.addEventListener('pointerdown',(e)=>{ if(m
 let mode='creating';
 document.getElementById('enterBtn').onclick=async()=>{ if(!consent){ consentBox.hidden=false; return; } { const np=nickProblem(opts.nick); if(np){ crTab='profile'; renderCreator(); toast(NICK_MSG[np]); nickInput.focus(); return; } } if(isReservedNick(opts.nick) && opts.nick!==profileNick){ crTab='profile'; renderCreator(); toast(NICK_MSG.reserved); nickInput.focus(); return; } if(!opts.region){ crTab='profile'; renderCreator(); toast('지역을 선택해 주세요'); return; } if(!/^(19|20)\d\d$/.test(opts.age)){ crTab='profile'; renderCreator(); toast('출생연도를 네 자리로 입력해 주세요'); return; } if(!opts.nick){ opts.nick=NICKS[Math.floor(Math.random()*NICKS.length)]; nickInput.value=opts.nick; buildHero(opts); }
   if(member && fbUser && profileNick && opts.nick!==profileNick){ if(!(await saveNickChange())) return; }
+  else if(member && fbUser) saveProfileQuiet();   // 닉네임이 그대로여도 꾸민 모습·소개는 서버에 저장(안 하면 새로고침 때 예전 모습으로 돌아갔다)
   try{ localStorage.setItem('kl_char',JSON.stringify(opts)); }catch(e){} document.getElementById('entry').remove(); startBgm(); camera.clearViewOffset(); resize(); if(heroNick) heroNick.visible=true; document.getElementById('hud').hidden=false; document.getElementById('hudNick').textContent=opts.nick+' 님'; mode='playing'; applyActivePet(); connect(); setTimeout(loadAnchoredModels,800); startReward(); };
 renderAll(); buildHero(opts);
 
@@ -2243,9 +2245,9 @@ function applyProfile(p){ if(!p) return;
   profileNick=p.nick||null; nickLockedUntil=p.nickLockedUntil||null; if(p.gender) needGender=false;   // 회원은 저장된 성별이 있으니 성별 고르기 생략
   opts.nick=p.nick||opts.nick; opts.gender=p.gender||opts.gender; opts.region=p.region||opts.region;
   opts.age=p.birthYear||opts.age; opts.job=p.job||opts.job; opts.intro=p.intro||opts.intro;
-  if(p.look) opts.look=sanitizeLook(p.look.v===2 ? p.look : { ...p.look, gender:opts.gender });
+  if(p.look) opts.look=fitToGender(sanitizeLook(p.look.v===2 ? p.look : { ...p.look, gender:opts.gender }), opts.gender);
   // 회원도 예전 귀여운 캐릭터는 한 번 동그란 얼굴로(서버 저장본이 브라우저 값을 덮어써서 위의 맞춤이 안 먹었다) — 입장하면 서버에도 저장된다
-  try{ if(opts.look.style==='chibi' && localStorage.getItem('kl_face_round_m')!=='1') fitFaceToStyle(opts.look,true); localStorage.setItem('kl_face_round_m','1'); }catch(e){}
+  try{ if(opts.look.style==='chibi' && localStorage.getItem('kl_face_round_m')!=='1') fitFaceToStyle(opts.look,true); }catch(e){}   // 서버에 저장된 뒤(saveProfileQuiet) 다시는 안 맞춘다
   try{ nickInput.value=opts.nick; const bi=document.getElementById('birth'); if(bi) bi.value=(opts.age||''); const ji=document.getElementById('job'); if(ji) ji.value=opts.job||''; const ii=document.getElementById('intro'); if(ii) ii.value=opts.intro||''; renderAll(); buildHero(opts); }catch(e){}
   updateNickLock();
 }
@@ -2281,7 +2283,7 @@ async function submitJoin(){
     const token=await fbUser.getIdToken();
     const r=await fetch('/api/plaza/join',{ method:'POST', headers:{ 'Content-Type':'application/json', Authorization:'Bearer '+token }, body:JSON.stringify(buildJoinBody()) });
     const j=await r.json().catch(()=>({}));
-    if(r.ok && j.ok){ member=true; startReward(); if(j.profile){ profileNick=j.profile.nick; nickLockedUntil=j.profile.nickLockedUntil||null; updateNickLock(); } try{ localStorage.removeItem('kl_plaza_pending'); }catch(e){} joinBox.hidden=true; toast('가입 완료! 환영해요'); tryPendingAccept(); const a=pendingAfterJoin; pendingAfterJoin=null; if(a) setTimeout(a,300); return true; }
+    if(r.ok && j.ok){ member=true; try{ localStorage.setItem('kl_face_round_m','1'); }catch(e){} startReward(); if(j.profile){ profileNick=j.profile.nick; nickLockedUntil=j.profile.nickLockedUntil||null; updateNickLock(); } try{ localStorage.removeItem('kl_plaza_pending'); }catch(e){} joinBox.hidden=true; toast('가입 완료! 환영해요'); tryPendingAccept(); const a=pendingAfterJoin; pendingAfterJoin=null; if(a) setTimeout(a,300); return true; }
     if(r.status===429 && j.nick){ opts.nick=j.nick; nickInput.value=j.nick; profileNick=j.nick; nickLockedUntil=j.nickLockedUntil||null; return submitJoin(); }
     if(r.status===409){ promptNickFix(); return false; }
     if(j.error==='nick_bad'||j.error==='nick_jamo'||j.error==='nick_reserved'){ promptNickFix(NICK_MSG[j.error==='nick_bad'?'bad':j.error==='nick_reserved'?'reserved':'jamo']+'.'); return false; }
@@ -2290,13 +2292,16 @@ async function submitJoin(){
   }catch(e){ toast('네트워크 오류예요. 잠시 후 다시 시도해 주세요'); return false; }
 }
 
+// 회원이 입장할 때 모습·소개 저장(조용히). 저장되면 동그란 얼굴 맞춤도 끝난 것으로 기록
+async function saveProfileQuiet(){ try{ const t=await fbUser.getIdToken(); const r=await fetch('/api/plaza/join',{ method:'POST', headers:{ 'Content-Type':'application/json', Authorization:'Bearer '+t }, body:JSON.stringify(buildJoinBody()) });
+  if(r.ok){ try{ localStorage.setItem('kl_face_round_m','1'); }catch(e){} } }catch(e){} }
 // 회원이 입장 화면에서 닉네임을 바꿨을 때: 서버 저장(24시간 잠금·중복 검사)
 async function saveNickChange(){
   try{
     const t=await fbUser.getIdToken();
     const r=await fetch('/api/plaza/join',{ method:'POST', headers:{ 'Content-Type':'application/json', Authorization:'Bearer '+t }, body:JSON.stringify(buildJoinBody()) });
     const j=await r.json().catch(()=>({}));
-    if(r.ok && j.ok){ profileNick=j.profile.nick; nickLockedUntil=j.profile.nickLockedUntil||null; toast('닉네임을 '+profileNick+'(으)로 바꿨어요'); return true; }
+    if(r.ok && j.ok){ profileNick=j.profile.nick; nickLockedUntil=j.profile.nickLockedUntil||null; try{ localStorage.setItem('kl_face_round_m','1'); }catch(e){} toast('닉네임을 '+profileNick+'(으)로 바꿨어요'); return true; }
     if(r.status===429){ nickLockedUntil=j.nickLockedUntil||nickLockedUntil; if(j.nick) profileNick=j.nick; updateNickLock(); toast('닉네임은 '+lockLeftText(nickLockedUntil-Date.now())+' 후 바꿀 수 있어요'); return false; }
     if(r.status===409){ toast('이미 사용 중인 닉네임이에요'); nickInput.focus(); return false; }
     if(j.error==='nick_bad'||j.error==='nick_jamo'||j.error==='nick_reserved'){ toast(NICK_MSG[j.error==='nick_bad'?'bad':j.error==='nick_reserved'?'reserved':'jamo']); nickInput.focus(); return false; }

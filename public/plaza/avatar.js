@@ -104,6 +104,9 @@ export function drawFace(cv, look) {
 const STYLE_HEAD = { chibi: 1.16 };
 // 귀여운: 머리를 목 쪽으로 내려 어깨에 얹힌 느낌으로(반팔·셔츠처럼 목이 드러나는 옷에서 머리가 떠 보였다). 머리 뼈 위치(m)
 const STYLE_HEAD_DROP = { chibi: 0.045 };
+// 귀여운: 팔을 몸 쪽으로 내린다(라디안). 원래 자세가 팔을 45도로 벌린 A자라 소매가 판자처럼 뻗고 몸통이 네모 자루처럼 보였다
+const STYLE_ARM_DOWN = { chibi: 0.5 };
+const _q = new THREE.Quaternion(), _qp = new THREE.Quaternion(), _qm = new THREE.Quaternion(), _fwd = new THREE.Vector3(0, 0, 1), _v = new THREE.Vector3();
 const SKIN_GLOW = 0.22;
 const ACT = { idle: 'idle', walk: 'walk', wave: 'wave', sit: 'sit', dance: 'dance', run: 'run' };
 let _heart = null;   // 하트 이모트 그림(한 번만 그려서 같이 씀)
@@ -120,7 +123,7 @@ export function createAvatar(rawLook, { faceSize = 512 } = {}) {
   const group = new THREE.Group(), self = { group, ready: false, look: sanitizeLook(rawLook), mixer: null, actions: {}, cur: null };
   const cv = document.createElement('canvas'); cv.width = faceSize; cv.height = faceSize / 2;
   const faceTex = new THREE.CanvasTexture(cv); faceTex.colorSpace = THREE.SRGBColorSpace; faceTex.flipY = false; faceTex.wrapS = THREE.RepeatWrapping;
-  let model = null, parts = [], morphMeshes = [], skinMats = [], busy = null, hearts = [], headBone = null, headScale = 1, headDrop = 0, headBaseY = 0;
+  let model = null, parts = [], morphMeshes = [], skinMats = [], busy = null, hearts = [], headBone = null, headScale = 1, headDrop = 0, headBaseY = 0, armBones = [], armDown = 0;
   self.setLook = (raw) => {
     self.look = sanitizeLook(raw); const L = self.look;
     if (mounted && L.style !== mounted) { mount(L.style); }
@@ -167,7 +170,17 @@ export function createAvatar(rawLook, { faceSize = 512 } = {}) {
     self.mixer.update(dt);
     if (headBone && headScale !== 1) headBone.scale.setScalar(headScale);   // 동작 파일에 크기·위치 키가 있어 매 프레임 덮어쓴다
     if (headBone && headDrop) headBone.position.y = headBaseY - headDrop;   // 기본 위치에서 뺀 값으로 고정(빼기를 쌓으면 머리가 계속 내려간다)
+    if (armDown && armBones.length) lowerArms();
   };
+  // 동작이 정한 팔 회전 위에, 캐릭터 기준 앞뒤 축으로 팔을 몸 쪽으로 더 돌린다(동작마다 매 프레임 새로 정해지므로 쌓이지 않음)
+  function lowerArms() {
+    model.updateMatrixWorld(true); model.getWorldQuaternion(_qm).invert();
+    for (const a of armBones) {
+      a.bone.parent.getWorldQuaternion(_qp).premultiply(_qm);
+      _q.setFromAxisAngle(_fwd, a.sign * armDown);
+      a.bone.quaternion.premultiply(_qp.clone().invert().multiply(_q).multiply(_qp));
+    }
+  }
   self.dispose = () => { faceTex.dispose(); group.traverse((o) => { if (o.isMesh) { o.material?.dispose?.(); } }); };
   drawFace(cv, self.look);
   // 그림체(style)마다 파일이 다르다 — 바뀌면 모델을 통째로 다시 붙인다
@@ -181,6 +194,8 @@ export function createAvatar(rawLook, { faceSize = 512 } = {}) {
     model = SkeletonUtils.clone(gltf.scene); group.add(model);
     // 귀여운: 머리를 키워 2등신에 가깝게(모자·머리카락도 머리 뼈를 따라 같이 커진다)
     headBone = model.getObjectByName('head'); headScale = STYLE_HEAD[style] || 1; headDrop = STYLE_HEAD_DROP[style] || 0; headBaseY = headBone ? headBone.position.y : 0;
+    armDown = STYLE_ARM_DOWN[style] || 0; armBones = [];
+    if (armDown) { model.updateMatrixWorld(true); for (const n of ['upper_arm.L', 'upper_arm.R', 'upper_armL', 'upper_armR']) { const b = model.getObjectByName(n); if (b && !armBones.some((x) => x.bone === b)) { b.getWorldPosition(_v); model.worldToLocal(_v); armBones.push({ bone: b, sign: _v.x > 0 ? -1 : 1 }); } } }
     model.traverse((o) => {
       if (o.userData && o.userData.kl_part) parts.push(o);
       // 안경은 캐릭터마다 눈 위치가 달라 모양을 따로 가진다(복제본끼리 같은 geometry를 같이 쓰므로 복사)
@@ -190,6 +205,9 @@ export function createAvatar(rawLook, { faceSize = 512 } = {}) {
         const n = o.material && o.material.name || '';
         if (/^TINT_|^MAT_av_skin/.test(n)) { o.material = o.material.clone(); o.material.userData.tint = /^TINT_/.test(n); if (/^MAT_av_skin/.test(n)) skinMats.push(o.material); }
         if (style === 'chibi' && /^MAT_av_skin/.test(n)) o.material.emissiveIntensity = SKIN_GLOW;
+        // 옷·머리카락은 피부보다 1~2cm 위에 겹쳐 있어, 멀리서 보면 화면이 어느 쪽을 앞에 그릴지 헷갈려 옷이 번쩍이며 사라졌다(z-fighting) →
+        // 옷·머리 재질은 깊이 계산에서 살짝 앞으로 당겨 늘 피부보다 앞에 그리게 한다
+        if (/^TINT_|^FIX_/.test(n)) { if (!o.material.userData.tint && !/^MAT_av_skin/.test(n)) o.material = o.material.clone(); o.material.polygonOffset = true; o.material.polygonOffsetFactor = -2; o.material.polygonOffsetUnits = -4; }
         if (/^MAT_av_face/.test(n)) {
           o.material = o.material.clone(); o.material.map = faceTex; o.material.color.set('#ffffff');
           if (style === 'chibi') { o.material.emissive = new THREE.Color('#ffffff'); o.material.emissiveMap = faceTex; o.material.emissiveIntensity = SKIN_GLOW; }

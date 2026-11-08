@@ -46,7 +46,8 @@ export const isLockedAcc = (a) => a in LOCKED_ACC || a in SHOP_ACC;
 export const GENDER_OPTIONS = {
   male:   { hair: ['short', 'dandy', 'twoblock', 'spiky', 'bob'], top: ['tee', 'long', 'hoodie', 'shirt'], bottom: ['pants', 'shorts'],
             shoes: ['sneakers', 'boots'], acc: ['glasses', 'cap', 'beanie', 'crossbag', 'goldkeyring', 'crown', 'balloon', 'halo', 'wings', 'santa', 'antlers', 'scarf'] },
-  female: { hair: ['long', 'bob', 'ponytail', 'bun', 'short'], top: ['tee', 'long', 'hoodie', 'shirt', 'dress'], bottom: ['pants', 'shorts', 'skirt'],
+  female: { hair: ['long', 'bob', 'ponytail', 'bun'],   // 숏컷은 남성만(2026-11-08)
+            top: ['tee', 'long', 'hoodie', 'shirt', 'dress'], bottom: ['pants', 'shorts', 'skirt'],
             shoes: ['sneakers', 'boots'], acc: ['glasses', 'earrings', 'cap', 'beanie', 'crossbag', 'goldkeyring', 'crown', 'balloon', 'halo', 'wings', 'santa', 'antlers', 'scarf'] },
 };
 
