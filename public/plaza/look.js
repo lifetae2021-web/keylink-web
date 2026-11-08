@@ -57,9 +57,8 @@ export function fitToGender(look, gender) {
   for (const k of ['hair', 'top', 'bottom', 'shoes']) if (!o[k].includes(out[k])) out[k] = d[k];
   out.acc = (out.acc || []).filter((a) => o.acc.includes(a));
   if (g === 'male') out.female = 0; else if (look.gender !== 'female') out.female = 1;
-  // 성별을 바꿀 때 상의 색이 그 성별의 기본색이면 바뀐 성별의 기본색으로(여성 분홍 #f4a6b8 · 남성 하늘색 #7fb3e6)
-  if (out.colors) { const top = String(out.colors.top || '').toLowerCase(), want = defaultLook(g).colors.top;
-    if ((top === '#7fb3e6' || top === '#f4a6b8') && top !== want) out.colors = { ...out.colors, top: want }; }
+  // 성별을 바꾸면 상의 색은 그 성별의 기본색으로(여성 분홍 #f4a6b8 · 남성 하늘색 #7fb3e6) — 바꾼 뒤 다시 고를 수 있다
+  if (out.colors && look.gender !== g) out.colors = { ...out.colors, top: defaultLook(g).colors.top };
   return out;
 }
 
