@@ -134,7 +134,6 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
   const [calendarMonth, setCalendarMonth] = useState(mappedSessions.length > 0 ? mappedSessions[0].eventDate.getMonth() : new Date().getMonth());
   const [sessions, setSessions] = useState<RecruitingSession[]>(mappedSessions);
   const [selectedSessionIds, setSelectedSessionIds] = useState<Set<string>>(new Set());
-  const [drinkRetired, setDrinkRetired] = useState(false);   // 예전에 고른 음료가 메뉴에서 빠졌으면 다시 고르라고 안내
   const [loadingSessions, setLoadingSessions] = useState(mappedSessions.length === 0);
   const sessionListRef = useRef<HTMLDivElement>(null);
 
@@ -493,7 +492,7 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
               smoking: d.smoking || prev.smoking,
               drinking: d.drinking || prev.drinking,
               religion: d.religion || prev.religion,
-              drink: (() => { if (!d.drink) return prev.drink; const r = parseDrinks(d.drink); if (r.hadRetired) setDrinkRetired(true); return r.drinks; })(),
+              drink: d.drink ? parseDrinks(d.drink) : prev.drink,
               etc: d.etc || prev.etc,
               employmentProof: d.employmentProof || d.verificationUrl || prev.employmentProof,
             }));
@@ -800,7 +799,7 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
     addError(!!form.smoking, '흡연 유무를 선택해 주세요.', 'field-smoking');
     addError(!!form.drinking, '음주 빈도를 선택해 주세요.', 'field-drinking');
     addError(!!form.religion, '종교를 선택해 주세요.', 'field-religion');
-    { const de = drinkError(form.drink, drinkRetired); addError(!de, de || '', 'field-drink'); }
+    { const de = drinkError(form.drink); addError(!de, de || '', 'field-drink'); }
     addError(photos.length > 0, '본인 사진을 최소 1장 이상 등록해 주세요.', 'field-photos');
     addError(isAllAgreed, currentUser ? '환불 및 취소 규정에 동의해 주세요.' : '모든 필수 약관에 동의해 주세요.', 'field-agreements');
 
@@ -2384,9 +2383,6 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
                 );
               })}
             </div>
-            {drinkRetired && !form.drink.some((d: string) => d !== WARM) && (
-              <p style={{ marginTop: '8px', fontSize: '0.78rem', color: '#E25B4F', wordBreak: 'keep-all' }}>복숭아 아이스티는 이제 준비되지 않아요. 희망 음료를 다시 골라 주세요.</p>
-            )}
           </FormField>
 
           <FormField errorFields={errorFields} label="특이사항 / 키링크에게 바라는 점">

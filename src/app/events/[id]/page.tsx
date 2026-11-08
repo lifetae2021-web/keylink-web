@@ -47,7 +47,6 @@ export default function EventDetailPage() {
   }, [id]);
 
   const [showRuleModal, setShowRuleModal] = useState(false);
-  const [drinkRetired, setDrinkRetired] = useState(false);   // 예전에 고른 음료가 메뉴에서 빠졌으면 다시 고르라고 안내
   const [ruleAccepted, setRuleAccepted] = useState(false);
 
   // 0: 상세페이지, 1: 신청 폼, 2: 결제 대기(모의)
@@ -124,7 +123,7 @@ export default function EventDetailPage() {
             smoking: d.smoking || '',
             drinking: d.drinking || '',
             religion: d.religion || '',
-            drink: (() => { const r = parseDrinks(d.drink); if (r.hadRetired) setDrinkRetired(true); return r.drinks; })(),
+            drink: parseDrinks(d.drink),
             etc: d.etc || '',
             agreeTerms: true,
             agreeRule: true,
@@ -370,8 +369,8 @@ export default function EventDetailPage() {
       }
     }
 
-    // 이 화면은 음료가 필수가 아니라서, 고른 게 있거나 예전 음료가 빠진 경우만 검사
-    if ((form.drink || []).length || drinkRetired) { const de = drinkError(form.drink || [], drinkRetired); if (de) { toast.error(de); return; } }
+    // 이 화면은 음료가 필수가 아니라서, 고른 게 있을 때만 검사
+    if ((form.drink || []).length) { const de = drinkError(form.drink || []); if (de) { toast.error(de); return; } }
 
     if (photos.length === 0) {
       toast.error('본인 사진을 최소 1장 이상 업로드해주세요.');
@@ -1092,9 +1091,6 @@ export default function EventDetailPage() {
                           );
                         })}
                       </div>
-                      {drinkRetired && !(form.drink || []).some((d: string) => d !== WARM) && (
-                        <p style={{ marginTop: '8px', fontSize: '0.78rem', color: '#E25B4F', wordBreak: 'keep-all' }}>복숭아 아이스티는 이제 준비되지 않아요. 희망 음료를 다시 골라 주세요.</p>
-                      )}
                     </div>
                     <div>
                       <label className="kl-label" style={{ marginBottom: '12px' }}>본인 사진 업로드 ({photos.length}/5) *</label>

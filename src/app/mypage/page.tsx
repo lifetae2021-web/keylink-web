@@ -79,7 +79,6 @@ function MyPageContent() {
 
   const [user, setUser] = useState<User | null>(null);
   const [userData, setUserData] = useState<any>(null);
-  const [drinkRetired, setDrinkRetired] = useState(false);   // 예전에 고른 음료가 메뉴에서 빠졌으면 다시 고르라고 안내
   const [phoneToken, setPhoneToken] = useState<{ token: string; phone: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(false);
@@ -212,7 +211,7 @@ function MyPageContent() {
             smoking: d.smoking || '',
             drinking: d.drinking || '',
             religion: d.religion || '',
-            drink: (() => { const r = parseDrinks(d.drink); if (r.hadRetired) setDrinkRetired(true); return r.drinks; })(),
+            drink: parseDrinks(d.drink),
             etc: d.etc || '',
             employmentProof: d.employmentProof || d.verificationUrl || '',
           };
@@ -335,8 +334,8 @@ function MyPageContent() {
     if (!editForm.smoking) return toast.error('흡연 유무를 선택해주세요.');
     if (!editForm.drinking) return toast.error('음주 빈도를 선택해주세요.');
     if (!editForm.religion) return toast.error('종교를 선택해주세요.');
-    // 이 화면은 음료가 필수가 아니라서, 고른 게 있거나 예전 음료가 빠진 경우만 검사
-    if ((editForm.drink || []).length || drinkRetired) { const de = drinkError(editForm.drink || [], drinkRetired); if (de) return toast.error(de); }
+    // 이 화면은 음료가 필수가 아니라서, 고른 게 있을 때만 검사
+    if ((editForm.drink || []).length) { const de = drinkError(editForm.drink || []); if (de) return toast.error(de); }
 
     // 본인 사진 1장 이상 필수 검사
     if (photos.length === 0) {
@@ -929,9 +928,6 @@ function MyPageContent() {
                   );
                 })}
               </div>
-              {drinkRetired && !(editForm.drink || []).some((d: string) => d !== WARM) && (
-                <p style={{ marginTop: '8px', fontSize: '0.78rem', color: '#E25B4F', wordBreak: 'keep-all' }}>복숭아 아이스티는 이제 준비되지 않아요. 희망 음료를 다시 골라 주세요.</p>
-              )}
             </EditRow>
 
 
