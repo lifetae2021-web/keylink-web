@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { auth, db, storage } from '@/lib/firebase';
 import { compressImage, formatBirthDate, isValidBirthDate, normalizeBirthDate } from '@/lib/utils';
 import { buildProfileChangeLogs, CORE_PROFILE_FIELDS, ProfileChangeLog } from '@/lib/profileChangeLog';
+import { DRINK_OPTIONS, WARM, parseDrinks, toggleDrink, isWarmDisabled as warmDisabled, drinkError } from '@/lib/drinks';
 import { User, updatePassword } from 'firebase/auth';
 import {
   doc, getDoc, updateDoc, serverTimestamp, deleteField,
@@ -78,6 +79,7 @@ function MyPageContent() {
 
   const [user, setUser] = useState<User | null>(null);
   const [userData, setUserData] = useState<any>(null);
+  const [drinkRetired, setDrinkRetired] = useState(false);   // 예전에 고른 음료가 메뉴에서 빠졌으면 다시 고르라고 안내
   const [phoneToken, setPhoneToken] = useState<{ token: string; phone: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(false);
@@ -210,7 +212,7 @@ function MyPageContent() {
             smoking: d.smoking || '',
             drinking: d.drinking || '',
             religion: d.religion || '',
-            drink: Array.isArray(d.drink) ? d.drink : (d.drink ? [d.drink] : []),
+            drink: (() => { const r = parseDrinks(d.drink); if (r.hadRetired) setDrinkRetired(true); return r.drinks; })(),
             etc: d.etc || '',
             employmentProof: d.employmentProof || d.verificationUrl || '',
           };
@@ -333,6 +335,8 @@ function MyPageContent() {
     if (!editForm.smoking) return toast.error('흡연 유무를 선택해주세요.');
     if (!editForm.drinking) return toast.error('음주 빈도를 선택해주세요.');
     if (!editForm.religion) return toast.error('종교를 선택해주세요.');
+    // 이 화면은 음료가 필수가 아니라서, 고른 게 있거나 예전 음료가 빠진 경우만 검사
+    if ((editForm.drink || []).length || drinkRetired) { const de = drinkError(editForm.drink || [], drinkRetired); if (de) return toast.error(de); }
 
     // 본인 사진 1장 이상 필수 검사
     if (photos.length === 0) {
@@ -897,13 +901,10 @@ function MyPageContent() {
 
             <EditRow label="희망 음료 (중복 선택 가능)">
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                {['아이스 아메리카노', '복숭아 아이스티', '얼그레이', '페퍼민트', '카라멜 블랙티', '물', '따뜻한 음료'].map(d => {
+                {DRINK_OPTIONS.map(d => {
                   const currentDrinks = editForm.drink || [];
                   const selected = currentDrinks.includes(d);
-                  
-                  const MAIN_DRINKS = ['아이스 아메리카노', '복숭아 아이스티', '얼그레이', '페퍼민트', '카라멜 블랙티', '물'];
-                  const hasIceOnlySelected = currentDrinks.some((v: string) => ['아이스 아메리카노', '복숭아 아이스티'].includes(v));
-                  const isWarmDisabled = d === '따뜻한 음료' && hasIceOnlySelected;
+                  const isWarmDisabled = d === WARM && warmDisabled(currentDrinks);
 
                   return (
                     <button 
@@ -912,26 +913,7 @@ function MyPageContent() {
                       disabled={isWarmDisabled}
                       onClick={() => {
                         if (isWarmDisabled) return;
-                        let next: string[] = [];
-
-                        if (MAIN_DRINKS.includes(d)) {
-                          if (currentDrinks.includes(d)) {
-                            next = currentDrinks.filter((v: string) => v !== d);
-                          } else {
-                            next = currentDrinks.filter((v: string) => !MAIN_DRINKS.includes(v));
-                            next.push(d);
-                            if (['아이스 아메리카노', '복숭아 아이스티'].includes(d)) {
-                              next = next.filter((v: string) => v !== '따뜻한 음료');
-                            }
-                          }
-                        } else if (d === '따뜻한 음료') {
-                          if (currentDrinks.includes(d)) {
-                            next = currentDrinks.filter((v: string) => v !== d);
-                          } else {
-                            next = [...currentDrinks, d];
-                          }
-                        }
-                        setEditForm((p: any) => ({ ...p, drink: next }));
+                        setEditForm((p: any) => ({ ...p, drink: toggleDrink(currentDrinks, d) }));
                       }}
                       style={{ 
                         padding: '10px 16px', borderRadius: '12px', fontSize: '0.82rem', fontWeight: '700', 
@@ -947,6 +929,9 @@ function MyPageContent() {
                   );
                 })}
               </div>
+              {drinkRetired && !(editForm.drink || []).some((d: string) => d !== WARM) && (
+                <p style={{ marginTop: '8px', fontSize: '0.78rem', color: '#E25B4F', wordBreak: 'keep-all' }}>복숭아 아이스티는 이제 준비되지 않아요. 희망 음료를 다시 골라 주세요.</p>
+              )}
             </EditRow>
 
 

@@ -510,13 +510,11 @@ let skyMat=null;
     fragmentShader:'uniform vec3 top; uniform vec3 mid; uniform vec3 low; varying vec3 vP; void main(){ float h=vP.y; vec3 c = h>0.0 ? mix(mid, top, pow(clamp(h,0.0,1.0),0.6)) : mix(mid, low, clamp(-h*3.0,0.0,1.0)); gl_FragColor=vec4(c,1.0); }' }));
   sky.renderOrder=-1; scene.add(sky); }
 // 카메라 가까운 면 0.3m: 깊이 정밀도가 0.1일 때보다 3배 — 멀리 있는 캐릭터 옷·모자가 깜빡이던 것 줄임
-const camera = new THREE.PerspectiveCamera(55, 1, 0.3, 400); let camYaw=0, camPitch=0.5, camDist=15; const camMinPitch=0.14, camMaxPitch=1.25;
-// 카메라 거리: 휴대폰은 화면이 좁아 기본을 멀리(광장이 한눈에), 마지막으로 맞춘 거리는 이 기기에 기억
-const CAM_MIN=7, CAM_MAX=28;
-if(matchMedia('(pointer:coarse)').matches){ camDist=27; camPitch=0.7; }
-try{ const d=+localStorage.getItem('kl_cam_dist'); if(d>=CAM_MIN && d<=CAM_MAX) camDist=d; }catch(e){}
-function setCamDist(d){ camDist=Math.min(CAM_MAX,Math.max(CAM_MIN,d)); try{ localStorage.setItem('kl_cam_dist',camDist.toFixed(1)); }catch(e){} }
-function camOff(){ const cp=Math.cos(camPitch); return new THREE.Vector3(Math.sin(camYaw)*camDist*cp, Math.sin(camPitch)*camDist, Math.cos(camYaw)*camDist*cp); }
+const camera = new THREE.PerspectiveCamera(55, 1, 0.3, 400); let camYaw=0, camPitch=0.5, camDist=19; const camMinPitch=0.02, camMaxPitch=1.25, CAM_FLOOR=0.5;   // 카메라 자리는 CAM_FLOOR 아래로 안 내린다(뒤쪽 숲·집 속으로 들어감) — 그보다 더 위로 끌면 자리는 그대로 두고 고개만 들어 하늘을 본다
+// 카메라 거리: 휴대폰은 화면이 좁아 멀리(광장이 한눈에). 확대·축소는 없앴다(화면 크기가 바뀌면 어지럽다는 의견) — 거리 고정
+if(matchMedia('(pointer:coarse)').matches){ camDist=33; camPitch=0.7; }
+function camOff(){ const pt=shotCam?camPitch:Math.max(camPitch,CAM_FLOOR), cp=Math.cos(pt); return new THREE.Vector3(Math.sin(camYaw)*camDist*cp, Math.sin(pt)*camDist, Math.cos(camYaw)*camDist*cp); }
+const camLookUp=()=>shotCam?0:Math.max(0,CAM_FLOOR-camPitch)*camDist*1.3;
 // 따뜻한 오후 빛 + 부드러운 그림자(해 하나만 그림자를 만든다. 휴대폰은 그림자 해상도를 낮춰 가볍게)
 // 환경광(IBL): 위는 하늘색, 아래는 잔디색으로 사방에서 오는 은은한 바깥 빛 — 실사 나무·재질이 입체적으로 보인다
 // 세기는 밤낮(applyDayNight)이 정한다
@@ -796,12 +794,16 @@ document.getElementById('bgmVol').oninput=(e)=>{ bgm.vol=e.target.value/100; bgm
 const snow=(()=>{ const n=1400, p=new Float32Array(n*3); for(let i=0;i<n;i++){ p[i*3]=(Math.random()-0.5)*60; p[i*3+1]=Math.random()*30; p[i*3+2]=(Math.random()-0.5)*60; }
   const g=new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(p,3));
   const c=document.createElement('canvas'); c.width=c.height=32; const x=c.getContext('2d'), gr=x.createRadialGradient(16,16,0,16,16,16); gr.addColorStop(0,'rgba(255,255,255,1)'); gr.addColorStop(0.5,'rgba(255,255,255,0.7)'); gr.addColorStop(1,'rgba(255,255,255,0)'); x.fillStyle=gr; x.fillRect(0,0,32,32);
-  const s=new THREE.Points(g, new THREE.PointsMaterial({ size:0.22, map:new THREE.CanvasTexture(c), transparent:true, depthWrite:false, opacity:0.95 }));
+  const m=new THREE.PointsMaterial({ size:0.22, map:new THREE.CanvasTexture(c), transparent:true, depthWrite:false, opacity:0.95 });
+  // 카메라 바로 앞 눈송이는 화면에서 공처럼 커 보인다 → 화면 크기를 눈송이답게 상한(기기 화소 밀도 반영)
+  m.onBeforeCompile=(sh)=>{ sh.vertexShader=sh.vertexShader.replace('#include <fog_vertex>', '#include <fog_vertex>\n  gl_PointSize = min( gl_PointSize, '+(6*Math.min(2,devicePixelRatio||1)).toFixed(1)+' );'); };
+  const s=new THREE.Points(g, m);
   s.visible=false; s.frustumCulled=false; scene.add(s); return s; })();
 function updateSnow(dt){
   if(!snow.visible) return; const a=snow.geometry.attributes.position, p=a.array, t=clock.elapsedTime;
   for(let i=0;i<p.length;i+=3){ p[i+1]-=dt*(1.1+(i%7)*0.12); p[i]+=Math.sin(t*0.7+i)*dt*0.25; if(p[i+1]<0) p[i+1]+=30; }
-  a.needsUpdate=true; snow.position.set(hero.position.x, 0, hero.position.z);
+  // 카메라가 멀리(30m 넘게) 떨어져 있어 캐릭터와 카메라 사이 가운데에 눈 상자를 둔다(화면 전체에 고르게 내리게)
+  a.needsUpdate=true; snow.position.set((hero.position.x+camera.position.x)/2, 0, (hero.position.z+camera.position.z)/2);
 }
 applyDayNight();
 function resize(){ const w=innerWidth,h=innerHeight; renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix(); }
@@ -2393,15 +2395,11 @@ function walkToScreen(nx,ny){ ndc.set(nx,ny); raycaster.setFromCamera(ndc,camera
   let x=walkHit.x, z=walkHit.z; const r=Math.hypot(x,z); if(r>BOUNDARY){ x*=BOUNDARY/r; z*=BOUNDARY/r; }
   if(Math.hypot(x-hero.position.x,z-hero.position.z)>40) return;   // 하늘 쪽을 눌러 너무 멀리 찍힌 곳은 무시
   walkTo={ x, z, best:Infinity, stuck:0 }; walkMark.position.set(x,groundAt(x,z,hero.position.y)+0.12,z); walkMark.visible=true; walkMark.scale.setScalar(1); }
-canvasEl.addEventListener('wheel',(e)=>{ if(mode!=='playing' || e.ctrlKey) return; setCamDist(camDist+Math.sign(e.deltaY)*1.3); },{passive:true});
-// 브라우저 자체 확대(트랙패드 벌리기 = ctrl+휠, 사파리 제스처)는 막는다 — 캐릭터 만들기 화면이 통째로 커져 잘리던 문제. 입장 후엔 카메라 거리로 바꿔 준다
-addEventListener('wheel',(e)=>{ if(!e.ctrlKey) return; e.preventDefault(); if(mode==='playing') setCamDist(camDist+e.deltaY*0.05); },{ passive:false });
+// 브라우저 자체 확대(트랙패드 벌리기 = ctrl+휠, 사파리 제스처)는 막는다 — 캐릭터 만들기 화면이 통째로 커져 잘리던 문제
+addEventListener('wheel',(e)=>{ if(!e.ctrlKey) return; e.preventDefault(); },{ passive:false });
 for(const ev of ['gesturestart','gesturechange','gestureend']) addEventListener(ev,(e)=>e.preventDefault(),{ passive:false });
-// 휴대폰: 두 손가락으로 벌리면 가까이, 오므리면 멀리(그동안은 화면 돌리기·사람 탭을 멈춘다)
-let pinchD=0; const touchGap=(t)=>Math.hypot(t[0].clientX-t[1].clientX, t[0].clientY-t[1].clientY);
-canvasEl.addEventListener('touchstart',(e)=>{ if(e.touches.length===2 && mode==='playing'){ pinchD=touchGap(e.touches); dragId=null; } },{passive:true});   // 캐릭터 만들기 화면에서는 확대 없음
-canvasEl.addEventListener('touchmove',(e)=>{ if(e.touches.length!==2 || !pinchD) return; const d=touchGap(e.touches); if(d>0){ setCamDist(camDist*pinchD/d); pinchD=d; } },{passive:true});
-canvasEl.addEventListener('touchend',(e)=>{ if(e.touches.length<2) pinchD=0; },{passive:true});
+// 휴대폰: 두 손가락을 대면 화면 돌리기·사람 탭을 멈춘다(확대·축소는 없음)
+canvasEl.addEventListener('touchstart',(e)=>{ if(e.touches.length===2 && mode==='playing') dragId=null; },{passive:true});
 
 // ── 키링 월드 입장 동의 (버전이 바뀌면 다시 받는다 — 예: 1:1 성사 후 프로필 사진 공개 기능 추가 시) ──
 // .3: '프로필 공개'를 개인정보 수집·이용 안내에 포함(별도 체크 없음) / 11-05.1: 키키 대화·소원·활동 기록과 방침 전문 링크 추가
@@ -2461,7 +2459,8 @@ function tick(){
     clawBtn.hidden=!(!heroSeat && clawSpots.some(c=>Math.hypot(c.x-hero.position.x,c.z-hero.position.z)<2.2));
     feedBtn.hidden=!(!heroSeat && nearCat(hero.position)); wishBtn.hidden=!(Math.hypot(hero.position.x-FOUNTAIN.x,hero.position.z-FOUNTAIN.z)<(themeId==='xmas'?7.6:FOUNTAIN.r));   // 크리스마스는 큰 트리 울타리(5.6m) 밖에서
     { const can=!heroSeat && nearSeat(); sitBtn.hidden=!(heroSeat||can); sitBtn.querySelector('span').textContent=heroSeat?'일어나기':'앉기'; sitBtn.classList.toggle('on',!!heroSeat); }
-    const target=hero.position.clone().add(camOff()); camera.position.lerp(target,1-Math.pow(0.0008,dt)); camera.lookAt(hero.position.x,hero.position.y+1.4,hero.position.z);
+    const eye=new THREE.Vector3(hero.position.x,hero.position.y+1.4,hero.position.z), target=hero.position.clone().add(camOff());
+    camera.position.lerp(target,1-Math.pow(0.0008,dt)); eye.y+=camLookUp(); camera.lookAt(eye);
     sendPos(dt);
   } else {
     // 패널에 가리지 않는 영역(PC: 왼쪽, 휴대폰: 위쪽) 가운데에 캐릭터. 보이는 높이가 작을수록 카메라를 멀리

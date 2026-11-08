@@ -9,6 +9,7 @@ import {
   CheckCircle2, WalletCards, Sparkles, ArrowRight, Ticket, Gift
 } from 'lucide-react';
 import { POLICIES } from '@/lib/constants/policies';
+import { DRINK_OPTIONS, WARM, parseDrinks, toggleDrink, isWarmDisabled as warmDisabled, drinkError } from '@/lib/drinks';
 import { getSession } from '@/lib/firestore/sessions';
 import { Session } from '@/lib/types';
 import { format } from 'date-fns';
@@ -46,6 +47,7 @@ export default function EventDetailPage() {
   }, [id]);
 
   const [showRuleModal, setShowRuleModal] = useState(false);
+  const [drinkRetired, setDrinkRetired] = useState(false);   // 예전에 고른 음료가 메뉴에서 빠졌으면 다시 고르라고 안내
   const [ruleAccepted, setRuleAccepted] = useState(false);
 
   // 0: 상세페이지, 1: 신청 폼, 2: 결제 대기(모의)
@@ -122,7 +124,7 @@ export default function EventDetailPage() {
             smoking: d.smoking || '',
             drinking: d.drinking || '',
             religion: d.religion || '',
-            drink: Array.isArray(d.drink) ? d.drink : (d.drink ? [d.drink] : []),
+            drink: (() => { const r = parseDrinks(d.drink); if (r.hadRetired) setDrinkRetired(true); return r.drinks; })(),
             etc: d.etc || '',
             agreeTerms: true,
             agreeRule: true,
@@ -367,6 +369,9 @@ export default function EventDetailPage() {
         return;
       }
     }
+
+    // 이 화면은 음료가 필수가 아니라서, 고른 게 있거나 예전 음료가 빠진 경우만 검사
+    if ((form.drink || []).length || drinkRetired) { const de = drinkError(form.drink || [], drinkRetired); if (de) { toast.error(de); return; } }
 
     if (photos.length === 0) {
       toast.error('본인 사진을 최소 1장 이상 업로드해주세요.');
@@ -1059,13 +1064,10 @@ export default function EventDetailPage() {
                     <div style={{ marginBottom: '24px' }}>
                       <label className="kl-label">희망 음료 (중복 선택 가능)</label>
                       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '10px' }}>
-                        {['아이스 아메리카노', '복숭아 아이스티', '얼그레이', '페퍼민트', '카라멜 블랙티', '물', '따뜻한 음료'].map(d => {
+                        {DRINK_OPTIONS.map(d => {
                           const currentDrinks = form.drink || [];
                           const selected = currentDrinks.includes(d);
-
-                          const MAIN_DRINKS = ['아이스 아메리카노', '복숭아 아이스티', '얼그레이', '페퍼민트', '카라멜 블랙티', '물'];
-                          const hasIceOnlySelected = currentDrinks.some((v: string) => ['아이스 아메리카노', '복숭아 아이스티'].includes(v));
-                          const isWarmDisabled = d === '따뜻한 음료' && hasIceOnlySelected;
+                          const isWarmDisabled = d === WARM && warmDisabled(currentDrinks);
 
                           return (
                             <button
@@ -1074,26 +1076,7 @@ export default function EventDetailPage() {
                               disabled={isWarmDisabled}
                               onClick={() => {
                                 if (isWarmDisabled) return;
-                                let next: string[] = [];
-
-                                if (MAIN_DRINKS.includes(d)) {
-                                  if (currentDrinks.includes(d)) {
-                                    next = currentDrinks.filter((v: string) => v !== d);
-                                  } else {
-                                    next = currentDrinks.filter((v: string) => !MAIN_DRINKS.includes(v));
-                                    next.push(d);
-                                    if (['아이스 아메리카노', '복숭아 아이스티'].includes(d)) {
-                                      next = next.filter((v: string) => v !== '따뜻한 음료');
-                                    }
-                                  }
-                                } else if (d === '따뜻한 음료') {
-                                  if (currentDrinks.includes(d)) {
-                                    next = currentDrinks.filter((v: string) => v !== d);
-                                  } else {
-                                    next = [...currentDrinks, d];
-                                  }
-                                }
-                                setForm((p: any) => ({ ...p, drink: next }));
+                                setForm((p: any) => ({ ...p, drink: toggleDrink(currentDrinks, d) }));
                               }}
                               style={{
                                 padding: '10px 16px', borderRadius: '12px', fontSize: '0.82rem', fontWeight: '700', 
@@ -1109,6 +1092,9 @@ export default function EventDetailPage() {
                           );
                         })}
                       </div>
+                      {drinkRetired && !(form.drink || []).some((d: string) => d !== WARM) && (
+                        <p style={{ marginTop: '8px', fontSize: '0.78rem', color: '#E25B4F', wordBreak: 'keep-all' }}>복숭아 아이스티는 이제 준비되지 않아요. 희망 음료를 다시 골라 주세요.</p>
+                      )}
                     </div>
                     <div>
                       <label className="kl-label" style={{ marginBottom: '12px' }}>본인 사진 업로드 ({photos.length}/5) *</label>

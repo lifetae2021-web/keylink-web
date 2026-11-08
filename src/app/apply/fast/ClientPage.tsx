@@ -19,6 +19,7 @@ import { NO_SWIPE_TOAST } from '@/components/SwipeableToaster';
 import Link from 'next/link';
 import { compressImage, formatBirthDate, isValidBirthDate } from '@/lib/utils';
 import { buildProfileChangeLogs } from '@/lib/profileChangeLog';
+import { DRINK_OPTIONS, WARM, parseDrinks, toggleDrink, isWarmDisabled as warmDisabled, drinkError } from '@/lib/drinks';
 import { MIN_REDEEM_POINTS, REDEEM_UNIT_POINTS } from '@/lib/pointsConfig';
 import { detectInAppBrowser, InAppInfo } from '@/lib/inAppBrowser';
 import InAppBrowserSheet from '@/components/InAppBrowserSheet';
@@ -133,6 +134,7 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
   const [calendarMonth, setCalendarMonth] = useState(mappedSessions.length > 0 ? mappedSessions[0].eventDate.getMonth() : new Date().getMonth());
   const [sessions, setSessions] = useState<RecruitingSession[]>(mappedSessions);
   const [selectedSessionIds, setSelectedSessionIds] = useState<Set<string>>(new Set());
+  const [drinkRetired, setDrinkRetired] = useState(false);   // 예전에 고른 음료가 메뉴에서 빠졌으면 다시 고르라고 안내
   const [loadingSessions, setLoadingSessions] = useState(mappedSessions.length === 0);
   const sessionListRef = useRef<HTMLDivElement>(null);
 
@@ -491,7 +493,7 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
               smoking: d.smoking || prev.smoking,
               drinking: d.drinking || prev.drinking,
               religion: d.religion || prev.religion,
-              drink: Array.isArray(d.drink) ? d.drink : (d.drink ? [d.drink] : prev.drink),
+              drink: (() => { if (!d.drink) return prev.drink; const r = parseDrinks(d.drink); if (r.hadRetired) setDrinkRetired(true); return r.drinks; })(),
               etc: d.etc || prev.etc,
               employmentProof: d.employmentProof || d.verificationUrl || prev.employmentProof,
             }));
@@ -798,7 +800,7 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
     addError(!!form.smoking, '흡연 유무를 선택해 주세요.', 'field-smoking');
     addError(!!form.drinking, '음주 빈도를 선택해 주세요.', 'field-drinking');
     addError(!!form.religion, '종교를 선택해 주세요.', 'field-religion');
-    addError(form.drink.length > 0, '희망 음료를 선택해 주세요.', 'field-drink');
+    { const de = drinkError(form.drink, drinkRetired); addError(!de, de || '', 'field-drink'); }
     addError(photos.length > 0, '본인 사진을 최소 1장 이상 등록해 주세요.', 'field-photos');
     addError(isAllAgreed, currentUser ? '환불 및 취소 규정에 동의해 주세요.' : '모든 필수 약관에 동의해 주세요.', 'field-agreements');
 
@@ -2355,12 +2357,10 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
 
           <FormField errorFields={errorFields} id="field-drink" label="희망 음료" required>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-              {['아이스 아메리카노', '복숭아 아이스티', '얼그레이', '페퍼민트', '카라멜 블랙티', '물', '따뜻한 음료'].map(d => {
+              {DRINK_OPTIONS.map(d => {
                 const currentDrinks = form.drink || [];
                 const selected = currentDrinks.includes(d);
-                const MAIN_DRINKS = ['아이스 아메리카노', '복숭아 아이스티', '얼그레이', '페퍼민트', '카라멜 블랙티', '물'];
-                const hasIceOnlySelected = currentDrinks.some((v: string) => ['아이스 아메리카노', '복숭아 아이스티'].includes(v));
-                const isWarmDisabled = d === '따뜻한 음료' && hasIceOnlySelected;
+                const isWarmDisabled = d === WARM && warmDisabled(currentDrinks);
 
                 return (
                   <button
@@ -2369,25 +2369,7 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
                     disabled={isWarmDisabled}
                     onClick={() => {
                       if (isWarmDisabled) return;
-                      let next: string[] = [];
-                      if (MAIN_DRINKS.includes(d)) {
-                        if (currentDrinks.includes(d)) {
-                          next = currentDrinks.filter((v: string) => v !== d);
-                        } else {
-                          next = currentDrinks.filter((v: string) => !MAIN_DRINKS.includes(v));
-                          next.push(d);
-                          if (['아이스 아메리카노', '복숭아 아이스티'].includes(d)) {
-                            next = next.filter((v: string) => v !== '따뜻한 음료');
-                          }
-                        }
-                      } else if (d === '따뜻한 음료') {
-                        if (currentDrinks.includes(d)) {
-                          next = currentDrinks.filter((v: string) => v !== d);
-                        } else {
-                          next = [...currentDrinks, d];
-                        }
-                      }
-                      setField('drink', next);
+                      setField('drink', toggleDrink(currentDrinks, d));
                     }}
                     style={{
                       padding: '10px 16px', borderRadius: '12px', fontSize: '0.82rem', fontWeight: '700',
@@ -2402,6 +2384,9 @@ function FastApplyContent({ initialSessions }: { initialSessions?: any[] }) {
                 );
               })}
             </div>
+            {drinkRetired && !form.drink.some((d: string) => d !== WARM) && (
+              <p style={{ marginTop: '8px', fontSize: '0.78rem', color: '#E25B4F', wordBreak: 'keep-all' }}>복숭아 아이스티는 이제 준비되지 않아요. 희망 음료를 다시 골라 주세요.</p>
+            )}
           </FormField>
 
           <FormField errorFields={errorFields} label="특이사항 / 키링크에게 바라는 점">

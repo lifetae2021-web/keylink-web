@@ -27,13 +27,21 @@ def build_chibi_xmas(P, arm, coll, prefix='chibi'):
     # 머리카락(머리 중심에서 약 0.41m)보다 확실히 바깥에 두어 겹쳐 지글거리지 않게
     rim = bm_torus(1.0, 0.085, seg=36, rseg=8); bmesh.ops.scale(rim, vec=(rb * sx * 1.16, rb * sy * 1.16, 1.0), verts=rim.verts)
     bmesh.ops.translate(rim, vec=(0, 0, zb), verts=rim.verts)
-    cone = bm_cyl(rb * 1.13, 0.02, 0.62, seg=28)
-    bmesh.ops.scale(cone, vec=(sx, sy, 1), verts=cone.verts)
+    # 원뿔 밑면이 털 테두리 중심선보다 좁으면 그 사이로 정수리 머리카락이 보여 모자가 떠 보인다 → 테두리 안쪽까지 넓히고 테두리 속에서 시작
+    # 고리 두 개(밑면·끝)뿐이면 휘게 해도 옆면이 곧은 비탈이 되어 앞쪽 머리카락이 뚫고 나온다 → 고리 여러 개로 둥글게 부푼 원뿔
+    cone = bmesh.new(); RINGS, SEG, H = 12, 28, 0.66; rows = []
+    for i in range(RINGS + 1):
+        t = i / RINGS; rr = rb * 1.22 * (1 - t) ** 0.8 + 0.02 * t
+        rows.append([cone.verts.new((rr * sx * math.cos(2 * math.pi * k / SEG), rr * sy * math.sin(2 * math.pi * k / SEG), H * t)) for k in range(SEG)])
+    for a, b in zip(rows, rows[1:]):
+        for k in range(SEG): cone.faces.new((a[k], a[(k + 1) % SEG], b[(k + 1) % SEG], b[k]))
+    cone.faces.new(rows[-1])
     # 위로 갈수록 뒤(+Y)로 휘게
     for v in cone.verts:
-        t = max(0.0, v.co.z) / 0.62; v.co.y += 0.32 * t * t; v.co.z -= 0.12 * t * t
-    bmesh.ops.translate(cone, vec=(0, 0, zb + 0.02), verts=cone.verts)
-    tip = Vector((0, 0.32, zb + 0.02 + 0.62 - 0.12))
+        t = max(0.0, v.co.z) / H; v.co.y += 0.32 * t * t; v.co.z -= 0.12 * t * t
+    bmesh.ops.recalc_face_normals(cone, faces=cone.faces)
+    bmesh.ops.translate(cone, vec=(0, 0, zb - 0.03), verts=cone.verts)
+    tip = Vector((0, 0.32, zb - 0.03 + 0.66 - 0.12))
     pom = bm_ball(0.075, sub=2, z0=0); bmesh.ops.translate(pom, vec=tip, verts=pom.verts)
     put('santa', cone, XM['red'], 'head', 'santa')
     put('santa_trim', bm_merge(rim, pom), XM['white'], 'head', 'santa')
