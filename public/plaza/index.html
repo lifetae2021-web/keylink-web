@@ -70,6 +70,8 @@
   .sheet-btns { display:flex; gap:10px; margin-top:6px; }
   .btn { flex:1; border:none; font-family:inherit; font-size:1.02rem; padding:14px; border-radius:14px; cursor:pointer; }
   .btn.ghost { flex:0 0 auto; background:var(--pill); color:var(--pill-ink); }
+  #cardPhoto { display:block; width:100%; margin-top:8px; }
+  #cardPhoto[hidden] { display:none; }
   .btn.go { background:var(--accent); color:#fff; box-shadow:0 8px 20px rgba(109,94,252,.35); }
   .btn:active { transform:scale(.97); }
   #stick { position:absolute; left:max(26px,calc(env(safe-area-inset-left,0px) + 20px)); bottom:calc(26px + env(safe-area-inset-bottom,0px));
@@ -375,6 +377,7 @@
   <button id="cardClose" class="card-x" aria-label="닫기">✕</button>
   <div class="card-name" id="cardName"></div><div class="card-meta" id="cardMeta"></div>
   <button id="cardReq" class="btn go">1:1 대화 신청</button>
+  <button id="cardPhoto" class="btn ghost" type="button" hidden>사진 보기</button>
   <div class="safety-row" id="cardSafety"><button type="button" id="cardFriend" hidden>친구 추가</button><button type="button" id="cardReport">신고</button><button type="button" id="cardBlock">차단</button></div>
 </div></div>
 <div id="shot" hidden><div class="card-box">
@@ -1632,7 +1635,11 @@ function openCard(profile){ document.exitPointerLock?.(); reqTarget=profile; doc
     meta.appendChild(row); }
   document.getElementById('cardSafety').hidden=!!profile.npc;
   { const fb=document.getElementById('cardFriend'); fb.hidden=!(fbUser && profile.key && !profile.npc); fb.textContent=friends.has(profile.key)?'친구 ✓':'친구 추가'; }
+  // 사진을 교환한 사람이면 '사진 보기'(서버가 내 교환 기록에서 광장 키로 찾아 준다)
+  { const pb=document.getElementById('cardPhoto'); pb.hidden=true; if(fbUser && profile.key && !profile.npc){ const key=profile.key;
+    authFetch('/api/plaza/chat/photo?key='+encodeURIComponent(key)).then(r=>r.json()).then(j=>{ if(reqTarget===profile && j && j.state==='done') pb.hidden=false; }).catch(()=>{}); } }
   card.hidden=false; }
+document.getElementById('cardPhoto').onclick=()=>{ const p=reqTarget; if(p && p.key){ card.hidden=true; openPhotoView({ key:p.key }); } };
 document.getElementById('cardClose').onclick=()=>card.hidden=true;
 card.addEventListener('pointerdown',(e)=>{ if(e.target===card) card.hidden=true; });
 document.getElementById('cardReq').onclick=()=>{ const p=reqTarget; card.hidden=true;
@@ -1718,7 +1725,7 @@ function renderPhotoBar(){ const s=photoSt; photoBar.innerHTML=''; if(!s){ photo
   const txt=(t)=>{ const sp=document.createElement('span'); sp.textContent=t; photoBar.appendChild(sp); };
   const btn=(t,fn,sub)=>{ const b=document.createElement('button'); b.type='button'; b.textContent=t; if(sub) b.className='sub'; b.onclick=fn; photoBar.appendChild(b); };
   photoBtn.textContent=s.state==='done'?'사진 보기':'사진 교환';
-  if(s.state==='done'){ txt('사진 교환 완료'); btn('사진 보기',openPhotoView); btn('사진 내리기',()=>photoAct('hide'),true); }
+  if(s.state==='done'){ txt('사진 교환 완료'); btn('사진 보기',()=>openPhotoView()); }
   else if(s.state==='asked' && s.byMe){ txt('상대의 수락을 기다리는 중'); btn('요청 취소',()=>photoAct('decline'),true); }
   else if(s.state==='asked'){ txt('상대가 사진 교환을 요청했어요'); btn('수락',()=>photoAct('accept')); btn('거절',()=>photoAct('decline'),true); }
   else if(photoAsking){ txt('대표 사진 한 장씩 서로 보여 줘요. 요청할까요?'); btn('요청',()=>photoAct('ask')); btn('취소',()=>{ photoAsking=false; renderPhotoBar(); },true); }
@@ -1736,8 +1743,9 @@ async function photoAct(action){ const c=currentChat; if(!c||!c.uid) return; pho
     refreshPhoto(); }catch(e){ toast('네트워크 오류예요'); } }
 function onPhotoEv(m){ if(currentChat && currentChat.id===m.from){ const t=photoSysText(m.ev,false); if(t) addMsg('sys',t); if(m.ev==='hide' && !photoView.hidden) closePhotoView(); refreshPhoto(); return; }
   if(m.ev==='ask') toast(m.nick+'님이 사진 교환을 요청했어요'); else if(m.ev==='done') toast(m.nick+'님과 사진 교환이 완료됐어요'); }
-async function openPhotoView(){ const c=currentChat; if(!c||!c.uid) return;
-  try{ const r=await authFetch('/api/plaza/chat/photo?img=1&with='+encodeURIComponent(c.uid)); if(!r.ok){ toast('사진을 볼 수 없어요'); refreshPhoto(); return; }
+// q: 광장에서 캐릭터를 눌렀을 때는 { key } (uid를 모르므로 광장 키로), 대화창에서는 지금 대화 상대
+async function openPhotoView(q){ const c=currentChat; const qs=q&&q.key ? 'key='+encodeURIComponent(q.key) : (c&&c.uid ? 'with='+encodeURIComponent(c.uid) : ''); if(!qs) return;
+  try{ const r=await authFetch('/api/plaza/chat/photo?img=1&'+qs); if(!r.ok){ toast('사진을 볼 수 없어요'); if(!q) refreshPhoto(); return; }
     if(pvImg.src) URL.revokeObjectURL(pvImg.src); pvImg.src=URL.createObjectURL(await r.blob());
     const mk=document.getElementById('pvMark'); mk.innerHTML=''; for(let i=0;i<24;i++){ const sp=document.createElement('span'); sp.textContent=opts.nick||'키링 월드'; mk.appendChild(sp); }
     photoView.hidden=false; }catch(e){ toast('네트워크 오류예요'); } }

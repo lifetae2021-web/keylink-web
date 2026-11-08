@@ -6,7 +6,8 @@ import { plazaKey } from '@/lib/plazaKey';
 // 광장 1:1 대화 — 서로 합의하면 대표 사진(users.photos[0]) 한 장씩 교환
 // 상태는 plazaChats/{convId}.photoSwap = { state: 'asked' | 'done', by(요청한 uid), at } (없으면 교환 전)
 // 사진 주소(토큰 포함 URL)는 절대 내보내지 않고, 교환이 끝난 두 사람에게만 이 API가 이미지를 대신 보내 준다.
-// 한쪽이 '사진 내리기'를 하면 둘 다 다시 볼 수 없다. 차단 관계면 요청·열람 모두 막는다.
+// 한 번 교환하면 계속 볼 수 있다(내리기 없음, 2026-11-07). 차단 관계면 요청·열람 모두 막는다.
+// 광장에서 상대 캐릭터를 눌렀을 때는 uid 대신 광장 키(key)로 묻는다 — 내 대화방 중 교환을 마친 상대만 찾아 준다(uid는 내보내지 않음).
 const str = (v: unknown, n: number) => String(v ?? '').trim().slice(0, n);
 const convOf = (a: string, b: string) => [a, b].sort().join('__');
 type Swap = { state?: 'asked' | 'done'; by?: string };
@@ -28,6 +29,18 @@ async function blockedBetween(a: string, b: string) {
   return !!(x.data()?.keys?.[plazaKey(b)] || y.data()?.keys?.[plazaKey(a)]);
 }
 
+// 광장 키 → 사진을 교환한 상대 uid(없으면 null)
+async function swappedByKey(uid: string, key: string): Promise<string | null> {
+  if (!/^[0-9a-f]{16}$/.test(key)) return null;
+  const snap = await adminDb.collection('plazaChats').where('participants', 'array-contains', uid).limit(200).get();
+  for (const d of snap.docs) {
+    if (d.data()?.photoSwap?.state !== 'done') continue;
+    const other = (d.data().participants as string[] | undefined)?.find((p) => p !== uid);
+    if (other && plazaKey(other) === key) return other;
+  }
+  return null;
+}
+
 function view(s: Swap, uid: string) {
   return { state: s.state || 'none', byMe: s.by === uid };
 }
@@ -37,7 +50,13 @@ export async function GET(req: Request) {
     const uid = await me(req);
     if (!uid) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const url = new URL(req.url);
-    const other = str(url.searchParams.get('with'), 128);
+    const key = str(url.searchParams.get('key'), 32);
+    let other = str(url.searchParams.get('with'), 128);
+    if (!other && key) {
+      other = (await swappedByKey(uid, key)) || '';
+      if (!other) return url.searchParams.get('img') === '1' ? NextResponse.json({ error: 'not_shared' }, { status: 403 }) : NextResponse.json({ state: 'none' });
+      if (url.searchParams.get('img') !== '1') return NextResponse.json({ state: (await blockedBetween(uid, other)) ? 'none' : 'done' });
+    }
     if (!other || other === uid || other === 'npc') return NextResponse.json({ error: 'bad_target' }, { status: 400 });
     const s: Swap = (await adminDb.doc(`plazaChats/${convOf(uid, other)}`).get()).data()?.photoSwap || {};
 
@@ -71,7 +90,7 @@ const SYS_TEXT: Record<string, string> = {
   done: '사진 교환이 완료됐어요\n서로의 대표 사진 한 장을 볼 수 있어요',
   decline: '사진 교환 요청이 거절됐어요',
   cancel: '사진 교환 요청이 취소됐어요',
-  hide: '사진 공개가 해제됐어요',
+  hide: '사진 공개가 해제됐어요',   // 예전 기록 표시용(이제 내리기는 없음)
 };
 
 export async function POST(req: Request) {
@@ -81,8 +100,8 @@ export async function POST(req: Request) {
     const b = await req.json().catch(() => ({}));
     const other = str(b.with, 128), action = str(b.action, 10);
     if (!other || other === uid || other === 'npc') return NextResponse.json({ error: 'bad_target' }, { status: 400 });
-    if (!['ask', 'accept', 'decline', 'hide'].includes(action)) return NextResponse.json({ error: 'bad_action' }, { status: 400 });
-    if (action !== 'hide' && await blockedBetween(uid, other)) return NextResponse.json({ error: 'blocked' }, { status: 403 });
+    if (!['ask', 'accept', 'decline'].includes(action)) return NextResponse.json({ error: 'bad_action' }, { status: 400 });
+    if (await blockedBetween(uid, other)) return NextResponse.json({ error: 'blocked' }, { status: 403 });
     if (action === 'ask' || action === 'accept') {
       const [meHas, themHas] = await Promise.all([firstPhoto(uid), firstPhoto(other)]);
       if (!meHas) return NextResponse.json({ error: 'no_my_photo' }, { status: 400 });
@@ -104,12 +123,9 @@ export async function POST(req: Request) {
       } else if (action === 'accept') {
         if (s.state !== 'asked' || s.by === uid) return { error: 'bad_state' as const };
         next = { state: 'done', by: s.by }; ev = 'done';
-      } else if (action === 'decline') {
+      } else {
         if (s.state !== 'asked') return { error: 'bad_state' as const };
         next = null; ev = s.by === uid ? 'cancel' : 'decline';
-      } else {
-        if (s.state !== 'done') return { error: 'bad_state' as const };
-        next = null; ev = 'hide';
       }
       const now = FieldValue.serverTimestamp();
       tx.update(ref, { photoSwap: next ? { ...next, at: now } : FieldValue.delete() });
