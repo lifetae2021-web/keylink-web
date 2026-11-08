@@ -1381,20 +1381,25 @@ function buildSanta(){
   const N=60, pos=new Float32Array(N*3), trail=new THREE.Points(new THREE.BufferGeometry(), new THREE.PointsMaterial({ color:0xfff2b0, size:0.55, transparent:true, opacity:0.85, depthWrite:false, fog:true }));
   trail.geometry.setAttribute('position', new THREE.BufferAttribute(pos,3)); trail.frustumCulled=false;
   g.scale.setScalar(2.2); g.visible=false; scene.add(g); scene.add(trail); trail.visible=false;
-  return { g, av, deer, trail, pos, N, head:0, t:0, dur:26, next:20+Math.random()*30, from:new THREE.Vector3(), to:new THREE.Vector3(), flying:false };
+  return { g, av, deer, trail, pos, N, head:0, t:0, dur:40, next:20+Math.random()*30, from:new THREE.Vector3(), to:new THREE.Vector3(), flying:false };
 }
+// 마을 가운데서 d(m) 떨어진 곳의 썰매 추가 높이: 25m 안은 0, 바깥은 점점 가파르게(거리 100m 36m · 125m 57m · 145m 76m — 눈산보다 늘 위)
+const santaRise=(d)=>d<=25 ? 0 : 62*Math.pow((d-25)/105,1.6);
 function updateSanta(dt, time){
   if(themeId!=='xmas'){ if(santa){ santa.g.visible=false; santa.trail.visible=false; santa.flying=false; } return; }
   if(!santa) santa=buildSanta(); const s=santa;
   s.av.update && s.av.update(dt,false);
   if(!s.flying){ s.next-=dt; if(s.next>0) return;
-    // 기본 카메라는 위에서 내려다봐서 높이 날면 화면 밖 — 지붕 바로 위(5.5~7m)로, 소원 트리는 피해서(가운데에서 14~40m 떨어진 줄) 가로지른다
+    // 기본 카메라는 위에서 내려다봐서 높이 날면 화면 밖 — 마을 위는 지붕 바로 위(5.5~7m)로, 소원 트리는 피해서(가운데에서 14~40m 떨어진 줄) 가로지른다.
+    // 마을 밖(25m~)부터는 점점 높이 올라 썰매장 언덕(7.5m)·눈산(거리 100m 눈 비탈 20m, 봉우리 최고 56m)을 넘어 하늘로 사라진다(santaRise)
     const side=Math.random()<0.5?-1:1, zc=(Math.random()<0.5?-1:1)*(14+Math.random()*26), y=5.5+Math.random()*1.5;
-    s.from.set(-110*side, y, zc+(Math.random()-0.5)*10); s.to.set(110*side, y+1.5, zc+(Math.random()-0.5)*10); s.t=0; s.flying=true; s.g.visible=true; s.trail.visible=true; s.pos.fill(0); s.head=0;
+    s.from.set(-175*side, y, zc+(Math.random()-0.5)*10); s.to.set(175*side, y+1.5, zc+(Math.random()-0.5)*10); s.t=0; s.flying=true; s.g.visible=true; s.trail.visible=true; s.pos.fill(0); s.head=0;
     for(let i=0;i<s.N;i++){ s.pos[i*3]=s.from.x; s.pos[i*3+1]=s.from.y; s.pos[i*3+2]=s.from.z; } }
   s.t+=dt/s.dur; const k=Math.min(1,s.t);
-  s.g.position.lerpVectors(s.from,s.to,k); s.g.position.y+=Math.sin(time*1.6)*0.8;
+  s.g.position.lerpVectors(s.from,s.to,k); const d=Math.hypot(s.g.position.x,s.g.position.z), rise=santaRise(d);
+  s.g.position.y+=rise+Math.sin(time*1.6)*0.8;
   const dir=s.to.clone().sub(s.from); s.g.rotation.y=Math.atan2(dir.x,dir.z); s.g.rotation.z=Math.sin(time*1.1)*0.05;
+  { const out=s.g.position.x*dir.x+s.g.position.z*dir.z>0, slope=(santaRise(d+1)-rise)*(out?1:-1); s.g.rotation.x=-Math.atan(slope)*0.8; }   // 오를 땐 앞이 들리고 내려올 땐 숙인다
   for(const d of s.deer){ const u=d.userData; if(!u.legs) continue; u.legs.forEach((l,i)=>{ l.rotation.x=Math.sin(time*9+(i%2?0:Math.PI))*0.6; }); }
   // 꼬리: 썰매 뒤 자리를 차례로 기록
   const tail=s.g.localToWorld(new THREE.Vector3(0,0.4,-1.2)); s.head=(s.head+1)%s.N; s.pos.set([tail.x+(Math.random()-0.5)*0.8, tail.y+(Math.random()-0.5)*0.8, tail.z+(Math.random()-0.5)*0.8], s.head*3);
