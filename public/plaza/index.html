@@ -160,6 +160,7 @@
   .safety-row button { border:none; background:none; color:#8a98ab; font-family:inherit; font-size:.85rem; cursor:pointer; padding:4px 6px; }
   .chat-tools { display:flex; align-items:center; gap:4px; }
   .chat-head .tool { font-size:.8rem !important; color:#8a98ab; padding:4px 6px; }
+  #confirmMsg { white-space:pre-line; word-break:keep-all; line-height:1.55; }   /* 확인창 문구는 문장마다 줄을 바꿔 낱말 중간에서 끊기지 않게 */
   #report, #confirmBox { position:fixed; inset:0; z-index:29; display:grid; place-items:center; background:rgba(40,60,90,.32);
     padding:max(16px,env(safe-area-inset-top,0px)) 16px max(16px,env(safe-area-inset-bottom,0px)); }
   .report-reasons { justify-content:center; margin:14px 0 10px; }
@@ -977,7 +978,7 @@ const LABEL={ hair:{short:'짧은머리',dandy:'댄디',twoblock:'투블럭',spi
   top:{tee:'반팔티',long:'긴팔티',hoodie:'후드티',shirt:'셔츠',dress:'원피스'}, bottom:{pants:'긴바지',shorts:'반바지',skirt:'치마'}, shoes:{sneakers:'운동화',boots:'부츠'},
   acc:{glasses:'안경',cap:'캡모자',beanie:'비니',earrings:'귀걸이',crossbag:'크로스백',goldkeyring:'황금 키링',crown:'왕관',balloon:'하트 풍선',halo:'천사 링',wings:'날개',santa:'산타 모자',antlers:'루돌프 뿔',scarf:'목도리'},
   eye:{round:'동글',sparkle:'반짝',smile:'웃는 눈',sleepy:'나른한',sharp:'날렵한'}, brow:{soft:'부드러운',straight:'일자',arched:'아치',thick:'진한'}, mouth:{smile:'미소',grin:'활짝',small:'오',cat:'고양이',neutral:'무표정'} };
-const LABEL_G={ male:{ hair:{ bob:'덮은머리' } }, female:{ hair:{ short:'숏컷' } } };
+const LABEL_G={ male:{ hair:{} }, female:{ hair:{ short:'숏컷' } } };
 const SLIDER_LABEL={ eyeSize:'눈 크기', eyeGap:'눈 사이', eyeY:'눈 높이', vline:'갸름한 턱', cheek:'볼살', long:'얼굴 길이', blush:'볼터치', height:'키', build:'체격', female:'허리 라인' };
 const TABS=[['profile','프로필'],['face','얼굴'],['hair','헤어'],['outfit','의상'],['acc','액세서리'],['body','체형']];
 const CHOICES={ gender:[['남성','male'],['여성','female']],
@@ -2139,7 +2140,7 @@ document.getElementById('reportSend').onclick=async()=>{ const t=reportTarget; i
   try{ const r=await authFetch('/api/plaza/report',{ method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ targetKey:t.key||null, targetGkey:t.gkey||null, targetUid:t.uid||null, targetNick:t.nick, reason:reportReason, detail:document.getElementById('reportDetail').value }) });
     if(r.ok){ reportBox.hidden=true; toast('신고가 접수됐어요. 확인 후 조치할게요'); if(t.id && ws && ws.readyState===1){ try{ ws.send(JSON.stringify({ t:'report', to:t.id })); }catch(e){} } } else { const j=await r.json().catch(()=>({})); toast(j.error==='no_target'?'손님은 신고할 수 없어요. 차단을 이용해 주세요':'신고 접수 실패'); }
   }catch(e){ toast('네트워크 오류예요'); } };
-function askConfirm(title,msg,yes){ document.exitPointerLock?.(); document.getElementById('confirmTitle').textContent=title; document.getElementById('confirmMsg').textContent=msg; confirmYesFn=yes; confirmBox.hidden=false; }
+function askConfirm(title,msg,yes){ document.exitPointerLock?.(); document.getElementById('confirmTitle').textContent=title; document.getElementById('confirmMsg').textContent=String(msg).replace(/([?.!]) (?=\S)/g,'$1\n'); confirmYesFn=yes; confirmBox.hidden=false; }
 document.getElementById('confirmNo').onclick=()=>{ confirmBox.hidden=true; confirmYesFn=null; };
 document.getElementById('confirmYes').onclick=()=>{ confirmBox.hidden=true; const f=confirmYesFn; confirmYesFn=null; if(f) f(); };
 function blockPerson(t){ if(!t) return;

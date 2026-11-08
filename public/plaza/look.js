@@ -44,7 +44,8 @@ export const isLockedAcc = (a) => a in LOCKED_ACC || a in SHOP_ACC;
 
 // 성별에 따라 편집 화면에 보여 줄 선택지(저장·검사는 전체 목록 기준이라 예전 캐릭터도 깨지지 않음)
 export const GENDER_OPTIONS = {
-  male:   { hair: ['short', 'dandy', 'twoblock', 'spiky', 'bob'], top: ['tee', 'long', 'hoodie', 'shirt'], bottom: ['pants', 'shorts'],
+  male:   { hair: ['short', 'dandy', 'twoblock', 'spiky'],   // 덮은머리(bob)는 여성만(2026-11-08)
+            top: ['tee', 'long', 'hoodie', 'shirt'], bottom: ['pants', 'shorts'],
             shoes: ['sneakers', 'boots'], acc: ['glasses', 'cap', 'beanie', 'crossbag', 'goldkeyring', 'crown', 'balloon', 'halo', 'wings', 'santa', 'antlers', 'scarf'] },
   female: { hair: ['long', 'bob', 'ponytail', 'bun'],   // 숏컷은 남성만(2026-11-08)
             top: ['tee', 'long', 'hoodie', 'shirt', 'dress'], bottom: ['pants', 'shorts', 'skirt'],
