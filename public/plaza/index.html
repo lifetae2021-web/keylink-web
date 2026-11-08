@@ -623,7 +623,7 @@ const THEME_PREVIEW=new URLSearchParams(location.search).get('theme');
 let themeRoot=null, themeSeq=0;
 async function fetchThemeId(){
   let id='default';
-  try{ const j=await (await fetch('/api/plaza/theme', { cache:'no-store' })).json(); id=j.theme||'default'; }catch(e){}
+  try{ const r=await fetch('/api/plaza/theme', { cache:'no-store' }); syncClock(r); const j=await r.json(); id=j.theme||'default'; }catch(e){}
   if(THEME_PREVIEW && THEMES[THEME_PREVIEW]) id=THEME_PREVIEW;
   return sanitizeTheme(id);
 }
@@ -1185,6 +1185,38 @@ function makePigeon(){
   g.userData={ root, head, wings, kind:'pigeon', phase:Math.random()*10, rest:Math.random()*2, target:null, state:'ground', profile:{ animal:true, kind:'pigeon', nick:'비둘기' } };
   return g; }
 function addAnimal(g,pos){ g.position.copy(pos); g.rotation.y=Math.random()*Math.PI*2; scene.add(g); animals.push(g); }
+// ── 동물 시간표: 모든 기기가 같은 동물을 같은 자리에서 보게 한다(서버 없이) ──
+// 시간을 SLOT초 칸으로 나누고, 칸마다 갈 지점을 '동물 이름+칸 번호'를 씨앗으로 한 난수로 정한다 → 누구 화면에서든 같은 지점.
+// 동물은 그 지점을 향해 평소처럼 걷고, 쓰다듬기·밥·따라오기로 잠깐 벗어나면 다시 시간표 자리로 돌아간다.
+// 시각은 서버 시간(응답의 Date 헤더)에 맞춘다
+let clockOff=0;
+function syncClock(r){ try{ const d=Date.parse(r.headers.get('date')||''); if(isFinite(d)) clockOff=d+500-Date.now(); }catch(e){} }
+const SCHED_SLOT=14;
+const seedHash=(str)=>{ let h=1779033703^str.length; for(let i=0;i<str.length;i++){ h=Math.imul(h^str.charCodeAt(i),3432918353); h=h<<13|h>>>19; } return h>>>0; };
+const seedRng=(seed)=>()=>{ seed|=0; seed=seed+0x6D2B79F5|0; let t=Math.imul(seed^seed>>>15,1|seed); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; };
+function schedSetup(){ const seen={};
+  for(const g of animals){ const u=g.userData; if(u.sched!==undefined) continue;
+    if(u.style==='perch' || (u.style==='model' && !u.roam)){ u.sched=null; continue; }   // 부엉이·낮잠 고양이는 제자리
+    const nick=u.profile?.nick||u.kind, n=seen[u.kind+nick]=(seen[u.kind+nick]||0)+1;
+    const speed=u.style==='model'?0.6 : u.kind==='pigeon'?0.7 : u.style==='sprite'?1.3 : u.kind==='dog'?2.4 : (u.speed||1.4);
+    u.sched={ key:u.kind+':'+nick+':'+n, home:g.position.clone(), speed, R:Math.min(7,speed*SCHED_SLOT*0.35), cache:new Map(), init:false }; } }
+function schedPoint(u,k){ const S=u.sched; let p=S.cache.get(k); if(p) return p;
+  const rnd=seedRng(seedHash(S.key+':'+k)); p=null;
+  for(let i=0;i<14 && !p;i++){ let x,z;
+    if(u.roam){ x=u.roam.x+(rnd()*2-1)*u.roam.rx; z=u.roam.z+(rnd()*2-1)*u.roam.rz; }
+    else { const a=rnd()*Math.PI*2, r=Math.sqrt(rnd())*S.R; x=S.home.x+Math.cos(a)*r; z=S.home.z+Math.sin(a)*r; }
+    if(Math.hypot(x,z)<BOUNDARY-1 && obstacles.every(o=>Math.hypot(x-o.x,z-o.z)>o.r+0.5)) p=new THREE.Vector3(x,0,z); }
+  p=p||S.home.clone(); S.cache.set(k,p); if(S.cache.size>6) S.cache.delete(S.cache.keys().next().value); return p; }
+function schedAt(u){ const t=(Date.now()+clockOff)/1000/SCHED_SLOT, k=Math.floor(t), f=(t-k)*SCHED_SLOT;
+  const a=schedPoint(u,k), b=schedPoint(u,k+1), d=a.distanceTo(b), walkT=Math.min(SCHED_SLOT*0.8, d/u.sched.speed);
+  return { pos:a.clone().lerp(b, Math.min(1, f/Math.max(walkT,0.01))), dest:b }; }
+// 매 프레임: 시간표 지점을 목표로 준다(도착하면 쉬기). pause 동안(쓰다듬기·밥)·따라오기·하늘 나는 중엔 건드리지 않는다
+function schedPre(g,u,dt){ if(!u.sched) return;
+  if(u.pause>0){ u.pause-=dt; return; } if(u.follow>0 || u.state==='fly' || u.face!=null) return;
+  const s=schedAt(u);
+  if(!u.sched.init || g.position.distanceTo(s.pos)>9){ g.position.x=s.pos.x; g.position.z=s.pos.z; u.sched.init=true; }   // 처음 보거나 너무 벗어났으면(탭을 오래 비움 등) 그 자리로
+  const near=Math.hypot(g.position.x-s.dest.x, g.position.z-s.dest.z) < (u.kind==='pigeon'?0.2:0.55);
+  u.target=s.dest; u.rest=near?0.3:0; }
 // ── 겨울 동물(크리스마스 테마에서만): 펭귄·흰 토끼·순록·북극여우는 네 발 동물 규칙(다리·머리·꼬리)으로 움직이고, 흰 부엉이는 높은 곳에 앉아 고개만 돌린다 ──
 // gait: waddle(뒤뚱) · hop(깡총) / speed: 걷는 빠르기(m/s)
 function makeWinterAnimal(kind,name){
@@ -1267,12 +1299,12 @@ addAnimal(makeSpriteAnimal('cat',{ idle:A+'cat_pixel.png', pixel:true, anims:{ w
 addAnimal(makeSpriteAnimal('cat',{ idle:A+'cat_real_idle.webp', anims:{ walk:[A+'cat_real_walk.webp',12,11,0.5] } },0.5,'노을이'), new THREE.Vector3(3,0,-6)); // 실사: AI 영상에서 뽑은 걷기 프레임
 addAnimal(makeSpriteAnimal('dog',{ idle:A+'dog_toon.webp', anims:{ walk:[A+'dog_toon_walk.webp',6,10,0.78] } },0.9,'솜사탕'), new THREE.Vector3(4,0,9));
 addAnimal(makeSpriteAnimal('dog',{ idle:A+'dog_real_idle.webp', anims:{ walk:[A+'dog_real_walk.webp',12,7,0.62] } },0.62,'골디'), new THREE.Vector3(-8,0,8)); // 실사 리트리버(AI 영상 → 걷기 프레임)
-for(let i=0;i<2;i++){ const a=Math.random()*Math.PI*2, r=4.5+Math.random()*3; const px=i%2===0;
+{ const prng=seedRng(seedHash('pigeons-a')); for(let i=0;i<2;i++){ const a=prng()*Math.PI*2, r=4.5+prng()*3; const px=i%2===0;
   addAnimal(makeSpriteAnimal('pigeon', px ? { idle:A+'pigeon_pixel.png', pixel:true, anims:{ walk:[A+'pigeon_pixel_walk.png',6,8,0.36], fly:[A+'pigeon_pixel_fly.png',4,10,0.5] } }
-                                         : { idle:A+'pigeon_toon.webp', anims:{ walk:[A+'pigeon_toon_walk.webp',6,8,0.38], fly:[A+'pigeon_toon_fly.webp',4,10,0.52] } }, 0.38, '비둘기'), new THREE.Vector3(Math.cos(a)*r,0,Math.sin(a)*r)); }
+                                         : { idle:A+'pigeon_toon.webp', anims:{ walk:[A+'pigeon_toon_walk.webp',6,8,0.38], fly:[A+'pigeon_toon_fly.webp',4,10,0.52] } }, 0.38, '비둘기'), new THREE.Vector3(Math.cos(a)*r,0,Math.sin(a)*r)); } }
 for(const g of animals){ const pd=PETS.find(p=>p.name===g.userData.profile?.nick && p.kind===g.userData.kind); if(pd){ g.userData.aid=pd.id; g.userData.profile.aid=pd.id; } }   // 호감을 쌓을 수 있는 동물
 { const sleepy=makeModelAnimal('cat','/plaza/assets/cat_real.glb',1.0,'치즈냥',['쿨쿨… zZ','골골골…','(꼬리만 살랑)']); sleepy.position.set(-2.9,0,6.6); sleepy.rotation.y=0.6; scene.add(sleepy); animals.push(sleepy); }
-for(let i=0;i<2;i++){ const a=Math.random()*Math.PI*2, r=4.5+Math.random()*3; addAnimal(makePigeon(), new THREE.Vector3(Math.cos(a)*r,0,Math.sin(a)*r)); }
+{ const prng=seedRng(seedHash('pigeons-b')); for(let i=0;i<2;i++){ const a=prng()*Math.PI*2, r=4.5+prng()*3; addAnimal(makePigeon(), new THREE.Vector3(Math.cos(a)*r,0,Math.sin(a)*r)); } }
 // 누르면 말풍선 + 반응(강아지는 잠깐 따라옴, 고양이는 쳐다봄, 비둘기는 날아감)
 const ANIMAL_SAYS={ dog:['멍멍!','왈왈!','헥헥'], cat:['야옹~','냐아','골골골…'], pigeon:['구구구','푸드덕!'] };
 function animalBubble(g,text){ const u=g.userData; if(u.bubble){ u.root.remove(u.bubble); u.bubble.material.map.dispose(); }
@@ -1291,11 +1323,11 @@ function animalBubble(g,text){ const u=g.userData; if(u.bubble){ u.root.remove(u
   const sp=new THREE.Sprite(new THREE.SpriteMaterial({ map:tex, transparent:true, depthTest:false })); sp.scale.set(1.1*W/300,0.4*H/110,1); sp.position.y=u.bubbleY||(u.kind==='pigeon'?0.8:1.35); u.root.add(sp); u.bubble=sp; u.bubbleT=1.8; }
 function pigeonFly(g){ const u=g.userData; u.state='fly'; u.from=g.position.clone(); u.to=pickWanderTarget(4,20); u.t=0; u.dur=1.6+Math.random()*0.6; g.rotation.y=Math.atan2(u.to.x-u.from.x,u.to.z-u.from.z); }
 function reactAnimal(prof){ const g=animals.find(a=>a.userData.profile===prof); if(!g) return; const u=g.userData;
-  if(u.aid && mode==='playing'){ if(!u.held && !u.leash) animalBubble(g,pickA(ANIMAL_SAYS[u.kind])); openPetCard(g); return; }
+  if(u.aid && mode==='playing'){ if(!u.held && !u.leash){ animalBubble(g,pickA(ANIMAL_SAYS[u.kind])); u.pause=4; u.target=null; u.rest=4; } openPetCard(g); return; }
   if(u.kind==='pigeon'){ animalBubble(g,'푸드덕!'); for(const p of animals) if(p.userData.kind==='pigeon' && p.userData.state==='ground' && p.position.distanceTo(g.position)<3) pigeonFly(p); return; }
   if(u.style==='model'){ animalBubble(g,pickA(u.says)); if(u.turnTo) u.face=Math.atan2(hero.position.x-g.position.x, hero.position.z-g.position.z)+(u.yawOff||0); return; } // 자는 고양이는 깨지 않는다 · 실사 루돌프는 고개(몸)를 돌린다
   if(u.style==='perch'){ animalBubble(g,pickA(WINTER_SAYS.owl)); u.head.rotation.y=Math.atan2(hero.position.x-g.position.x, hero.position.z-g.position.z)-g.rotation.y; return; }
-  animalBubble(g,pickA(ANIMAL_SAYS[u.kind]||WINTER_SAYS[u.kind]||['…'])); u.rest=0; u.target=null; if(u.style==='sprite'){ u.rest=2.5; u.hop=0.0001; return; } g.rotation.y=Math.atan2(hero.position.x-g.position.x, hero.position.z-g.position.z);
+  animalBubble(g,pickA(ANIMAL_SAYS[u.kind]||WINTER_SAYS[u.kind]||['…'])); u.rest=0; u.target=null; u.pause=3; if(u.style==='sprite'){ u.rest=2.5; u.hop=0.0001; return; } g.rotation.y=Math.atan2(hero.position.x-g.position.x, hero.position.z-g.position.z);
   if(u.kind==='dog'){ u.follow=6; u.hop=0.0001; } else { u.rest=2.5; } }
 
 // ── 키링 월드 구역 소품: 배치는 Blender 표시점(ANC_*)이 원본. 웹은 파일만 불러와 그 자리에 놓는다 ──
@@ -1457,7 +1489,7 @@ function feedEffect(who, aid){ const p=who.getWorldPosition(new THREE.Vector3())
   const bowl=new THREE.Group(); bowl.add(new THREE.Mesh(new THREE.CylinderGeometry(0.22,0.16,0.12,16), new THREE.MeshStandardMaterial({ color:'#ff8fb1' })));
   const food=new THREE.Mesh(new THREE.CylinderGeometry(0.19,0.19,0.05,16), new THREE.MeshStandardMaterial({ color:'#c98a4b' })); food.position.y=0.06; bowl.add(food);
   bowl.position.copy(p).addScaledVector(dir,0.9); bowl.position.y=0.06; scene.add(bowl);
-  const cat=(aid&&animalById(aid))||nearCatAny(bowl.position); if(cat && !cat.userData.held && !cat.userData.leash){ const u=cat.userData; cat.position.set(bowl.position.x+(u.kind==='reindeer'?1.0:0.55),0,bowl.position.z); cat.rotation.y=-Math.PI/2; u.target=null; u.rest=7; u.hop=0.01;
+  const cat=(aid&&animalById(aid))||nearCatAny(bowl.position); if(cat && !cat.userData.held && !cat.userData.leash){ const u=cat.userData; cat.position.set(bowl.position.x+(u.kind==='reindeer'?1.0:0.55),0,bowl.position.z); cat.rotation.y=-Math.PI/2; u.target=null; u.rest=7; u.pause=7; u.hop=0.01;
     for(let i=0;i<4;i++) setTimeout(()=>{ const h=new THREE.Sprite(new THREE.SpriteMaterial({ map:heartTexture(), transparent:true, depthWrite:false })); h.scale.setScalar(0.3); h.position.set((Math.random()-0.5)*0.4,0.8,0); cat.add(h);
       const t0=performance.now(); (function up(){ const k=(performance.now()-t0)/1400; if(k>=1){ cat.remove(h); h.material.dispose(); return; } h.position.y=0.8+k*0.8; h.material.opacity=1-k; requestAnimationFrame(up); })(); }, i*350); }
   setTimeout(()=>{ scene.remove(bowl); },7000); }
@@ -2424,6 +2456,8 @@ function tick(){
     u.phase+=dt;
     if(u.held) continue;
     if(u.leash){ leashUpdate(g,u,dt); continue; }
+    if(u.sched===undefined) schedSetup();
+    schedPre(g,u,dt);
     if(u.kind==='pigeon'){
       if(u.state==='fly'){ u.t+=dt/u.dur; const k=Math.min(1,u.t); g.position.lerpVectors(u.from,u.to,k); g.position.y=Math.sin(Math.PI*k)*3;
         if(u.style==='sprite'){ playAnim(u,'fly',dt,u.to.clone().sub(u.from).dot(camRightVec())<0); if(k>=1){ u.state='ground'; g.position.y=0; u.rest=1; } continue; }
@@ -2431,7 +2465,7 @@ function tick(){
       if(mode==='playing' && g.position.distanceTo(hero.position)<1.8){ pigeonFly(g); continue; } // 사람이 다가오면 날아감
       if(u.rest>0){ u.rest-=dt; if(u.style==='sprite'){ if(u.mode!=='idle') showIdle(u); } else u.head.rotation.x=Math.max(0,Math.sin(u.phase*5))*0.9; continue; } // 콕콕 쪼기
       if(!u.target||g.position.distanceTo(u.target)<0.15){ u.target=u.style==='sprite' ? (pickSideTarget(g,0.6,1.4)||g.position.clone()) : g.position.clone().add(new THREE.Vector3((Math.random()-0.5)*2.4,0,(Math.random()-0.5)*2.4)); u.rest=0.6+Math.random()*2; continue; }
-      const dir=u.target.clone().sub(g.position); dir.y=0; dir.normalize(); if(u.style==='sprite' && !sideways(dir)){ u.target=null; u.rest=0.5; continue; } g.position.addScaledVector(dir,0.7*dt); pushOut(g);
+      const dir=u.target.clone().sub(g.position); dir.y=0; dir.normalize(); if(u.style==='sprite' && !u.sched && !sideways(dir)){ u.target=null; u.rest=0.5; continue; } g.position.addScaledVector(dir,0.7*dt); pushOut(g);
       if(u.style==='sprite'){ playAnim(u,'walk',dt,dir.dot(camRightVec())<0); continue; }
       g.rotation.y=Math.atan2(dir.x,dir.z); u.head.rotation.x=0; u.root.position.y=Math.abs(Math.sin(u.phase*14))*0.03; continue; }
     if(u.style==='perch'){ u.head.rotation.y=Math.sin(u.phase*0.45)*1.1+(Math.sin(u.phase*0.13)>0.8?Math.PI*0.5:0); continue; }
@@ -2450,7 +2484,7 @@ function tick(){
       if(u.hop){ u.hop+=dt; u.root.position.y=Math.max(0,Math.sin(u.hop*Math.PI/0.35)*0.3); if(u.hop>0.35){ u.hop=0; u.root.position.y=0; } }
       if(u.rest>0){ u.rest-=dt; if(u.mode!=='idle') showIdle(u); continue; }
       if(!u.target||g.position.distanceTo(u.target)<0.5){ if(u.target){ u.target=null; u.rest=3+Math.random()*5; continue; } u.target=pickSideTarget(g); u.stuck=0; if(!u.target){ u.rest=1; continue; } }
-      const dir=u.target.clone().sub(g.position); dir.y=0; dir.normalize(); if(!sideways(dir)){ u.target=null; u.rest=0.8+Math.random()*1.5; continue; } const px=g.position.x, pz=g.position.z, sp=1.3*dt;
+      const dir=u.target.clone().sub(g.position); dir.y=0; dir.normalize(); if(!u.sched && !sideways(dir)){ u.target=null; u.rest=0.8+Math.random()*1.5; continue; } const px=g.position.x, pz=g.position.z, sp=1.3*dt;   // 시간표로 움직이는 동물은 화면 방향과 상관없이 간다
       g.position.addScaledVector(dir,sp); pushOut(g);
       u.stuck = Math.hypot(g.position.x-px, g.position.z-pz) < sp*0.3 ? (u.stuck||0)+dt : 0; if(u.stuck>0.6){ u.target=null; u.rest=0.5; u.stuck=0; }
       if(!showWalk(u,dt,dir.dot(camRightVec())<0)) u.root.position.y=Math.abs(Math.sin(u.phase*9))*0.07; continue; } // 화면 기준 왼쪽으로 가면 좌우 반전
