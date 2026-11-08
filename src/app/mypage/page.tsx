@@ -343,7 +343,8 @@ function MyPageContent() {
     }
 
     // 새로 인증한 번호를 서버에서 기록 (다른 회원이 쓰는 번호면 저장하지 않음)
-    if (phoneChanged) {
+    // 번호를 안 바꿨어도 아직 인증 기록이 없던 회원이 여기서 인증했으면 같이 기록 → 다음 신청부터 다시 안 받음
+    if (phoneChanged || phoneToken?.phone === editForm.phone) {
       try {
         await claimVerifiedPhone(phoneToken!.token);
         setPhoneToken(null);
@@ -778,7 +779,7 @@ function MyPageContent() {
               <PhoneVerifyField
                 phone={editForm.phone}
                 onPhoneChange={phone => { setEditForm((p: any) => ({ ...p, phone })); setPhoneToken(null); }}
-                verified={editForm.phone === (userData?.phone || '') || phoneToken?.phone === editForm.phone}
+                verified={(!!userData?.verifiedPhone && editForm.phone === userData.verifiedPhone) || phoneToken?.phone === editForm.phone}
                 onVerified={({ token, phone, existing }) => {
                   if (existing) { toast.error('이미 다른 계정에서 사용 중인 번호예요.'); return; }
                   setPhoneToken({ token, phone });

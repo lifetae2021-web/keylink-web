@@ -188,7 +188,9 @@ export class PlazaRoom {
       } catch (e) {}
       try { await this.reg('/seen', { tid: a.tid, ip: a.ip, dev: a.dev, key: a.key, nick: a.nick }); } catch (e) {}
       // 접속 기록(관리자 '광장 현황'): 처음 인사면 새 기록, 로그인 후 다시 인사하면 같은 기록을 갱신
-      if (!a.test) try {
+      // 관리자 접속은 남기지 않는다 — 손님으로 들어왔다가 관리자로 로그인하면 그 기록도 지운다
+      if (a.admin && a.vid) { try { await this.reg('/admin/visits/delete', { ids: [a.vid] }); } catch (e) {} a.vid = null; }
+      if (!a.test && !a.admin) try {
         const v = { room: a.room, tid: a.tid, nick: a.nick, member: a.key ? 1 : 0, uid: a.uid || null };
         if (a.vid) await this.reg('/visit/update', { id: a.vid, ...v });
         else a.vid = (await (await this.reg('/visit/start', v)).json()).id;

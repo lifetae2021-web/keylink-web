@@ -15,7 +15,7 @@ const COUNT_STALE = 3 * 60 * 1000; // 방이 3분 넘게 인원 보고(1분 하�
 const FOREVER = 8640000000000000; // 영구 차단
 
 export class PlazaRegistry {
-  constructor(state) { this.state = state; }
+  constructor(state, env) { this.state = state; this.env = env || {}; }
 
   async get(k, d) { return (await this.state.storage.get(k)) || d; }
   sql() {
@@ -257,13 +257,17 @@ export class PlazaRegistry {
         hourly.push({ t: hs, peak: seen ? peak : 0 });
       }
 
+      // 관리자 접속은 요약·기록 목록에서 뺀다(예전 기록 포함)
+      const adminUids = String(this.env.PLAZA_ADMIN_UIDS || '').split(',').map((x) => x.trim()).filter(Boolean);
+      const notAdmin = adminUids.length ? ' AND (uid IS NULL OR uid NOT IN (' + adminUids.map(() => '?').join(',') + '))' : '';
+
       // 일별 요약(최근 14일)
       const d14 = today - 13 * DAY;
       const peaks = new Map(this.rows('SELECT CAST((bucket * ? + ?) / ? AS INTEGER) AS d, MAX(peak) AS p FROM conc WHERE bucket >= ? GROUP BY d', BUCKET, KST, DAY, Math.floor(d14 / BUCKET)).map((r) => [r.d, r.p]));
       const vis = new Map(this.rows(
         'SELECT CAST((enter_at + ?) / ? AS INTEGER) AS d, COUNT(*) AS entries, COUNT(DISTINCT tid) AS uniq, COUNT(DISTINCT CASE WHEN member = 1 THEN tid END) AS members, ' +
-        'AVG(CASE WHEN leave_at IS NOT NULL AND leave_at - enter_at < ? THEN leave_at - enter_at END) AS avgStay FROM visits WHERE enter_at >= ? GROUP BY d',
-        KST, DAY, STALE, d14).map((r) => [r.d, r]));
+        'AVG(CASE WHEN leave_at IS NOT NULL AND leave_at - enter_at < ? THEN leave_at - enter_at END) AS avgStay FROM visits WHERE enter_at >= ?' + notAdmin + ' GROUP BY d',
+        KST, DAY, STALE, d14, ...adminUids).map((r) => [r.d, r]));
       const daily = [];
       for (let i = 0; i < 14; i++) {
         const ds = today - i * DAY, key = Math.floor((ds + KST) / DAY), v = vis.get(key) || {};
@@ -278,6 +282,7 @@ export class PlazaRegistry {
       const where = ['enter_at >= ?'], args = [now - VISIT_TTL];
       if (type !== null) { where.push('member = ?'); args.push(type); }
       if (qn) { where.push('nick LIKE ?'); args.push('%' + qn + '%'); }
+      if (notAdmin) { where.push('(uid IS NULL OR uid NOT IN (' + adminUids.map(() => '?').join(',') + '))'); args.push(...adminUids); }
       const visits = this.rows('SELECT id, room, nick, member, uid, tid, enter_at, leave_at FROM visits WHERE ' + where.join(' AND ') + ' ORDER BY enter_at DESC LIMIT ?', ...args, limit)
         .map((r) => ({ ...r, online: r.leave_at == null && now - r.enter_at < STALE }));
 

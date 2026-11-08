@@ -12,14 +12,14 @@ import { useAuth } from '@/contexts/AuthContext';
 const version = APP_VERSION;
 // v8.1.7: Premium Navigation Bar
 
-// '진행 과정' → /#process, '참여 신청' → /#apply 로 스무스 스크롤
+// '진행 과정' → /#process 로 스무스 스크롤 · '참여 신청'은 신청 페이지(/apply/fast)로 바로 이동
 // isNew: NEW 뱃지 · plain: Next 라우터가 아닌 일반 이동(/plaza 는 정적 3D 페이지)
 type NavLink = { href: string; label: string; anchor: string | null; isNew?: boolean; plain?: boolean };
 const navLinks: NavLink[] = [
   { href: '/', label: 'HOME', anchor: 'top' },
   { href: '/notices', label: '협업사 & 공지', anchor: null },
   { href: '/', label: '진행 과정', anchor: 'process' },
-  { href: '/', label: '참여 신청', anchor: 'apply' },
+  { href: '/apply/fast', label: '참여 신청', anchor: null },
   { href: '/plaza', label: '키링 월드', anchor: null, isNew: true, plain: true }, // 신개념 온라인 소개팅(3D)
   { href: '/status', label: '실시간 현황', anchor: null },
   { href: '/matching/result', label: '매칭 결과', anchor: null },
