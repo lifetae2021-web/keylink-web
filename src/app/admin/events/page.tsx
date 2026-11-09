@@ -606,6 +606,7 @@ export default function EventsPage() {
               attendanceStatus: d.data().attendanceStatus ?? null,
               isRefundDeposit: d.data().isRefundDeposit ?? false,
               isManualRefund: d.data().isManualRefund ?? false,
+              refundAccount: d.data().refundAccount ?? null,
               isDarkTemplar: d.data().isDarkTemplar ?? false,
               secondSmsSentAt: d.data().secondSmsSentAt ?? null,
               maleOption: d.data().maleOption ?? null,
@@ -3462,6 +3463,13 @@ ${chatLink}
                                                   title={(app.isRefundDeposit || app.isManualRefund) ? '환불 대상 해제' : '환불 대상으로 설정'}
                                                   className={`px-2 py-0.5 rounded-lg text-[0.6rem] font-bold transition-all ${(app.isRefundDeposit || app.isManualRefund) ? "bg-sky-500 text-white shadow-sm" : "text-slate-400 hover:text-slate-600 hover:bg-white"}`}
                                                 >💸</button>
+                                                {(app as any).refundAccount?.account && (
+                                                  <span
+                                                    title={`${(app as any).refundAccount.bank} ${(app as any).refundAccount.account} ${(app as any).refundAccount.holder}`}
+                                                    onClick={() => { navigator.clipboard?.writeText(`${(app as any).refundAccount.bank} ${(app as any).refundAccount.account} ${(app as any).refundAccount.holder}`).then(() => toast.success('계좌를 복사했어요')).catch(() => {}); }}
+                                                    className="px-2 py-0.5 rounded-lg text-[0.6rem] font-bold bg-sky-100 text-sky-700 cursor-pointer whitespace-nowrap"
+                                                  >🏦 계좌</span>
+                                                )}
                                               </div>
                                             </div>
 

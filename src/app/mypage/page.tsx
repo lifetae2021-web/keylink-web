@@ -26,6 +26,7 @@ import { getMyVote, getMyVotesMap, getVotesReceivedByMe } from '@/lib/firestore/
 import { Application, Session, Vote } from '@/lib/types';
 import { useAuth } from '@/contexts/AuthContext';
 import MyPointsCard from '@/components/MyPointsCard';
+import RefundAccountCard from '@/components/RefundAccountCard';
 import { PhoneVerifyField, claimVerifiedPhone } from '@/components/PhoneVerification';
 
 const EMPTY = '미입력';
@@ -1036,6 +1037,8 @@ function MyPageContent() {
         <div style={{ maxWidth: '460px', margin: '0 auto', padding: '0 16px' }}>
 
         {renderProofReminder()}
+
+        {authUser && <RefundAccountCard authUser={authUser} />}
 
         {authUser && <MyPointsCard uid={authUser.uid} balance={authUserData?.points || 0} />}
 
