@@ -25,6 +25,8 @@ export default function AnalyticsTracker() {
     const userAgent = navigator.userAgent;
 
     const trackVisit = async (uid: string | null) => {
+      // 없는 주소(404)는 방문 기록에서 제외 — Next 기본 404 화면(next-error-h1)과 404에 붙는 noindex 표시로 판단
+      if (document.querySelector('h1.next-error-h1') || document.querySelector('meta[name="robots"][content*="noindex"]')) return;
       // 한 번 트래킹한 세션은 다시 하지 않음 (useEffect 내 변수 대신 useRef나 다른 방식도 좋지만 여기선 로직 유지)
       try {
         const today = format(new Date(), 'yyyy-MM-dd');

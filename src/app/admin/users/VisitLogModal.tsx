@@ -27,6 +27,7 @@ const getPathName = (path: string) => {
   if (path.startsWith('/matching-results')) return '매칭 결과';
   if (path.startsWith('/matching')) return '매칭 안내';
   if (path.startsWith('/notices')) return '공지사항';
+  if (path === '/plaza' || path === '/plaza/') return '키링 월드';
   if (path.startsWith('/live')) return '라이브 이벤트';
   if (path.startsWith('/private-matching')) return '프라이빗 매칭';
   if (path.startsWith('/status')) return '신청 현황';

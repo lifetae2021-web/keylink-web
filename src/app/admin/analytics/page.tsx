@@ -89,6 +89,7 @@ const PATH_MAP: Record<string, string> = {
   '/events': '📅 행사 안내',
   '/matching-results': '💘 매칭 결과',
   '/notices': '📢 공지사항',
+  '/plaza': '키링 월드',
   '/admin': '⚙️ 관리자 메인',
 };
 
@@ -404,16 +405,10 @@ export default function AnalyticsCalendarPage() {
           ) : (
             <div className="space-y-3">
               {filteredVisitors.map((v: any, idx: number) => {
-                const avatarColor = v.gender === 'male' ? '#3b82f6' : v.gender === 'female' ? '#f43f5e' : '#94a3b8';
                 return (
                 <div key={idx} className="bg-white p-3 rounded-lg border border-gray-100 shadow-sm">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ background: `${avatarColor}18` }}>
-                        <span className="font-bold text-xs" style={{ color: avatarColor }}>
-                          {v.name.slice(0, 1)}
-                        </span>
-                      </div>
                       <div>
                         <div className="font-bold text-gray-800 text-sm flex items-center gap-1">
                           {v.name}
