@@ -222,7 +222,7 @@ export default function ApplicationsPage() {
     return () => unsub();
   }, [isAdmin]);
 
-  // 이 신청과 다른 기수에 이미 선발/확정된 진행 예정 기수가 있으면 "141기 선발" 형태의 라벨 반환
+  // 이 신청과 다른 기수에 이미 선발/확정된 진행 예정 기수가 있으면 "141기 참가 확정" / "141기 선발 문자 보냄 · 입금 전" 라벨 반환
   const getOtherPlacement = (app: any): string | null => {
     if (app.status === 'selected' || app.status === 'confirmed') return null;
     const now = Date.now();
@@ -232,7 +232,7 @@ export default function ApplicationsPage() {
       if (!ev || ev.status === 'cancelled') continue;
       const date = ev.eventDate?.toDate?.();
       if (date && now >= date.getTime() + 24 * 60 * 60 * 1000) continue;
-      return `${ev.episodeNumber}기 ${p.status === 'confirmed' ? '확정' : '선발'}`;
+      return p.status === 'confirmed' ? `${ev.episodeNumber}기 참가 확정` : `${ev.episodeNumber}기 선발 문자 보냄 · 입금 전`;
     }
     return null;
   };
@@ -1280,6 +1280,11 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                                         🚫 노쇼
                                       </span>
                                     )}
+                                    {getOtherPlacement(app) && (
+                                      <span className="text-[0.6rem] font-black px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 whitespace-nowrap">
+                                        ⚠️ {getOtherPlacement(app)}
+                                      </span>
+                                    )}
                                   </div>
                                   <div className="flex items-center gap-2 mt-1">
                                     {(() => { const bd = user.birthDate || app.birthDate; return bd ? <span className="text-[0.85rem] font-bold text-slate-600">{bd.includes('-') ? bd.split('-')[0].slice(-2) : (bd.length === 8 ? bd.slice(2, 4) : bd.slice(0, 2))}년생</span> : <span className="text-[0.85rem] text-slate-400">??</span>; })()}
@@ -1391,7 +1396,7 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
                                           }
                                         }}
                                         disabled={!user.isJobReviewed && !app.id.startsWith('dummy')}
-                                        title={getOtherPlacement(app) ? `이미 ${getOtherPlacement(app)}된 회원입니다` : undefined}
+                                        title={getOtherPlacement(app) ? `다른 기수: ${getOtherPlacement(app)}` : undefined}
                                         className={`px-3 py-2 rounded-xl text-[0.8rem] font-black transition-all whitespace-nowrap ${
                                           isOverQuota ? 'bg-rose-500 text-white hover:bg-rose-600' : getOtherPlacement(app) ? 'bg-amber-500 text-white hover:bg-amber-600' : 'bg-[#FF6F61] text-white hover:bg-[#ff5a4a]'
                                         } shadow-md shadow-rose-100 disabled:opacity-50`}
@@ -1630,7 +1635,7 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
 
                                 {getOtherPlacement(app) && (
                       <div className="mb-2 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-[11px] font-black">
-                        ⚠️ 이미 {getOtherPlacement(app)}된 회원
+                        ⚠️ {getOtherPlacement(app)}
                       </div>
                     )}
 
@@ -1991,7 +1996,7 @@ const dStatus = DEPOSIT_STATUS[app.depositStatus as keyof typeof DEPOSIT_STATUS]
 
                     {getOtherPlacement(app) && (
                       <div className="mb-2 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-[11px] font-black">
-                        ⚠️ 이미 {getOtherPlacement(app)}된 회원
+                        ⚠️ {getOtherPlacement(app)}
                       </div>
                     )}
 
