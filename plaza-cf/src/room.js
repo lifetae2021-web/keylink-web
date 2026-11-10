@@ -29,6 +29,12 @@ const AUTO_BAN_REPORTERS = 5;             // 서로 다른 회원 5명이
 const AUTO_BAN_WINDOW_MS = 10 * 60 * 1000; // 10분 안에 신고하면
 const AUTO_BAN_HOURS = 24;                // 24시간 입장 금지
 
+// 자리 비움(💤): 나간 사람 캐릭터를 2시간 동안 제자리에 남긴다(회원·비회원 모두).
+// 접속자 수·방 인원 제한·방문 통계에는 안 센다. 같은 사람(같은 회원 또는 같은 기기)이 다시 들어오면 바로 지운다.
+const AWAY_MS = 2 * 60 * 60 * 1000;
+const AWAY_MAX = 20;                      // 한 방에 남길 수 있는 최대 수(넘치면 오래된 것부터 지움)
+const NO_AWAY_CODES = [4000, 4003, 4004]; // 방 꽉 참·입장 금지·같은 계정 중복 접속으로 끊긴 건 남기지 않음
+
 export class PlazaRoom {
   constructor(state, env) {
     this.state = state;
@@ -54,13 +60,38 @@ export class PlazaRoom {
     // vids: 지금 실제로 있는 사람들의 접속 기록 번호 → 목록에 없는 '접속 중' 기록은 퇴장 처리(강제 종료 대비)
     try { await this.reg('/inc?room=' + encodeURIComponent(room) + '&set=' + n, { vids }); } catch (e) {}
     // 접속자가 있는 동안 1분마다 다시 보고(하트비트). 보고가 끊긴 방은 레지스트리가 3분 뒤 0명으로 본다.
-    try { if (n > 0 && !(await this.state.storage.getAlarm())) await this.state.storage.setAlarm(Date.now() + 60000); } catch (e) {}
+    // 자리 비움 캐릭터가 남아 있으면 가장 먼저 끝나는 시각에도 깨어나 지운다.
+    try { await this.schedule(n); } catch (e) {}
+  }
+  async schedule(n) {
+    const away = await this.awayList();
+    let at = n > 0 ? Date.now() + 60000 : Infinity;
+    for (const g of away) at = Math.min(at, g.at + AWAY_MS + 1000);
+    if (at === Infinity) return;
+    const cur = await this.state.storage.getAlarm();
+    if (!cur || cur > at) await this.state.storage.setAlarm(at);
   }
   async alarm() {
+    await this.pruneAway();
     const ws = this.state.getWebSockets()[0];
     const room = (ws && this.attach(ws)?.room) || (await this.state.storage.get('room')) || 'plaza';
     await this.reportCount(room);
   }
+
+  // ── 자리 비움 목록 (DO 저장소 'away': [{ id, nick, look, st, key, gkey, badges, tid, ip, dev, at }]) ──
+  // ip·dev·tid는 신고·차단용으로만 저장하고 다른 사람에게는 보내지 않는다.
+  async awayList() { return (await this.state.storage.get('away')) || []; }
+  awayPeer(g) { return { id: g.id, nick: g.nick, look: g.look, state: g.st, key: g.key || null, gkey: g.gkey || null, admin: false, badges: g.badges || null, away: g.at }; }
+  async removeAway(pred) {
+    const away = await this.awayList();
+    const keep = [], gone = [];
+    for (const g of away) (pred(g) ? gone : keep).push(g);
+    if (!gone.length) return 0;
+    await this.state.storage.put('away', keep);
+    for (const g of gone) this.broadcast(null, { t: 'leave', id: g.id });
+    return gone.length;
+  }
+  async pruneAway() { const now = Date.now(); return this.removeAway((g) => now - g.at >= AWAY_MS); }
 
   clean(s, n) { return String(s ?? '').slice(0, n); }
   attach(ws) { try { return ws.deserializeAttachment(); } catch (e) { return null; } }
@@ -103,6 +134,7 @@ export class PlazaRoom {
         const a = this.attach(ws);
         if (a && a.tid === tid) { this.kickBanned(ws, until, 'admin'); n++; }
       }
+      n += await this.removeAway((g) => g.tid === tid);   // 자리 비움으로 남은 캐릭터도 지운다
       return Response.json({ kicked: n });
     }
 
@@ -186,6 +218,8 @@ export class PlazaRoom {
         const r = await (await this.reg('/banned?ip=' + a.ip + '&dev=' + a.dev + '&key=' + (a.key || '') + '&member=' + (a.key ? '1' : '0'))).json();
         if (r.banned) { this.save(ws, a); this.kickBanned(ws, r.until, 'banned'); return; }
       } catch (e) {}
+      // 같은 사람의 자리 비움 캐릭터가 있으면 지운다(같은 회원 계정, 또는 같은 기기 — 비회원으로 나갔다가 로그인해서 와도)
+      try { await this.removeAway((g) => (a.key && g.key === a.key) || (a.dev && g.dev === a.dev)); } catch (e) {}
       try { await this.reg('/seen', { tid: a.tid, ip: a.ip, dev: a.dev, key: a.key, nick: a.nick }); } catch (e) {}
       // 접속 기록(관리자 '광장 현황'): 처음 인사면 새 기록, 로그인 후 다시 인사하면 같은 기록을 갱신
       // 관리자 접속은 남기지 않는다 — 손님으로 들어왔다가 관리자로 로그인하면 그 기록도 지운다
@@ -201,8 +235,9 @@ export class PlazaRoom {
       for (const p of this.state.getWebSockets()) {
         if (p === ws) continue;
         const pa = this.attach(p);
-        if (pa && pa.nick) peers.push({ id: pa.id, nick: pa.nick, look: pa.look, state: pa.st, key: pa.key || null, gkey: pa.gkey || null, admin: !!pa.admin, badges: pa.badges || null });
+        if (pa && pa.nick && !pa.gone) peers.push({ id: pa.id, nick: pa.nick, look: pa.look, state: pa.st, key: pa.key || null, gkey: pa.gkey || null, admin: !!pa.admin, badges: pa.badges || null });
       }
+      try { const now = Date.now(); for (const g of await this.awayList()) if (now - g.at < AWAY_MS) peers.push(this.awayPeer(g)); } catch (e) {}
       this.send(ws, { t: 'welcome', id: a.id, room: a.room, nick: a.nick, admin: !!a.admin, peers });
       this.broadcast(ws, { t: 'join', id: a.id, nick: a.nick, look: a.look, state: a.st, key: a.key || null, gkey: a.gkey || null, admin: !!a.admin, badges: a.badges || null });
     } else if (m.t === 'pos') {
@@ -245,8 +280,19 @@ export class PlazaRoom {
           })).json();
           if (r.ban) this.kickBanned(p, r.until, 'reports');
         } catch (e) {}
-        break;
+        return;
       }
+      // 자리 비움 캐릭터 신고
+      try {
+        const g = (await this.awayList()).find((x) => x.id === to);
+        if (g && g.tid !== a.tid) {
+          const r = await (await this.reg('/report', {
+            tid: g.tid, reporter: a.key, target: { ip: g.ip, dev: g.dev, key: g.key },
+            threshold: AUTO_BAN_REPORTERS, windowMs: AUTO_BAN_WINDOW_MS, hours: AUTO_BAN_HOURS,
+          })).json();
+          if (r.ban) await this.removeAway((x) => x.tid === g.tid);
+        }
+      } catch (e) {}
     } else if (m.t === 'req' || m.t === 'accept' || m.t === 'acceptwait' || m.t === 'chat' || m.t === 'chatbye' || m.t === 'photo') {
       const to = this.clean(m.to, 12);
       for (const p of this.state.getWebSockets()) {
@@ -262,13 +308,27 @@ export class PlazaRoom {
     }
   }
 
-  async webSocketClose(ws) { await this.onGone(ws); }
-  async webSocketError(ws) { await this.onGone(ws); }
-  async onGone(ws) {
+  async webSocketClose(ws, code) { await this.onGone(ws, code); }
+  async webSocketError(ws) { await this.onGone(ws, 0); }
+  async onGone(ws, code) {
     const a = this.attach(ws);
     if (!a || a.gone) return;
     a.gone = true; this.save(ws, a);
-    if (a.nick) this.broadcast(ws, { t: 'leave', id: a.id });
+    // 자리 비움으로 남길지: 인사를 마친 일반 이용자만(관리자·점검 접속 제외), 강제로 끊긴 경우 제외, 같은 사람이 다른 창으로 아직 있으면 제외
+    let away = !!a.nick && !a.admin && !a.test && !!a.tid && !NO_AWAY_CODES.includes(code);
+    if (away) for (const p of this.state.getWebSockets()) { if (p === ws) continue; const pa = this.attach(p); if (pa && !pa.gone && pa.tid === a.tid) { away = false; break; } }
+    if (away) {
+      try {
+        const now = Date.now();
+        const list = [];
+        for (const g of await this.awayList()) { if (now - g.at < AWAY_MS && g.tid !== a.tid) list.push(g); else this.broadcast(ws, { t: 'leave', id: g.id }); }
+        list.push({ id: a.id, nick: a.nick, look: a.look, st: a.st, key: a.key || null, gkey: a.gkey || null, badges: a.badges || null, tid: a.tid, ip: a.ip, dev: a.dev, at: now });
+        while (list.length > AWAY_MAX) { const old = list.shift(); this.broadcast(ws, { t: 'leave', id: old.id }); }
+        await this.state.storage.put('away', list);
+        this.broadcast(ws, { t: 'away', id: a.id, at: now });
+      } catch (e) { away = false; }
+    }
+    if (a.nick && !away) this.broadcast(ws, { t: 'leave', id: a.id });
     if (a.vid) { try { await this.reg('/visit/end', { id: a.vid }); } catch (e) {} }
     await this.reportCount(a.room, ws);
   }

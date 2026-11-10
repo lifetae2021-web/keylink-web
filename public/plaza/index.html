@@ -1692,15 +1692,26 @@ function showBanned(until, reason){ bannedUntil=until||Date.now()+86400000; chat
   el.hidden=false; }
 let ws=null, myId=null;
 const netDot=document.getElementById('netDot'), netTxt=document.getElementById('netTxt');
-function setNet(on, n){ netDot.className='dot '+(on?'on':'off'); netTxt.textContent = on ? ('접속 '+(n)+'명') : '오프라인 (혼자)'; }
+function setNet(on, n, away){ netDot.className='dot '+(on?'on':'off'); netTxt.textContent = on ? ('접속 '+(n)+'명'+(away?' · 💤 '+away:'')) : '오프라인 (혼자)'; }
 function addPeer(p){ if(p.id===myId||peers.has(p.id)) return; if((p.key && blocked.has(p.key)) || blockedIds.has(p.id)){ hiddenPeers.set(p.id,p); return; } /* 차단한 사람은 안 보임 */
   const look=sanitizeLook(p.look), group=new THREE.Group(), root=new THREE.Group(); group.add(root); const av=createAvatar(look); root.add(av.group);
   const nk=p.admin?makeAdminSprite(p.nick||'관리자'):makeNickSprite(p.nick||'손님', look.gender); nk.position.y=(p.admin?2.25:2.15)+nickLift(look); root.add(nk);
   let petAid=null; if(look.pet){ const a=animalById(look.pet.id); if(a && !a.userData.mine && !a.userData.held){ a.userData.mine=false; leash(a, group, look.pet.name+' · '+(p.nick||'')+'의 '+petKindLabel(a.userData.kind,true)); petAid=look.pet.id; } }
   group.position.set(p.state?.x||0,0,p.state?.z||0); group.userData={ look, profile:{ nick:p.nick, id:p.id, key:p.key||null, gkey:p.gkey||null, gender:look.gender==='female'?'여':'남', admin:!!p.admin, badges:p.badges||null } }; scene.add(group);
   group.position.y=p.state?.y||0; if(p.state?.ry) group.rotation.y=p.state.ry; if(p.state?.p==='sit') av.setSit(true);
-  peers.set(p.id,{ petAid, group, av, root, key:p.key||null, target:{x:group.position.x,z:group.position.z,y:group.position.y,ry:p.state?.ry||0}, nick:p.nick, phase:Math.random()*10 }); updateCount(); }
-function updateCount(){ setNet(true, peers.size+1); }
+  peers.set(p.id,{ petAid, group, av, root, nk, key:p.key||null, target:{x:group.position.x,z:group.position.z,y:group.position.y,ry:p.state?.ry||0}, nick:p.nick, phase:Math.random()*10 });
+  if(p.away) setAway(p.id, p.away); updateCount(); }
+// 💤 자리 비움: 나간 사람 캐릭터가 2시간 동안 제자리에 남는다(서버가 시간 지나면 지움). 흐리게 + 머리 위 Zzz, 1:1 신청은 안 됨
+function setAway(id, at){ const pr=peers.get(id); if(!pr || pr.away) return; pr.away=at||Date.now(); pr.group.userData.profile.away=pr.away;
+  pr.av.group.traverse(o=>{ if(!o.material) return; o.material=Array.isArray(o.material)?o.material.map(fadeMat):fadeMat(o.material); });
+  if(pr.nk) pr.nk.material.opacity=0.6;
+  const z=makeZzzSprite(); z.position.y=pr.nk?pr.nk.position.y+0.45:2.7; pr.root.add(z); pr.zzz=z; updateCount(); }
+function fadeMat(m){ const c=m.clone(); c.transparent=true; c.opacity=0.45; c.depthWrite=false; return c; }
+function makeZzzSprite(){ const cv=document.createElement('canvas'); cv.width=128; cv.height=64; const g=cv.getContext('2d'); g.font='bold 40px Jua, sans-serif'; g.textAlign='center'; g.textBaseline='middle';
+  g.lineWidth=6; g.strokeStyle='rgba(255,255,255,.9)'; g.strokeText('Zzz',64,34); g.fillStyle='#6b7a99'; g.fillText('Zzz',64,34);
+  const tex=new THREE.CanvasTexture(cv); tex.colorSpace=THREE.SRGBColorSpace; const sp=new THREE.Sprite(new THREE.SpriteMaterial({ map:tex, transparent:true, depthTest:false })); sp.scale.set(0.7,0.35,1); return sp; }
+function awayAgo(at){ const m=Math.max(1,Math.round((Date.now()-at)/60000)); return m<60?m+'분 전':Math.floor(m/60)+'시간 '+(m%60?m%60+'분 ':'')+'전'; }
+function updateCount(){ let away=0; for(const pr of peers.values()) if(pr.away) away++; setNet(true, peers.size-away+1, away); }
 // 입장 인사: 회원이면 uid 대신 Firebase 로그인 토큰을 보낸다 → 실시간 서버가 구글 서명을 검증해 진짜 uid를 얻음(위조 방지)
 async function sendHello(){ let idToken=null; try{ if(fbUser) idToken=await fbUser.getIdToken(); }catch(e){}
   try{ if(ws && ws.readyState===1) ws.send(JSON.stringify({ t:'hello', room:'plaza', nick:opts.nick, look:sanitizeLook({ ...opts.look, gender:opts.gender }), idToken })); }catch(e){} }
@@ -1725,7 +1736,8 @@ function connect(){
     else if(m.t==='feed'){ const pr=[...peers.values()].find(x=>x.key&&x.key===m.key); if(pr){ feedEffect(pr.group, m.aid); showSay(pr.root, '밥을 줬어요'); } }
     else if(m.t==='wishhide'){ removeTreeWish(m.id); }
     else if(m.t==='wish'){ if(m.theme==='xmas' && m.id && themeId==='xmas') addTreeWish({ id:m.id, nick:m.nick, text:m.text, orn:m.orn, pa:m.pa, py:m.py }); if(myWishText && m.text===myWishText){ myWishText=null; } else { const pr=[...peers.values()].find(x=>x.key&&x.key===m.key); wishEffect(pr?pr.group:null, m.nick, m.text); } }
-    else if(m.t==='leave'){ hiddenPeers.delete(m.id); const pr=peers.get(m.id); if(pr){ scene.remove(pr.group); peers.delete(m.id); updateCount(); } if(currentChat && currentChat.id===m.id){ addMsg('sys', (currentChat.nick||'상대')+'님이 대화방을 나가셨습니다.'); } }
+    else if(m.t==='away'){ const h=hiddenPeers.get(m.id); if(h) h.away=m.at; setAway(m.id, m.at); if(currentChat && currentChat.id===m.id && !currentChat.left){ addMsg('sys', (currentChat.nick||'상대')+'님이 키링 월드를 나가셨습니다.'); currentChat.left=true; } }
+    else if(m.t==='leave'){ hiddenPeers.delete(m.id); removePeer(m.id); if(currentChat && !currentChat.left && currentChat.id===m.id){ addMsg('sys', (currentChat.nick||'상대')+'님이 대화방을 나가셨습니다.'); } }
     else if(((m.key && blocked.has(m.key)) || blockedIds.has(m.from)) && (m.t==='req'||m.t==='accept'||m.t==='acceptwait'||m.t==='chat'||m.t==='chatbye'||m.t==='photo')){ return; } // 차단한 사람
     else if(m.t==='req'){ showReq(m.from, m.nick, m.uid, m.key); }
     else if(m.t==='acceptwait'){ waitingAccept={ nick:m.nick, at:Date.now() }; showNotice('수락 완료 · 가입 대기', m.nick, '님이 대화 신청을 수락했어요.<br>비회원이라 가입을 마치면<br>바로 대화가 열려요.'); }
@@ -1747,7 +1759,7 @@ function openCard(profile){ document.exitPointerLock?.(); reqTarget=profile; doc
   const reqBtn=document.getElementById('cardReq');
   if(profile.npc){ meta.innerHTML=(themeId==='xmas'?'크리스마스 키링 월드 소원 트리 옆에 사는 키키예요.':'분수대 광장에 사는 키키예요.')+'<br>광장 구경, 소개팅 이야기, 대화 연습까지<br>편하게 말 걸어 보세요.'; reqBtn.textContent='키키와 대화하기'; reqBtn.hidden=false; }
   else if(profile.admin){ meta.innerHTML='<span class="npc-tag" style="background:#1f1b4d;color:#ffd65a">키링 월드 개발자</span><br>궁금한 점이나 불편한 점이 있으면 편하게 말 걸어 주세요.'; reqBtn.textContent='개발자에게 1:1 문의'; reqBtn.hidden=false; }
-  else { meta.textContent=(profile.gender?profile.gender+' · ':'')+'지금 광장에 접속 중'; reqBtn.textContent='1:1 대화 신청'; reqBtn.hidden=false;
+  else { meta.textContent=(profile.gender?profile.gender+' · ':'')+(profile.away?'💤 자리 비움 · '+awayAgo(profile.away)+' 나감':'지금 광장에 접속 중'); reqBtn.textContent='1:1 대화 신청'; reqBtn.hidden=!!profile.away;
     const b=profile.badges||{}; const row=document.createElement('div'); row.className='card-badges';
     const badge=(on,label)=>{ const s=document.createElement('span'); s.className='cbadge'+(on?' on':''); s.textContent=(on?'✓ ':'')+label+(on?' 인증':' 미인증'); row.appendChild(s); };
     if(profile.key && profile.badges){ badge(b.job,'재직'); badge(b.photo,'사진'); } else if(!profile.key){ const s=document.createElement('span'); s.className='cbadge'; s.textContent='비회원'; row.appendChild(s); }   // 배지 정보를 못 받은 회원은 표시 안 함
@@ -1763,6 +1775,7 @@ document.getElementById('cardClose').onclick=()=>card.hidden=true;
 card.addEventListener('pointerdown',(e)=>{ if(e.target===card) card.hidden=true; });
 document.getElementById('cardReq').onclick=()=>{ const p=reqTarget; card.hidden=true;
   if(p.npc){ openNpcChat(); } // 키키(AI)는 비회원도 대화 가능
+  else if(p.away){ toast('지금은 자리에 없어요'); }
   else if(ws&&ws.readyState===1&&p.id){ ws.send(JSON.stringify({ t:'req', to:p.id })); toast(`${p.nick}님에게 1:1 신청!`); } };
 let incoming=null; const reqBox=document.getElementById('req');
 function showReq(fromId, nick, uid, key){ document.exitPointerLock?.(); incoming={id:fromId,nick,uid,key}; document.getElementById('reqNick').textContent=nick; reqBox.hidden=false; }
@@ -1776,7 +1789,7 @@ let waitingAccept=null; // 신청한 쪽: 상대가 가입 중일 때
 function savePendingAccept(v){ try{ v?localStorage.setItem(PENDING_ACCEPT_KEY,JSON.stringify(v)):localStorage.removeItem(PENDING_ACCEPT_KEY); }catch(e){} }
 function loadPendingAccept(){ try{ const v=JSON.parse(localStorage.getItem(PENDING_ACCEPT_KEY)||'null'); if(v && Date.now()-v.at<PENDING_ACCEPT_TTL) return v; }catch(e){} savePendingAccept(null); return null; }
 function tryPendingAccept(){ if(!member || !ws || ws.readyState!==1 || !myId) return; const v=loadPendingAccept(); if(!v) return;
-  let to=null; for(const [id,pr] of peers){ if(v.key && pr.key===v.key){ to=id; break; } } if(!to && v.id && peers.has(v.id)) to=v.id;
+  let to=null; for(const [id,pr] of peers){ if(!pr.away && v.key && pr.key===v.key){ to=id; break; } } if(!to && v.id && peers.has(v.id) && !peers.get(v.id).away) to=v.id;
   if(!to) return; // 상대가 아직 안 보이면 다음 접속 소식(join) 때 다시 시도
   savePendingAccept(null); ws.send(JSON.stringify({ t:'accept', to }));
   openChat({ id:to, nick:v.nick, uid:v.uid, key:v.key, bot:false }); toast(v.nick+'님과 대화가 열렸어요'); }
@@ -2156,7 +2169,7 @@ function blockPerson(t){ if(!t) return;
     if(t.key){ blocked.add(t.key); if(fbUser){ try{ await authFetch('/api/plaza/block',{ method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ key:t.key, nick:t.nick }) }); }catch(e){} } }
     if(t.id && !t.key) blockedIds.add(t.id);
     blockedNames.set(t.key||t.id, { nick:t.nick, at:Date.now(), guest:!t.key });
-    for(const [id,pr] of peers){ if((t.key && pr.key===t.key) || id===t.id){ hiddenPeers.set(id,{ id, nick:pr.nick, look:pr.group.userData.look||null, key:pr.key, gkey:pr.group.userData.profile?.gkey||null, state:{ x:pr.group.position.x, z:pr.group.position.z, ry:pr.group.rotation.y } }); } }
+    for(const [id,pr] of peers){ if((t.key && pr.key===t.key) || id===t.id){ hiddenPeers.set(id,{ id, nick:pr.nick, look:pr.group.userData.look||null, key:pr.key, gkey:pr.group.userData.profile?.gkey||null, state:{ x:pr.group.position.x, z:pr.group.position.z, ry:pr.group.rotation.y }, away:pr.away||null }); } }
     for(const [id,pr] of [...peers]){ if((t.key && pr.key===t.key) || id===t.id) removePeer(id); }
     if(currentChat && (currentChat.id===t.id || (t.key && currentChat.key===t.key))){ chat.hidden=true; currentChat=null; }
     card.hidden=true; toast(t.nick+'님을 차단했어요');
@@ -2492,6 +2505,7 @@ function tick(){
     if(moved>0.002) g.rotation.y=pr.target.ry;
     { const sp=Math.hypot(g.position.x-(pr.px??g.position.x), g.position.z-(pr.pz??g.position.z))/Math.max(dt,1e-3); pr.spd=L(pr.spd||0,sp,0.2); pr.px=g.position.x; pr.pz=g.position.z; }
     pr.av.update(dt, moved>0.004, pr.spd>6);
+    if(pr.zzz){ pr.phase+=dt; pr.zzz.position.x=Math.sin(pr.phase*1.3)*0.12; pr.zzz.material.opacity=0.55+0.45*Math.sin(pr.phase*2); }
   }
   { const crowd=mode!=='creating'; for(const pr of peers.values()) pr.group.visible=crowd; npcGroup.visible=crowd; }   // 꾸미는 동안 내 캐릭터가 가려지지 않게
   animTaxi(clock.elapsedTime);
