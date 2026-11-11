@@ -1243,27 +1243,21 @@ ${chatLink}`;
         );
 
         if (confirmedOpposite.length > 0) {
-          // 신청자의 과거 확정(confirmed) 또는 선발(selected) 기수 조회
-          const [appPastConfirmedSnap, appPastSelectedSnap] = await Promise.all([
-            getDocs(query(collection(db, 'applications'), where('userId', '==', app.userId), where('status', '==', 'confirmed'))),
-            getDocs(query(collection(db, 'applications'), where('userId', '==', app.userId), where('status', '==', 'selected'))),
-          ]);
-          const appPastSessionIds = [
-            ...appPastConfirmedSnap.docs.map((d) => d.data().sessionId as string),
-            ...appPastSelectedSnap.docs.map((d) => d.data().sessionId as string),
-          ].filter((sid) => sid !== session.id);
+          // "실제로 만났다" = 둘 다 참가 확정(confirmed)이었던 기수 중 이미 열린(끝난) 기수만.
+          // 선발 문자만 받고 확정 안 된 기수(selected)는 안 온 것이므로 빼야 한다 — 서버 checkOverlap과 같은 기준.
+          const heldSessionIds = new Set(
+            sessions.filter((s) => s.status !== 'cancelled' && s.eventDate.getTime() < Date.now()).map((s) => s.id)
+          );
+          const pastConfirmedSessionIds = async (userId: string) =>
+            (await getDocs(query(collection(db, 'applications'), where('userId', '==', userId), where('status', '==', 'confirmed'))))
+              .docs.map((d) => d.data().sessionId as string)
+              .filter((sid) => sid !== session.id && heldSessionIds.has(sid));
+          const appPastSessionIds = await pastConfirmedSessionIds(app.userId);
 
           if (appPastSessionIds.length > 0) {
             const overlapNames: string[] = [];
             for (const opp of confirmedOpposite) {
-              const [oppConfirmedSnap, oppSelectedSnap] = await Promise.all([
-                getDocs(query(collection(db, 'applications'), where('userId', '==', opp.userId), where('status', '==', 'confirmed'))),
-                getDocs(query(collection(db, 'applications'), where('userId', '==', opp.userId), where('status', '==', 'selected'))),
-              ]);
-              const oppPastSessionIds = [
-                ...oppConfirmedSnap.docs.map((d) => d.data().sessionId as string),
-                ...oppSelectedSnap.docs.map((d) => d.data().sessionId as string),
-              ].filter((sid) => sid !== session.id);
+              const oppPastSessionIds = await pastConfirmedSessionIds(opp.userId);
               const common = appPastSessionIds.filter((sid) => oppPastSessionIds.includes(sid));
               if (common.length > 0) {
                 overlapNames.push(opp.name || '참가자');

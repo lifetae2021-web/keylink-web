@@ -4,7 +4,20 @@ import { adminDb } from '@/lib/firebaseAdmin';
  * 특정 사용자가 특정 기수에 참여(선발 또는 확정)하려 할 때,
  * 해당 기수에 이미 확정(confirmed)된 반대 성별 참가자 중 과거에 만났던 이력이 있는지 체크합니다.
  */
+// "실제로 만났다" = 둘 다 참가 확정(confirmed)이었고, 그 기수가 이미 열린(행사일이 지난) 경우만.
+// 아직 열리지 않은 기수에 같이 확정된 것은 만난 게 아니다. 선발(selected)만 된 기수는 안 온 것이라 처음부터 제외.
+const heldCache = new Map<string, boolean>();
+async function isHeld(sessionId: string): Promise<boolean> {
+  if (heldCache.has(sessionId)) return heldCache.get(sessionId)!;
+  const d = (await adminDb.collection('sessions').doc(sessionId).get()).data();
+  const date = d?.eventDate?.toDate?.() as Date | undefined;
+  const held = !!d && d.status !== 'cancelled' && !!date && date.getTime() < Date.now();
+  heldCache.set(sessionId, held);
+  return held;
+}
+
 export async function checkOverlap(userId: string, sessionId: string, gender: string): Promise<string | null> {
+  heldCache.clear();
   try {
     // 1. 대상 유저의 과거 확정 기수들 조회
     const targetAppsSnap = await adminDb.collection('applications')
@@ -62,7 +75,9 @@ export async function checkOverlap(userId: string, sessionId: string, gender: st
         .filter(data => data.sessionId !== sessionId)
         .map(data => data.sessionId);
       
-      const common = targetPastSessions.filter(sid => oppPastSessions.includes(sid));
+      const shared = targetPastSessions.filter(sid => oppPastSessions.includes(sid));
+      const common: string[] = [];
+      for (const sid of shared) if (await isHeld(sid)) common.push(sid);
       if (common.length > 0) {
         // 첫 번째 겹치는 기수 이름 조회
         const sDoc = await adminDb.collection('sessions').doc(common[0]).get();
