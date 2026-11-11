@@ -11,6 +11,7 @@
   body { background:linear-gradient(var(--sky-top),var(--sky-bottom)); color:var(--ink); overflow:hidden;
     font-family:"Jua",system-ui,-apple-system,sans-serif; -webkit-user-select:none; user-select:none; -webkit-tap-highlight-color:transparent; touch-action:none; }
   #c { position:fixed; inset:0; width:100%; height:100%; display:block; }
+  #vig { position:fixed; inset:0; pointer-events:none; opacity:0; transition:opacity 1.2s; background:radial-gradient(ellipse at 50% 46%, rgba(8,10,30,0) 52%, rgba(8,10,30,.34) 100%); }
   #hud { position:fixed; inset:0; pointer-events:none; }
   .panel { position:absolute; top:env(safe-area-inset-top,0px); left:max(16px,env(safe-area-inset-left,0px));
     background:var(--card); border:1px solid var(--card-border); border-radius:18px; padding:10px 16px; margin-top:12px;
@@ -97,6 +98,8 @@
   .card-name { font-size:1.4rem; margin-top:4px; } .card-meta { font-size:.92rem; opacity:.75; margin-top:6px; }
   .card-box .btn.go { width:100%; margin-top:16px; }
   #toast { position:fixed; left:50%; bottom:calc(26px + env(safe-area-inset-bottom,0px)); transform:translateX(-50%); background:var(--accent-ink); color:#fff; padding:12px 18px; border-radius:14px; font-size:.9rem; z-index:25; box-shadow:0 8px 24px rgba(0,0,0,.25); max-width:94vw; text-align:center; white-space:nowrap; word-break:keep-all; }
+  #toast { pointer-events:none; }
+  @media (pointer:coarse) { #toast { bottom:auto; top:calc(104px + env(safe-area-inset-top,0px)); } }
   /* 1:1 신청 알림: HUD 아래 가운데 카드 — 이름은 한 줄로 크게, 안내는 그 아래, 버튼은 가로 꽉 차게 */
   #req, #notice { position:fixed; left:50%; top:calc(36% + env(safe-area-inset-top,0px)); transform:translate(-50%,-50%); z-index:26; width:min(88vw,340px); background:#fff; border:1px solid var(--card-border); border-radius:20px; padding:20px 18px 16px; box-shadow:0 16px 40px rgba(40,70,120,.28); text-align:center; word-break:keep-all; animation:reqIn .22s ease-out; }
   @keyframes reqIn { from { opacity:0; transform:translate(-50%,-46%); } to { opacity:1; transform:translate(-50%,-50%); } }
@@ -322,6 +325,7 @@
 </head>
 <body>
 <canvas id="c"></canvas>
+<div id="vig" aria-hidden="true"></div>
 <div id="hud" hidden>
   <button type="button" id="menuBtn" aria-label="내 메뉴" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h16"/></svg><i id="menuDot" hidden></i></button>
   <div id="menu" hidden><div class="menu-box">
@@ -474,7 +478,10 @@
 <script type="module">
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+// 지도·소품 GLB는 Meshopt로 압축해 올린다(keylink_tools/gltf/compress.mjs) — 읽을 때 해독기가 꼭 필요하다
+const gltfLoader=()=>new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { nickProblem, isReservedNick } from '/plaza/badwords.js';
@@ -595,10 +602,10 @@ function nightGlow(o, tag){
   const lamp=/lamp/.test(o.name)||/lamp/.test(o.parent?.name||'');
   for(const m of (Array.isArray(o.material) ? o.material : [o.material])){ if(!m.emissive) continue; if(lamp){ m.emissive.set(0xffb060); m.color.set(0xffd9a8); } else if(m.emissive.getHex()===0) m.emissive.copy(m.color||new THREE.Color(0xfff2c0)); glowMats.set(m, { base:m.emissiveIntensity||0, add:lamp?0.7:1.6 }); if(tag) themeGlowMats.add(m); }
   // 가로등 아래 따뜻한 불빛 웅덩이(진짜 조명 대신 바닥에 빛 그림을 겹쳐 휴대폰도 가볍게)
-  if(lamp){ const p=o.getWorldPosition(new THREE.Vector3()), pool=new THREE.Mesh(new THREE.CircleGeometry(3.4,40), lampPoolMat); pool.rotation.x=-Math.PI/2; pool.position.set(p.x, 0.04, p.z); pool.renderOrder=1; scene.add(pool); if(tag) themeExtras.push(pool); }
+  if(lamp){ const p=new THREE.Box3().setFromObject(o).getCenter(new THREE.Vector3()), pool=new THREE.Mesh(new THREE.CircleGeometry(3.4,40), lampPoolMat); pool.rotation.x=-Math.PI/2; pool.position.set(p.x, 0.07, p.z); pool.renderOrder=1; scene.add(pool); if(tag) themeExtras.push(pool); }
 }
 const lampPoolMat=new THREE.MeshBasicMaterial({ map:(()=>{ const c=document.createElement('canvas'); c.width=c.height=128; const g=c.getContext('2d'), gr=g.createRadialGradient(64,64,0,64,64,64); gr.addColorStop(0,'rgba(255,214,150,1)'); gr.addColorStop(0.45,'rgba(255,196,120,0.45)'); gr.addColorStop(1,'rgba(255,190,110,0)'); g.fillStyle=gr; g.fillRect(0,0,128,128); const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; return t; })(),
-  transparent:true, opacity:0, depthWrite:false, blending:THREE.AdditiveBlending, fog:false });
+  transparent:true, opacity:0, depthWrite:false, blending:THREE.AdditiveBlending, fog:false, polygonOffset:true, polygonOffsetFactor:-4, polygonOffsetUnits:-4 });
 const stars=(()=>{ const n=700, p=new Float32Array(n*3); for(let i=0;i<n;i++){ const u=Math.random(), a=Math.random()*Math.PI*2, y=0.08+u*0.92, r=Math.sqrt(1-y*y); p[i*3]=Math.cos(a)*r*300; p[i*3+1]=y*300; p[i*3+2]=Math.sin(a)*r*300; }
   const g=new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(p,3));
   const s=new THREE.Points(g, new THREE.PointsMaterial({ color:0xffffff, size:2, sizeAttenuation:false, transparent:true, opacity:0, fog:false, depthWrite:false })); s.renderOrder=-1; s.visible=false; scene.add(s); return s; })();
@@ -618,7 +625,8 @@ function applyDayNight(){
   if(Math.abs(k.env-envK)>0.02) buildEnv(k.env);
   for(const m of cloudMats){ m.emissiveIntensity=k.cl; m.color.setScalar(0.45+0.55*k.tint); }
   for(const [m,g] of glowMats) m.emissiveIntensity=g.base+k.glow*g.add;
-  lampPoolMat.opacity=k.glow*0.5;
+  lampPoolMat.opacity=k.glow*0.34;
+  document.getElementById('vig').style.opacity=String(k.glow);
   stars.material.opacity=k.star; stars.visible=k.star>0.01;
   snow.material.color.setScalar(0.55+0.45*k.tint);
   // 판 소품·2D 동물(빛을 안 받는 그림)도 밤에는 어둡게
@@ -663,7 +671,7 @@ function applyTheme(id){
   if(id==='xmas'){ loadTreeWishes(); buildTreeGlow(); }
   document.getElementById('keyCount').hidden = keySpots.length===0;
   if(!t.file) return;
-  new GLTFLoader().load(t.file, (gltf)=>{ if(seq!==themeSeq) return; themeRoot=gltf.scene; scene.add(themeRoot); themeRoot.updateMatrixWorld(true); ingestWorld(themeRoot, 'theme'); applyDayNight(); }, undefined, (e)=>console.warn('[theme]', e));
+  gltfLoader().load(t.file, (gltf)=>{ if(seq!==themeSeq) return; themeRoot=gltf.scene; scene.add(themeRoot); themeRoot.updateMatrixWorld(true); ingestWorld(themeRoot, 'theme'); applyDayNight(); }, undefined, (e)=>console.warn('[theme]', e));
 }
 // ── 크리스마스 D-day(서울 날짜) ──
 function updateDday(){ const el=document.getElementById('dday'); if(!el) return; if(themeId!=='xmas'){ el.hidden=true; return; }
@@ -703,7 +711,7 @@ function ornShapeBasic(kind){ const c=ORN_COLOR[kind]||'#ffd65a', m=new THREE.Me
 // 소원 장식 3D 모델(Higgsfield로 그린 그림을 3D로 바꾼 GLB). 다 불러오기 전에는 위의 도형으로 보이다가 바꿔 끼운다
 const ORN_MODEL={}, ORN_WAIT={}, ornMats=new Set();
 function loadOrn(kind){ if(kind in ORN_MODEL || ORN_WAIT[kind]) return; ORN_WAIT[kind]=[];
-  new GLTFLoader().load('/plaza/assets/orn_'+kind+'.glb',(gltf)=>{ const m=gltf.scene, bb=new THREE.Box3().setFromObject(m), sz=bb.getSize(new THREE.Vector3()), c=bb.getCenter(new THREE.Vector3()), k=0.46/Math.max(sz.x,sz.y,sz.z);
+  gltfLoader().load('/plaza/assets/orn_'+kind+'.glb',(gltf)=>{ const m=gltf.scene, bb=new THREE.Box3().setFromObject(m), sz=bb.getSize(new THREE.Vector3()), c=bb.getCenter(new THREE.Vector3()), k=0.46/Math.max(sz.x,sz.y,sz.z);
     m.scale.setScalar(k); m.position.set(-c.x*k,-c.y*k,-c.z*k);
     m.traverse(o=>{ if(o.isMesh && o.material){ const mt=o.material; if(mt.map){ mt.emissive=new THREE.Color(kind==='light'?'#ffc94a':'#ffffff'); mt.emissiveMap=mt.map; mt.emissiveIntensity=mt.userData.ebase=kind==='light'?1.1:0.35; ornMats.add(mt); } } });   // 밤에도 색이 보이게 은은하게 빛난다
     const w=new THREE.Group(); w.add(m); ORN_MODEL[kind]=w;
@@ -966,7 +974,7 @@ function ingestWorld(v, tag){
 // 테마를 먼저 묻고 그 테마의 지도를 불러온다(크리스마스처럼 지도 전체가 다른 테마가 있음)
 let mapFile=null;
 (async()=>{ themeId=await fetchThemeId(); mapFile=THEMES[themeId].map||'/plaza/village.glb'; applyDayNight();
-new GLTFLoader().load(mapFile, (gltf)=>{
+gltfLoader().load(mapFile, (gltf)=>{
   const v=gltf.scene; scene.add(v); v.updateMatrixWorld(true); mapRoot=v;
   const anchors=ingestWorld(v, null);
   for(const o of anchors){ const u=o.userData, p=o.getWorldPosition(new THREE.Vector3());
@@ -1155,7 +1163,7 @@ const sideways=(dir)=>Math.abs(dir.dot(camRightVec().setY(0).normalize()))>0.5; 
 // opts.bright: 밤에 어둡게 보이는 실사 텍스처를 밝게 · opts.nose: [앞쪽 x 비율, 높이 비율] 자리에 빛나는 빨간 코(루돌프)
 function makeModelAnimal(kind,url,size,name,says,opts={}){
   const g=new THREE.Group(), root=new THREE.Group(); g.add(root);
-  new GLTFLoader().load(url,(gltf)=>{ const m=gltf.scene; const bb=new THREE.Box3().setFromObject(m), sz=bb.getSize(new THREE.Vector3()), c=bb.getCenter(new THREE.Vector3());
+  gltfLoader().load(url,(gltf)=>{ const m=gltf.scene; const bb=new THREE.Box3().setFromObject(m), sz=bb.getSize(new THREE.Vector3()), c=bb.getCenter(new THREE.Vector3());
     const k=size/Math.max(sz.x,sz.z); m.scale.setScalar(k); m.position.set(-c.x*k,-bb.min.y*k,-c.z*k); root.add(m); g.userData.bubbleY=sz.y*k+0.5;
     if(opts.bright) m.traverse(o=>{ if(o.isMesh && o.material){ o.material.color?.multiplyScalar(opts.bright); o.castShadow=true; } });
     // opts.legs: 뼈대 없는 모델의 다리를 셰이더로 흔든다 — 골반 높이(hip) 아래 꼭짓점을 앞/뒤(split)·좌/우(z)로 나눠 대각선 다리끼리 같이 앞뒤로
@@ -1387,7 +1395,7 @@ function propSprite(url,h,pos,pixel,block){ const mat=new THREE.SpriteMaterial({
 const modelAnchors=[]; let wantModels=false;
 function loadAnchoredModels(){ wantModels=true; if(!modelAnchors.length||loadAnchoredModels.done) return; loadAnchoredModels.done=true;
   const byFile={}; for(const o of modelAnchors) (byFile[o.userData.kl_asset]=byFile[o.userData.kl_asset]||[]).push(o);
-  for(const [file,list] of Object.entries(byFile)) new GLTFLoader().load(A+file,(gltf)=>{
+  for(const [file,list] of Object.entries(byFile)) gltfLoader().load(A+file,(gltf)=>{
     const base=gltf.scene, sz=new THREE.Box3().setFromObject(base).getSize(new THREE.Vector3());
     for(const anc of list){ const m=base.clone(); m.scale.setScalar(+anc.userData.kl_h/sz.y); m.quaternion.copy(anc.getWorldQuaternion(new THREE.Quaternion())); scene.add(m);
       const p=anc.getWorldPosition(new THREE.Vector3()), b2=new THREE.Box3().setFromObject(m), ctr=b2.getCenter(new THREE.Vector3());
