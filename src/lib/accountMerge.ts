@@ -17,6 +17,24 @@ const SKIP_FILL_FIELDS = new Set([
   'participationCount', 'cancelledSessionHistory', 'user_logs', 'status', 'isVerified', 'isJobReviewed',
 ]);
 
+/** from 계정 값으로 into 계정의 빈 칸만 채울 값 (into에 이미 있는 값은 그대로 둔다) */
+export function emptyFieldFill(fromU: Record<string, any>, intoU: Record<string, any>, skip: Set<string> = SKIP_FILL_FIELDS) {
+  const fill: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(fromU)) {
+    if (skip.has(k)) continue;
+    const cur = intoU[k];
+    const empty = cur === undefined || cur === null || cur === '' || (Array.isArray(cur) && cur.length === 0);
+    if (empty && v !== undefined && v !== null && v !== '') fill[k] = v;
+  }
+  return fill;
+}
+
+/** 비회원 → 회원 이관 때 건너뛸 필드: 기본 목록에서 인증 상태는 넘기고(관리자가 이미 확인한 같은 사람), 비회원 로그인 정보는 빼고 */
+export const GUEST_SKIP_FILL_FIELDS = new Set([
+  ...Array.from(SKIP_FILL_FIELDS).filter(k => !['status', 'isVerified', 'isJobReviewed'].includes(k)),
+  'guestId', 'guestPwHash', 'guestPw', 'mergedAt',
+]);
+
 const isDummyId = (id: string) => /^(dummy|user_m_|user_f_)/.test(id);
 
 export interface ExistingAccountInfo {
@@ -149,13 +167,7 @@ export async function mergeAccountInto(fromUid: string, intoUid: string, phone: 
   });
 
   // 5. 회원 정보: 기존 계정 값을 우선하고 빈 칸만 새 계정 값으로 채운다
-  const fill: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(fromU)) {
-    if (SKIP_FILL_FIELDS.has(k)) continue;
-    const cur = intoU[k];
-    const empty = cur === undefined || cur === null || cur === '' || (Array.isArray(cur) && cur.length === 0);
-    if (empty && v !== undefined && v !== null && v !== '') fill[k] = v;
-  }
+  const fill = emptyFieldFill(fromU, intoU);
   batch.update(intoRef, {
     ...fill,
     phone,
