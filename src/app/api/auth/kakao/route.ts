@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
-import { resolveMergedAccount } from '@/lib/accountMerge';
+import { moveSessionRecords, resolveMergedAccount } from '@/lib/accountMerge';
 
 const KAKAO_TOKEN_URL = 'https://kauth.kakao.com/oauth/token';
 const KAKAO_USER_PROFILE_URL = 'https://kapi.kakao.com/v2/user/me';
@@ -197,38 +197,8 @@ export async function GET(request: NextRequest) {
             batch.update(appDoc.ref, { userId: loginUid });
           });
           
-          // 기존 투표 내역 완벽 이관 (내가 한 투표 + 남들이 나에게 한 투표)
-          // 비회원이 참가한 세션의 모든 투표를 가져와서 일괄 업데이트 처리합니다.
-          for (const sid of sessionIds) {
-            const sessionVotesSnap = await adminDb.collection('votes').where('sessionId', '==', sid).get();
-            sessionVotesSnap.forEach(voteDoc => {
-              const vData = voteDoc.data();
-              const isMyVote = vData.userId === oldUid;
-              
-              let choicesChanged = false;
-              const newChoices = vData.choices?.map((c: any) => {
-                if (c.targetUserId === oldUid) {
-                  choicesChanged = true;
-                  return { ...c, targetUserId: loginUid };
-                }
-                return c;
-              });
-
-              if (isMyVote) {
-                // 내 투표는 새 문서(새 UID 기반)로 복사하고, 기존 문서는 삭제합니다.
-                const newVoteRef = adminDb.collection('votes').doc(`${sid}_${loginUid}`);
-                batch.set(newVoteRef, { 
-                  ...vData, 
-                  userId: loginUid,
-                  choices: choicesChanged ? newChoices : vData.choices 
-                });
-                batch.delete(voteDoc.ref);
-              } else if (choicesChanged) {
-                // 남이 나에게 한 투표는 타겟 유저 ID를 새 UID로 업데이트합니다.
-                batch.update(voteDoc.ref, { choices: newChoices });
-              }
-            });
-          }
+          // 투표(내가 한 투표 + 남이 나를 고른 투표)와 이미 계산된 매칭 결과의 ID도 새 계정으로
+          await moveSessionRecords(batch, sessionIds, oldUid, loginUid);
           
           // 기존 비회원 정보를 새 카카오 계정에 병합
           const mergedData: any = { ...oldData, uid: loginUid, isRegistered: true, loginMethod: 'kakao', provider: 'kakao', role: 'user', updatedAt: new Date() };

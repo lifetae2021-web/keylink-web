@@ -94,6 +94,37 @@ function replaceUid(value: any, from: string, into: string): any {
 
 const mentions = (data: unknown, uid: string) => JSON.stringify(data).includes(uid);
 
+/**
+ * 계정이 합쳐질 때 기수별 기록의 옛 계정 ID를 새 계정 ID로 바꾼다 (신청서 userId를 바꾸는 모든 경로에서 같이 호출).
+ * - 투표: 내가 한 투표는 새 ID 문서로 옮기고, 남이 나를 고른 투표는 대상 ID만 바꾼다.
+ * - 매칭 결과(matchingSummaries): 이미 계산된 결과의 미매칭·커플·득표 명단도 바꾼다.
+ *   (안 바꾸면 결과 화면이 지금 신청서 명단과 맞춰볼 때 그 사람이 빠진다 — 141기 미매칭 7명 표시 사례)
+ */
+export async function moveSessionRecords(
+  batch: FirebaseFirestore.WriteBatch, sessionIds: Iterable<string>, fromUid: string, intoUid: string, op: () => void = () => {},
+) {
+  for (const sid of Array.from(new Set(sessionIds))) {
+    if (!sid) continue;
+    const [votes, summary] = await Promise.all([
+      adminDb.collection('votes').where('sessionId', '==', sid).get(),
+      adminDb.doc(`matchingSummaries/${sid}`).get(),
+    ]);
+    votes.forEach(v => {
+      const d = v.data();
+      if (!mentions(d, fromUid)) return;
+      if (d.userId === fromUid) {
+        batch.set(adminDb.doc(`votes/${sid}_${intoUid}`), replaceUid(d, fromUid, intoUid)); op();
+        batch.delete(v.ref); op();
+      } else {
+        batch.set(v.ref, replaceUid(d, fromUid, intoUid)); op();
+      }
+    });
+    if (summary.exists && mentions(summary.data(), fromUid)) {
+      batch.set(summary.ref, replaceUid(summary.data(), fromUid, intoUid)); op();
+    }
+  }
+}
+
 export async function mergeAccountInto(fromUid: string, intoUid: string, phone: string) {
   if (fromUid === intoUid) throw new Error('같은 계정은 합칠 수 없습니다.');
   const fromRef = adminDb.doc(`users/${fromUid}`);
@@ -117,26 +148,7 @@ export async function mergeAccountInto(fromUid: string, intoUid: string, phone: 
   privateApps.forEach(a => { batch.update(a.ref, { userId: intoUid }); op(); });
 
   // 2. 투표(내가 한 투표 + 남이 나를 고른 투표)와 매칭 결과
-  for (const sid of Array.from(sessionIds)) {
-    if (!sid) continue;
-    const [votes, summary] = await Promise.all([
-      adminDb.collection('votes').where('sessionId', '==', sid).get(),
-      adminDb.doc(`matchingSummaries/${sid}`).get(),
-    ]);
-    votes.forEach(v => {
-      const d = v.data();
-      if (!mentions(d, fromUid)) return;
-      if (d.userId === fromUid) {
-        batch.set(adminDb.doc(`votes/${sid}_${intoUid}`), replaceUid(d, fromUid, intoUid)); op();
-        batch.delete(v.ref); op();
-      } else {
-        batch.set(v.ref, replaceUid(d, fromUid, intoUid)); op();
-      }
-    });
-    if (summary.exists && mentions(summary.data(), fromUid)) {
-      batch.set(summary.ref, replaceUid(summary.data(), fromUid, intoUid)); op();
-    }
-  }
+  await moveSessionRecords(batch, sessionIds, fromUid, intoUid, op);
 
   // 3. 쿠폰 (새 계정에서 자동 발급된 미사용 웰컴 쿠폰은 기존 회원이므로 옮기지 않는다)
   const coupons = await fromRef.collection('coupons').get();
